@@ -4,7 +4,7 @@ A Python wrapper for the RMNLib C library, providing access to Core Scientific D
 
 ## Overview
 
-RMNpy is a Cython-based Python package that wraps the RMNLib C library, allowing Python developers to work with scientific datasets using the Core Scientific Dataset Model (CSDM) format. The package provides clean, Pythonic interfaces to RMNLib's Dataset and Datum functionality while maintaining the performance of the underlying C implementation.
+RMNpy is a Cython-based Python package that wraps the RMNLib C library, allowing Python developers to work with scientific datasets using the Core Scientific Dataset Model (CSDM) format. The package provides clean, Pythonic interfaces to RMNLib's Dataset functionality while maintaining the performance of the underlying C implementation.
 
 ## Features
 
@@ -262,9 +262,8 @@ This project is licensed under the same terms as the underlying RMNLib library. 
 
 ### Future Enhancements  
 - Advanced CSDM features
-- Parallel processing support
+- Porting over all RMN capabilities, i.e., Signal Processing, Import, etc.
 - Integration with other scientific Python packages
-- GUI tools and visualization
 
 ## Support
 
