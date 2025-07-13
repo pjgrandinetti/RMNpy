@@ -1,9 +1,6 @@
-# Dependency files that should NOT be in the repository
-include/
-lib/
-*.a
-*.so
-*.dylib
+# NOTE: Dependencies come from sibling repos in workspace
+# ../OCTypes/install/, ../SITypes/install/, ../RMNLib/install/
+# No local include/ or lib/ directories needed
 
 # Build artifacts
 build/
@@ -37,6 +34,6 @@ htmlcov/
 coverage.xml
 
 # Cython build files
-*.c
+src/rmnpy/*.c
 *.so
 *.html

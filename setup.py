@@ -12,21 +12,14 @@ extensions = [
         "rmnpy.core",
         sources=["src/rmnpy/core.pyx"],
         include_dirs=[
-            # Use system-installed headers instead of local copies
-            "/usr/local/include",      # Standard system location
-            "/usr/local/include/OCTypes",
-            "/usr/local/include/SITypes", 
-            "/usr/local/include/RMNLib",
-            "/opt/homebrew/include",   # Homebrew on Apple Silicon
-            "/opt/homebrew/include/OCTypes",
-            "/opt/homebrew/include/SITypes",
-            "/opt/homebrew/include/RMNLib",
+            "include",           # Bundled headers root
+            "include/OCTypes",   # OCTypes headers
+            "include/SITypes",   # SITypes headers
+            "include/RMNLib",    # RMNLib headers
             numpy.get_include()
         ],
         library_dirs=[
-            # Use system-installed libraries
-            "/usr/local/lib",
-            "/opt/homebrew/lib"
+            "lib"               # Bundled libraries
         ],
         libraries=["RMNLib", "OCTypes", "SITypes", "curl"],
         language="c",

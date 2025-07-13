@@ -19,11 +19,13 @@ RMNpy is a Cython-based Python package that wraps the RMNLib C library, allowing
 
 ## Dependencies
 
-RMNpy depends on three C libraries that must be built before installation:
+RMNpy includes the required C libraries for convenient building:
 
-- **RMNLib**: Core scientific dataset library
-- **OCTypes**: Foundation types library (strings, arrays, dictionaries, memory management)
-- **SITypes**: SI units library (scalars, units, physical quantities)
+- **RMNLib**: Core scientific dataset library (bundled)
+- **OCTypes**: Foundation types library - strings, arrays, dictionaries, memory management (bundled)
+- **SITypes**: SI units library - scalars, units, physical quantities (bundled)
+
+*Note: Header files and static libraries are included in the repository to provide a zero-setup build experience. No separate installation of dependencies is required.*
 
 ## Installation
 
