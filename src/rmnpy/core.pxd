@@ -13,19 +13,28 @@ cdef extern from "OCLibrary.h":
         unsigned long length
     
     # OCTypes Ref types
-    ctypedef struct impl_OCString
+    ctypedef struct impl_OCString:
+        pass
     ctypedef const impl_OCString* OCStringRef
-    ctypedef struct impl_OCString* OCMutableStringRef
+    ctypedef impl_OCString* OCMutableStringRef
     
-    ctypedef struct impl_OCArray
+    ctypedef struct impl_OCArray:
+        pass
     ctypedef const impl_OCArray* OCArrayRef
-    ctypedef struct impl_OCArray* OCMutableArrayRef
+    ctypedef impl_OCArray* OCMutableArrayRef
     
-    ctypedef struct impl_OCDictionary
+    ctypedef struct impl_OCDictionary:
+        pass
     ctypedef const impl_OCDictionary* OCDictionaryRef
-    ctypedef struct impl_OCDictionary* OCMutableDictionaryRef
+    ctypedef impl_OCDictionary* OCMutableDictionaryRef
     
-    ctypedef struct impl_OCNumber
+    ctypedef struct impl_OCIndexArray:
+        pass
+    ctypedef const impl_OCIndexArray* OCIndexArrayRef
+    ctypedef impl_OCIndexArray* OCMutableIndexArrayRef
+    
+    ctypedef struct impl_OCNumber:
+        pass
     ctypedef const impl_OCNumber* OCNumberRef
     
     # Memory management
@@ -38,10 +47,10 @@ cdef extern from "OCLibrary.h":
     OCStringRef OCStringCreateCopy(OCStringRef str)
     
     # Array functions
-    OCArrayRef OCArrayCreate(const void* const* values, OCIndex numValues, void* callbacks)
+    OCArrayRef OCArrayCreate(const void* const* values, OCIndex numValues, const void* callbacks)
     OCIndex OCArrayGetCount(OCArrayRef array)
     const void* OCArrayGetValueAtIndex(OCArrayRef array, OCIndex idx)
-    OCMutableArrayRef OCArrayCreateMutable(OCIndex capacity)
+    OCMutableArrayRef OCArrayCreateMutable(OCIndex capacity, const void* callBacks)
     void OCArrayAppendValue(OCMutableArrayRef array, const void* value)
     
     # Number functions
@@ -50,27 +59,31 @@ cdef extern from "OCLibrary.h":
 
 cdef extern from "SILibrary.h":
     # SITypes Ref types  
-    ctypedef struct impl_SIScalar
+    ctypedef struct impl_SIScalar:
+        pass
     ctypedef const impl_SIScalar* SIScalarRef
-    ctypedef struct impl_SIScalar* SIMutableScalarRef
+    ctypedef impl_SIScalar* SIMutableScalarRef
     
-    ctypedef struct impl_SIUnit
+    ctypedef struct impl_SIUnit:
+        pass
     ctypedef const impl_SIUnit* SIUnitRef
     
-    ctypedef struct impl_SIQuantity  
+    ctypedef struct impl_SIQuantity:
+        pass
     ctypedef const impl_SIQuantity* SIQuantityRef
     
-    ctypedef struct impl_SIDimensionality
+    ctypedef struct impl_SIDimensionality:
+        pass
     ctypedef const impl_SIDimensionality* SIDimensionalityRef
     
     # SIScalar functions
     SIScalarRef SIScalarCreateWithDouble(double value, SIUnitRef unit)
-    double SIScalarGetDoubleValue(SIScalarRef scalar)
+    double SIScalarDoubleValue(SIScalarRef scalar)
     SIUnitRef SIScalarGetUnit(SIScalarRef scalar)
     OCStringRef SIScalarCreateStringValue(SIScalarRef scalar)
     
     # SIUnit functions
-    SIUnitRef SIUnitCreateWithString(OCStringRef unitString, OCStringRef* outError)
+    SIUnitRef SIUnitFromExpression(OCStringRef expression, double *multiplier, OCStringRef *error)
     OCStringRef SIUnitCreateStringValue(SIUnitRef unit)
     
     # Cleanup
@@ -83,44 +96,55 @@ cdef extern from "RMNLibrary.h":
         kDimensionScalingNMR
     
     # RMNLib types - these depend on OCTypes and SITypes above
-    ctypedef struct impl_Dataset
+    ctypedef struct impl_Dataset:
+        pass
     ctypedef impl_Dataset* DatasetRef
     
-    ctypedef struct impl_Datum  
+    ctypedef struct impl_Datum:
+        pass
     ctypedef impl_Datum* DatumRef
     
-    ctypedef struct impl_Dimension
+    ctypedef struct impl_Dimension:
+        pass
     ctypedef impl_Dimension* DimensionRef
     
-    ctypedef struct impl_LabeledDimension
+    ctypedef struct impl_LabeledDimension:
+        pass
     ctypedef impl_LabeledDimension* LabeledDimensionRef
     
-    ctypedef struct impl_SIDimension
+    ctypedef struct impl_SIDimension:
+        pass
     ctypedef impl_SIDimension* SIDimensionRef
     
-    ctypedef struct impl_SILinearDimension
+    ctypedef struct impl_SILinearDimension:
+        pass
     ctypedef impl_SILinearDimension* SILinearDimensionRef
     
-    ctypedef struct impl_SIMonotonicDimension
+    ctypedef struct impl_SIMonotonicDimension:
+        pass
     ctypedef impl_SIMonotonicDimension* SIMonotonicDimensionRef
     
-    ctypedef struct impl_DependentVariable
+    ctypedef struct impl_DependentVariable:
+        pass
     ctypedef impl_DependentVariable* DependentVariableRef
     
-    ctypedef struct impl_GeographicCoordinate
+    ctypedef struct impl_GeographicCoordinate:
+        pass
     ctypedef impl_GeographicCoordinate* GeographicCoordinateRef
     
-    ctypedef struct impl_SparseSampling
+    ctypedef struct impl_SparseSampling:
+        pass
     ctypedef impl_SparseSampling* SparseSamplingRef
     
     # RMNLib functions
     DatasetRef DatasetCreate(OCArrayRef dimensions, 
-                           OCArrayRef dimensionPrecedence,
+                           OCIndexArrayRef dimensionPrecedence,
                            OCArrayRef dependentVariables,
                            OCArrayRef tags,
                            OCStringRef description, 
                            OCStringRef title,
                            DatumRef focus,
+                           DatumRef previousFocus,
                            OCDictionaryRef metadata,
                            OCStringRef* outError)
     
@@ -135,8 +159,9 @@ cdef extern from "RMNLibrary.h":
                         OCIndex componentIndex,
                         OCIndex memOffset)
     
-    SIScalarRef DatumGetResponse(DatumRef datum)
-    OCArrayRef DatumGetCoordinates(DatumRef datum)
+    SIScalarRef DatumCreateResponse(DatumRef datum)
+    SIScalarRef DatumGetCoordinateAtIndex(DatumRef datum, OCIndex index)
+    OCIndex DatumCoordinatesCount(DatumRef datum)
     OCIndex DatumGetComponentIndex(DatumRef datum)
     OCIndex DatumGetDependentVariableIndex(DatumRef datum)
     

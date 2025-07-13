@@ -41,11 +41,13 @@ cdef SIScalarRef _py_to_siscalar(double value, unit_str=None):
     cdef SIUnitRef unit = NULL
     cdef OCStringRef unit_ocstr = NULL
     cdef OCStringRef error = NULL
+    cdef double multiplier = 1.0
+    cdef SIScalarRef result = NULL
     
     try:
         if unit_str is not None:
             unit_ocstr = _py_to_ocstring(unit_str)
-            unit = SIUnitCreateWithString(unit_ocstr, &error)
+            unit = SIUnitFromExpression(unit_ocstr, &multiplier, &error)
             if unit == NULL:
                 if error != NULL:
                     error_msg = _ocstring_to_py(error)
@@ -54,39 +56,44 @@ cdef SIScalarRef _py_to_siscalar(double value, unit_str=None):
                 else:
                     raise RMNLibValidationError(f"Invalid unit string '{unit_str}'")
         
-        return SIScalarCreateWithDouble(value, unit)
+        # Apply unit multiplier to the value
+        adjusted_value = value * multiplier
+        result = SIScalarCreateWithDouble(adjusted_value, unit)
+        
+        # Don't release unit here - the scalar now owns it
+        return result
     
     finally:
         if unit_ocstr != NULL:
             OCRelease(unit_ocstr)
-        if unit != NULL:
-            OCRelease(unit)
+        if error != NULL:
+            OCRelease(error)
+        # Don't release unit here - it's owned by the scalar
 
 cdef double _siscalar_to_py(SIScalarRef scalar):
     """Convert SIScalarRef to Python float."""
     if scalar == NULL:
         return 0.0
-    return SIScalarGetDoubleValue(scalar)
+    return SIScalarDoubleValue(scalar)
 
 cdef OCArrayRef _py_list_to_ocarray(py_list, item_converter=None):
     """Convert Python list to OCArrayRef."""
     if py_list is None or len(py_list) == 0:
         return NULL
     
-    cdef OCMutableArrayRef mutable_array = OCArrayCreateMutable(len(py_list))
+    cdef OCMutableArrayRef mutable_array = OCArrayCreateMutable(len(py_list), NULL)
     if mutable_array == NULL:
         raise RMNLibMemoryError("Failed to create OCArray")
     
+    cdef OCStringRef string_item = NULL
+    
     try:
         for item in py_list:
-            if item_converter is not None:
-                converted_item = item_converter(item)
-            else:
-                # Default: assume OCStringRef conversion
-                converted_item = _py_to_ocstring(str(item))
-            
-            if converted_item != NULL:
-                OCArrayAppendValue(mutable_array, converted_item)
+            # For now, only support string conversion (most common case)
+            # TODO: Extend for other types as needed
+            string_item = _py_to_ocstring(str(item))
+            if string_item != NULL:
+                OCArrayAppendValue(mutable_array, <const void*>string_item)
         
         return <OCArrayRef>mutable_array
     
@@ -169,6 +176,7 @@ cdef class Dataset:
                 c_description,
                 c_title, 
                 NULL,  # focus
+                NULL,  # previousFocus
                 NULL,  # metadata - TODO: implement
                 &error
             )
@@ -255,6 +263,8 @@ cdef class Datum:
         cdef Datum datum = Datum()
         cdef SIScalarRef response_scalar = NULL
         cdef OCArrayRef coord_array = NULL
+        cdef OCMutableArrayRef coord_mutable = NULL
+        cdef SIScalarRef coord_scalar = NULL
         
         try:
             # Validate inputs
@@ -275,7 +285,7 @@ cdef class Datum:
             # Convert coordinates to OCArrayRef if provided
             if coordinates is not None:
                 # Create array of SIScalarRef from coordinate values
-                cdef OCMutableArrayRef coord_mutable = OCArrayCreateMutable(len(coordinates))
+                coord_mutable = OCArrayCreateMutable(len(coordinates), NULL)
                 if coord_mutable == NULL:
                     raise RMNLibMemoryError("Failed to create coordinate array")
                 
@@ -313,7 +323,7 @@ cdef class Datum:
         """Get the response value as a Python float."""
         if self._ref == NULL:
             return None
-        cdef SIScalarRef response = DatumGetResponse(self._ref)
+        cdef SIScalarRef response = DatumCreateResponse(self._ref)
         return _siscalar_to_py(response)
     
     @property 
@@ -322,16 +332,16 @@ cdef class Datum:
         if self._ref == NULL:
             return None
         
-        cdef OCArrayRef coord_array = DatumGetCoordinates(self._ref)
-        if coord_array == NULL:
-            return None
+        cdef OCIndex count = DatumCoordinatesCount(self._ref)
+        if count == 0:
+            return []
         
-        cdef OCIndex count = OCArrayGetCount(coord_array)
         coordinates = []
         
         cdef OCIndex i
+        cdef SIScalarRef coord_scalar = NULL
         for i in range(count):
-            coord_scalar = <SIScalarRef>OCArrayGetValueAtIndex(coord_array, i)
+            coord_scalar = DatumGetCoordinateAtIndex(self._ref, i)
             if coord_scalar != NULL:
                 coordinates.append(_siscalar_to_py(coord_scalar))
         

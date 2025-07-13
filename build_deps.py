@@ -39,28 +39,36 @@ def copy_libraries(base_path: Path, lib_dir: Path, verbose: bool = False):
     """Copy all required library files."""
     lib_dir.mkdir(exist_ok=True)
     
-    # Define library locations (adjust paths based on actual build locations)
-    libs = [
-        # (source_path, destination_name)
-        (base_path / "RMNLib" / "build" / "lib" / "libRMNLib.a", "libRMNLib.a"),
-        (base_path / "RMNLib" / "lib" / "libRMNLib.a", "libRMNLib.a"),  # Alternative location
-        (base_path / "OCTypes" / "lib" / "libOCTypes.a", "libOCTypes.a"),
-        (base_path / "OCTypes" / "build" / "lib" / "libOCTypes.a", "libOCTypes.a"),  # Alternative
-        (base_path / "SITypes" / "libSITypes.a", "libSITypes.a"),
-        (base_path / "SITypes" / "build" / "lib" / "libSITypes.a", "libSITypes.a"),  # Alternative
-    ]
+    # Define library locations grouped by library name
+    library_search_paths = {
+        "libRMNLib.a": [
+            base_path / "RMNLib" / "build" / "lib" / "libRMNLib.a",
+            base_path / "RMNLib" / "lib" / "libRMNLib.a",
+        ],
+        "libOCTypes.a": [
+            base_path / "OCTypes" / "lib" / "libOCTypes.a",
+            base_path / "OCTypes" / "install" / "lib" / "libOCTypes.a",
+            base_path / "OCTypes" / "build" / "lib" / "libOCTypes.a",
+        ],
+        "libSITypes.a": [
+            base_path / "SITypes" / "libSITypes.a",
+            base_path / "SITypes" / "install" / "lib" / "libSITypes.a",
+            base_path / "SITypes" / "build" / "lib" / "libSITypes.a",
+        ],
+    }
     
     copied_count = 0
-    for src_path, dst_name in libs:
-        if src_path.exists():
-            dst_path = lib_dir / dst_name
-            shutil.copy2(src_path, dst_path)
-            copied_count += 1
-            if verbose:
-                print(f"  Copied {src_path} -> {dst_path}")
-            break  # Only copy the first one found for each library
-        elif verbose:
-            print(f"  Not found: {src_path}")
+    for lib_name, search_paths in library_search_paths.items():
+        for src_path in search_paths:
+            if src_path.exists():
+                dst_path = lib_dir / lib_name
+                shutil.copy2(src_path, dst_path)
+                copied_count += 1
+                if verbose:
+                    print(f"  Copied {src_path} -> {dst_path}")
+                break  # Only copy the first one found for this library
+            elif verbose:
+                print(f"  Not found: {src_path}")
     
     print(f"Copied {copied_count} libraries to lib/")
     
