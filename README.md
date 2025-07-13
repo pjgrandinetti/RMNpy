@@ -81,12 +81,139 @@ dataset = rmnpy.Dataset.create()
 print(f"Dataset has {dataset.num_datums} datums")
 
 # Create a datum
-datum = rmnpy.Datum.create()
-print("Created new datum")
+datum = rmnpy.Datum.create(response_value=1.5, coordinates=[100.0, 50.0])
+print(f"Created datum with response: {datum.response_value}")
 
 # Work with NumPy arrays (data setting to be implemented)
 data = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
 # datum.set_data(data)  # Coming soon
+```
+
+### Creating Dimensions
+
+```python
+import rmnpy
+from rmnpy.types import DimensionType, ScalingType
+
+# Create a linear dimension (e.g., for frequency axis)
+linear_dim = rmnpy.LinearDimension.create(
+    label="Chemical Shift",
+    description="1H NMR chemical shift",
+    count=1024,
+    increment=0.1,  # Hz per point
+    unit="ppm",
+    origin=0.0,
+    scaling=ScalingType.NMR
+)
+print(f"Created linear dimension with {linear_dim.count} points")
+
+# Create a labeled dimension (e.g., for categorical data)
+labels = ["Sample A", "Sample B", "Sample C", "Control"]
+labeled_dim = rmnpy.LabeledDimension.create(
+    label="Sample Type",
+    description="Different sample conditions",
+    coordinate_labels=labels
+)
+print(f"Created labeled dimension with {len(labeled_dim.coordinate_labels)} labels")
+
+# Create a monotonic dimension (e.g., for irregular time points)
+time_points = [0.0, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0]  # seconds
+monotonic_dim = rmnpy.MonotonicDimension.create(
+    label="Time",
+    description="Variable time intervals",
+    coordinates=time_points,
+    unit="s"
+)
+print(f"Created monotonic dimension with {len(monotonic_dim.coordinates)} points")
+```
+
+### Creating Dependent Variables
+
+```python
+import rmnpy
+import numpy as np
+from rmnpy.types import DataType
+
+# Create a simple dependent variable for real-valued data
+real_data = np.random.random(1024)
+real_dv = rmnpy.DependentVariable.create(
+    name="Intensity",
+    description="NMR signal intensity",
+    unit="V",
+    data_type=DataType.FLOAT64,
+    data=real_data
+)
+print(f"Created real DV with {len(real_dv.data)} points")
+
+# Create a complex dependent variable for NMR/spectroscopy
+complex_data = np.random.random(512) + 1j * np.random.random(512)
+complex_dv = rmnpy.DependentVariable.create(
+    name="FID",
+    description="Free Induction Decay",
+    unit="V",
+    data_type=DataType.COMPLEX128,
+    data=complex_data,
+    components=["real", "imaginary"]
+)
+print(f"Created complex DV with {len(complex_dv.data)} points")
+
+# Create a multi-component dependent variable
+multicomponent_data = np.random.random((3, 1024))  # 3 components
+multi_dv = rmnpy.DependentVariable.create(
+    name="Vector Field",
+    description="3D magnetic field measurements",
+    unit="T",
+    data_type=DataType.FLOAT64,
+    data=multicomponent_data,
+    components=["Bx", "By", "Bz"]
+)
+print(f"Created multi-component DV with {len(multi_dv.components)} components")
+```
+
+### Complete Dataset Example
+
+```python
+import rmnpy
+import numpy as np
+
+# Create dimensions
+freq_dim = rmnpy.LinearDimension.create(
+    label="Frequency",
+    count=512,
+    increment=100.0,  # Hz
+    unit="Hz",
+    origin=0.0
+)
+
+time_dim = rmnpy.LinearDimension.create(
+    label="Time",
+    count=64,
+    increment=0.01,  # seconds
+    unit="s",
+    origin=0.0
+)
+
+# Create dependent variable
+spectrum_data = np.random.random((64, 512))  # time x frequency
+spectrum_dv = rmnpy.DependentVariable.create(
+    name="2D NMR Spectrum",
+    description="Two-dimensional NMR spectrum",
+    unit="intensity",
+    data_type=DataType.FLOAT64,
+    data=spectrum_data
+)
+
+# Create complete dataset
+dataset = rmnpy.Dataset.create(
+    title="2D NMR Experiment",
+    description="COSY spectrum of organic compound",
+    dimensions=[time_dim, freq_dim],
+    dependent_variables=[spectrum_dv]
+)
+
+print(f"Created 2D dataset: {dataset.title}")
+print(f"Dimensions: {len(dataset.dimensions)}")
+print(f"Dependent variables: {len(dataset.dependent_variables)}")
 ```
 
 ### Error Handling
@@ -114,13 +241,76 @@ Represents a scientific dataset following the CSDM model.
 
 **Methods:**
 - `Dataset.create()` - Create a new empty dataset
-- `num_datums` - Property returning the number of datums in the dataset
+- `Dataset.create(title, description, dimensions, dependent_variables)` - Create dataset with components
+
+**Properties:**
+- `title` - Dataset title string
+- `description` - Dataset description
+- `dimensions` - List of Dimension objects
+- `dependent_variables` - List of DependentVariable objects
 
 #### `Datum`  
 Represents an individual data element within a dataset.
 
 **Methods:**
-- `Datum.create()` - Create a new empty datum
+- `Datum.create(response_value, coordinates, response_unit)` - Create datum with response and coordinates
+
+**Properties:**
+- `response_value` - The measured response value
+- `coordinates` - List of coordinate values
+- `component_index` - Component index within dependent variable
+- `dependent_variable_index` - Index of associated dependent variable
+
+#### `LinearDimension`
+Represents a uniformly spaced coordinate dimension.
+
+**Methods:**
+- `LinearDimension.create(label, count, increment, unit, origin, scaling)` - Create linear dimension
+
+**Properties:**
+- `label` - Dimension label
+- `description` - Dimension description  
+- `count` - Number of points
+- `increment` - Spacing between points
+- `unit` - Physical unit
+- `origin` - Starting coordinate value
+
+#### `LabeledDimension`
+Represents a dimension with discrete categorical labels.
+
+**Methods:**
+- `LabeledDimension.create(label, description, coordinate_labels)` - Create labeled dimension
+
+**Properties:**
+- `label` - Dimension label
+- `description` - Dimension description
+- `coordinate_labels` - List of coordinate labels
+
+#### `MonotonicDimension`
+Represents a dimension with non-uniform but monotonic coordinates.
+
+**Methods:**
+- `MonotonicDimension.create(label, description, coordinates, unit)` - Create monotonic dimension
+
+**Properties:**
+- `label` - Dimension label
+- `description` - Dimension description
+- `coordinates` - List of coordinate values
+- `unit` - Physical unit
+
+#### `DependentVariable`
+Represents a data variable with values and metadata.
+
+**Methods:**
+- `DependentVariable.create(name, description, unit, data_type, data, components)` - Create dependent variable
+
+**Properties:**
+- `name` - Variable name
+- `description` - Variable description
+- `unit` - Physical unit
+- `data_type` - Data type (float64, complex128, etc.)
+- `data` - NumPy array of data values
+- `components` - List of component names (for multi-component data)
 
 ### Exceptions
 
