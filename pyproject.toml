@@ -1,0 +1,100 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "Cython>=0.29.0", "numpy>=1.20.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "RMNpy"
+version = "0.1.0"
+description = "Python wrapper for RMNLib scientific data library"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Philip Grandinetti", email = "grandinetti.1@osu.edu"}
+]
+maintainers = [
+    {name = "Philip Grandinetti", email = "grandinetti.1@osu.edu"}
+]
+keywords = ["scientific", "data", "nmr", "csdm", "spectroscopy"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.20.0",
+    "cython>=0.29.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "black",
+    "flake8",
+    "mypy",
+    "sphinx",
+    "sphinx-rtd-theme",
+]
+test = [
+    "pytest>=6.0",
+    "pytest-cov",
+]
+
+[project.urls]
+Homepage = "https://github.com/pjgrandinetti/RMNpy"
+Documentation = "https://rmnpy.readthedocs.io/"
+Repository = "https://github.com/pjgrandinetti/RMNpy.git"
+Issues = "https://github.com/pjgrandinetti/RMNpy/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=rmnpy",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]

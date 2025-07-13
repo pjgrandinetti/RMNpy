@@ -1,0 +1,20 @@
+# Build requirements
+numpy>=1.20.0
+cython>=0.29.0
+setuptools>=45
+wheel
+
+# Runtime requirements  
+# (These will be automatically installed)
+
+# Development requirements (optional)
+pytest>=6.0
+pytest-cov
+black
+flake8
+mypy
+sphinx
+sphinx-rtd-theme
+
+# Documentation
+# sphinx-gallery  # If you want example galleries
