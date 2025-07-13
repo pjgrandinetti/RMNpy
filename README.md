@@ -476,21 +476,6 @@ For issues, questions, or contributions:
 
 **This is an early development version of RMNpy.** 
 
-### What Currently Works:
-- ✅ Basic `Dataset.create()` functionality
-- ✅ Basic `Datum.create()` functionality  
-- ✅ Memory management and cleanup
-- ✅ Build system and packaging
-- ✅ Error handling infrastructure
-
-### What's Not Yet Implemented:
-- ❌ `LinearDimension`, `LabeledDimension`, `MonotonicDimension` classes
-- ❌ `DependentVariable` class
-- ❌ Data setting and retrieval methods
-- ❌ NumPy array integration
-- ❌ File I/O operations
-- ❌ Most API examples shown in this documentation
-
 **The examples in the Quick Start section that involve Dimensions and DependentVariables are for illustration of the planned API and will not work until those classes are implemented.**
 
 See the [Roadmap](#roadmap) section for current status and planned features.
