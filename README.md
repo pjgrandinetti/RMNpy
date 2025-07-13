@@ -1,5 +1,7 @@
 # RMNpy
 
+> **⚠️ DEVELOPMENT STATUS**: This project is currently under active development. Many features described in this documentation are not yet implemented and the API is subject to change. This is a work-in-progress wrapper for the RMNLib C library.
+
 A Python wrapper for the RMNLib C library, providing access to Core Scientific Dataset Model (CSDM) functionality from Python.
 
 ## Overview
@@ -24,6 +26,8 @@ RMNpy depends on three C libraries that must be built before installation:
 - **SITypes**: SI units library (scalars, units, physical quantities)
 
 ## Installation
+
+> **⚠️ IMPORTANT**: RMNpy is currently under development. While the build system is functional, many of the API examples shown in this documentation are not yet implemented. Only basic `Dataset` and `Datum` functionality is currently working.
 
 ### Prerequisites
 
@@ -69,6 +73,8 @@ print(f"Created dataset with {dataset.num_datums} datums")
 ```
 
 ## Quick Start
+
+> **📋 STATUS**: Only the "Basic Usage" section below is currently functional. The `Dimension` and `DependentVariable` examples show the planned API but are not yet implemented.
 
 ### Basic Usage
 
@@ -466,4 +472,25 @@ For issues, questions, or contributions:
 
 ---
 
-**Note**: This is an early version of RMNpy. Some functionality is still being implemented. See the roadmap above for current status and planned features.
+## ⚠️ Development Status
+
+**This is an early development version of RMNpy.** 
+
+### What Currently Works:
+- ✅ Basic `Dataset.create()` functionality
+- ✅ Basic `Datum.create()` functionality  
+- ✅ Memory management and cleanup
+- ✅ Build system and packaging
+- ✅ Error handling infrastructure
+
+### What's Not Yet Implemented:
+- ❌ `LinearDimension`, `LabeledDimension`, `MonotonicDimension` classes
+- ❌ `DependentVariable` class
+- ❌ Data setting and retrieval methods
+- ❌ NumPy array integration
+- ❌ File I/O operations
+- ❌ Most API examples shown in this documentation
+
+**The examples in the Quick Start section that involve Dimensions and DependentVariables are for illustration of the planned API and will not work until those classes are implemented.**
+
+See the [Roadmap](#roadmap) section for current status and planned features.
