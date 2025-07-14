@@ -2,6 +2,10 @@
 # ../OCTypes/install/, ../SITypes/install/, ../RMNLib/install/
 # No local include/ or lib/ directories needed
 
+# Downloaded dependencies (should be rebuilt from releases)
+lib/
+include/
+
 # Build artifacts
 build/
 dist/
