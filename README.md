@@ -17,6 +17,37 @@ RMNpy is a Cython-based Python package that wraps the RMNLib C library, allowing
 - **Error Handling**: Comprehensive exception hierarchy for robust error handling
 - **Performance**: Direct access to optimized C library functions
 
+## Documentation
+
+Comprehensive documentation is available:
+
+📖 **[Online Documentation](https://pjgrandinetti.github.io/RMNpy/)** (GitHub Pages)
+
+### Local Documentation
+
+Build and view documentation locally:
+
+```bash
+# Install documentation dependencies
+pip install -r docs/requirements.txt
+
+# Build HTML documentation
+cd docs
+make html
+
+# Open in browser (macOS)
+open _build/html/index.html
+```
+
+### Documentation Structure
+
+- **[Installation Guide](docs/installation.md)**: Setup and installation
+- **[Quickstart Tutorial](docs/quickstart.md)**: Get started in minutes
+- **[User Guide](docs/user_guide/index.md)**: Comprehensive usage guide
+- **[API Reference](docs/api_reference/index.md)**: Complete API documentation
+- **[Examples](docs/examples/index.md)**: Real-world usage examples
+- **[Changelog](docs/changelog.md)**: Version history and updates
+
 ## Dependencies
 
 RMNpy includes the required C libraries for convenient building:

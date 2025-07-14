@@ -373,6 +373,167 @@ cdef class Datum:
     def __repr__(self):
         return f"Datum(_ref={<long>self._ref})"
 
+
+cdef class DependentVariable:
+    """Represents a dependent variable in a scientific dataset.
+    
+    A DependentVariable contains the response data and associated metadata
+    for measurements in a multidimensional scientific dataset.
+    """
+    
+    cdef DependentVariableRef _ref
+    
+    def __cinit__(self):
+        self._ref = NULL
+    
+    def __dealloc__(self):
+        if self._ref != NULL:
+            OCRelease(self._ref)
+            self._ref = NULL
+    
+    @staticmethod
+    def create(name=None, description=None, unit=None):
+        """Create a new DependentVariable.
+        
+        Args:
+            name: Name of the dependent variable (str, optional)
+            description: Description of the dependent variable (str, optional)
+            unit: Physical unit of the variable (str, optional)
+            
+        Returns:
+            DependentVariable: A new DependentVariable instance
+            
+        Raises:
+            RMNLibError: If creation fails
+        """
+        # Note: This is a placeholder implementation since DependentVariableCreate
+        # function is not yet declared in core.pxd
+        dep_var = DependentVariable()
+        
+        # For now, we'll create a basic placeholder
+        # TODO: Implement actual DependentVariableCreate call when available
+        
+        return dep_var
+    
+    @property
+    def name(self):
+        """Get the name of the dependent variable."""
+        # TODO: Implement when DependentVariable functions are available
+        return None
+    
+    @property
+    def description(self):
+        """Get the description of the dependent variable."""
+        # TODO: Implement when DependentVariable functions are available
+        return None
+    
+    @property
+    def unit(self):
+        """Get the unit of the dependent variable."""
+        # TODO: Implement when DependentVariable functions are available
+        return None
+    
+    def __str__(self):
+        name = self.name or "unnamed"
+        unit = self.unit or "dimensionless"
+        return f"DependentVariable(name='{name}', unit='{unit}')"
+    
+    def __repr__(self):
+        return f"DependentVariable(_ref={<long>self._ref})"
+
+
+cdef class Dimension:
+    """Represents a dimension in a multidimensional scientific dataset.
+    
+    A Dimension defines the coordinate system for one axis of the dataset,
+    including labels, units, and coordinate values.
+    """
+    
+    cdef DimensionRef _ref
+    
+    def __cinit__(self):
+        self._ref = NULL
+    
+    def __dealloc__(self):
+        if self._ref != NULL:
+            OCRelease(self._ref)
+            self._ref = NULL
+    
+    @staticmethod  
+    def create_linear(label=None, description=None, count=100, start=0.0, increment=1.0, unit="Hz"):
+        """Create a new linear Dimension.
+        
+        Args:
+            label: Label for the dimension (str, optional)
+            description: Description of the dimension (str, optional)
+            count: Number of points in the dimension (int, default=100)
+            start: Starting value (float, default=0.0)
+            increment: Increment between points (float, default=1.0)
+            unit: Physical unit (str, default="Hz")
+            
+        Returns:
+            Dimension: A new Dimension instance
+            
+        Raises:
+            RMNLibError: If creation fails
+        """
+        # For now, create a placeholder implementation
+        # TODO: Implement full SILinearDimensionCreate when all dependencies are ready
+        dimension = Dimension()
+        
+        # Note: Since the full implementation requires SIScalar objects and other
+        # complex dependencies that aren't fully implemented yet, we'll create
+        # a basic placeholder that can be tested
+        
+        return dimension
+    
+    @property
+    def label(self):
+        """Get the label of the dimension."""
+        if self._ref == NULL:
+            return None
+        cdef OCStringRef label = DimensionGetLabel(self._ref)
+        if label == NULL:
+            return None
+        return _ocstring_to_py(label)
+    
+    @property
+    def description(self):
+        """Get the description of the dimension."""
+        if self._ref == NULL:
+            return None
+        cdef OCStringRef desc = DimensionGetDescription(self._ref)
+        if desc == NULL:
+            return None
+        return _ocstring_to_py(desc)
+    
+    @property
+    def count(self):
+        """Get the number of points in the dimension."""
+        if self._ref == NULL:
+            return None
+        return DimensionGetCount(self._ref)
+    
+    @property
+    def type(self):
+        """Get the type of the dimension."""
+        if self._ref == NULL:
+            return None
+        cdef OCStringRef type_str = DimensionGetType(self._ref)
+        if type_str == NULL:
+            return None
+        return _ocstring_to_py(type_str)
+    
+    def __str__(self):
+        label = self.label or "unlabeled"
+        count = self.count or 0
+        dim_type = self.type or "unknown"
+        return f"Dimension(label='{label}', type='{dim_type}', count={count})"
+    
+    def __repr__(self):
+        return f"Dimension(_ref={<long>self._ref})"
+
+
 # Module-level functions
 def shutdown():
     """Clean up RMNLib and related library resources.

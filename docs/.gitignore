@@ -1,0 +1,3 @@
+# Documentation build files - should not be committed
+_build/
+doctrees/

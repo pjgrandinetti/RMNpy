@@ -19,7 +19,7 @@ Example:
 For more information, visit: https://github.com/pjgrandinetti/RMNpy
 """
 
-from .core import Dataset, Datum, shutdown
+from .core import Dataset, Datum, Dimension, DependentVariable, shutdown
 from .exceptions import RMNLibError, RMNLibMemoryError, RMNLibValidationError
 from .types import DimensionType, ScalingType
 
@@ -31,8 +31,8 @@ __all__ = [
     # Core classes
     "Dataset",
     "Datum", 
-    # "Dimension",  # TODO: Implement
-    # "DependentVariable",  # TODO: Implement
+    "Dimension",
+    "DependentVariable",
     
     # Exceptions
     "RMNLibError",
