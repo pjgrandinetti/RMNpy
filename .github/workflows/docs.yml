@@ -91,6 +91,11 @@ jobs:
         void OCAutoreleasePoolDestroy(void) {
             // Do nothing in stub
         }
+        
+        // RMNLib functions
+        const char* DimensionGetLabel(void* dimension) {
+            return "";
+        }
         EOF
         
         # Compile the stub and add it to the existing libraries
