@@ -25,7 +25,7 @@ extensions = [
         language="c",
         # Add any needed compiler flags
         extra_compile_args=["-std=c99", "-Wno-unused-function"],
-        extra_link_args=["-v", "-Wl,--verbose"]
+        extra_link_args=[]
     )
 ]
 
