@@ -46,26 +46,56 @@ jobs:
       run: |
         echo "Creating minimal stub libraries for CI build..."
         
-        # Create a minimal SIUnitFromExpression stub
+        # Create comprehensive stub implementations for CI
         cat > stub_sitypes.c << 'EOF'
         #include <stdlib.h>
         
-        // Minimal stub implementation for CI
+        // Minimal stub implementations for CI
         typedef void* SIUnitRef;
         typedef void* OCStringRef;
+        typedef void* OCTypeRef;
         
+        // SITypes functions
         SIUnitRef SIUnitFromExpression(OCStringRef expression, double *unit_multiplier, OCStringRef *error) {
             if (unit_multiplier) *unit_multiplier = 1.0;
             if (error) *error = NULL;
             return NULL;
         }
+        
+        // OCTypes functions that might be needed
+        void OCRelease(OCTypeRef obj) {
+            // Do nothing in stub
+        }
+        
+        void OCRetain(OCTypeRef obj) {
+            // Do nothing in stub
+        }
+        
+        OCStringRef OCStringCreate(const char* cString) {
+            return NULL;
+        }
+        
+        const char* OCStringGetCString(OCStringRef string) {
+            return "";
+        }
+        
+        // Additional common OCTypes functions
+        void OCAutoreleasePoolCreate(void) {
+            // Do nothing in stub
+        }
+        
+        void OCAutoreleasePoolDestroy(void) {
+            // Do nothing in stub
+        }
         EOF
         
-        # Compile the stub and add it to the existing library
+        # Compile the stub and add it to the existing libraries
         gcc -c stub_sitypes.c -o stub_sitypes.o
         ar rcs lib/libSITypes.a stub_sitypes.o
+        ar rcs lib/libOCTypes.a stub_sitypes.o
+        ar rcs lib/libRMNLib.a stub_sitypes.o
         
-        echo "Stub libraries created"
+        echo "Comprehensive stub libraries created"
         
     - name: Install Python dependencies
       run: |
