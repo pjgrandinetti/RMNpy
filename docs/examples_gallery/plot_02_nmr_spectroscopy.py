@@ -57,8 +57,8 @@ print(f"Label: {chemical_shift.label}")
 print(f"Count: {chemical_shift.count}")
 
 # Calculate and display the range
-end_ppm = chemical_shift.start + (chemical_shift.count-1) * chemical_shift.increment
-print(f"Range: {chemical_shift.start} to {end_ppm:.2f} ppm")
+end_ppm = chemical_shift.coordinates_offset + (chemical_shift.count-1) * chemical_shift.increment
+print(f"Range: {chemical_shift.coordinates_offset} to {end_ppm:.2f} ppm")
 
 # %%
 # Signal Variables
@@ -286,8 +286,8 @@ nuclei = ['1H', '13C', '31P', '19F']
 
 for nucleus in nuclei:
     dim = create_nucleus_dimension(nucleus)
-    end_shift = dim.start + (dim.count - 1) * dim.increment
-    print(f"{nucleus}: {dim.start} to {end_shift:.1f} ppm ({dim.count} points)")
+    end_shift = dim.coordinates_offset + (dim.count - 1) * dim.increment
+    print(f"{nucleus}: {dim.coordinates_offset} to {end_shift:.1f} ppm ({dim.count} points)")
 
 # %%
 # Complete NMR Workflow Example
@@ -316,8 +316,8 @@ def complete_nmr_workflow():
         increment=-0.012,
         unit="ppm"
     )
-    end_ppm = acquisition_dim.start + (acquisition_dim.count-1)*acquisition_dim.increment
-    print(f"2. Acquisition: {acquisition_dim.count} points, {acquisition_dim.start} to {end_ppm:.1f} ppm")
+    end_ppm = acquisition_dim.coordinates_offset + (acquisition_dim.count-1)*acquisition_dim.increment
+    print(f"2. Acquisition: {acquisition_dim.count} points, {acquisition_dim.coordinates_offset} to {end_ppm:.1f} ppm")
     
     # 3. Create signal variables
     spectrum_real = DependentVariable.create(
@@ -336,7 +336,7 @@ def complete_nmr_workflow():
     ]
     
     # Generate chemical shift array
-    shifts = [acquisition_dim.start + i * acquisition_dim.increment 
+    shifts = [acquisition_dim.coordinates_offset + i * acquisition_dim.increment 
               for i in range(acquisition_dim.count)]
     
     # Simulate combined spectrum

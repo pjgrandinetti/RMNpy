@@ -56,8 +56,8 @@ def create_large_dataset(size=10000):
     )
     
     print(f"✓ Dataset created: {large_dataset}")
-    end_point = high_res_dim.start + (size-1)*high_res_dim.increment
-    print(f"✓ Dimension: {size} points from {high_res_dim.start} to {end_point:.3f}")
+    end_point = high_res_dim.coordinates_offset + (size-1)*high_res_dim.increment
+    print(f"✓ Dimension: {size} points from {high_res_dim.coordinates_offset} to {end_point:.3f}")
     
     return large_dataset, high_res_dim, signal_var
 
@@ -232,13 +232,13 @@ def simulate_3d_sphere(center_x=0, center_y=0, center_z=0, radius=5.0, intensity
     voxel_data = []
     
     for k in range(z_dim.count):
-        z = z_dim.start + k * z_dim.increment
+        z = z_dim.coordinates_offset + k * z_dim.increment
         
         for j in range(y_dim.count):
-            y = y_dim.start + j * y_dim.increment
+            y = y_dim.coordinates_offset + j * y_dim.increment
             
             for i in range(x_dim.count):
-                x = x_dim.start + i * x_dim.increment
+                x = x_dim.coordinates_offset + i * x_dim.increment
                 
                 # Calculate distance from sphere center
                 distance = math.sqrt((x - center_x)**2 + (y - center_y)**2 + (z - center_z)**2)
@@ -310,8 +310,8 @@ def create_time_series_experiment():
     )
     
     print(f"✓ Kinetics dataset: {kinetics_dataset}")
-    end_time = time_dim.start + (time_dim.count-1)*time_dim.increment
-    print(f"✓ Time range: {time_dim.start} to {end_time:.0f} seconds")
+    end_time = time_dim.coordinates_offset + (time_dim.count-1)*time_dim.increment
+    print(f"✓ Time range: {time_dim.coordinates_offset} to {end_time:.0f} seconds")
     print(f"✓ Sampling interval: {time_dim.increment:.0f} seconds")
     
     return {
@@ -339,7 +339,7 @@ def simulate_first_order_kinetics(initial_conc=1.0, rate_constant=0.01):
     time_points = []
     
     for i in range(time_dim.count):
-        time = time_dim.start + i * time_dim.increment
+        time = time_dim.coordinates_offset + i * time_dim.increment
         time_points.append(time)
         
         # First-order kinetics equations
