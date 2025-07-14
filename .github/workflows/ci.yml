@@ -38,8 +38,9 @@ jobs:
       run: |
         echo "Creating minimal stub libraries for CI build..."
         
-        # Create lib and include directories
+        # Create lib and include directories first
         mkdir -p lib include
+        echo "Created lib and include directories"
         
         # Create comprehensive stub implementations for CI
         cat > stub_sitypes.c << 'EOF'
@@ -296,8 +297,13 @@ jobs:
         }
         EOF
 
-        # Compile the stub and create the libraries
+        # Verify directories exist and compile the stub
+        ls -la
+        echo "Compiling stub implementation..."
         gcc -c stub_sitypes.c -o stub_sitypes.o
+        
+        # Create the libraries with verbose output
+        echo "Creating library files..."
         ar rcs lib/libSITypes.a stub_sitypes.o
         ar rcs lib/libOCTypes.a stub_sitypes.o
         ar rcs lib/libRMN.a stub_sitypes.o
