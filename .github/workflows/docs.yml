@@ -49,11 +49,37 @@ jobs:
         # Create comprehensive stub implementations for CI
         cat > stub_sitypes.c << 'EOF'
         #include <stdlib.h>
+        #include <stdbool.h>
         
         // Minimal stub implementations for CI
         typedef void* SIUnitRef;
+        typedef void* SIScalarRef;
+        typedef void* SIDimensionRef;
+        typedef void* SILinearDimensionRef;
+        typedef void* SIMonotonicDimensionRef;
+        typedef void* SIQuantityRef;
+        typedef void* SIDimensionalityRef;
         typedef void* OCStringRef;
         typedef void* OCTypeRef;
+        typedef void* OCArrayRef;
+        typedef void* OCMutableArrayRef;
+        typedef void* OCDictionaryRef;
+        typedef void* OCMutableDictionaryRef;
+        typedef void* OCNumberRef;
+        typedef void* OCIndexArrayRef;
+        typedef void* OCMutableIndexArrayRef;
+        typedef void* DatasetRef;
+        typedef void* DatumRef;
+        typedef void* DimensionRef;
+        typedef void* LabeledDimensionRef;
+        typedef void* DependentVariableRef;
+        typedef void* GeographicCoordinateRef;
+        typedef void* SparseSamplingRef;
+        typedef signed long OCIndex;
+        typedef unsigned long OCOptionFlags;
+        typedef unsigned int OCTypeID;
+        typedef int bint;
+        typedef enum { kDimensionScalingNone, kDimensionScalingNMR } dimensionScaling;
         
         // SITypes functions
         SIUnitRef SIUnitFromExpression(OCStringRef expression, double *unit_multiplier, OCStringRef *error) {
@@ -62,12 +88,36 @@ jobs:
             return NULL;
         }
         
-        // OCTypes functions that might be needed
-        void OCRelease(OCTypeRef obj) {
+        SIScalarRef SIScalarCreateWithDouble(double value, SIUnitRef unit) {
+            return NULL;
+        }
+        
+        double SIScalarDoubleValue(SIScalarRef scalar) {
+            return 0.0;
+        }
+        
+        SIUnitRef SIScalarGetUnit(SIScalarRef scalar) {
+            return NULL;
+        }
+        
+        OCStringRef SIScalarCreateStringValue(SIScalarRef scalar) {
+            return NULL;
+        }
+        
+        OCStringRef SIUnitCreateStringValue(SIUnitRef unit) {
+            return NULL;
+        }
+        
+        void SITypesShutdown(void) {
             // Do nothing in stub
         }
         
-        void OCRetain(OCTypeRef obj) {
+        // OCTypes functions
+        void OCRelease(const void* obj) {
+            // Do nothing in stub
+        }
+        
+        void OCRetain(const void* obj) {
             // Do nothing in stub
         }
         
@@ -79,8 +129,40 @@ jobs:
             return NULL;
         }
         
+        OCStringRef OCStringCreateCopy(OCStringRef str) {
+            return NULL;
+        }
+        
         const char* OCStringGetCString(OCStringRef string) {
             return "";
+        }
+        
+        OCArrayRef OCArrayCreate(const void* const* values, OCIndex numValues, const void* callbacks) {
+            return NULL;
+        }
+        
+        OCIndex OCArrayGetCount(OCArrayRef array) {
+            return 0;
+        }
+        
+        const void* OCArrayGetValueAtIndex(OCArrayRef array, OCIndex idx) {
+            return NULL;
+        }
+        
+        OCMutableArrayRef OCArrayCreateMutable(OCIndex capacity, const void* callBacks) {
+            return NULL;
+        }
+        
+        void OCArrayAppendValue(OCMutableArrayRef array, const void* value) {
+            // Do nothing in stub
+        }
+        
+        OCNumberRef OCNumberCreateWithDouble(double value) {
+            return NULL;
+        }
+        
+        double OCNumberGetDoubleValue(OCNumberRef number) {
+            return 0.0;
         }
         
         // Additional common OCTypes functions
@@ -93,8 +175,125 @@ jobs:
         }
         
         // RMNLib functions
-        const char* DimensionGetLabel(void* dimension) {
+        DatasetRef DatasetCreate(OCArrayRef dimensions, 
+                               OCIndexArrayRef dimensionPrecedence,
+                               OCArrayRef dependentVariables,
+                               OCArrayRef tags,
+                               OCStringRef description, 
+                               OCStringRef title,
+                               DatumRef focus,
+                               DatumRef previousFocus,
+                               OCDictionaryRef metadata,
+                               OCStringRef* outError) {
+            if (outError) *outError = NULL;
+            return NULL;
+        }
+        
+        OCStringRef DatasetGetTitle(DatasetRef dataset) {
+            return NULL;
+        }
+        
+        OCStringRef DatasetGetDescription(DatasetRef dataset) {
+            return NULL;
+        }
+        
+        OCArrayRef DatasetGetDimensions(DatasetRef dataset) {
+            return NULL;
+        }
+        
+        OCArrayRef DatasetGetDependentVariables(DatasetRef dataset) {
+            return NULL;
+        }
+        
+        DatumRef DatumCreate(SIScalarRef response,
+                            OCArrayRef coordinates, 
+                            OCIndex dependentVariableIndex,
+                            OCIndex componentIndex,
+                            OCIndex memOffset) {
+            return NULL;
+        }
+        
+        SIScalarRef DatumCreateResponse(DatumRef datum) {
+            return NULL;
+        }
+        
+        SIScalarRef DatumGetCoordinateAtIndex(DatumRef datum, OCIndex index) {
+            return NULL;
+        }
+        
+        OCIndex DatumCoordinatesCount(DatumRef datum) {
+            return 0;
+        }
+        
+        OCIndex DatumGetComponentIndex(DatumRef datum) {
+            return 0;
+        }
+        
+        OCIndex DatumGetDependentVariableIndex(DatumRef datum) {
+            return 0;
+        }
+        
+        const char* DimensionGetLabel(DimensionRef dimension) {
             return "";
+        }
+        
+        OCStringRef DimensionGetDescription(DimensionRef dim) {
+            return NULL;
+        }
+        
+        OCStringRef DimensionGetType(DimensionRef dim) {
+            return NULL;
+        }
+        
+        OCIndex DimensionGetCount(DimensionRef dim) {
+            return 0;
+        }
+        
+        LabeledDimensionRef LabeledDimensionCreateWithCoordinateLabels(OCArrayRef labels) {
+            return NULL;
+        }
+        
+        OCArrayRef LabeledDimensionGetCoordinateLabels(LabeledDimensionRef dim) {
+            return NULL;
+        }
+        
+        SILinearDimensionRef SILinearDimensionCreate(OCStringRef label,
+                                                    OCStringRef description,
+                                                    OCDictionaryRef metadata,
+                                                    OCStringRef quantity,
+                                                    SIScalarRef offset,
+                                                    SIScalarRef origin,
+                                                    SIScalarRef period,
+                                                    bint periodic,
+                                                    dimensionScaling scaling,
+                                                    OCIndex count,
+                                                    SIScalarRef increment,
+                                                    bint fft,
+                                                    SIDimensionRef reciprocal,
+                                                    OCStringRef* outError) {
+            if (outError) *outError = NULL;
+            return NULL;
+        }
+        
+        OCIndex SILinearDimensionGetCount(SILinearDimensionRef dim) {
+            return 0;
+        }
+        
+        SIScalarRef SILinearDimensionGetIncrement(SILinearDimensionRef dim) {
+            return NULL;
+        }
+        
+        OCDictionaryRef DimensionCopyAsDictionary(DimensionRef dim) {
+            return NULL;
+        }
+        
+        DimensionRef DimensionCreateFromDictionary(OCDictionaryRef dict, OCStringRef* outError) {
+            if (outError) *outError = NULL;
+            return NULL;
+        }
+        
+        void RMNLibTypesShutdown(void) {
+            // Do nothing in stub
         }
         EOF
         
