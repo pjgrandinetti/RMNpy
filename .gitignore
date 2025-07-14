@@ -1,8 +1,7 @@
-# NOTE: Dependencies come from sibling repos in workspace
+# NOTE: Dependencies come from sibling repos in workspace or downloaded from releases
 # ../OCTypes/install/, ../SITypes/install/, ../RMNLib/install/
-# No local include/ or lib/ directories needed
 
-# Downloaded dependencies (should be rebuilt from releases)
+# Downloaded/built dependencies (should be rebuilt from releases or workspace)
 lib/
 include/
 

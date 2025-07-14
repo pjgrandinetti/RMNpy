@@ -171,7 +171,7 @@ class CustomBuildExt(build_ext):
     def _fallback_to_local_copy(self):
         """Fallback to copying from local workspace if available."""
         try:
-            script_path = Path(__file__).parent / "build_deps_old.py"
+            script_path = Path(__file__).parent / "scripts" / "build_deps_old.py"
             if script_path.exists():
                 result = subprocess.run([sys.executable, str(script_path)], 
                                       capture_output=True, text=True, check=True)

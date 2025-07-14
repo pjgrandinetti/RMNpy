@@ -275,7 +275,7 @@ Now that you've got the basics, explore:
 * CSDM file I/O not yet implemented
 * Advanced mathematical operations not yet available
 
-Check the [project status](https://github.com/pjgrandinetti/RMNpy/blob/main/PROJECT_STATUS.md) for the latest updates.
+Check the [project status](https://github.com/pjgrandinetti/RMNpy/blob/main/docs/PROJECT_STATUS.md) for the latest updates.
 :::
 
 Happy coding with RMNpy! 🚀
