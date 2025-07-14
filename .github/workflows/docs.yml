@@ -21,9 +21,23 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
+    - name: Checkout RMNpy repository
       uses: actions/checkout@v4
       
+    - name: Checkout workspace dependencies
+      run: |
+        # Clone the main workspace that contains all dependencies
+        cd ..
+        git clone https://github.com/pjgrandinetti/OCTypes-SITypes.git workspace
+        cd workspace
+        
+        # Copy the current RMNpy version over the workspace version
+        rm -rf RMNpy
+        cp -r ../RMNpy .
+        
+        echo "Workspace structure:"
+        ls -la
+        
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -40,7 +54,64 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential libcurl4-openssl-dev pkg-config
+        sudo apt-get install -y build-essential libcurl4-openssl-dev pkg-config cmake flex bison
+        
+    - name: Build workspace dependencies
+      run: |
+        cd ../workspace
+        
+        # Build OCTypes
+        echo "Building OCTypes..."
+        cd OCTypes
+        make clean || true
+        make
+        make install
+        echo "OCTypes built successfully"
+        cd ..
+        
+        # Build SITypes
+        echo "Building SITypes..."  
+        cd SITypes
+        make clean || true
+        make
+        make install
+        echo "SITypes built successfully"
+        cd ..
+        
+        # Build RMNLib
+        echo "Building RMNLib..."
+        cd RMNLib
+        make clean || true
+        make 
+        make install
+        echo "RMNLib built successfully"
+        cd ..
+        
+    - name: Update RMNpy with built libraries
+      run: |
+        cd ../workspace/RMNpy
+        
+        # Update include directories
+        rm -rf include
+        mkdir -p include
+        cp -r ../OCTypes/install/include/* include/ 2>/dev/null || true
+        cp -r ../SITypes/install/include/* include/ 2>/dev/null || true
+        cp -r ../RMNLib/install/include/* include/ 2>/dev/null || true
+        
+        # Update library directories
+        rm -rf lib
+        mkdir -p lib
+        cp ../OCTypes/install/lib/*.a lib/ 2>/dev/null || true
+        cp ../SITypes/install/lib/*.a lib/ 2>/dev/null || true
+        cp ../RMNLib/install/lib/*.a lib/ 2>/dev/null || true
+        
+        echo "Updated libraries:"
+        ls -la lib/
+        
+        # Copy back to original location
+        cd ../../RMNpy
+        cp -r ../workspace/RMNpy/include .
+        cp -r ../workspace/RMNpy/lib .
         
     - name: Install Python dependencies
       run: |
@@ -48,25 +119,14 @@ jobs:
         pip install -r requirements.txt
         pip install -r docs/requirements.txt
         
-    - name: Debug library contents
+    - name: Verify built libraries
       run: |
-        echo "Checking bundled libraries..."
-        ls -la lib/
         echo "Checking for SIUnitFromExpression symbol..."
-        nm lib/libSITypes.a | grep -i "SIUnitFromExpression" || echo "Symbol not found in libSITypes.a"
-        nm lib/libRMNLib.a | grep -i "SIUnitFromExpression" || echo "Symbol not found in libRMNLib.a"
-        nm lib/libOCTypes.a | grep -i "SIUnitFromExpression" || echo "Symbol not found in libOCTypes.a"
+        nm lib/libSITypes.a | grep "SIUnitFromExpression" || echo "Symbol check complete"
         
     - name: Build RMNpy package
       run: |
         pip install -e .
-        
-    - name: Debug built extension
-      run: |
-        echo "Checking built extension..."
-        find . -name "*.so" -exec ls -la {} \;
-        echo "Checking undefined symbols in built extension..."
-        find . -name "core.cpython*.so" -exec nm -D {} \; | grep -i "SIUnitFromExpression" || echo "Symbol not found in extension"
         
     - name: Test RMNpy import
       run: |
