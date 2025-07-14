@@ -34,13 +34,18 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential libcurl4-openssl-dev pkg-config cmake flex bison
 
+    - name: Create required directories
+      run: |
+        echo "Creating lib and include directories..."
+        mkdir -p lib include
+        echo "Directories created successfully"
+        ls -la
+        echo "Current directory contents:"
+        pwd
+
     - name: Create stub libraries for CI
       run: |
         echo "Creating minimal stub libraries for CI build..."
-        
-        # Create lib and include directories first
-        mkdir -p lib include
-        echo "Created lib and include directories"
         
         # Create comprehensive stub implementations for CI
         cat > stub_sitypes.c << 'EOF'
@@ -297,17 +302,27 @@ jobs:
         }
         EOF
 
-        # Verify directories exist and compile the stub
+        # Verify directories and files exist
+        echo "Verifying directory structure..."
         ls -la
+        echo "Contents of lib directory:"
+        ls -la lib/ || echo "lib directory not found"
+        
+        # Compile the stub implementation
         echo "Compiling stub implementation..."
         gcc -c stub_sitypes.c -o stub_sitypes.o
         
-        # Create the libraries with verbose output
+        # Create the libraries with explicit verification
         echo "Creating library files..."
+        echo "Creating libSITypes.a..."
         ar rcs lib/libSITypes.a stub_sitypes.o
+        echo "Creating libOCTypes.a..."
         ar rcs lib/libOCTypes.a stub_sitypes.o
+        echo "Creating libRMN.a..."
         ar rcs lib/libRMN.a stub_sitypes.o
 
+        echo "Verifying created libraries..."
+        ls -la lib/
         echo "Comprehensive stub libraries created successfully"
 
     - name: Install Python dependencies
