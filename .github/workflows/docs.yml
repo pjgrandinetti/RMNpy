@@ -51,6 +51,10 @@ jobs:
         #include <stdlib.h>
         #include <stdbool.h>
         
+        // Create dummy objects that can be used as valid (non-NULL) pointers
+        static char dummy_object = 0;
+        static void* get_dummy_ptr() { return &dummy_object; }
+        
         // Minimal stub implementations for CI
         typedef void* SIUnitRef;
         typedef void* SIScalarRef;
@@ -85,11 +89,11 @@ jobs:
         SIUnitRef SIUnitFromExpression(OCStringRef expression, double *unit_multiplier, OCStringRef *error) {
             if (unit_multiplier) *unit_multiplier = 1.0;
             if (error) *error = NULL;
-            return NULL;
+            return get_dummy_ptr();
         }
         
         SIScalarRef SIScalarCreateWithDouble(double value, SIUnitRef unit) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         double SIScalarDoubleValue(SIScalarRef scalar) {
@@ -97,15 +101,15 @@ jobs:
         }
         
         SIUnitRef SIScalarGetUnit(SIScalarRef scalar) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCStringRef SIScalarCreateStringValue(SIScalarRef scalar) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCStringRef SIUnitCreateStringValue(SIUnitRef unit) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         void SITypesShutdown(void) {
@@ -122,15 +126,15 @@ jobs:
         }
         
         OCStringRef OCStringCreate(const char* cString) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCStringRef OCStringCreateWithCString(const char* cString) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCStringRef OCStringCreateCopy(OCStringRef str) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         const char* OCStringGetCString(OCStringRef string) {
@@ -138,7 +142,7 @@ jobs:
         }
         
         OCArrayRef OCArrayCreate(const void* const* values, OCIndex numValues, const void* callbacks) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCIndex OCArrayGetCount(OCArrayRef array) {
@@ -146,11 +150,11 @@ jobs:
         }
         
         const void* OCArrayGetValueAtIndex(OCArrayRef array, OCIndex idx) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCMutableArrayRef OCArrayCreateMutable(OCIndex capacity, const void* callBacks) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         void OCArrayAppendValue(OCMutableArrayRef array, const void* value) {
@@ -158,7 +162,7 @@ jobs:
         }
         
         OCNumberRef OCNumberCreateWithDouble(double value) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         double OCNumberGetDoubleValue(OCNumberRef number) {
@@ -186,23 +190,23 @@ jobs:
                                OCDictionaryRef metadata,
                                OCStringRef* outError) {
             if (outError) *outError = NULL;
-            return NULL;
+            return get_dummy_ptr();  // Return valid pointer instead of NULL
         }
         
         OCStringRef DatasetGetTitle(DatasetRef dataset) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCStringRef DatasetGetDescription(DatasetRef dataset) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCArrayRef DatasetGetDimensions(DatasetRef dataset) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCArrayRef DatasetGetDependentVariables(DatasetRef dataset) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         DatumRef DatumCreate(SIScalarRef response,
@@ -210,15 +214,15 @@ jobs:
                             OCIndex dependentVariableIndex,
                             OCIndex componentIndex,
                             OCIndex memOffset) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         SIScalarRef DatumCreateResponse(DatumRef datum) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         SIScalarRef DatumGetCoordinateAtIndex(DatumRef datum, OCIndex index) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCIndex DatumCoordinatesCount(DatumRef datum) {
@@ -238,11 +242,11 @@ jobs:
         }
         
         OCStringRef DimensionGetDescription(DimensionRef dim) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCStringRef DimensionGetType(DimensionRef dim) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCIndex DimensionGetCount(DimensionRef dim) {
@@ -250,11 +254,11 @@ jobs:
         }
         
         LabeledDimensionRef LabeledDimensionCreateWithCoordinateLabels(OCArrayRef labels) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCArrayRef LabeledDimensionGetCoordinateLabels(LabeledDimensionRef dim) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         SILinearDimensionRef SILinearDimensionCreate(OCStringRef label,
@@ -272,7 +276,7 @@ jobs:
                                                     SIDimensionRef reciprocal,
                                                     OCStringRef* outError) {
             if (outError) *outError = NULL;
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCIndex SILinearDimensionGetCount(SILinearDimensionRef dim) {
@@ -280,16 +284,16 @@ jobs:
         }
         
         SIScalarRef SILinearDimensionGetIncrement(SILinearDimensionRef dim) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         OCDictionaryRef DimensionCopyAsDictionary(DimensionRef dim) {
-            return NULL;
+            return get_dummy_ptr();
         }
         
         DimensionRef DimensionCreateFromDictionary(OCDictionaryRef dict, OCStringRef* outError) {
             if (outError) *outError = NULL;
-            return NULL;
+            return get_dummy_ptr();
         }
         
         void RMNLibTypesShutdown(void) {
