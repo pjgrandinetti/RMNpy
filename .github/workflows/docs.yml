@@ -75,6 +75,10 @@ jobs:
             return NULL;
         }
         
+        OCStringRef OCStringCreateWithCString(const char* cString) {
+            return NULL;
+        }
+        
         const char* OCStringGetCString(OCStringRef string) {
             return "";
         }
