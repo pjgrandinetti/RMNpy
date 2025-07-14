@@ -48,9 +48,25 @@ jobs:
         pip install -r requirements.txt
         pip install -r docs/requirements.txt
         
+    - name: Debug library contents
+      run: |
+        echo "Checking bundled libraries..."
+        ls -la lib/
+        echo "Checking for SIUnitFromExpression symbol..."
+        nm lib/libSITypes.a | grep -i "SIUnitFromExpression" || echo "Symbol not found in libSITypes.a"
+        nm lib/libRMNLib.a | grep -i "SIUnitFromExpression" || echo "Symbol not found in libRMNLib.a"
+        nm lib/libOCTypes.a | grep -i "SIUnitFromExpression" || echo "Symbol not found in libOCTypes.a"
+        
     - name: Build RMNpy package
       run: |
         pip install -e .
+        
+    - name: Debug built extension
+      run: |
+        echo "Checking built extension..."
+        find . -name "*.so" -exec ls -la {} \;
+        echo "Checking undefined symbols in built extension..."
+        find . -name "core.cpython*.so" -exec nm -D {} \; | grep -i "SIUnitFromExpression" || echo "Symbol not found in extension"
         
     - name: Test RMNpy import
       run: |
