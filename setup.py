@@ -21,11 +21,11 @@ extensions = [
         library_dirs=[
             "lib"               # Bundled libraries
         ],
-        libraries=["RMNLib", "OCTypes", "SITypes", "curl"],
+        libraries=["curl", "SITypes", "OCTypes", "RMNLib"],
         language="c",
         # Add any needed compiler flags
         extra_compile_args=["-std=c99", "-Wno-unused-function"],
-        extra_link_args=["-lcurl"]
+        extra_link_args=[]
     )
 ]
 
