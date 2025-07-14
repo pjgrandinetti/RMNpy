@@ -460,14 +460,14 @@ cdef class Dimension:
             self._ref = NULL
     
     @staticmethod  
-    def create_linear(label=None, description=None, count=100, start=0.0, increment=1.0, unit="Hz"):
+    def create_linear(label=None, description=None, count=100, coordinates_offset=0.0, increment=1.0, unit="Hz"):
         """Create a new linear Dimension.
         
         Args:
             label: Label for the dimension (str, optional)
             description: Description of the dimension (str, optional)
             count: Number of points in the dimension (int, default=100)
-            start: Starting value (float, default=0.0)
+            coordinates_offset: Starting coordinate value (float, default=0.0)
             increment: Increment between points (float, default=1.0)
             unit: Physical unit (str, default="Hz")
             

@@ -47,7 +47,7 @@ chemical_shift = Dimension.create_linear(
     label="chemical_shift",
     description="1H chemical shift axis",
     count=512,
-    start=10.0,      # Start at 10 ppm
+    coordinates_offset=10.0,      # Start at 10 ppm
     increment=-0.02, # Decrease by 0.02 ppm per point
     unit="ppm"
 )
@@ -228,7 +228,7 @@ f1_dimension = Dimension.create_linear(
     label="f1_chemical_shift",
     description="F1 chemical shift (indirect dimension)",
     count=128,
-    start=10.0,
+    coordinates_offset=10.0,
     increment=-0.08,  # Coarser resolution in F1
     unit="ppm"
 )
@@ -238,7 +238,7 @@ f2_dimension = Dimension.create_linear(
     label="f2_chemical_shift",
     description="F2 chemical shift (direct dimension)", 
     count=256,
-    start=10.0,
+    coordinates_offset=10.0,
     increment=-0.04,  # Finer resolution in F2
     unit="ppm"
 )
@@ -259,10 +259,10 @@ def create_nucleus_dimension(nucleus, count=512):
     Create appropriate chemical shift dimension for different nuclei.
     """
     nucleus_params = {
-        '1H': {'start': 15.0, 'increment': -0.03, 'description': '1H chemical shift'},
-        '13C': {'start': 250.0, 'increment': -0.5, 'description': '13C chemical shift'},
-        '31P': {'start': 200.0, 'increment': -0.8, 'description': '31P chemical shift'},
-        '19F': {'start': 50.0, 'increment': -0.2, 'description': '19F chemical shift'},
+        '1H': {'coordinates_offset': 15.0, 'increment': -0.03, 'description': '1H chemical shift'},
+        '13C': {'coordinates_offset': 250.0, 'increment': -0.5, 'description': '13C chemical shift'},
+        '31P': {'coordinates_offset': 200.0, 'increment': -0.8, 'description': '31P chemical shift'},
+        '19F': {'coordinates_offset': 50.0, 'increment': -0.2, 'description': '19F chemical shift'},
     }
     
     if nucleus not in nucleus_params:
@@ -274,7 +274,7 @@ def create_nucleus_dimension(nucleus, count=512):
         label=f"{nucleus}_chemical_shift",
         description=params['description'],
         count=count,
-        start=params['start'],
+        coordinates_offset=params['coordinates_offset'],
         increment=params['increment'],
         unit="ppm"
     )
@@ -312,7 +312,7 @@ def complete_nmr_workflow():
         label="chemical_shift",
         description="1H chemical shift",
         count=1024,
-        start=12.0,
+        coordinates_offset=12.0,
         increment=-0.012,
         unit="ppm"
     )

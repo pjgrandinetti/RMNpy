@@ -70,7 +70,7 @@ frequency_dim = Dimension.create_linear(
     label="frequency",
     description="NMR frequency axis",
     count=256,
-    start=0.0,
+    coordinates_offset=0.0,
     increment=10.0,
     unit="Hz"
 )
@@ -166,7 +166,7 @@ def create_complete_example():
         label="time",
         description="Time axis",
         count=10,
-        start=0.0,
+        coordinates_offset=0.0,
         increment=0.1,
         unit="s"
     )

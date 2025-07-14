@@ -197,7 +197,7 @@ extensions = [
         library_dirs=[
             "lib"               # Bundled libraries
         ],
-        libraries=["curl", "SITypes", "OCTypes", "RMNLib"],
+        libraries=["curl", "SITypes", "OCTypes", "RMN"],
         language="c",
         # Add any needed compiler flags
         extra_compile_args=["-std=c99", "-Wno-unused-function"],
