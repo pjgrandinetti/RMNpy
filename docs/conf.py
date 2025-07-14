@@ -91,8 +91,8 @@ myst_enable_extensions = [
 
 # Source file suffixes
 source_suffix = {
-    '.rst': None,
-    '.md': None,
+    '.rst': 'restructuredtext',
+    '.md': 'markdown',
 }
 
 # Master document
@@ -125,10 +125,11 @@ sphinx_gallery_conf = {
     'examples_dirs': 'examples_gallery',   # path to your example scripts
     'gallery_dirs': 'auto_examples',       # path to where to save gallery generated output
     'filename_pattern': r'/plot_.*\.py$',  # raw string to avoid escape sequence warning
-    'plot_gallery': True,                  # boolean, not string
+    'plot_gallery': True,                  # Enable gallery execution
     'download_all_examples': False,        # download all examples in a zip file
     'image_scrapers': ('matplotlib',),     # which libraries to scrape images from
     'first_notebook_cell': '%matplotlib inline',  # code to execute in first cell
     'show_memory': False,  # Disable memory tracking to avoid issues
     'abort_on_example_error': False,  # Don't abort on errors during development
+    'run_stale_examples': False,  # Don't re-run examples that haven't changed
 }

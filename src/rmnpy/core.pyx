@@ -560,7 +560,6 @@ def shutdown():
     to ensure proper cleanup of C library resources.
     """
     RMNLibTypesShutdown()
-    SITypesShutdown()
 
 # Version information
 def get_version():

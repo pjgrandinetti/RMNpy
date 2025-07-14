@@ -28,7 +28,7 @@ print("✓ Modules imported successfully")
 #
 # Learn how to efficiently handle large amounts of data:
 
-def create_large_dataset(size=10000):
+def create_large_dataset(size=1000):  # Reduced from 10000
     """Create a large dataset efficiently."""
     print(f"Creating large dataset with {size} points...")
     
@@ -62,7 +62,7 @@ def create_large_dataset(size=10000):
     return large_dataset, high_res_dim, signal_var
 
 # Create large dataset
-large_ds, large_dim, large_var = create_large_dataset(5000)
+large_ds, large_dim, large_var = create_large_dataset(500)  # Reduced for demo
 
 print(f"\nMemory usage considerations:")
 print(f"- Dataset object: lightweight container")
@@ -133,8 +133,8 @@ def process_data_in_batches(data_generator, batch_size=1000):
     
     return batch_results
 
-# Generate synthetic data
-def synthetic_data_generator(n_points=3500):
+# Generate synthetic data (reduced for demo)
+def synthetic_data_generator(n_points=500):  # Reduced from 3500
     """Generate synthetic data with trends and noise."""
     for i in range(n_points):
         # Trend + periodic + noise
@@ -143,8 +143,8 @@ def synthetic_data_generator(n_points=3500):
         noise = 0.5 * (random.random() - 0.5)
         yield trend + periodic + noise
 
-# Process synthetic data in batches
-batches = process_data_in_batches(synthetic_data_generator(), batch_size=500)
+# Process synthetic data in batches (smaller batches)
+batches = process_data_in_batches(synthetic_data_generator(), batch_size=100)  # Reduced batch size
 
 print(f"\n✓ Processed {len(batches)} batches")
 total_points = sum(batch['size'] for batch in batches)
@@ -166,31 +166,31 @@ def create_3d_dataset():
         description="Three-dimensional scientific measurement"
     )
     
-    # Three dimensions
+    # Three dimensions (reduced size for faster execution)
     x_dim = Dimension.create_linear(
         label="x_axis",
         description="X spatial dimension",
-        count=32,
+        count=8,  # Reduced from 32
         start=-10.0,
-        increment=0.625,
+        increment=2.5,  # Adjusted increment
         unit="mm"
     )
     
     y_dim = Dimension.create_linear(
         label="y_axis",
         description="Y spatial dimension",
-        count=32,
+        count=8,  # Reduced from 32
         start=-10.0,
-        increment=0.625,
+        increment=2.5,  # Adjusted increment
         unit="mm"
     )
     
     z_dim = Dimension.create_linear(
         label="z_axis",
         description="Z spatial dimension",
-        count=16,
+        count=4,  # Reduced from 16
         start=-5.0,
-        increment=0.625,
+        increment=2.5,  # Adjusted increment
         unit="mm"
     )
     
@@ -286,11 +286,11 @@ def create_time_series_experiment():
         description="Time-resolved measurement of reaction progress"
     )
     
-    # Time dimension
+    # Time dimension (reduced for demo)
     time_dim = Dimension.create_linear(
         label="time",
         description="Reaction time",
-        count=100,
+        count=20,  # Reduced from 100
         start=0.0,
         increment=30.0,  # 30 seconds per point
         unit="s"
@@ -523,11 +523,11 @@ def demonstrate_memory_efficiency():
     # 2. Efficient object reuse
     print("\n2. Object Reuse:")
     
-    # Create reusable dimension template
+    # Create reusable dimension template (reduced for demo)
     standard_dim = Dimension.create_linear(
         label="standard_axis",
         description="Standard measurement axis",
-        count=1000,
+        count=100,  # Reduced from 1000
         start=0.0,
         increment=0.001,
         unit="s"
@@ -581,8 +581,8 @@ def demonstrate_memory_efficiency():
             'average_value': average
         }
     
-    # Process large dataset efficiently
-    result = process_large_dataset_efficiently(size=25000, chunk_size=2500)
+    # Process large dataset efficiently (reduced for demo)
+    result = process_large_dataset_efficiently(size=2500, chunk_size=500)  # Much smaller for demo
     
     print(f"   ✓ Processed {result['total_points']} points in {result['processed_chunks']} chunks")
     print(f"   ✓ Average value: {result['average_value']:.4f}")
