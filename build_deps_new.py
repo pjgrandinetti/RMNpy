@@ -24,8 +24,12 @@ def check_workspace_dependency(lib_name: str, base_path: Path, verbose: bool = F
     if verbose:
         print(f"  Found {header_count} headers in {header_dir}")
     
-    # Check for library
-    lib_file = install_dir / "lib" / f"lib{lib_name}.a"
+    # Check for library - handle special case for RMNLib -> libRMN.a
+    if lib_name == "RMNLib":
+        lib_file = install_dir / "lib" / "libRMN.a"
+    else:
+        lib_file = install_dir / "lib" / f"lib{lib_name}.a"
+        
     if not lib_file.exists():
         print(f"✗ Missing {lib_name} library: {lib_file}")
         return False

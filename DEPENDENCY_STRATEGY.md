@@ -33,7 +33,7 @@ RMNpy/                       # Self-contained Python wrapper
 ├── lib/                   # Bundled libraries
 │   ├── libOCTypes.a      # Compiled OCTypes
 │   ├── libSITypes.a      # Compiled SITypes  
-│   └── libRMNLib.a       # Compiled RMNLib
+│   └── libRMN.a       # Compiled RMNLib
 ├── setup.py              # Points to bundled include/ and lib/
 └── build_deps.py         # Verifies bundled dependencies
 ```

@@ -298,7 +298,7 @@ jobs:
         gcc -c stub_sitypes.c -o stub_sitypes.o
         ar rcs lib/libSITypes.a stub_sitypes.o
         ar rcs lib/libOCTypes.a stub_sitypes.o
-        ar rcs lib/libRMNLib.a stub_sitypes.o
+        ar rcs lib/libRMN.a stub_sitypes.o
         
         echo "Comprehensive stub libraries created"
         

@@ -14,7 +14,7 @@ RMNpy/
 │   ├── OCTypes/         # OCTypes headers (copied by build_deps.py)
 │   └── SITypes/         # SITypes headers (copied by build_deps.py)
 ├── lib/                 # Static libraries (to be populated)
-│   ├── libRMNLib.a      # (copied by build_deps.py)
+│   ├── libRMN.a      # (copied by build_deps.py)
 │   ├── libOCTypes.a     # (copied by build_deps.py)
 │   └── libSITypes.a     # (copied by build_deps.py)
 ├── tests/               # Test suite

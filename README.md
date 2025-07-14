@@ -68,7 +68,7 @@ RMNpy includes the required C libraries for convenient building:
 - NumPy
 - Cython (for building)
 - C compiler (gcc, clang, or MSVC)
-- Built libraries: libRMNLib.a, libOCTypes.a, libSITypes.a
+- Built libraries: libRMN.a, libOCTypes.a, libSITypes.a
 
 ### Building from Source
 
@@ -447,7 +447,7 @@ This project is licensed under the same terms as the underlying RMNLib library. 
 - Check that the base path to OCTypes-SITypes is correct
 - Verify that RMNLib, OCTypes, and SITypes are built
 
-**Error: "Cannot find libRMNLib.a"**  
+**Error: "Cannot find libRMN.a"**  
 - Build the required libraries first:
   ```bash
   cd /path/to/RMNLib && make

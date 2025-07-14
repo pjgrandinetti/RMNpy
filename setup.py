@@ -90,9 +90,9 @@ class CustomBuildExt(build_ext):
                     "name": "RMNLib",
                     "repo": "pjgrandinetti/RMNLib", 
                     "version": "v0.1.0",
-                    "lib_asset": f"libRMNLib-{rmnlib_suffix}.zip",
-                    "headers_asset": "libRMNLib-headers.zip", 
-                    "lib_file": "libRMNLib.a"
+                    "lib_asset": f"libRMN-{rmnlib_suffix}.zip",
+                    "headers_asset": "libRMN-headers.zip", 
+                    "lib_file": "libRMN.a"
                 }
             ]
             

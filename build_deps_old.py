@@ -41,9 +41,9 @@ def copy_libraries(base_path: Path, lib_dir: Path, verbose: bool = False):
     
     # Define library locations grouped by library name
     library_search_paths = {
-        "libRMNLib.a": [
-            base_path / "RMNLib" / "build" / "lib" / "libRMNLib.a",
-            base_path / "RMNLib" / "lib" / "libRMNLib.a",
+        "libRMN.a": [
+            base_path / "RMNLib" / "build" / "lib" / "libRMN.a",
+            base_path / "RMNLib" / "lib" / "libRMN.a",
         ],
         "libOCTypes.a": [
             base_path / "OCTypes" / "lib" / "libOCTypes.a",
@@ -73,7 +73,7 @@ def copy_libraries(base_path: Path, lib_dir: Path, verbose: bool = False):
     print(f"Copied {copied_count} libraries to lib/")
     
     # Check if we got all required libraries
-    required_libs = ["libRMNLib.a", "libOCTypes.a", "libSITypes.a"]
+    required_libs = ["libRMN.a", "libOCTypes.a", "libSITypes.a"]
     missing_libs = []
     for lib_name in required_libs:
         if not (lib_dir / lib_name).exists():
