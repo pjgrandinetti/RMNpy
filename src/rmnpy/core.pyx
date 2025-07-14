@@ -524,6 +524,22 @@ cdef class Dimension:
             return None
         return _ocstring_to_py(type_str)
     
+    @property
+    def coordinates_offset(self):
+        """Get the coordinates offset (start value) of the dimension."""
+        # For now, return a placeholder value since the full implementation
+        # would require accessing SILinearDimension-specific properties
+        # TODO: Implement proper SILinearDimensionGetOffset when available
+        return 0.0
+    
+    @property
+    def increment(self):
+        """Get the increment between points in the dimension."""
+        # For now, return a placeholder value since the full implementation
+        # would require accessing SILinearDimension-specific properties  
+        # TODO: Implement proper SILinearDimensionGetIncrement when available
+        return 1.0
+    
     def __str__(self):
         label = self.label or "unlabeled"
         count = self.count or 0
