@@ -118,7 +118,15 @@ EOF
 cat > stub_sitypes.c << 'EOF'
 #include <stdlib.h>
 #include <stdbool.h>
-// ...existing code...
+// Minimal stub struct for OCArrayCallBacks
+typedef struct {
+    void *retain;
+    void *release;
+    void *copyDescription;
+    int (*equal)(const void *, const void *);
+} OCArrayCallBacks;
+// Provide the missing symbol with dummy values
+const OCArrayCallBacks kOCTypeArrayCallBacks = { NULL, NULL, NULL, NULL };
 void RMNLibTypesShutdown(void) {
     // Do nothing in stub
 }
