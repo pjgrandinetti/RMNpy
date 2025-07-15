@@ -37,6 +37,10 @@ jobs:
     - name: Create stub libraries for CI
       run: |
         mkdir -p lib include
+        # Create stub headers for CI
+        echo "// Minimal stub for OCLibrary.h\n#ifndef OCLIBRARY_H\n#define OCLIBRARY_H\n#endif" > include/OCLibrary.h
+        echo "// Minimal stub for SILibrary.h\n#ifndef SILIBRARY_H\n#define SILIBRARY_H\n#endif" > include/SILibrary.h
+        echo "// Minimal stub for RMNLibrary.h\n#ifndef RMNLIBRARY_H\n#define RMNLIBRARY_H\n#endif" > include/RMNLibrary.h
         cat > stub_sitypes.c << 'EOF'
         #include <stdlib.h>
         #include <stdbool.h>
