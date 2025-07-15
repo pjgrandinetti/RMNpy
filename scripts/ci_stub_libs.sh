@@ -74,7 +74,6 @@ typedef signed long OCIndex;
 typedef unsigned long OCOptionFlags;
 typedef unsigned int OCTypeID;
 typedef int bint;
-typedef int dimensionScaling;
 
 #endif
 EOF
@@ -111,7 +110,6 @@ typedef signed long OCIndex;
 typedef unsigned long OCOptionFlags;
 typedef unsigned int OCTypeID;
 typedef int bint;
-typedef int dimensionScaling;
 
 #endif
 EOF
