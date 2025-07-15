@@ -1,27 +1,26 @@
+
+
 name: Build Documentation
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_run:
+    workflows: ["Build and Test"]
+    types:
+      - completed
 
 permissions:
   contents: read
 
-jobs:
-  build:
+
+  docs:
     runs-on: ubuntu-latest
-    
     steps:
     - name: Checkout RMNpy repository
       uses: actions/checkout@v4
-      
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-        
     - name: Cache pip dependencies
       uses: actions/cache@v4
       with:
@@ -29,300 +28,46 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/docs/requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-          
     - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential libcurl4-openssl-dev pkg-config cmake flex bison
-        
     - name: Create stub libraries for CI
       run: |
         echo "Creating minimal stub libraries for CI build..."
-        
         # Create comprehensive stub implementations for CI
         cat > stub_sitypes.c << 'EOF'
         #include <stdlib.h>
         #include <stdbool.h>
-        
-        // Create dummy objects that can be used as valid (non-NULL) pointers
-        static char dummy_object = 0;
-        static void* get_dummy_ptr() { return &dummy_object; }
-        
-        // Minimal stub implementations for CI
-        typedef void* SIUnitRef;
-        typedef void* SIScalarRef;
-        typedef void* SIDimensionRef;
-        typedef void* SILinearDimensionRef;
-        typedef void* SIMonotonicDimensionRef;
-        typedef void* SIQuantityRef;
-        typedef void* SIDimensionalityRef;
-        typedef void* OCStringRef;
-        typedef void* OCTypeRef;
-        typedef void* OCArrayRef;
-        typedef void* OCMutableArrayRef;
-        typedef void* OCDictionaryRef;
-        typedef void* OCMutableDictionaryRef;
-        typedef void* OCNumberRef;
-        typedef void* OCIndexArrayRef;
-        typedef void* OCMutableIndexArrayRef;
-        typedef void* DatasetRef;
-        typedef void* DatumRef;
-        typedef void* DimensionRef;
-        typedef void* LabeledDimensionRef;
-        typedef void* DependentVariableRef;
-        typedef void* GeographicCoordinateRef;
-        typedef void* SparseSamplingRef;
-        typedef signed long OCIndex;
-        typedef unsigned long OCOptionFlags;
-        typedef unsigned int OCTypeID;
-        typedef int bint;
-        typedef enum { kDimensionScalingNone, kDimensionScalingNMR } dimensionScaling;
-        
-        // SITypes functions
-        SIUnitRef SIUnitFromExpression(OCStringRef expression, double *unit_multiplier, OCStringRef *error) {
-            if (unit_multiplier) *unit_multiplier = 1.0;
-            if (error) *error = NULL;
-            return get_dummy_ptr();
-        }
-        
-        SIScalarRef SIScalarCreateWithDouble(double value, SIUnitRef unit) {
-            return get_dummy_ptr();
-        }
-        
-        double SIScalarDoubleValue(SIScalarRef scalar) {
-            return 0.0;
-        }
-        
-        SIUnitRef SIScalarGetUnit(SIScalarRef scalar) {
-            return get_dummy_ptr();
-        }
-        
-        OCStringRef SIScalarCreateStringValue(SIScalarRef scalar) {
-            return get_dummy_ptr();
-        }
-        
-        OCStringRef SIUnitCreateStringValue(SIUnitRef unit) {
-            return get_dummy_ptr();
-        }
-        
-        void SITypesShutdown(void) {
-            // Do nothing in stub
-        }
-        
-        // OCTypes functions
-        void OCRelease(const void* obj) {
-            // Do nothing in stub
-        }
-        
-        void OCRetain(const void* obj) {
-            // Do nothing in stub
-        }
-        
-        OCStringRef OCStringCreate(const char* cString) {
-            return get_dummy_ptr();
-        }
-        
-        OCStringRef OCStringCreateWithCString(const char* cString) {
-            return get_dummy_ptr();
-        }
-        
-        OCStringRef OCStringCreateCopy(OCStringRef str) {
-            return get_dummy_ptr();
-        }
-        
-        const char* OCStringGetCString(OCStringRef string) {
-            return "";
-        }
-        
-        OCArrayRef OCArrayCreate(const void* const* values, OCIndex numValues, const void* callbacks) {
-            return get_dummy_ptr();
-        }
-        
-        OCIndex OCArrayGetCount(OCArrayRef array) {
-            return 0;
-        }
-        
-        const void* OCArrayGetValueAtIndex(OCArrayRef array, OCIndex idx) {
-            return get_dummy_ptr();
-        }
-        
-        OCMutableArrayRef OCArrayCreateMutable(OCIndex capacity, const void* callBacks) {
-            return get_dummy_ptr();
-        }
-        
-        void OCArrayAppendValue(OCMutableArrayRef array, const void* value) {
-            // Do nothing in stub
-        }
-        
-        OCNumberRef OCNumberCreateWithDouble(double value) {
-            return get_dummy_ptr();
-        }
-        
-        double OCNumberGetDoubleValue(OCNumberRef number) {
-            return 0.0;
-        }
-        
-        // Additional common OCTypes functions
-        void OCAutoreleasePoolCreate(void) {
-            // Do nothing in stub
-        }
-        
-        void OCAutoreleasePoolDestroy(void) {
-            // Do nothing in stub
-        }
-        
-        // RMNLib functions
-        DatasetRef DatasetCreate(OCArrayRef dimensions, 
-                               OCIndexArrayRef dimensionPrecedence,
-                               OCArrayRef dependentVariables,
-                               OCArrayRef tags,
-                               OCStringRef description, 
-                               OCStringRef title,
-                               DatumRef focus,
-                               DatumRef previousFocus,
-                               OCDictionaryRef metadata,
-                               OCStringRef* outError) {
-            if (outError) *outError = NULL;
-            return get_dummy_ptr();  // Return valid pointer instead of NULL
-        }
-        
-        OCStringRef DatasetGetTitle(DatasetRef dataset) {
-            return get_dummy_ptr();
-        }
-        
-        OCStringRef DatasetGetDescription(DatasetRef dataset) {
-            return get_dummy_ptr();
-        }
-        
-        OCArrayRef DatasetGetDimensions(DatasetRef dataset) {
-            return get_dummy_ptr();
-        }
-        
-        OCArrayRef DatasetGetDependentVariables(DatasetRef dataset) {
-            return get_dummy_ptr();
-        }
-        
-        DatumRef DatumCreate(SIScalarRef response,
-                            OCArrayRef coordinates, 
-                            OCIndex dependentVariableIndex,
-                            OCIndex componentIndex,
-                            OCIndex memOffset) {
-            return get_dummy_ptr();
-        }
-        
-        SIScalarRef DatumCreateResponse(DatumRef datum) {
-            return get_dummy_ptr();
-        }
-        
-        SIScalarRef DatumGetCoordinateAtIndex(DatumRef datum, OCIndex index) {
-            return get_dummy_ptr();
-        }
-        
-        OCIndex DatumCoordinatesCount(DatumRef datum) {
-            return 0;
-        }
-        
-        OCIndex DatumGetComponentIndex(DatumRef datum) {
-            return 0;
-        }
-        
-        OCIndex DatumGetDependentVariableIndex(DatumRef datum) {
-            return 0;
-        }
-        
-        const char* DimensionGetLabel(DimensionRef dimension) {
-            return "";
-        }
-        
-        OCStringRef DimensionGetDescription(DimensionRef dim) {
-            return get_dummy_ptr();
-        }
-        
-        OCStringRef DimensionGetType(DimensionRef dim) {
-            return get_dummy_ptr();
-        }
-        
-        OCIndex DimensionGetCount(DimensionRef dim) {
-            return 0;
-        }
-        
-        LabeledDimensionRef LabeledDimensionCreateWithCoordinateLabels(OCArrayRef labels) {
-            return get_dummy_ptr();
-        }
-        
-        OCArrayRef LabeledDimensionGetCoordinateLabels(LabeledDimensionRef dim) {
-            return get_dummy_ptr();
-        }
-        
-        SILinearDimensionRef SILinearDimensionCreate(OCStringRef label,
-                                                    OCStringRef description,
-                                                    OCDictionaryRef metadata,
-                                                    OCStringRef quantity,
-                                                    SIScalarRef offset,
-                                                    SIScalarRef origin,
-                                                    SIScalarRef period,
-                                                    bint periodic,
-                                                    dimensionScaling scaling,
-                                                    OCIndex count,
-                                                    SIScalarRef increment,
-                                                    bint fft,
-                                                    SIDimensionRef reciprocal,
-                                                    OCStringRef* outError) {
-            if (outError) *outError = NULL;
-            return get_dummy_ptr();
-        }
-        
-        OCIndex SILinearDimensionGetCount(SILinearDimensionRef dim) {
-            return 0;
-        }
-        
-        SIScalarRef SILinearDimensionGetIncrement(SILinearDimensionRef dim) {
-            return get_dummy_ptr();
-        }
-        
-        OCDictionaryRef DimensionCopyAsDictionary(DimensionRef dim) {
-            return get_dummy_ptr();
-        }
-        
-        DimensionRef DimensionCreateFromDictionary(OCDictionaryRef dict, OCStringRef* outError) {
-            if (outError) *outError = NULL;
-            return get_dummy_ptr();
-        }
-        
+        // ...existing code...
         void RMNLibTypesShutdown(void) {
             // Do nothing in stub
         }
         EOF
-        
         # Compile the stub and add it to the existing libraries
         gcc -c stub_sitypes.c -o stub_sitypes.o
         ar rcs lib/libSITypes.a stub_sitypes.o
         ar rcs lib/libOCTypes.a stub_sitypes.o
         ar rcs lib/libRMN.a stub_sitypes.o
-        
         echo "Comprehensive stub libraries created"
-        
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r docs/requirements.txt
-        
     - name: Build RMNpy package
       run: |
         pip install -e .
-        
     - name: Test RMNpy import
       run: |
         python -c "import rmnpy; print(f'RMNpy version: {rmnpy.__version__}')"
-        
     - name: Build documentation
       run: |
         cd docs
         make html
-        
     - name: Upload documentation artifact
       uses: actions/upload-artifact@v4
       with:
         name: documentation
         path: docs/_build/html
+        typedef void* DimensionRef;
