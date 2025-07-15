@@ -11,7 +11,7 @@ on:
 permissions:
   contents: read
 
-
+jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
@@ -35,6 +35,115 @@ permissions:
     - name: Create stub libraries for CI
       run: |
         echo "Creating minimal stub libraries for CI build..."
+        mkdir -p lib include
+        # OCLibrary.h: full enum definition
+        cat > include/OCLibrary.h <<'EOF'
+        #ifndef OCLIBRARY_H
+        #define OCLIBRARY_H
+
+        typedef void* SIUnitRef;
+        typedef void* SIScalarRef;
+        typedef void* SIDimensionRef;
+        typedef void* SILinearDimensionRef;
+        typedef void* SIMonotonicDimensionRef;
+        typedef void* SIQuantityRef;
+        typedef void* SIDimensionalityRef;
+        typedef void* OCStringRef;
+        typedef void* OCTypeRef;
+        typedef void* OCArrayRef;
+        typedef void* OCMutableArrayRef;
+        typedef void* OCDictionaryRef;
+        typedef void* OCMutableDictionaryRef;
+        typedef void* OCNumberRef;
+        typedef void* OCIndexArrayRef;
+        typedef void* OCMutableIndexArrayRef;
+        typedef void* DatasetRef;
+        typedef void* DatumRef;
+        typedef void* DimensionRef;
+        typedef void* LabeledDimensionRef;
+        typedef void* DependentVariableRef;
+        typedef void* GeographicCoordinateRef;
+        typedef void* SparseSamplingRef;
+        typedef signed long OCIndex;
+        typedef unsigned long OCOptionFlags;
+        typedef unsigned int OCTypeID;
+        typedef int bint;
+        typedef enum { kDimensionScalingNone, kDimensionScalingNMR } dimensionScaling;
+
+        #endif
+        EOF
+        # SILibrary.h: forward declaration only
+        cat > include/SILibrary.h <<'EOF'
+        #ifndef SILIBRARY_H
+        #define SILIBRARY_H
+
+        typedef void* SIUnitRef;
+        typedef void* SIScalarRef;
+        typedef void* SIDimensionRef;
+        typedef void* SILinearDimensionRef;
+        typedef void* SIMonotonicDimensionRef;
+        typedef void* SIQuantityRef;
+        typedef void* SIDimensionalityRef;
+        typedef void* OCStringRef;
+        typedef void* OCTypeRef;
+        typedef void* OCArrayRef;
+        typedef void* OCMutableArrayRef;
+        typedef void* OCDictionaryRef;
+        typedef void* OCMutableDictionaryRef;
+        typedef void* OCNumberRef;
+        typedef void* OCIndexArrayRef;
+        typedef void* OCMutableIndexArrayRef;
+        typedef void* DatasetRef;
+        typedef void* DatumRef;
+        typedef void* DimensionRef;
+        typedef void* LabeledDimensionRef;
+        typedef void* DependentVariableRef;
+        typedef void* GeographicCoordinateRef;
+        typedef void* SparseSamplingRef;
+        typedef signed long OCIndex;
+        typedef unsigned long OCOptionFlags;
+        typedef unsigned int OCTypeID;
+        typedef int bint;
+        typedef enum dimensionScaling dimensionScaling;
+
+        #endif
+        EOF
+        # RMNLibrary.h: forward declaration only
+        cat > include/RMNLibrary.h <<'EOF'
+        #ifndef RMNLIBRARY_H
+        #define RMNLIBRARY_H
+
+        typedef void* SIUnitRef;
+        typedef void* SIScalarRef;
+        typedef void* SIDimensionRef;
+        typedef void* SILinearDimensionRef;
+        typedef void* SIMonotonicDimensionRef;
+        typedef void* SIQuantityRef;
+        typedef void* SIDimensionalityRef;
+        typedef void* OCStringRef;
+        typedef void* OCTypeRef;
+        typedef void* OCArrayRef;
+        typedef void* OCMutableArrayRef;
+        typedef void* OCDictionaryRef;
+        typedef void* OCMutableDictionaryRef;
+        typedef void* OCNumberRef;
+        typedef void* OCIndexArrayRef;
+        typedef void* OCMutableIndexArrayRef;
+        typedef void* DatasetRef;
+        typedef void* DatumRef;
+        typedef void* DimensionRef;
+        typedef void* LabeledDimensionRef;
+        typedef void* DependentVariableRef;
+        typedef void* GeographicCoordinateRef;
+        typedef void* SparseSamplingRef;
+        typedef signed long OCIndex;
+        typedef unsigned long OCOptionFlags;
+        typedef unsigned int OCTypeID;
+        typedef int bint;
+        typedef enum dimensionScaling dimensionScaling;
+
+        #endif
+        EOF
         # Create comprehensive stub implementations for CI
         cat > stub_sitypes.c << 'EOF'
         #include <stdlib.h>
@@ -70,4 +179,3 @@ permissions:
       with:
         name: documentation
         path: docs/_build/html
-        typedef void* DimensionRef;
