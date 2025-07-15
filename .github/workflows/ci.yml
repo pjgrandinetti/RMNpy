@@ -37,10 +37,112 @@ jobs:
     - name: Create stub libraries for CI
       run: |
         mkdir -p lib include
-        # Create stub headers for CI
-        echo "// Minimal stub for OCLibrary.h\n#ifndef OCLIBRARY_H\n#define OCLIBRARY_H\n#endif" > include/OCLibrary.h
-        echo "// Minimal stub for SILibrary.h\n#ifndef SILIBRARY_H\n#define SILIBRARY_H\n#endif" > include/SILibrary.h
-        echo "// Minimal stub for RMNLibrary.h\n#ifndef RMNLIBRARY_H\n#define RMNLIBRARY_H\n#endif" > include/RMNLibrary.h
+        # Create stub headers for CI with all required typedefs
+        cat > include/OCLibrary.h <<'EOF'
+        #ifndef OCLIBRARY_H
+        #define OCLIBRARY_H
+
+        typedef void* SIUnitRef;
+        typedef void* SIScalarRef;
+        typedef void* SIDimensionRef;
+        typedef void* SILinearDimensionRef;
+        typedef void* SIMonotonicDimensionRef;
+        typedef void* SIQuantityRef;
+        typedef void* SIDimensionalityRef;
+        typedef void* OCStringRef;
+        typedef void* OCTypeRef;
+        typedef void* OCArrayRef;
+        typedef void* OCMutableArrayRef;
+        typedef void* OCDictionaryRef;
+        typedef void* OCMutableDictionaryRef;
+        typedef void* OCNumberRef;
+        typedef void* OCIndexArrayRef;
+        typedef void* OCMutableIndexArrayRef;
+        typedef void* DatasetRef;
+        typedef void* DatumRef;
+        typedef void* DimensionRef;
+        typedef void* LabeledDimensionRef;
+        typedef void* DependentVariableRef;
+        typedef void* GeographicCoordinateRef;
+        typedef void* SparseSamplingRef;
+        typedef signed long OCIndex;
+        typedef unsigned long OCOptionFlags;
+        typedef unsigned int OCTypeID;
+        typedef int bint;
+        typedef enum { kDimensionScalingNone, kDimensionScalingNMR } dimensionScaling;
+
+        #endif
+        EOF
+        cat > include/SILibrary.h <<'EOF'
+        #ifndef SILIBRARY_H
+        #define SILIBRARY_H
+
+        typedef void* SIUnitRef;
+        typedef void* SIScalarRef;
+        typedef void* SIDimensionRef;
+        typedef void* SILinearDimensionRef;
+        typedef void* SIMonotonicDimensionRef;
+        typedef void* SIQuantityRef;
+        typedef void* SIDimensionalityRef;
+        typedef void* OCStringRef;
+        typedef void* OCTypeRef;
+        typedef void* OCArrayRef;
+        typedef void* OCMutableArrayRef;
+        typedef void* OCDictionaryRef;
+        typedef void* OCMutableDictionaryRef;
+        typedef void* OCNumberRef;
+        typedef void* OCIndexArrayRef;
+        typedef void* OCMutableIndexArrayRef;
+        typedef void* DatasetRef;
+        typedef void* DatumRef;
+        typedef void* DimensionRef;
+        typedef void* LabeledDimensionRef;
+        typedef void* DependentVariableRef;
+        typedef void* GeographicCoordinateRef;
+        typedef void* SparseSamplingRef;
+        typedef signed long OCIndex;
+        typedef unsigned long OCOptionFlags;
+        typedef unsigned int OCTypeID;
+        typedef int bint;
+        typedef enum { kDimensionScalingNone, kDimensionScalingNMR } dimensionScaling;
+
+        #endif
+        EOF
+        cat > include/RMNLibrary.h <<'EOF'
+        #ifndef RMNLIBRARY_H
+        #define RMNLIBRARY_H
+
+        typedef void* SIUnitRef;
+        typedef void* SIScalarRef;
+        typedef void* SIDimensionRef;
+        typedef void* SILinearDimensionRef;
+        typedef void* SIMonotonicDimensionRef;
+        typedef void* SIQuantityRef;
+        typedef void* SIDimensionalityRef;
+        typedef void* OCStringRef;
+        typedef void* OCTypeRef;
+        typedef void* OCArrayRef;
+        typedef void* OCMutableArrayRef;
+        typedef void* OCDictionaryRef;
+        typedef void* OCMutableDictionaryRef;
+        typedef void* OCNumberRef;
+        typedef void* OCIndexArrayRef;
+        typedef void* OCMutableIndexArrayRef;
+        typedef void* DatasetRef;
+        typedef void* DatumRef;
+        typedef void* DimensionRef;
+        typedef void* LabeledDimensionRef;
+        typedef void* DependentVariableRef;
+        typedef void* GeographicCoordinateRef;
+        typedef void* SparseSamplingRef;
+        typedef signed long OCIndex;
+        typedef unsigned long OCOptionFlags;
+        typedef unsigned int OCTypeID;
+        typedef int bint;
+        typedef enum { kDimensionScalingNone, kDimensionScalingNMR } dimensionScaling;
+
+        #endif
+        EOF
         cat > stub_sitypes.c << 'EOF'
         #include <stdlib.h>
         #include <stdbool.h>
