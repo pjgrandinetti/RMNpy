@@ -125,7 +125,7 @@ void RMNLibTypesShutdown(void) {
 EOF
 
 # Compile the stub and add it to the existing libraries
-gcc -c stub_sitypes.c -o stub_sitypes.o
+gcc -fPIC -c stub_sitypes.c -o stub_sitypes.o
 ar rcs lib/libSITypes.a stub_sitypes.o
 ar rcs lib/libOCTypes.a stub_sitypes.o
 ar rcs lib/libRMN.a stub_sitypes.o

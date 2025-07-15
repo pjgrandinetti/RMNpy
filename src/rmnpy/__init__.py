@@ -1,19 +1,17 @@
 """
-RMNpy - Python wrapper for RMNLib scientific data library.
+RMNpy - Python wrapper for RMNLib scientific dataset library.
 
 RMNpy provides a Pythonic interface to the RMNLib C library for working with
 Core Scientific Dataset Model (CSDM) files and multidimensional scientific datasets.
 
 Main Classes:
     Dataset: Represents a complete scientific dataset with dimensions and data
-    Datum: Represents a single data point with coordinates and response
     Dimension: Represents coordinate axes (labeled, SI, monotonic, linear)
     DependentVariable: Represents data variables with units and metadata
 
 Example:
     >>> import rmnpy
     >>> dataset = rmnpy.Dataset.create(title="My NMR Spectrum")
-    >>> datum = rmnpy.Datum.create(response_value=1.5, coordinates=[100.0])
     >>> print(f"Created dataset: {dataset}")
 
 For more information, visit: https://github.com/pjgrandinetti/RMNpy
