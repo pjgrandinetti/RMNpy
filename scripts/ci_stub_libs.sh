@@ -125,8 +125,10 @@ typedef struct {
     void *copyDescription;
     int (*equal)(const void *, const void *);
 } OCArrayCallBacks;
-// Provide the missing symbol with dummy values
-const OCArrayCallBacks kOCTypeArrayCallBacks = { NULL, NULL, NULL, NULL };
+// Provide the missing symbol with dummy values, ensure it is exported
+__attribute__((visibility("default"))) const OCArrayCallBacks kOCTypeArrayCallBacks = { NULL, NULL, NULL, NULL };
+// Reference the symbol to prevent optimization
+void *force_export_kOCTypeArrayCallBacks(void) { return (void*)&kOCTypeArrayCallBacks; }
 void RMNLibTypesShutdown(void) {
     // Do nothing in stub
 }
