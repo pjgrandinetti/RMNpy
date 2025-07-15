@@ -32,6 +32,9 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential libcurl4-openssl-dev pkg-config cmake flex bison
+    - name: Clean stub library and include directories
+      run: |
+        rm -rf lib/* include/*
     - name: Create stub libraries for CI
       run: |
         bash scripts/ci_stub_libs.sh
