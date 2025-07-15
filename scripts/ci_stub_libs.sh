@@ -3,6 +3,9 @@
 # Create stub headers and libraries for CI builds
 set -e
 
+# Clean up old files
+rm -f stub_sitypes.c stub_sitypes.o
+rm -rf lib/* include/*
 mkdir -p lib include
 
 # OCLibrary.h: full enum definition
@@ -118,6 +121,9 @@ EOF
 cat > stub_sitypes.c << 'EOF'
 #include <stdlib.h>
 #include <stdbool.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 // Minimal stub struct for OCArrayCallBacks
 typedef struct {
     void *retain;
@@ -132,11 +138,22 @@ void *force_export_kOCTypeArrayCallBacks(void) { return (void*)&kOCTypeArrayCall
 void RMNLibTypesShutdown(void) {
     // Do nothing in stub
 }
+#ifdef __cplusplus
+}
+#endif
 EOF
 
-# Compile the stub and add it to the existing libraries
 gcc -fPIC -c stub_sitypes.c -o stub_sitypes.o
 ar rcs lib/libSITypes.a stub_sitypes.o
 ar rcs lib/libOCTypes.a stub_sitypes.o
 ar rcs lib/libRMN.a stub_sitypes.o
+
+# Check for symbol presence
+if ! nm -g lib/libSITypes.a | grep -q kOCTypeArrayCallBacks; then
+  echo "WARNING: kOCTypeArrayCallBacks not found in libSITypes.a!"
+  nm -g lib/libSITypes.a
+else
+  echo "kOCTypeArrayCallBacks present in libSITypes.a"
+fi
+
 echo "Comprehensive stub libraries created"
