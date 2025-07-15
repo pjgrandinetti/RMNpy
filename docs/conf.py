@@ -3,9 +3,15 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+
 import os
 import sys
 from pathlib import Path
+
+# Add the src directory to Python path for autodoc
+src_path = Path(__file__).parent.parent / "src"
+sys.path.insert(0, str(src_path))
+print("PYTHONPATH for Sphinx:", sys.path)
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -31,8 +37,10 @@ extensions = [
 ]
 
 # Add the src directory to Python path for autodoc
+sys.path.insert(0, str(src_path))
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
+print("PYTHONPATH for Sphinx:", sys.path)
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']

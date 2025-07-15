@@ -193,6 +193,9 @@ cdef extern from "RMNLibrary.h":
     
     OCIndex SILinearDimensionGetCount(SILinearDimensionRef dim)
     SIScalarRef SILinearDimensionGetIncrement(SILinearDimensionRef dim)
+
+    # SIDimension offset accessor
+    SIScalarRef SIDimensionGetCoordinatesOffset(SIDimensionRef dim)
     
     # Utility functions
     OCDictionaryRef DimensionCopyAsDictionary(DimensionRef dim)
