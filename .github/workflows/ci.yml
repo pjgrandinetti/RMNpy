@@ -309,13 +309,13 @@ jobs:
         ls -la stub_sitypes.c
         echo "lib directory check: $(test -d lib && echo 'EXISTS' || echo 'MISSING')"
         
-        # Step 4: Compile the stub implementation
-        echo "Step 4: Compiling stub implementation..."
-        gcc -c stub_sitypes.c -o stub_sitypes.o
+        # Step 4: Compile the stub implementation with Position Independent Code
+        echo "Step 4: Compiling stub implementation with -fPIC for shared library compatibility..."
+        gcc -fPIC -c stub_sitypes.c -o stub_sitypes.o
         echo "Compilation completed successfully"
         
         # Step 5: Create the libraries with detailed verification
-        echo "Step 5: Creating library files..."
+        echo "Step 5: Creating library files with -fPIC compatibility..."
         if [ -d lib ]; then
             echo "lib directory confirmed, creating libraries..."
             echo "Creating libSITypes.a..."
@@ -329,6 +329,10 @@ jobs:
             echo "Creating libRMN.a..."
             ar rcs lib/libRMN.a stub_sitypes.o
             echo "libRMN.a created successfully"
+            
+            # Set environment variable to indicate CI stub libraries are available
+            echo "CI_STUB_LIBRARIES=true" >> $GITHUB_ENV
+            echo "CI stub libraries are now available - setup.py will skip GitHub downloads"
         else
             echo "ERROR: lib directory does not exist!"
             exit 1

@@ -35,6 +35,12 @@ class CustomBuildExt(build_ext):
     def _download_github_dependencies(self):
         """Download dependencies from GitHub releases."""
         try:
+            # Check if CI stub libraries are available
+            if os.environ.get('CI_STUB_LIBRARIES') == 'true':
+                print("CI stub libraries detected - skipping GitHub downloads")
+                print("Using pre-built stub libraries for CI build")
+                return True
+                
             base_dir = Path(__file__).parent
             lib_dir = base_dir / "lib"
             include_dir = base_dir / "include"
