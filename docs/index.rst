@@ -4,6 +4,24 @@ RMNpy Documentation
 RMNpy is a Python wrapper for the RMNLib C library, providing access to Core Scientific Dataset Model (CSDM) functionality from Python.
 It enables Python developers to work with multidimensional scientific datasets using a clean, Pythonic interface while maintaining the performance of the underlying C implementation.
 
+**Current Implementation Status**
+
+✅ **Implemented Classes:**
+
+- ``Dataset``: Complete scientific dataset with metadata and structure
+- ``Dimension``: Coordinate axes (linear, labeled, monotonic)  
+- ``DependentVariable``: Data variables with units (inherits from SIQuantity)
+- ``Datum``: Individual data points with coordinates and response values
+
+� **Available in RMNLib but not yet wrapped in RMNpy:**
+
+- ``SparseSampling``: Non-uniform, non-Cartesian sampling layouts
+- ``GeographicCoordinate``: Geographic location data with lat/lon/altitude
+- ``RMNGridUtils``: Grid utility functions
+
+*Note: These classes are fully implemented and tested in the underlying RMNLib C library, 
+but the Python wrapper code has not been written yet.*
+
 Requirements
 ~~~~~~~~~~~~
 

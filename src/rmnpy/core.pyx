@@ -10,6 +10,7 @@ from .dataset import Dataset
 from .datum import Datum
 from .dependent_variable import DependentVariable
 from .dimension import Dimension
+from .sparse_sampling import SparseSampling
 
 # Expose module-level functions
 def shutdown():

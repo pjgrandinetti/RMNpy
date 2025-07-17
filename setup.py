@@ -298,6 +298,24 @@ extensions = [
         language="c",
         extra_compile_args=["-std=c99", "-Wno-unused-function"],
         extra_link_args=[]
+    ),
+    Extension(
+        "rmnpy.sparse_sampling",
+        sources=["src/rmnpy/sparse_sampling.pyx"],
+        include_dirs=[
+            "include",           # Bundled headers root
+            "include/OCTypes",   # OCTypes headers
+            "include/SITypes",   # SITypes headers
+            "include/RMNLib",    # RMNLib headers
+            numpy.get_include()
+        ],
+        library_dirs=[
+            "lib"               # Bundled libraries
+        ],
+        libraries=["curl", "SITypes", "OCTypes", "RMN"],
+        language="c",
+        extra_compile_args=["-std=c99", "-Wno-unused-function"],
+        extra_link_args=[]
     )
 ]
 
