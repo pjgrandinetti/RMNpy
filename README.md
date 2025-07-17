@@ -1,23 +1,51 @@
 # RMNpy
 
-> **⚠️ DEVELOPMENT STATUS**: This project is currently under active development. Many features described in this documentation are not yet implemented and the API is subject to change. This is a work-in-progress wrapper for the RMNLib C library.
-
 A Python wrapper for the RMNLib C library, providing access to Core Scientific Dataset Model (CSDM) functionality from Python.
 
 ## Overview
 
-RMNpy is a Cython-based Python package that wraps the RMNLib C library, allowing Python developers to work with scientific datasets using the Core Scientific Dataset Model (CSDM) format. The package provides clean, Pythonic interfaces to RMNLib's Dataset functionality while maintaining the performance of the underlying C implementation.
+RMNpy is a Cython-based Python package that wraps the RMNLib C library, allowing Python developers to work with scientific datasets using the Core Scientific Dataset Model (CSDM) format. The package provides clean, Pythonic interfaces to RMNLib's core functionality while maintaining the performance of the underlying C implementation.
 
 ## Features
 
-- **Dataset Management**: Create and manipulate scientific datasets
-- **Datum Operations**: Work with individual data elements within datasets  
+- **Dataset Management**: Create and manipulate scientific datasets using `Dataset.create()`
+- **Dimension Operations**: Work with linear, labeled, and monotonic coordinate axes
+- **DependentVariable Support**: Handle data variables with proper unit access through SIQuantity inheritance
+- **Datum Operations**: Work with individual data points
 - **Memory Safety**: Automatic memory management with proper cleanup
-- **NumPy Integration**: Seamless integration with NumPy arrays
 - **Error Handling**: Comprehensive exception hierarchy for robust error handling
 - **Performance**: Direct access to optimized C library functions
 
+## Quick Start
+
+```python
+import rmnpy
+
+# Create core objects using the actual API
+dataset = rmnpy.Dataset.create()
+linear_dim = rmnpy.Dimension.create_linear()
+dependent_var = rmnpy.DependentVariable.create()
+datum = rmnpy.Datum.create()
+
+print("RMNpy objects created successfully!")
+```
+
 ## Documentation
+
+Complete documentation is available in reStructuredText format, consistent with OCTypes, SITypes, and RMNLib documentation:
+
+- **Installation Guide**: Step-by-step installation instructions
+- **Quick Start**: Get up and running quickly with working examples
+- **User Guide**: Comprehensive usage documentation
+- **API Reference**: Complete API documentation for all classes and methods
+- **Examples**: Interactive examples with executable code
+
+Build the documentation:
+
+```bash
+cd docs
+sphinx-build -M html . _build
+```
 
 Comprehensive documentation is available:
 

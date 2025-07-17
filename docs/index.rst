@@ -1,6 +1,43 @@
 RMNpy Documentation
 ===================
 
+RMNpy is a Python wrapper for the RMNLib C library, providing access to Core Scientific Dataset Model (CSDM) functionality from Python.
+It enables Python developers to work with multidimensional scientific datasets using a clean, Pythonic interface while maintaining the performance of the underlying C implementation.
+
+Requirements
+~~~~~~~~~~~~
+
+Ensure you have installed:
+
+- Python 3.8 or later
+- NumPy
+- Cython (for building from source)
+- A C compiler (e.g., clang or gcc)
+
+Building and Installation
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install from source::
+
+    git clone https://github.com/pjgrandinetti/RMNpy.git
+    cd RMNpy
+    pip install -e .
+
+Quick Start
+~~~~~~~~~~~
+
+.. code-block:: python
+
+   import rmnpy
+
+   # Create core objects using the actual API
+   dataset = rmnpy.Dataset.create()
+   linear_dim = rmnpy.Dimension.create_linear()
+   dependent_var = rmnpy.DependentVariable.create()
+   datum = rmnpy.Datum.create()
+   
+   print("RMNpy objects created successfully!")
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
@@ -12,41 +49,6 @@ RMNpy Documentation
    examples/index
    auto_examples/index
    changelog
-
-Welcome to RMNpy
------------------
-
-RMNpy is a Python wrapper for the RMNLib C library, providing access to Core Scientific Dataset Model (CSDM) functionality from Python. It enables Python developers to work with multidimensional scientific datasets using a clean, Pythonic interface while maintaining the performance of the underlying C implementation.
-
-🎨 Interactive Examples Gallery
---------------------------------
-
-**NEW!** Auto-executing examples with live output:
-
-Explore the `Examples Gallery <auto_examples/index.html>`__ featuring:
-
-- 🔬 **Live code execution** with real RMNpy output
-- 📊 **Automatic visualization** (plots, figures, analysis)
-- 📥 **Download ready-to-run scripts**
-- 🚀 **One-click Binder launch** for cloud execution
-- 📓 **Auto-generated Jupyter notebooks**
-
-🚀 Quick Start
----------------
-
-.. code-block:: python
-
-   import rmnpy
-
-   # Create a new dataset
-   dataset = rmnpy.Dataset.create()
-   dataset.title = "My Scientific Data"
-
-   # Add dimensions and data
-   print(f"Dataset: {dataset.title}")
-
-📚 What You'll Find Here
--------------------------
 
 Installation
 ~~~~~~~~~~~~

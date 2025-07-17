@@ -5,8 +5,8 @@ from .exceptions import RMNLibError, RMNLibMemoryError, RMNLibValidationError
 from .core cimport *
 
 cdef class Datum:
-    """Represents a single data point with response value and coordinates."""
-    cdef DatumRef _ref
+    """Represents a fundamental data element in RMNLib."""
+    
     def __cinit__(self):
         self._ref = NULL
     def __dealloc__(self):
@@ -29,15 +29,16 @@ cdef class Datum:
             response_scalar = _py_to_siscalar(float(response_value), response_unit)
             if response_scalar == NULL:
                 raise RMNLibMemoryError("Failed to create response scalar")
+            
             if coordinates is not None:
-                coord_mutable = OCArrayCreateMutable(len(coordinates), NULL)
+                coord_mutable = OCArrayCreateMutable(len(coordinates), &kOCTypeArrayCallBacks)
                 if coord_mutable == NULL:
                     raise RMNLibMemoryError("Failed to create coordinate array")
                 try:
                     for coord_val in coordinates:
                         coord_scalar = _py_to_siscalar(float(coord_val))
                         if coord_scalar != NULL:
-                            OCArrayAppendValue(coord_mutable, coord_scalar)
+                            OCArrayAppendValue(coord_mutable, <const void*>coord_scalar)
                     coord_array = <OCArrayRef>coord_mutable
                 except Exception as e:
                     OCRelease(coord_mutable)

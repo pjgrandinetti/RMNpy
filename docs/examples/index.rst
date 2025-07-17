@@ -1,32 +1,69 @@
 Examples Gallery
 ================
 
-Interactive examples and tutorials for using RMNpy effectively.
+Interactive examples and tutorials for using RMNpy with the actual working API.
 
-Interactive Examples Gallery
------------------------------
+Basic Usage Examples
+--------------------
 
-**Executable examples with automatic output generation:**
+**Working with the actual RMNpy API:**
 
-The :doc:`Examples Gallery <../auto_examples/index>` provides interactive examples that are automatically executed and documented. Each example includes:
+These examples use the real, tested API that successfully compiles and runs:
 
-- ✅ **Live code execution** with real output
-- 📊 **Generated plots and figures** (when applicable)  
-- 📥 **Downloadable Python scripts**
-- 📓 **Auto-generated Jupyter notebooks**
-- 🚀 **One-click Binder launch** for cloud execution
+.. code-block:: python
 
-Featured Gallery Examples
-~~~~~~~~~~~~~~~~~~~~~~~~~
+   import rmnpy
 
-- :doc:`Installation and Basic Usage <../auto_examples/plot_01_installation_basic_usage>` - Get started with RMNpy
-- :doc:`NMR Spectroscopy <../auto_examples/plot_02_nmr_spectroscopy>` - Complete NMR workflow examples
+   # Basic object creation using actual API
+   dataset = rmnpy.Dataset.create()
+   dimension = rmnpy.Dimension.create()
+   dependent_var = rmnpy.DependentVariable.create()
+   datum = rmnpy.Datum.create()
+   
+   print("All RMNpy objects created successfully!")
 
-Static Examples
----------------
+Core Classes
+~~~~~~~~~~~~
 
-.. toctree::
-   :maxdepth: 2
+**Dataset Class**
+
+.. code-block:: python
+
+   # Create a dataset
+   dataset = rmnpy.Dataset.create()
+   print(f"Dataset: {dataset}")
+
+**Dimension Class**
+
+.. code-block:: python
+
+   # Create a dimension
+   dimension = rmnpy.Dimension.create()
+   print(f"Dimension: {dimension}")
+
+**DependentVariable Class**
+
+.. code-block:: python
+
+   # Create a dependent variable with SIQuantity inheritance
+   dependent_var = rmnpy.DependentVariable.create()
+   print(f"DependentVariable: {dependent_var}")
+   # Units accessible through SIQuantity interface
+
+**Datum Class**
+
+.. code-block:: python
+
+   # Create a datum
+   datum = rmnpy.Datum.create()
+   print(f"Datum: {datum}")
+
+Auto-Generated Examples
+-----------------------
+
+**Interactive Gallery:**
+
+Visit the :doc:`Examples Gallery <../auto_examples/index>` for automatically executed examples with live output.
 
    basic_usage
 

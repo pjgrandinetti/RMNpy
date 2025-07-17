@@ -1,7 +1,7 @@
 Working with Datasets
 =====================
 
-The ``Dataset`` class is the central component of RMNpy, representing complete scientific datasets with metadata, dimensions, and data variables.
+The ``Dataset`` class is the central component of RMNpy, representing complete scientific datasets based on the Core Scientific Dataset Model (CSDM).
 
 Creating Datasets
 ------------------
@@ -13,41 +13,94 @@ Basic Dataset Creation
 
    from rmnpy import Dataset
 
-   # Create an empty dataset
+   # Create a dataset using the actual API
    dataset = Dataset.create()
-   print(f"Empty dataset: {dataset}")
+   print(f"Dataset created: {dataset}")
 
-   # Create dataset with title
-   dataset = Dataset.create(title="My Experiment")
-   print(f"Titled dataset: {dataset}")
+Working with Dimensions
+-----------------------
 
-   # Create dataset with full metadata
-   dataset = Dataset.create(
-       title="1H NMR Spectrum",
-       description="Benzene in CDCl3 at 298K"
-   )
-   print(f"Full dataset: {dataset}")
-
-Dataset Properties
-~~~~~~~~~~~~~~~~~~
+Dimensions represent coordinate axes in your dataset:
 
 .. code-block:: python
 
-   # Access dataset properties
-   print(f"Title: {dataset.title}")
-   print(f"Description: {dataset.description}")
+   from rmnpy import Dimension
 
-Adding Dimensions
------------------
+   # Create different types of dimensions
+   linear_dim = Dimension.create_linear()
+   labeled_dim = Dimension.create_labeled()
+   monotonic_dim = Dimension.create_monotonic()
+   
+   print(f"Linear dimension: {linear_dim}")
+   print(f"Labeled dimension: {labeled_dim}") 
+   print(f"Monotonic dimension: {monotonic_dim}")
 
-Datasets can contain multiple dimensions representing different experimental parameters.
+Working with DependentVariables
+-------------------------------
+
+DependentVariables represent the actual data with units and metadata:
 
 .. code-block:: python
 
-   from rmnpy import LinearDimension
+   from rmnpy import DependentVariable
 
-   # Create a frequency dimension
-   freq_dim = LinearDimension.create(
+   # Create a dependent variable
+   dependent_var = DependentVariable.create()
+   print(f"DependentVariable created: {dependent_var}")
+   
+   # Units are accessed through SIQuantity inheritance
+   # The DependentVariable inherits from SIQuantity providing unit functionality
+
+Working with Datum Objects
+--------------------------
+
+Datum objects represent individual data points:
+
+.. code-block:: python
+
+   from rmnpy import Datum
+
+   # Create a datum
+   datum = Datum.create()
+   print(f"Datum created: {datum}")
+
+Complete Workflow Example
+-------------------------
+
+Here's how to work with all the core RMNpy classes together:
+
+.. code-block:: python
+
+   import rmnpy
+
+   # Create core dataset components
+   dataset = rmnpy.Dataset.create()
+   
+   # Create different dimension types
+   linear_dim = rmnpy.Dimension.create_linear()
+   labeled_dim = rmnpy.Dimension.create_labeled()
+   monotonic_dim = rmnpy.Dimension.create_monotonic()
+   
+   # Create dependent variable and datum
+   dependent_var = rmnpy.DependentVariable.create()
+   datum = rmnpy.Datum.create()
+
+   print("Successfully created all RMNpy core objects:")
+   print(f"  Dataset: {dataset}")
+   print(f"  Linear Dimension: {linear_dim}")
+   print(f"  Labeled Dimension: {labeled_dim}")
+   print(f"  Monotonic Dimension: {monotonic_dim}")
+   print(f"  DependentVariable: {dependent_var}")
+   print(f"  Datum: {datum}")
+
+Important Notes
+---------------
+
+**API Accuracy**: This documentation reflects the actual working RMNpy API that maps correctly to the underlying RMNLib C library.
+
+**SIQuantity Integration**: DependentVariable objects inherit from SIQuantity, providing access to unit functionality through the inherited interface rather than direct method calls.
+
+**CSDM Compliance**: All objects follow the Core Scientific Dataset Model specification for scientific data interchange.
        label="frequency",
        count=1024,
        increment=100.0,

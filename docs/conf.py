@@ -33,7 +33,7 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
-    'sphinx_gallery.gen_gallery',
+    # 'sphinx_gallery.gen_gallery',  # Temporarily disabled
 ]
 
 # Add the src directory to Python path for autodoc

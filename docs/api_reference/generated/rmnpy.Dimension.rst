@@ -14,7 +14,9 @@
    .. autosummary::
    
       ~Dimension.__init__
+      ~Dimension.create_labeled
       ~Dimension.create_linear
+      ~Dimension.create_monotonic
    
    
 
@@ -24,10 +26,8 @@
 
    .. autosummary::
    
-      ~Dimension.coordinates_offset
       ~Dimension.count
       ~Dimension.description
-      ~Dimension.increment
       ~Dimension.label
       ~Dimension.type
    

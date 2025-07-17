@@ -15,6 +15,7 @@
    
       ~DependentVariable.__init__
       ~DependentVariable.create
+      ~DependentVariable.set_data
    
    
 
@@ -24,6 +25,7 @@
 
    .. autosummary::
    
+      ~DependentVariable.data
       ~DependentVariable.description
       ~DependentVariable.name
       ~DependentVariable.unit

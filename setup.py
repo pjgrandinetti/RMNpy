@@ -208,6 +208,96 @@ extensions = [
         # Add any needed compiler flags
         extra_compile_args=["-std=c99", "-Wno-unused-function"],
         extra_link_args=[]
+    ),
+    Extension(
+        "rmnpy.helpers",
+        sources=["src/rmnpy/helpers.pyx"],
+        include_dirs=[
+            "include",           # Bundled headers root
+            "include/OCTypes",   # OCTypes headers
+            "include/SITypes",   # SITypes headers
+            "include/RMNLib",    # RMNLib headers
+            numpy.get_include()
+        ],
+        library_dirs=[
+            "lib"               # Bundled libraries
+        ],
+        libraries=["curl", "SITypes", "OCTypes", "RMN"],
+        language="c",
+        extra_compile_args=["-std=c99", "-Wno-unused-function"],
+        extra_link_args=[]
+    ),
+    Extension(
+        "rmnpy.dataset",
+        sources=["src/rmnpy/dataset.pyx"],
+        include_dirs=[
+            "include",           # Bundled headers root
+            "include/OCTypes",   # OCTypes headers
+            "include/SITypes",   # SITypes headers
+            "include/RMNLib",    # RMNLib headers
+            numpy.get_include()
+        ],
+        library_dirs=[
+            "lib"               # Bundled libraries
+        ],
+        libraries=["curl", "SITypes", "OCTypes", "RMN"],
+        language="c",
+        extra_compile_args=["-std=c99", "-Wno-unused-function"],
+        extra_link_args=[]
+    ),
+    Extension(
+        "rmnpy.dependent_variable",
+        sources=["src/rmnpy/dependent_variable.pyx"],
+        include_dirs=[
+            "include",           # Bundled headers root
+            "include/OCTypes",   # OCTypes headers
+            "include/SITypes",   # SITypes headers
+            "include/RMNLib",    # RMNLib headers
+            numpy.get_include()
+        ],
+        library_dirs=[
+            "lib"               # Bundled libraries
+        ],
+        libraries=["curl", "SITypes", "OCTypes", "RMN"],
+        language="c",
+        extra_compile_args=["-std=c99", "-Wno-unused-function"],
+        extra_link_args=[]
+    ),
+    Extension(
+        "rmnpy.dimension",
+        sources=["src/rmnpy/dimension.pyx"],
+        include_dirs=[
+            "include",           # Bundled headers root
+            "include/OCTypes",   # OCTypes headers
+            "include/SITypes",   # SITypes headers
+            "include/RMNLib",    # RMNLib headers
+            numpy.get_include()
+        ],
+        library_dirs=[
+            "lib"               # Bundled libraries
+        ],
+        libraries=["curl", "SITypes", "OCTypes", "RMN"],
+        language="c",
+        extra_compile_args=["-std=c99", "-Wno-unused-function"],
+        extra_link_args=[]
+    ),
+    Extension(
+        "rmnpy.datum",
+        sources=["src/rmnpy/datum.pyx"],
+        include_dirs=[
+            "include",           # Bundled headers root
+            "include/OCTypes",   # OCTypes headers
+            "include/SITypes",   # SITypes headers
+            "include/RMNLib",    # RMNLib headers
+            numpy.get_include()
+        ],
+        library_dirs=[
+            "lib"               # Bundled libraries
+        ],
+        libraries=["curl", "SITypes", "OCTypes", "RMN"],
+        language="c",
+        extra_compile_args=["-std=c99", "-Wno-unused-function"],
+        extra_link_args=[]
     )
 ]
 

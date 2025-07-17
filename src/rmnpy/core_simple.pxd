@@ -35,10 +35,6 @@ cdef extern from "RMNLibrary.h":
     ctypedef const impl_SIScalar* SIScalarRef
     ctypedef struct impl_SIUnit
     ctypedef const impl_SIUnit* SIUnitRef
-    ctypedef struct impl_SIDimensionality
-    ctypedef const impl_SIDimensionality* SIDimensionalityRef
-    ctypedef struct impl_SIQuantity
-    ctypedef const impl_SIQuantity* SIQuantityRef
     
     # RMNLib core types
     ctypedef struct impl_Dataset
@@ -56,13 +52,6 @@ cdef extern from "RMNLibrary.h":
     ctypedef enum OCNumberType:
         kOCNumberFloat64Type
     
-    # SITypes number types  
-    ctypedef enum SINumberType:
-        kSINumberFloat32Type
-        kSINumberFloat64Type
-        kSINumberComplex64Type
-        kSINumberComplex128Type
-    
     # Memory management
     void OCRetain(const void* obj)
     void OCRelease(const void* obj)
@@ -77,8 +66,10 @@ cdef extern from "RMNLibrary.h":
     bint DatasetExport(DatasetRef ds, const char* json_path, const char* binary_dir, OCStringRef* outError)
     OCStringRef DatasetGetTitle(DatasetRef ds)
     OCStringRef DatasetGetDescription(DatasetRef ds)
-    OCMutableArrayRef DatasetGetDimensions(DatasetRef ds)
-    OCMutableArrayRef DatasetGetDependentVariables(DatasetRef ds)
+    OCArrayRef DatasetGetDimensions(DatasetRef ds)
+    OCArrayRef DatasetGetDependentVariables(DatasetRef ds)
+    OCIndex DatasetGetDependentVariableCount(DatasetRef ds)
+    DependentVariableRef DatasetGetDependentVariableAtIndex(DatasetRef ds, OCIndex index)
     
     # DependentVariable functions (actual API from DependentVariable.h)
     DependentVariableRef DependentVariableCreate(OCStringRef name, OCStringRef description,
@@ -90,50 +81,14 @@ cdef extern from "RMNLibrary.h":
                                                        OCIndex size, OCStringRef* outError)
     OCStringRef DependentVariableGetName(DependentVariableRef dv)
     OCStringRef DependentVariableGetDescription(DependentVariableRef dv)
-    OCStringRef DependentVariableGetQuantityType(DependentVariableRef dv)
+    OCStringRef DependentVariableGetUnitSymbol(DependentVariableRef dv)
     bint DependentVariableSetName(DependentVariableRef dv, OCStringRef newName)
     bint DependentVariableSetDescription(DependentVariableRef dv, OCStringRef newDesc)
-    
-    # SIQuantity functions (DependentVariable inherits from SIQuantity)
-    SIUnitRef SIQuantityGetUnit(SIQuantityRef quantity)
-    SIDimensionalityRef SIQuantityGetUnitDimensionality(SIQuantityRef quantity)
-    SINumberType SIQuantityGetElementType(SIQuantityRef quantity)
-    
-    # SIUnit functions for getting symbol
-    OCStringRef SIUnitCopyRootSymbol(SIUnitRef theUnit)
     
     # Dimension functions (basic accessors)
     OCStringRef DimensionGetLabel(DimensionRef dim)
     OCStringRef DimensionGetDescription(DimensionRef dim)
     OCIndex DimensionGetCount(DimensionRef dim)
-    
-    # Datum functions (actual API from Datum.h)
-    DatumRef DatumCreate(SIScalarRef response, OCArrayRef coordinates, OCIndex dependentVariableIndex, OCIndex componentIndex, OCIndex memOffset)
-    SIScalarRef DatumCreateResponse(DatumRef theDatum)
-    OCIndex DatumCoordinatesCount(DatumRef theDatum)
-    SIScalarRef DatumGetCoordinateAtIndex(DatumRef theDatum, OCIndex index)
-    OCIndex DatumGetComponentIndex(DatumRef theDatum)
-    OCIndex DatumGetDependentVariableIndex(DatumRef theDatum)
-
-    # OCArray functions (actual API from OCArray.h)
-    ctypedef struct OCArrayCallBacks:
-        int64_t version
-        void* retain
-        void* release
-        void* copyDescription
-        void* equal
-    
-    OCMutableArrayRef OCArrayCreateMutable(uint64_t capacity, const OCArrayCallBacks *callBacks)
-    bint OCArrayAppendValue(OCMutableArrayRef theArray, const void *value)
-    uint64_t OCArrayGetCount(OCArrayRef theArray)
-    const void* OCArrayGetValueAtIndex(OCArrayRef theArray, uint64_t index)
-    
-    # Global constants
-    const OCArrayCallBacks kOCTypeArrayCallBacks
-    
-    # SIScalar functions (actual API from SIScalar.h)
-    SIScalarRef SIScalarCreateWithDouble(double input_value, SIUnitRef unit)
-    double SIScalarDoubleValueInCoherentUnit(SIScalarRef theScalar)
     
     # Library shutdown
     void RMNLibTypesShutdown()

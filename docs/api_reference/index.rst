@@ -3,6 +3,17 @@ API Reference
 
 Complete API documentation for all RMNpy classes and functions.
 
+.. toctree::
+   :maxdepth: 2
+
+   core
+   dataset
+   dimension
+   dependent_variable
+   datum
+   exceptions
+   types
+
 Module Overview
 ---------------
 
@@ -13,10 +24,10 @@ Core Module (``rmnpy.core``)
 
 The core module contains the main classes for working with scientific datasets:
 
-- ``Dataset``: Complete scientific dataset with metadata and structure
-- ``Datum``: Individual data points with coordinates and response values  
-- ``Dimension``: Coordinate axes (labeled, SI, monotonic, linear)
-- ``DependentVariable``: Data variables with units and metadata
+- :doc:`dataset`: Complete scientific dataset with metadata and structure
+- :doc:`datum`: Individual data points with coordinates and response values  
+- :doc:`dimension`: Coordinate axes (labeled, SI, monotonic, linear)
+- :doc:`dependent_variable`: Data variables with units and metadata (inherits from SIQuantity)
 
 Exceptions Module (``rmnpy.exceptions``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -48,6 +59,7 @@ Most Common Classes
    Dataset
    Dimension
    Datum
+   DependentVariable
    DependentVariable
 
 Exception Classes
