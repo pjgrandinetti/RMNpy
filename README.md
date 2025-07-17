@@ -1,5 +1,19 @@
 # RMNpy
 
+> **🚧 DEVELOPMENT STATUS: ALPHA - NOT READY FOR USE 🚧**
+> 
+> **⚠️ WARNING: This project is in early development and is NOT suitable for production use.**
+> 
+> - API is unstable and subject to major changes
+> - Many features are incomplete or untested
+> - Documentation may be outdated or incorrect
+> - Breaking changes will occur without notice
+> - **DO NOT USE** in any production environment
+> 
+> This repository is shared for development purposes only. Check back later for stable releases.
+
+---
+
 A Python wrapper for the RMNLib C library, providing access to Core Scientific Dataset Model (CSDM) functionality from Python.
 
 ## Overview

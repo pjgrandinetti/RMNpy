@@ -13,27 +13,36 @@ This document summarizes the comprehensive documentation system created for RMNp
 - **Cross-referenced** sections with navigation
 - **GitHub Pages deployment** ready
 
-### 2. Documentation Content Created
+### 2. Documentation Content Created & Updated
 
 #### Core Documentation Files:
-- `docs/index.md` - Main documentation homepage
-- `docs/installation.md` - Complete installation guide
-- `docs/quickstart.md` - Quick start tutorial
-- `docs/changelog.md` - Version history and roadmap
+- `docs/index.rst` - Main documentation homepage
+- `docs/installation.rst` - Complete installation guide
+- `docs/quickstart.rst` - **UPDATED** Quick start tutorial with real API examples
+- `docs/changelog.rst` - Version history and roadmap
 
 #### User Guide (`docs/user_guide/`):
-- `index.md` - User guide overview
-- `datasets.md` - Complete guide to working with datasets
+- `index.rst` - User guide overview
+- `datasets.rst` - Complete guide to working with datasets
 
 #### API Reference (`docs/api_reference/`):
-- `index.md` - API overview and quick reference
-- `core.md` - Complete core API documentation
-- `exceptions.md` - Exception handling documentation
-- `types.md` - Type definitions and enumerations
+- `index.rst` - API overview and quick reference
+- `core.rst` - Complete core API documentation
+- `dimension.rst` - **UPDATED** Complete dimension creation documentation with real examples
+- `dependent_variable.rst` - **UPDATED** Complete DependentVariable documentation with proper usage
+- `exceptions.rst` - Exception handling documentation
+- `types.rst` - Type definitions and enumerations
 
-#### Examples (`docs/examples/`):
-- `index.md` - Examples overview
-- `basic_usage.md` - Comprehensive usage examples
+#### Recent Improvements (`docs/`):
+- `create_monotonic_improvement_summary.md` - Technical documentation of C API improvements
+
+### 3. API Documentation Alignment
+**Recently Updated to Match Current Implementation:**
+- **Dimension methods**: All examples now show correct parameter signatures and usage patterns
+- **DependentVariable.create**: Updated to reflect actual data-first signature and numpy array handling
+- **C API Integration**: Documentation now accurately describes the full C API integration improvements
+- **NULL Behavior**: Properly documented how None parameters are handled by underlying C functions
+- **Real Examples**: All code examples use actual working API calls with realistic data
 
 ### 3. Build System
 - `docs/conf.py` - Sphinx configuration

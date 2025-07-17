@@ -13,14 +13,17 @@ src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 print("PYTHONPATH for Sphinx:", sys.path)
 
+# Check if we're building on Read the Docs
+on_rtd = os.environ.get('READTHEDOCS') == 'True'
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'RMNpy'
 copyright = '2025, Philip Grandinetti'
 author = 'Philip Grandinetti'
-version = '0.1.0'
-release = '0.1.0'
+version = '0.1.0-alpha'
+release = '0.1.0-alpha (DEVELOPMENT - NOT FOR USE)'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -116,7 +119,20 @@ html_favicon = None
 htmlhelp_basename = 'RMNpydoc'
 
 # GitHub Pages configuration
-html_baseurl = 'https://pjgrandinetti.github.io/RMNpy/'
+html_baseurl = 'https://pjgrandinetti.github.io/RMNpy/' if not on_rtd else 'https://rmnpy.readthedocs.io/'
+
+# Read the Docs specific settings
+if on_rtd:
+    # Disable problematic extensions on RTD if needed
+    html_theme_options.update({
+        'canonical_url': 'https://rmnpy.readthedocs.io/',
+        'analytics_id': '',  # Add Google Analytics ID if desired
+        'logo_only': False,
+        'display_version': True,
+        'prev_next_buttons_location': 'bottom',
+        'style_external_links': False,
+        'vcs_pageview_mode': '',
+    })
 
 # -- Sphinx-Gallery configuration ----------------------------------------
 
