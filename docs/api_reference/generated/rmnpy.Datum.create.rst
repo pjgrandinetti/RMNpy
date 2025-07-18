@@ -1,6 +1,6 @@
 ﻿rmnpy.Datum.create
 ==================
 
-.. currentmodule:: rmnpy
+.. currentmodule:: rmnpy.Datum
 
-.. automethod:: Datum.create
+.. autoattribute:: create

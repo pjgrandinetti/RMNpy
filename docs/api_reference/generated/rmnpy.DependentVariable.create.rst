@@ -1,6 +1,6 @@
 ﻿rmnpy.DependentVariable.create
 ==============================
 
-.. currentmodule:: rmnpy
+.. currentmodule:: rmnpy.DependentVariable
 
-.. automethod:: DependentVariable.create
+.. autoattribute:: create

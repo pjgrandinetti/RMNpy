@@ -18,53 +18,92 @@ print("PYTHONPATH for Sphinx:", sys.path)
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
 on_ci = os.environ.get('CI') == 'True' or on_rtd
 
-# Mock C extension modules for documentation builds
-if on_ci or on_rtd:
-    class MockModule(MagicMock):
-        @classmethod
-        def __getattr__(cls, name):
-            return MagicMock()
+# Mock C extension modules for documentation builds - ALWAYS apply mocking
+class MockModule:
+    """A simple mock module that behaves correctly with Sphinx"""
+    
+    def __init__(self, name="MockModule"):
+        self.__name__ = name
+        self.__file__ = f'/mock/{name}/__init__.py'
+        self.__qualname__ = name
+        self.__doc__ = f"Mock documentation for {name}"
         
-        def __call__(self, *args, **kwargs):
-            return MagicMock()
+    def __getattr__(self, name):
+        return MockModule(f"{self.__name__}.{name}")
     
-    # Mock all the problematic modules before any imports
-    MOCK_MODULES = [
-        'rmnpy.core',
-        'rmnpy.helpers', 
-        'rmnpy.sitypes',
-        'rmnpy.sitypes.dimensionality',
-        'rmnpy.sitypes.unit',
-        'rmnpy.sitypes.scalar',
-        'rmnpy.sitypes.helpers',
-        'rmnpy.exceptions'
-    ]
+    def __call__(self, *args, **kwargs):
+        return MockModule(f"{self.__name__}()")
     
-    for mod_name in MOCK_MODULES:
-        sys.modules[mod_name] = MockModule()
+    def __bool__(self):
+        return True
     
-    # Create a mock rmnpy module structure
-    mock_rmnpy = MockModule()
+    def __str__(self):
+        return self.__name__
     
-    # Mock the main classes that Sphinx needs to document
-    mock_rmnpy.Dataset = MockModule()
-    mock_rmnpy.Dataset.create = MockModule()
-    mock_rmnpy.Dimension = MockModule()
-    mock_rmnpy.DependentVariable = MockModule()
-    mock_rmnpy.Datum = MockModule()
-    mock_rmnpy.SparseSampling = MockModule()
-    mock_rmnpy.SIScalar = MockModule()
-    mock_rmnpy.shutdown = MockModule()
-    mock_rmnpy.RMNLibError = MockModule()
-    mock_rmnpy.RMNLibMemoryError = MockModule()
-    mock_rmnpy.RMNLibValidationError = MockModule()
+    def __contains__(self, item):
+        return False
     
-    sys.modules['rmnpy'] = mock_rmnpy
+    def __iter__(self):
+        return iter([])
     
-    print("Comprehensive mocking applied for CI/RTD build")
+    def __repr__(self):
+        return f"<MockModule '{self.__name__}'>"
 
-# Check if we're building on Read the Docs
-on_rtd = os.environ.get('READTHEDOCS') == 'True'
+# Mock all the problematic modules before any imports
+MOCK_MODULES = [
+    'rmnpy.core',
+    'rmnpy.helpers', 
+    'rmnpy.sitypes',
+    'rmnpy.sitypes.dimensionality',
+    'rmnpy.sitypes.unit',
+    'rmnpy.sitypes.scalar',
+    'rmnpy.sitypes.helpers',
+    'rmnpy.exceptions'
+]
+
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = MockModule()
+
+# Create a comprehensive mock rmnpy module structure
+mock_rmnpy = MockModule('rmnpy')
+
+# Mock all the main classes that Sphinx needs to document
+mock_rmnpy.Dataset = MockModule('rmnpy.Dataset')
+mock_rmnpy.Dataset.create = MockModule('rmnpy.Dataset.create')
+mock_rmnpy.Dimension = MockModule('rmnpy.Dimension')
+mock_rmnpy.Dimension.create_linear = MockModule('rmnpy.Dimension.create_linear')
+mock_rmnpy.Dimension.create_labeled = MockModule('rmnpy.Dimension.create_labeled')
+mock_rmnpy.Dimension.create_monotonic = MockModule('rmnpy.Dimension.create_monotonic')
+mock_rmnpy.DependentVariable = MockModule('rmnpy.DependentVariable')
+mock_rmnpy.DependentVariable.create = MockModule('rmnpy.DependentVariable.create')
+mock_rmnpy.Datum = MockModule('rmnpy.Datum')
+mock_rmnpy.Datum.create = MockModule('rmnpy.Datum.create')
+mock_rmnpy.SparseSampling = MockModule('rmnpy.SparseSampling')
+mock_rmnpy.SIScalar = MockModule('rmnpy.SIScalar')
+mock_rmnpy.shutdown = MockModule('rmnpy.shutdown')
+mock_rmnpy.RMNLibError = MockModule('rmnpy.RMNLibError')
+mock_rmnpy.RMNLibMemoryError = MockModule('rmnpy.RMNLibMemoryError')
+mock_rmnpy.RMNLibValidationError = MockModule('rmnpy.RMNLibValidationError')
+
+# Mock the __file__ attribute to prevent import errors
+mock_rmnpy.__file__ = '/mock/rmnpy/__init__.py'
+
+sys.modules['rmnpy'] = mock_rmnpy
+
+print("Comprehensive mocking applied for documentation build")
+
+# Add import hook as failsafe for any missed imports
+import builtins
+original_import = builtins.__import__
+
+def mock_import(name, *args, **kwargs):
+    if name.startswith('rmnpy') and name not in sys.modules:
+        print(f"Fallback mocking: {name}")
+        sys.modules[name] = MockModule(name)
+        return sys.modules[name]
+    return original_import(name, *args, **kwargs)
+
+builtins.__import__ = mock_import
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information

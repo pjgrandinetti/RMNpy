@@ -1,6 +1,6 @@
 ﻿rmnpy.Dimension.create\_labeled
 ===============================
 
-.. currentmodule:: rmnpy
+.. currentmodule:: rmnpy.Dimension
 
-.. automethod:: Dimension.create_labeled
+.. autoattribute:: create_labeled

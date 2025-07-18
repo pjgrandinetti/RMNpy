@@ -1,6 +1,6 @@
 ﻿rmnpy.Dataset.create
 ====================
 
-.. currentmodule:: rmnpy
+.. currentmodule:: rmnpy.Dataset
 
-.. automethod:: Dataset.create
+.. autoattribute:: create

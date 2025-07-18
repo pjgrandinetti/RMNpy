@@ -1,6 +1,6 @@
 ﻿rmnpy.Dimension.create\_monotonic
 =================================
 
-.. currentmodule:: rmnpy
+.. currentmodule:: rmnpy.Dimension
 
-.. automethod:: Dimension.create_monotonic
+.. autoattribute:: create_monotonic

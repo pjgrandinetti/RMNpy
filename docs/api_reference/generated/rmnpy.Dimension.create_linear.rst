@@ -1,6 +1,6 @@
 ﻿rmnpy.Dimension.create\_linear
 ==============================
 
-.. currentmodule:: rmnpy
+.. currentmodule:: rmnpy.Dimension
 
-.. automethod:: Dimension.create_linear
+.. autoattribute:: create_linear

@@ -3,4 +3,4 @@
 
 .. currentmodule:: rmnpy
 
-.. autoexception:: RMNLibError
+.. autoattribute:: RMNLibError
