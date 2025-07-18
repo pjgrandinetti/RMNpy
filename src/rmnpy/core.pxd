@@ -170,7 +170,7 @@ cdef extern from "RMNLibrary.h":
         
     # SILinearDimension functions  
     SILinearDimensionRef SILinearDimensionCreate(OCStringRef label, OCStringRef description,
-                                               OCDictionaryRef metadata, OCStringRef quantity,
+                                               OCDictionaryRef metadata, OCStringRef quantityName,
                                                SIScalarRef offset, SIScalarRef origin,
                                                SIScalarRef period, bint periodic,
                                                dimensionScaling scaling, OCIndex count,
@@ -181,7 +181,7 @@ cdef extern from "RMNLibrary.h":
     
     # SIMonotonicDimension functions
     SIMonotonicDimensionRef SIMonotonicDimensionCreate(OCStringRef label, OCStringRef description,
-                                                      OCDictionaryRef metadata, OCStringRef quantity,
+                                                      OCDictionaryRef metadata, OCStringRef quantityName,
                                                       SIScalarRef offset, SIScalarRef origin,
                                                       SIScalarRef period, bint periodic,
                                                       dimensionScaling scaling, OCArrayRef coordinates,

@@ -133,7 +133,7 @@ Here's a complete example creating a realistic scientific dataset:
        increment=0.1,  # 0.1 second intervals
        label="time",
        description="Measurement time",
-       quantity="time"
+       quantity_name="time"
    )
    
    # Create a dependent variable for temperature data

@@ -7,11 +7,28 @@
 import os
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock
 
 # Add the src directory to Python path for autodoc
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 print("PYTHONPATH for Sphinx:", sys.path)
+
+# Check if we're building on Read the Docs or CI
+on_rtd = os.environ.get('READTHEDOCS') == 'True'
+on_ci = os.environ.get('CI') == 'True' or on_rtd
+
+# Mock C extension modules for documentation builds
+if on_ci:
+    class MockModule(MagicMock):
+        @classmethod
+        def __getattr__(cls, name):
+            return MagicMock()
+    
+    # Mock the C extension modules that can't be imported without building
+    sys.modules['rmnpy.core'] = MockModule()
+    sys.modules['rmnpy.helpers'] = MockModule()
+    print("Mocked C extension modules for CI/RTD build")
 
 # Check if we're building on Read the Docs
 on_rtd = os.environ.get('READTHEDOCS') == 'True'

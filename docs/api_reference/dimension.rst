@@ -31,7 +31,7 @@ Linear Dimension
        increment=1.0,       # Spacing between points  
        label="time",        # Optional label
        description="Time axis",  # Optional description
-       quantity="time"      # Physical quantity
+       quantity_name="time"      # Physical quantity
    )
    print(f"Linear dimension created: {dimension}")
 
@@ -61,7 +61,7 @@ Monotonic Dimension
        coordinates,         # Required: list of SIScalar coordinates (≥2)
        label="frequency",   # Optional label  
        description="Frequency points",  # Optional description
-       quantity="frequency",  # Physical quantity
+       quantity_name="frequency",  # Physical quantity
        periodic=False       # Whether dimension is periodic
    )
    print(f"Monotonic dimension created: {dimension}")

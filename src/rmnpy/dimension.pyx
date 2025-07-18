@@ -13,36 +13,46 @@ cdef class Dimension:
             OCRelease(self._ref)
             self._ref = NULL
     
-    @staticmethod
-    def create_linear(label=None, description=None, metadata=None, quantity=None, offset=None, origin=None, 
-                     period=None, periodic=False, scaling=None, count=100, increment=None, fft=False, reciprocal=None):
-        """Create a linear dimension with evenly spaced coordinates.
+    @classmethod
+    def create_linear(cls, label, description=None, metadata=None, quantity_name=None,
+                     offset=None, origin=None, period=None, periodic=False,
+                     scaling=0, count=0, increment=None,
+                     fft=False, reciprocal=None):
+        """Create a new linear SI dimension.
         
-        This method exactly matches the C API SILinearDimensionCreate function, including its
-        sophisticated NULL parameter handling behavior.
-        
-        Args:
-            label (str, optional): Dimension label. NULL → no label set
-            description (str, optional): Description of the dimension. NULL → no description set  
-            metadata (dict, optional): Custom metadata dictionary. NULL → no metadata set
-            quantity (str, optional): Physical quantity name. NULL → derived from increment's dimensionality
-            offset (SIScalar, optional): Starting offset scalar. NULL → creates zero scalar in increment's unit
-            origin (SIScalar, optional): Origin offset scalar. NULL → creates zero scalar in increment's unit
-            period (SIScalar, optional): Period scalar. NULL → creates zero scalar in increment's unit
-            periodic (bool): Whether this is a periodic dimension (primitive, cannot be NULL)
-            scaling (int, optional): Dimension scaling type (0=none, 1=NMR). NULL → kDimensionScalingNone
-            count (int): Number of points (must be ≥2, primitive, cannot be NULL)
-            increment (SIScalar, REQUIRED): Spacing between points. Must be real-valued SIScalar
-            fft (bool): Whether this dimension is optimized for FFT (primitive, cannot be NULL)
-            reciprocal (Dimension, optional): Reciprocal dimension. NULL → no reciprocal dimension set
-        
-        Returns:
-            Dimension: A new linear Dimension instance
+        Parameters
+        ----------
+        label : str
+            The dimension label
+        description : str, optional
+            Description of the dimension
+        metadata : dict, optional
+            Additional metadata
+        quantity_name : str, optional
+            The physical quantity name
+        offset : SIScalar, optional
+            Offset value
+        origin : SIScalar, optional
+            Origin value  
+        period : SIScalar, optional
+            Period for periodic dimensions
+        periodic : bool, optional
+            Whether the dimension is periodic
+        scaling : int, optional
+            The scaling type (0=none, 1=NMR)
+        count : int, optional
+            Number of points
+        increment : SIScalar, optional
+            Increment between points
+        fft : bool, optional
+            Whether to use FFT
+        reciprocal : SIDimension, optional
+            Reciprocal dimension
             
-        Note:
-            This preserves the C function's NULL handling behavior. When scalar parameters
-            (offset, origin, period) are None/NULL, the C function creates appropriate default
-            zero scalars in the increment's unit via impl_validateOrDefaultScalar().
+        Returns
+        -------
+        SILinearDimension
+            A new linear SI dimension instance
         """
         cdef Dimension dimension = Dimension()
         cdef OCStringRef error = NULL
@@ -69,8 +79,8 @@ cdef class Dimension:
                 c_label = _py_to_ocstring(label)
             if description is not None:
                 c_description = _py_to_ocstring(description)
-            if quantity is not None:
-                c_quantity = _py_to_ocstring(quantity)
+            if quantity_name is not None:
+                c_quantity = _py_to_ocstring(quantity_name)
                 
             # Convert metadata dictionary if provided (advanced feature, skip for now)
             if metadata is not None:
@@ -147,7 +157,7 @@ cdef class Dimension:
             # including creating/releasing temporary scalars for NULL parameters.
     
     @staticmethod
-    def create_monotonic(coordinates, label=None, description=None, quantity=None,
+    def create_monotonic(coordinates, label=None, description=None, quantity_name=None,
                         offset=None, origin=None, period=None, periodic=False,
                         scaling=0, reciprocal=None):
         """Create a monotonic dimension with explicitly specified coordinates.
@@ -160,7 +170,7 @@ cdef class Dimension:
             coordinates: List of SIScalar objects for coordinate values (≥2 required)
             label: Optional axis name
             description: Optional description  
-            quantity: Physical quantity name (if None, derived from first coordinate)
+            quantity_name: Physical quantity name (if None, derived from first coordinate)
             offset: SIScalar offset (if None, C function creates zero default)
             origin: SIScalar origin (if None, C function creates zero default)
             period: SIScalar period (if None, C function handles appropriately)
@@ -189,8 +199,8 @@ cdef class Dimension:
                 c_label = _py_to_ocstring(label)
             if description is not None:
                 c_description = _py_to_ocstring(description)
-            if quantity is not None:
-                c_quantity = _py_to_ocstring(quantity)
+            if quantity_name is not None:
+                c_quantity = _py_to_ocstring(quantity_name)
                 
             # Convert metadata dictionary if provided (advanced feature, skip for now)
             # For now, we'll skip this advanced feature and pass NULL
@@ -274,7 +284,7 @@ cdef class Dimension:
             # including creating/releasing temporary scalars for NULL parameters.
     
     @staticmethod
-    def create_si_dimension(quantity, label=None, description=None, metadata=None,
+    def create_si_dimension(quantity_name, label=None, description=None, metadata=None,
                            offset=None, origin=None, period=None, periodic=False, scaling=0):
         """Create a basic SI dimension with quantity, offset, origin, and period.
         
@@ -286,7 +296,7 @@ cdef class Dimension:
         for more complex dimension types (linear, monotonic).
         
         Args:
-            quantity (str, REQUIRED): Physical quantity name (e.g., "time", "frequency")
+            quantity_name (str, REQUIRED): Physical quantity name (e.g., "time", "frequency")
             label (str, optional): Dimension label. NULL → no label set
             description (str, optional): Description of the dimension. NULL → no description set
             metadata (dict, optional): Custom metadata dictionary. NULL → no metadata set
@@ -304,8 +314,8 @@ cdef class Dimension:
             (offset, origin, period) are None/NULL, the C function creates appropriate default
             scalars via impl_validateOrDefaultScalar().
         """
-        if not quantity:
-            raise RMNLibError("quantity parameter is required for SIDimensionCreate")
+        if not quantity_name:
+            raise RMNLibError("quantity_name parameter is required for SIDimensionCreate")
             
         cdef Dimension dimension = Dimension()
         cdef OCStringRef error = NULL
@@ -320,7 +330,7 @@ cdef class Dimension:
         
         try:
             # Convert required quantity parameter
-            c_quantity = _py_to_ocstring(quantity)
+            c_quantity = _py_to_ocstring(quantity_name)
             
             # Convert string parameters to C types (these can be NULL)
             if label is not None:
