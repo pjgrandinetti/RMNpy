@@ -15,8 +15,12 @@ build:
     - pkg-config
     - flex
     - bison
+    - libopenblas-dev
+    - libcurl4-openssl-dev
   jobs:
     post_install:
+      # Set environment to indicate docs build
+      - export RMNPY_DOCS_BUILD=1
       # Try to create stub libraries if script exists, but don't fail if it doesn't
       - |
         if [ -f scripts/ci_stub_libs.sh ]; then
@@ -26,6 +30,9 @@ build:
           echo "No stub script found, creating minimal lib/include directories"
           mkdir -p lib include
         fi
+      # Set PYTHONPATH to include src directory for Sphinx autodoc
+      - echo "Setting up Python path for documentation generation"
+      - export PYTHONPATH="$PWD/src:$PYTHONPATH"
       - echo "Documentation build will use mock objects for C extensions"
 
 # Build documentation in the docs/ directory with Sphinx
@@ -37,8 +44,4 @@ sphinx:
 # Optionally declare the Python requirements required to build your docs
 python:
    install:
-   - method: pip
-     path: .
-     extra_requirements:
-       - docs
    - requirements: docs/requirements.txt
