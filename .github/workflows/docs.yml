@@ -38,11 +38,15 @@ jobs:
     - name: Create stub libraries for CI
       run: |
         bash scripts/ci_stub_libs.sh
-    - name: Install Python dependencies for documentation
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install setuptools wheel cython numpy
         pip install -r docs/requirements.txt
-    - name: Build documentation without installing package
+    - name: Install RMNpy package in development mode
+      run: |
+        pip install -e .
+    - name: Build documentation
       run: |
         cd docs
         make html
