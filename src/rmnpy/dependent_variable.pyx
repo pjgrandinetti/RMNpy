@@ -2,6 +2,7 @@
 from .exceptions import RMNLibError, RMNLibValidationError
 from .core cimport *
 from .helpers cimport _ocstring_to_py, _py_to_ocstring, _py_list_to_ocarray
+from .sitypes.unit cimport SIUnit
 from libc.string cimport memcpy
 
 cdef class DependentVariable:
@@ -26,7 +27,7 @@ cdef class DependentVariable:
             data (array-like): The data array to store in the dependent variable
             name (str, optional): Human-readable name. None → no name set
             description (str, optional): Longer description. None → no description set
-            units (str, optional): SI unit expression (e.g., "Hz", "m/s"). None → dimensionless
+            units (str or SIUnit, optional): SI unit expression (e.g., "Hz", "m/s") or SIUnit object. None → dimensionless
             quantity_name (str, optional): Logical quantity name (e.g. "temperature"). None → no quantity name
             quantity_type (str, optional): Semantic type ("scalar", "vector_3", etc.) (default: "scalar")
             element_type (str, optional): Data type like "float64", "float32", "int32" (default: "float64")
@@ -109,13 +110,26 @@ cdef class DependentVariable:
                 c_quantity_name = _py_to_ocstring(quantity_name)
             # else: c_quantity_name remains NULL → C function handles appropriately
             
-            # Parse units expression if provided - PRESERVE NULL behavior
+            # Parse units expression or SIUnit object if provided - PRESERVE NULL behavior
             if units is not None:
-                units_expr = _py_to_ocstring(units)
-                c_units = SIUnitFromExpression(units_expr, NULL, NULL)
-                OCRelease(units_expr)
-                if c_units == NULL:
-                    raise RMNLibValidationError(f"Invalid units expression: {units}")
+                if isinstance(units, SIUnit):
+                    # Use SIUnit object directly - get its C reference
+                    c_units = (<SIUnit>units)._get_c_unit()
+                    OCRetain(c_units)  # Retain since we're using it
+                elif isinstance(units, tuple) and len(units) == 2 and isinstance(units[0], SIUnit):
+                    # Handle tuple format from SIUnit.from_expression() - use the SIUnit part
+                    si_unit_obj = units[0]
+                    c_units = (<SIUnit>si_unit_obj)._get_c_unit()
+                    OCRetain(c_units)  # Retain since we're using it
+                elif isinstance(units, str):
+                    # Parse string expression
+                    units_expr = _py_to_ocstring(units)
+                    c_units = SIUnitFromExpression(units_expr, NULL, NULL)
+                    OCRelease(units_expr)
+                    if c_units == NULL:
+                        raise RMNLibValidationError(f"Invalid units expression: {units}")
+                else:
+                    raise RMNLibValidationError(f"units must be a string, SIUnit object, or (SIUnit, multiplier) tuple, got {type(units)}")
             # else: c_units remains NULL → C function creates dimensionless unit
             
             # Convert component_labels to OCArray if provided - PRESERVE NULL behavior

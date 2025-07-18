@@ -7,6 +7,11 @@ cdef extern from "RMNLibrary.h":
     ctypedef signed long OCIndex
     ctypedef unsigned int OCTypeID
     
+    # Range type for indexing operations
+    ctypedef struct OCRange:
+        uint64_t location
+        uint64_t length
+    
     # String types
     ctypedef struct impl_OCString
     ctypedef const impl_OCString* OCStringRef
@@ -147,7 +152,24 @@ cdef extern from "RMNLibrary.h":
     
     # SIUnit functions for getting symbol
     OCStringRef SIUnitCopyRootSymbol(SIUnitRef theUnit)
-    SIUnitRef SIUnitFromExpression(OCStringRef expression, double* outMultiplier, OCStringRef* outError)
+    SIUnitRef SIUnitFromExpression(OCStringRef expression, double* unit_multiplier, OCStringRef* error)
+    
+    # Additional SIUnit functions
+    SIDimensionalityRef SIUnitGetDimensionality(SIUnitRef theUnit)
+    OCStringRef SIUnitCopySymbol(SIUnitRef theUnit)
+    OCStringRef SIUnitCreateSymbol(SIUnitRef theUnit)
+    OCStringRef SIUnitCreateName(SIUnitRef theUnit)
+    OCStringRef SIUnitCreatePluralName(SIUnitRef theUnit)
+    bint SIUnitEqual(SIUnitRef theUnit1, SIUnitRef theUnit2)
+    bint SIUnitAreEquivalentUnits(SIUnitRef theUnit1, SIUnitRef theUnit2)
+    double SIUnitConversion(SIUnitRef initialUnit, SIUnitRef finalUnit)
+    SIUnitRef SIUnitByMultiplying(SIUnitRef theUnit1, SIUnitRef theUnit2, double* unit_multiplier, OCStringRef* error)
+    SIUnitRef SIUnitByDividing(SIUnitRef theUnit1, SIUnitRef theUnit2, double* unit_multiplier)
+    SIUnitRef SIUnitByRaisingToPower(SIUnitRef input, double power, double* unit_multiplier, OCStringRef* error)
+    SIUnitRef SIUnitFindWithName(OCStringRef input)
+    SIUnitRef SIUnitFindWithUnderivedSymbol(OCStringRef symbol)
+    SIUnitRef SIUnitDimensionlessAndUnderived()
+    OCStringRef SIUnitGuessQuantityName(SIUnitRef theUnit)
     
     # Dimension functions (basic accessors)
     OCStringRef DimensionGetLabel(DimensionRef dim)
@@ -225,6 +247,7 @@ cdef extern from "RMNLibrary.h":
     
     OCMutableArrayRef OCArrayCreateMutable(uint64_t capacity, const OCArrayCallBacks *callBacks)
     bint OCArrayAppendValue(OCMutableArrayRef theArray, const void *value)
+    bint OCArrayAppendArray(OCMutableArrayRef theArray, OCArrayRef otherArray, OCRange range)
     uint64_t OCArrayGetCount(OCArrayRef theArray)
     const void* OCArrayGetValueAtIndex(OCArrayRef theArray, uint64_t index)
     
@@ -240,7 +263,10 @@ cdef extern from "RMNLibrary.h":
     
     # SIScalar functions (actual API from SIScalar.h)
     SIScalarRef SIScalarCreateWithDouble(double input_value, SIUnitRef unit)
+    SIScalarRef SIScalarCreateFromExpression(OCStringRef string, OCStringRef* error)
     double SIScalarDoubleValueInCoherentUnit(SIScalarRef theScalar)
+    
+    # NOTE: SIDimensionality functions moved to separate SILibrary.h extern block below
     
     # SparseSampling functions (actual API from SparseSampling.h)
     SparseSamplingRef SparseSamplingCreate(OCIndexSetRef dimensionIndexes,
@@ -286,3 +312,256 @@ cdef extern from "RMNLibrary.h":
     # Additional OCIndexArray functions (types already declared above)
     uint64_t OCIndexArrayGetCount(OCIndexArrayRef array)
     OCIndex OCIndexArrayGetValueAtIndex(OCIndexArrayRef array, uint64_t index)
+
+# SIScalar arithmetic operations (declarations only, no header include to avoid conflicts)
+cdef extern from *:
+    """
+    // Forward declarations for SIScalar arithmetic functions
+    // These match the signatures in SIScalar.h but avoid header inclusion conflicts
+    extern void* SIScalarCreateByAdding(void* input1, void* input2, void** error);
+    extern void* SIScalarCreateBySubtracting(void* input1, void* input2, void** error);
+    extern void* SIScalarCreateByMultiplying(void* input1, void* input2, void** error);
+    extern void* SIScalarCreateByDividing(void* input1, void* input2, void** error);
+    extern void* SIScalarCreateByRaisingToPower(void* theScalar, double power, void** error);
+    extern void* SIScalarCreateUnitString(void* theScalar);
+    """
+    SIScalarRef SIScalarCreateByAdding(SIScalarRef input1, SIScalarRef input2, OCStringRef* error)
+    SIScalarRef SIScalarCreateBySubtracting(SIScalarRef input1, SIScalarRef input2, OCStringRef* error)
+    SIScalarRef SIScalarCreateByMultiplying(SIScalarRef input1, SIScalarRef input2, OCStringRef* error)
+    SIScalarRef SIScalarCreateByDividing(SIScalarRef input1, SIScalarRef input2, OCStringRef* error)
+    SIScalarRef SIScalarCreateByRaisingToPower(SIScalarRef theScalar, double power, OCStringRef* error)
+    OCStringRef SIScalarCreateUnitString(SIScalarRef theScalar)
+
+# Minimal SIDimensionality function declarations to avoid header conflicts
+cdef extern from *:
+    """
+    // Forward declarations for SIDimensionality functions
+    #include <stdint.h>
+    
+    // Enum for base dimension indices
+    typedef enum {
+        kSILengthIndex = 0,
+        kSIMassIndex = 1,  
+        kSITimeIndex = 2,
+        kSICurrentIndex = 3,
+        kSITemperatureIndex = 4,
+        kSIAmountIndex = 5,
+        kSILuminousIntensityIndex = 6,
+    } SIBaseDimensionIndex;
+    
+    // Function declarations (these exist in the library)
+    extern SIDimensionalityRef SIDimensionalityDimensionless(void);
+    extern SIDimensionalityRef SIDimensionalityParseExpression(OCStringRef expression, OCStringRef *error);
+    extern SIDimensionalityRef SIDimensionalityForQuantity(OCStringRef quantity, OCStringRef *error);
+    extern OCStringRef SIDimensionalityGetSymbol(SIDimensionalityRef theDim);
+    extern int8_t SIDimensionalityReducedExponentAtIndex(SIDimensionalityRef theDim, SIBaseDimensionIndex index);
+    extern SIDimensionalityRef SIDimensionalityByMultiplying(SIDimensionalityRef theDim1, SIDimensionalityRef theDim2, OCStringRef *error);
+    extern SIDimensionalityRef SIDimensionalityByDividing(SIDimensionalityRef theDim1, SIDimensionalityRef theDim2);
+    extern SIDimensionalityRef SIDimensionalityByRaisingToPower(SIDimensionalityRef theDim, double power, OCStringRef *error);
+    extern SIDimensionalityRef SIDimensionalityByTakingNthRoot(SIDimensionalityRef theDim, uint8_t root, OCStringRef *error);
+    
+    // SIUnit function that needs explicit declaration
+    extern OCStringRef SIUnitCopySymbol(SIUnitRef theUnit);
+    """
+    
+    # SIBaseDimensionIndex enum 
+    ctypedef enum SIBaseDimensionIndex:
+        kSILengthIndex = 0
+        kSIMassIndex = 1  
+        kSITimeIndex = 2
+        kSICurrentIndex = 3
+        kSITemperatureIndex = 4
+        kSIAmountIndex = 5
+        kSILuminousIntensityIndex = 6
+    
+    # SIDimensionality core functions
+    SIDimensionalityRef SIDimensionalityParseExpression(OCStringRef expression, OCStringRef* error)
+    SIDimensionalityRef SIDimensionalityDimensionless()
+    SIDimensionalityRef SIDimensionalityForQuantity(OCStringRef quantity, OCStringRef* error)
+    
+    # SITypes quantity constants - complete list from SIDimensionality.h
+    extern OCStringRef kSIQuantityDimensionless
+    extern OCStringRef kSIQuantityLength
+    extern OCStringRef kSIQuantityInverseLength
+    extern OCStringRef kSIQuantityWavenumber
+    extern OCStringRef kSIQuantityLengthRatio
+    extern OCStringRef kSIQuantityPlaneAngle
+    extern OCStringRef kSIQuantityMass
+    extern OCStringRef kSIQuantityInverseMass
+    extern OCStringRef kSIQuantityMassRatio
+    extern OCStringRef kSIQuantityTime
+    extern OCStringRef kSIQuantityInverseTime
+    extern OCStringRef kSIQuantityFrequency
+    extern OCStringRef kSIQuantityRadioactivity
+    extern OCStringRef kSIQuantityTimeRatio
+    extern OCStringRef kSIQuantityFrequencyRatio
+    extern OCStringRef kSIQuantityInverseTimeSquared
+    extern OCStringRef kSIQuantityCurrent
+    extern OCStringRef kSIQuantityInverseCurrent
+    extern OCStringRef kSIQuantityCurrentRatio
+    extern OCStringRef kSIQuantityTemperature
+    extern OCStringRef kSIQuantityInverseTemperature
+    extern OCStringRef kSIQuantityTemperatureRatio
+    extern OCStringRef kSIQuantityTemperatureGradient
+    extern OCStringRef kSIQuantityAmount
+    extern OCStringRef kSIQuantityInverseAmount
+    extern OCStringRef kSIQuantityAmountRatio
+    extern OCStringRef kSIQuantityLuminousIntensity
+    extern OCStringRef kSIQuantityInverseLuminousIntensity
+    extern OCStringRef kSIQuantityLuminousIntensityRatio
+    extern OCStringRef kSIQuantityArea
+    extern OCStringRef kSIQuantityInverseArea
+    extern OCStringRef kSIQuantityAreaRatio
+    extern OCStringRef kSIQuantitySolidAngle
+    extern OCStringRef kSIQuantityVolume
+    extern OCStringRef kSIQuantityInverseVolume
+    extern OCStringRef kSIQuantityVolumeRatio
+    extern OCStringRef kSIQuantitySpeed
+    extern OCStringRef kSIQuantityVelocity
+    extern OCStringRef kSIQuantityLinearMomentum
+    extern OCStringRef kSIQuantityAngularMomentum
+    extern OCStringRef kSIQuantityMomentOfInertia
+    extern OCStringRef kSIQuantityAcceleration
+    extern OCStringRef kSIQuantityMassFlowRate
+    extern OCStringRef kSIQuantityMassFlux
+    extern OCStringRef kSIQuantityDensity
+    extern OCStringRef kSIQuantitySpecificGravity
+    extern OCStringRef kSIQuantitySpecificSurfaceArea
+    extern OCStringRef kSIQuantitySurfaceAreaToVolumeRatio
+    extern OCStringRef kSIQuantitySurfaceDensity
+    extern OCStringRef kSIQuantitySpecificVolume
+    extern OCStringRef kSIQuantityCurrentDensity
+    extern OCStringRef kSIQuantityMagneticFieldStrength
+    extern OCStringRef kSIQuantityLuminance
+    extern OCStringRef kSIQuantityRefractiveIndex
+    extern OCStringRef kSIQuantityFluidity
+    extern OCStringRef kSIQuantityMomentOfForce
+    extern OCStringRef kSIQuantitySurfaceTension
+    extern OCStringRef kSIQuantitySurfaceEnergy
+    extern OCStringRef kSIQuantityAngularSpeed
+    extern OCStringRef kSIQuantityAngularVelocity
+    extern OCStringRef kSIQuantityAngularAcceleration
+    extern OCStringRef kSIQuantityHeatFluxDensity
+    extern OCStringRef kSIQuantityIrradiance
+    extern OCStringRef kSIQuantitySpectralRadiantFluxDensity
+    extern OCStringRef kSIQuantityHeatCapacity
+    extern OCStringRef kSIQuantityEntropy
+    extern OCStringRef kSIQuantitySpecificHeatCapacity
+    extern OCStringRef kSIQuantitySpecificEntropy
+    extern OCStringRef kSIQuantitySpecificEnergy
+    extern OCStringRef kSIQuantityThermalConductance
+    extern OCStringRef kSIQuantityThermalConductivity
+    extern OCStringRef kSIQuantityEnergyDensity
+    extern OCStringRef kSIQuantityElectricFieldStrength
+    extern OCStringRef kSIQuantityElectricFieldGradient
+    extern OCStringRef kSIQuantityElectricChargeDensity
+    extern OCStringRef kSIQuantitySurfaceChargeDensity
+    extern OCStringRef kSIQuantityElectricFlux
+    extern OCStringRef kSIQuantityElectricFluxDensity
+    extern OCStringRef kSIQuantityElectricDisplacement
+    extern OCStringRef kSIQuantityPermittivity
+    extern OCStringRef kSIQuantityPermeability
+    extern OCStringRef kSIQuantityMolarEnergy
+    extern OCStringRef kSIQuantityMolarEntropy
+    extern OCStringRef kSIQuantityMolarHeatCapacity
+    extern OCStringRef kSIQuantityMolarMass
+    extern OCStringRef kSIQuantityMolality
+    extern OCStringRef kSIQuantityDiffusionFlux
+    extern OCStringRef kSIQuantityMassToChargeRatio
+    extern OCStringRef kSIQuantityChargeToMassRatio
+    extern OCStringRef kSIQuantityRadiationExposure
+    extern OCStringRef kSIQuantityAbsorbedDoseRate
+    extern OCStringRef kSIQuantityRadiantIntensity
+    extern OCStringRef kSIQuantitySpectralRadiantIntensity
+    extern OCStringRef kSIQuantityRadiance
+    extern OCStringRef kSIQuantitySpectralRadiance
+    extern OCStringRef kSIQuantityPorosity
+    extern OCStringRef kSIQuantityAngularFrequency
+    extern OCStringRef kSIQuantityForce
+    extern OCStringRef kSIQuantityTorque
+    extern OCStringRef kSIQuantityPressure
+    extern OCStringRef kSIQuantityStress
+    extern OCStringRef kSIQuantityElasticModulus
+    extern OCStringRef kSIQuantityCompressibility
+    extern OCStringRef kSIQuantityStressOpticCoefficient
+    extern OCStringRef kSIQuantityPressureGradient
+    extern OCStringRef kSIQuantityEnergy
+    extern OCStringRef kSIQuantitySpectralRadiantEnergy
+    extern OCStringRef kSIQuantityPower
+    extern OCStringRef kSIQuantitySpectralPower
+    extern OCStringRef kSIQuantityVolumePowerDensity
+    extern OCStringRef kSIQuantitySpecificPower
+    extern OCStringRef kSIQuantityRadiantFlux
+    extern OCStringRef kSIQuantityElectricCharge
+    extern OCStringRef kSIQuantityAmountOfElectricity
+    extern OCStringRef kSIQuantityElectricPotentialDifference
+    extern OCStringRef kSIQuantityElectromotiveForce
+    extern OCStringRef kSIQuantityElectricPolarizability
+    extern OCStringRef kSIQuantityElectricDipoleMoment
+    extern OCStringRef kSIQuantityVoltage
+    extern OCStringRef kSIQuantityCapacitance
+    extern OCStringRef kSIQuantityElectricResistance
+    extern OCStringRef kSIQuantityElectricResistancePerLength
+    extern OCStringRef kSIQuantityElectricResistivity
+    extern OCStringRef kSIQuantityElectricConductance
+    extern OCStringRef kSIQuantityElectricConductivity
+    extern OCStringRef kSIQuantityElectricalMobility
+    extern OCStringRef kSIQuantityMolarConductivity
+    extern OCStringRef kSIQuantityMagneticDipoleMoment
+    extern OCStringRef kSIQuantityMagneticDipoleMomentRatio
+    extern OCStringRef kSIQuantityMagneticFlux
+    extern OCStringRef kSIQuantityMagneticFluxDensity
+    extern OCStringRef kSIQuantityMolarMagneticSusceptibility
+    extern OCStringRef kSIQuantityInverseMagneticFluxDensity
+    extern OCStringRef kSIQuantityMagneticFieldGradient
+    extern OCStringRef kSIQuantityInductance
+    extern OCStringRef kSIQuantityLuminousFlux
+    extern OCStringRef kSIQuantityLuminousFluxDensity
+    extern OCStringRef kSIQuantityLuminousEnergy
+    extern OCStringRef kSIQuantityIlluminance
+    extern OCStringRef kSIQuantityAbsorbedDose
+    extern OCStringRef kSIQuantityDoseEquivalent
+    extern OCStringRef kSIQuantityCatalyticActivity
+    extern OCStringRef kSIQuantityCatalyticActivityConcentration
+    extern OCStringRef kSIQuantityCatalyticActivityContent
+    extern OCStringRef kSIQuantityAction
+    extern OCStringRef kSIQuantityReducedAction
+    extern OCStringRef kSIQuantityKinematicViscosity
+    extern OCStringRef kSIQuantityDiffusionCoefficient
+    extern OCStringRef kSIQuantityCirculation
+    extern OCStringRef kSIQuantityDynamicViscosity
+    extern OCStringRef kSIQuantityAmountConcentration
+    extern OCStringRef kSIQuantityMassConcentration
+    extern OCStringRef kSIQuantityChargePerAmount
+    extern OCStringRef kSIQuantityGravitationalConstant
+    extern OCStringRef kSIQuantityLengthPerVolume
+    extern OCStringRef kSIQuantityVolumePerLength
+    extern OCStringRef kSIQuantityVolumetricFlowRate
+    extern OCStringRef kSIQuantityFrequencyPerMagneticFluxDensity
+    extern OCStringRef kSIQuantityPowerPerLuminousFlux
+    extern OCStringRef kSIQuantityLuminousEfficacy
+    extern OCStringRef kSIQuantityRockPermeability
+    extern OCStringRef kSIQuantityGyromagneticRatio
+    extern OCStringRef kSIQuantityHeatTransferCoefficient
+    extern OCStringRef kSIQuantityGasPermeance
+    extern OCStringRef kSIQuantityPowerPerAreaPerTemperatureToFourthPower
+    extern OCStringRef kSIQuantityFirstHyperPolarizability
+    extern OCStringRef kSIQuantitySecondHyperPolarizability
+    extern OCStringRef kSIQuantityElectricQuadrupoleMoment
+    extern OCStringRef kSIQuantityMagnetizability
+    extern OCStringRef kSIQuantitySecondRadiationConstant
+    extern OCStringRef kSIQuantityWavelengthDisplacementConstant
+    extern OCStringRef kSIQuantityFineStructureConstant
+    extern OCStringRef kSIQuantityRatePerAmountConcentrationPerTime
+    OCStringRef SIDimensionalityGetSymbol(SIDimensionalityRef theDim)
+    int8_t SIDimensionalityReducedExponentAtIndex(SIDimensionalityRef theDim, SIBaseDimensionIndex index)
+    
+    # SIDimensionality arithmetic operations
+    SIDimensionalityRef SIDimensionalityByMultiplying(SIDimensionalityRef theDim1, SIDimensionalityRef theDim2, OCStringRef* error)
+    SIDimensionalityRef SIDimensionalityByDividing(SIDimensionalityRef theDim1, SIDimensionalityRef theDim2)
+    SIDimensionalityRef SIDimensionalityByRaisingToPower(SIDimensionalityRef theDim, double power, OCStringRef* error)
+    SIDimensionalityRef SIDimensionalityByTakingNthRoot(SIDimensionalityRef theDim, uint8_t root, OCStringRef* error)
+    
+    # SIUnit symbol functions (from SITypes library)
+    OCStringRef SIUnitCopySymbol(SIUnitRef theUnit)
+    OCStringRef SIUnitCreateSymbol(SIUnitRef theUnit)

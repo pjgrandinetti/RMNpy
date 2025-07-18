@@ -35,11 +35,17 @@ RMNpy is a Cython-based Python package that wraps the RMNLib C library, allowing
 ```python
 import rmnpy
 
-# Create core objects using the actual API
-dataset = rmnpy.Dataset.create()
-linear_dim = rmnpy.Dimension.create_linear()
-dependent_var = rmnpy.DependentVariable.create()
-datum = rmnpy.Datum.create()
+# Step 1: Create dimension first
+linear_dim = rmnpy.Dimension.create_linear(label="Frequency", count=512, increment="1.0 Hz", origin_offset="0.0 Hz")
+
+# Step 2: Create dependent variable 
+dependent_var = rmnpy.DependentVariable.create(name="Intensity", data=[1.0, 2.0, 3.0])
+
+# Step 3: Create dataset using dimension and dependent variable
+dataset = rmnpy.Dataset.create(
+    dimensions=[linear_dim],
+    dependent_variables=[dependent_var]
+)
 
 print("RMNpy objects created successfully!")
 ```
@@ -147,7 +153,7 @@ dataset = rmnpy.Dataset.create()
 print(f"Created dataset with {dataset.num_datums} datums")
 ```
 
-## Quick Start
+## Usage Examples
 
 > **📋 STATUS**: Only the "Basic Usage" section below is currently functional. The `Dimension` and `DependentVariable` examples show the planned API but are not yet implemented.
 
@@ -157,55 +163,65 @@ print(f"Created dataset with {dataset.num_datums} datums")
 import rmnpy
 import numpy as np
 
-# Create a new dataset
-dataset = rmnpy.Dataset.create()
-print(f"Dataset has {dataset.num_datums} datums")
-
-# Create a datum
-datum = rmnpy.Datum.create(response_value=1.5, coordinates=[100.0, 50.0])
-print(f"Created datum with response: {datum.response_value}")
-
-# Work with NumPy arrays (data setting to be implemented)
+# Step 1: Create dependent variable first (for this simple example)
 data = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-# datum.set_data(data)  # Coming soon
+dep_var = rmnpy.DependentVariable.create(data=data, name="Signal Intensity")
+print(f"Created dependent variable: {dep_var}")
+
+# Step 2: Create dataset with the dependent variable
+dataset = rmnpy.Dataset.create(dependent_variables=[dep_var])
+print(f"Created dataset")
 ```
 
 ### Creating Dimensions
 
 ```python
 import rmnpy
-from rmnpy.types import DimensionType, ScalingType
+from rmnpy.types import ScalingType
 
 # Create a linear dimension (e.g., for frequency axis)
-linear_dim = rmnpy.LinearDimension.create(
+# Use string expressions for physical quantities
+linear_dim = rmnpy.Dimension.create_linear(
     label="Chemical Shift",
     description="1H NMR chemical shift",
     count=1024,
-    increment=0.1,  # Hz per point
-    unit="ppm",
-    origin=0.0,
+    increment="0.1 Hz",        # String expression gets converted to SIScalarRef
+    origin_offset="0.0 ppm",   # String expression for origin offset  
     scaling=ScalingType.NMR
 )
 print(f"Created linear dimension with {linear_dim.count} points")
 
+# Alternative: Create with SIScalar objects directly
+increment_scalar = rmnpy.SIScalar.from_expression("0.1 Hz")
+offset_scalar = rmnpy.SIScalar.from_value_and_unit(0.0, "ppm")
+linear_dim2 = rmnpy.Dimension.create_linear(
+    label="Chemical Shift",
+    description="1H NMR chemical shift", 
+    count=1024,
+    increment=increment_scalar,     # SIScalar object
+    origin_offset=offset_scalar,    # SIScalar object
+    scaling=ScalingType.NMR
+)
+
 # Create a labeled dimension (e.g., for categorical data)
 labels = ["Sample A", "Sample B", "Sample C", "Control"]
-labeled_dim = rmnpy.LabeledDimension.create(
+labeled_dim = rmnpy.Dimension.create_labeled(
+    labels=labels,
     label="Sample Type",
-    description="Different sample conditions",
-    coordinate_labels=labels
+    description="Different sample conditions"
 )
-print(f"Created labeled dimension with {len(labeled_dim.coordinate_labels)} labels")
+print(f"Created labeled dimension with {len(labels)} labels")
 
 # Create a monotonic dimension (e.g., for irregular time points)
-time_points = [0.0, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0]  # seconds
-monotonic_dim = rmnpy.MonotonicDimension.create(
+# Coordinates can be string expressions or SIScalar objects
+time_points = ["0.0 s", "0.1 s", "0.25 s", "0.5 s", "1.0 s", "2.0 s", "5.0 s", "10.0 s"]
+monotonic_dim = rmnpy.Dimension.create_monotonic(
+    coordinates=time_points,  # List of string expressions
     label="Time",
     description="Variable time intervals",
-    coordinates=time_points,
-    unit="s"
+    quantity_name="time"
 )
-print(f"Created monotonic dimension with {len(monotonic_dim.coordinates)} points")
+print(f"Created monotonic dimension with {len(time_points)} points")
 ```
 
 ### Creating Dependent Variables
@@ -256,25 +272,24 @@ print(f"Created multi-component DV with {len(multi_dv.components)} components")
 ```python
 import rmnpy
 import numpy as np
+from rmnpy.types import DataType
 
-# Create dimensions
-freq_dim = rmnpy.LinearDimension.create(
+# Step 1: Create dimensions first
+freq_dim = rmnpy.Dimension.create_linear(
     label="Frequency",
     count=512,
-    increment=100.0,  # Hz
-    unit="Hz",
-    origin=0.0
+    increment="100.0 Hz",         # String expression for increment
+    origin_offset="0.0 Hz"        # String expression for origin offset
 )
 
-time_dim = rmnpy.LinearDimension.create(
+time_dim = rmnpy.Dimension.create_linear(
     label="Time",
     count=64,
-    increment=0.01,  # seconds
-    unit="s",
-    origin=0.0
+    increment="0.01 s",           # String expression for increment  
+    origin_offset="0.0 s"         # String expression for origin offset
 )
 
-# Create dependent variable
+# Step 2: Create dependent variable using the dimensions
 spectrum_data = np.random.random((64, 512))  # time x frequency
 spectrum_dv = rmnpy.DependentVariable.create(
     name="2D NMR Spectrum",
@@ -284,7 +299,7 @@ spectrum_dv = rmnpy.DependentVariable.create(
     data=spectrum_data
 )
 
-# Create complete dataset
+# Step 3: Create complete dataset using dimensions and dependent variables
 dataset = rmnpy.Dataset.create(
     title="2D NMR Experiment",
     description="COSY spectrum of organic compound",
@@ -392,6 +407,16 @@ Represents a data variable with values and metadata.
 - `data_type` - Data type (float64, complex128, etc.)
 - `data` - NumPy array of data values
 - `components` - List of component names (for multi-component data)
+
+#### `SIScalar`
+Represents a physical quantity with a numeric value and units.
+
+**Methods:**
+- `SIScalar.from_expression(expression)` - Create from string expression like "1.0 Hz"
+- `SIScalar.from_value_and_unit(value, unit)` - Create from separate value and unit
+
+**Properties:**
+- `value` - Numeric value in coherent SI units
 
 ### Exceptions
 

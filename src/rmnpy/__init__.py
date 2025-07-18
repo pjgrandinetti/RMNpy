@@ -10,6 +10,7 @@ Currently Implemented Classes:
     DependentVariable: Represents data variables with units and metadata  
     Datum: Represents individual data points with coordinates and response values
     SparseSampling: Represents non-uniform, non-Cartesian sampling layouts
+    SIScalar: Represents physical quantities with values and units
 
 Available in RMNLib but not yet wrapped in RMNpy:
     GeographicCoordinate: For geographic location data with lat/lon/altitude
@@ -24,8 +25,13 @@ For more information, visit: https://github.com/pjgrandinetti/RMNpy
 """
 
 from .core import Dataset, Datum, Dimension, DependentVariable, SparseSampling, shutdown
+# Backward compatibility: Import SIScalar from new sitypes module
+from .sitypes import SIScalar
 from .exceptions import RMNLibError, RMNLibMemoryError, RMNLibValidationError
 from .types import DimensionType, ScalingType
+
+# Also expose the sitypes module for users who want the new API
+from . import sitypes
 
 __version__ = "0.1.0"
 __author__ = "Philip Grandinetti"
@@ -38,6 +44,10 @@ __all__ = [
     "Dimension",
     "DependentVariable",
     "SparseSampling",
+    "SIScalar",  # Backward compatibility
+    
+    # SITypes module (new API)
+    "sitypes",
     
     # Exceptions
     "RMNLibError",

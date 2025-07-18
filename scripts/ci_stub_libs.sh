@@ -219,6 +219,7 @@ OCTypeRef OCRetain(OCTypeRef ref);
 
 // SITypes function declarations
 SIScalarRef SIScalarCreateWithDouble(double value, SIUnitRef unit);
+SIScalarRef SIScalarCreateFromExpression(OCStringRef string, OCStringRef* error);
 double SIScalarDoubleValueInCoherentUnit(SIScalarRef scalar);
 SIUnitRef SIUnitFromExpression(const char* expr, void* p1, void* p2);
 
@@ -358,6 +359,7 @@ void* OCRetain(void* ref) { return ref; }
 
 // SITypes function stubs
 void* SIScalarCreateWithDouble(double value, void* unit) { return NULL; }
+void* SIScalarCreateFromExpression(void* string, void** error) { return NULL; }
 double SIScalarDoubleValueInCoherentUnit(void* scalar) { return 0.0; }
 
 // RMNLib function stubs

@@ -79,7 +79,7 @@ class CustomBuildExt(build_ext):
                 {
                     "name": "OCTypes",
                     "repo": "pjgrandinetti/OCTypes",
-                    "version": "v0.1.1",
+                    "version": "v0.1.0",
                     "lib_asset": f"libOCTypes-{ocotypes_suffix}.zip",
                     "headers_asset": "libOCTypes-headers.zip",
                     "lib_file": "libOCTypes.a"
@@ -302,6 +302,78 @@ extensions = [
     Extension(
         "rmnpy.sparse_sampling",
         sources=["src/rmnpy/sparse_sampling.pyx"],
+        include_dirs=[
+            "include",           # Bundled headers root
+            "include/OCTypes",   # OCTypes headers
+            "include/SITypes",   # SITypes headers
+            "include/RMNLib",    # RMNLib headers
+            numpy.get_include()
+        ],
+        library_dirs=[
+            "lib"               # Bundled libraries
+        ],
+        libraries=["curl", "SITypes", "OCTypes", "RMN"],
+        language="c",
+        extra_compile_args=["-std=c99", "-Wno-unused-function"],
+        extra_link_args=[]
+    ),
+    Extension(
+        "rmnpy.sitypes.scalar",
+        sources=["src/rmnpy/sitypes/scalar.pyx"],
+        include_dirs=[
+            "include",           # Bundled headers root
+            "include/OCTypes",   # OCTypes headers
+            "include/SITypes",   # SITypes headers
+            "include/RMNLib",    # RMNLib headers
+            numpy.get_include()
+        ],
+        library_dirs=[
+            "lib"               # Bundled libraries
+        ],
+        libraries=["curl", "SITypes", "OCTypes", "RMN"],
+        language="c",
+        extra_compile_args=["-std=c99", "-Wno-unused-function"],
+        extra_link_args=[]
+    ),
+    Extension(
+        "rmnpy.sitypes.helpers",
+        sources=["src/rmnpy/sitypes/helpers.pyx"],
+        include_dirs=[
+            "include",           # Bundled headers root
+            "include/OCTypes",   # OCTypes headers
+            "include/SITypes",   # SITypes headers
+            "include/RMNLib",    # RMNLib headers
+            numpy.get_include()
+        ],
+        library_dirs=[
+            "lib"               # Bundled libraries
+        ],
+        libraries=["curl", "SITypes", "OCTypes", "RMN"],
+        language="c",
+        extra_compile_args=["-std=c99", "-Wno-unused-function"],
+        extra_link_args=[]
+    ),
+    Extension(
+        "rmnpy.sitypes.dimensionality",
+        sources=["src/rmnpy/sitypes/dimensionality.pyx"],
+        include_dirs=[
+            "include",           # Bundled headers root
+            "include/OCTypes",   # OCTypes headers
+            "include/SITypes",   # SITypes headers
+            "include/RMNLib",    # RMNLib headers
+            numpy.get_include()
+        ],
+        library_dirs=[
+            "lib"               # Bundled libraries
+        ],
+        libraries=["curl", "SITypes", "OCTypes", "RMN"],
+        language="c",
+        extra_compile_args=["-std=c99", "-Wno-unused-function"],
+        extra_link_args=[]
+    ),
+    Extension(
+        "rmnpy.sitypes.unit",
+        sources=["src/rmnpy/sitypes/unit.pyx"],
         include_dirs=[
             "include",           # Bundled headers root
             "include/OCTypes",   # OCTypes headers

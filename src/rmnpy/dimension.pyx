@@ -2,6 +2,7 @@
 from .helpers cimport _ocstring_to_py, _siscalar_to_py, _py_to_ocstring
 from .core cimport *
 from .exceptions import RMNLibError
+from .sitypes.scalar cimport SIScalar
 
 cdef class Dimension:
     """Represents a dimension in a multidimensional scientific dataset."""
@@ -31,11 +32,11 @@ cdef class Dimension:
         quantity_name : str, optional
             The physical quantity name
         offset : SIScalar, optional
-            Offset value
+            Offset value with units (e.g., SIScalar.from_value_and_unit(0.0, "Hz"))
         origin : SIScalar, optional
-            Origin value  
+            Origin value with units (e.g., SIScalar.from_value_and_unit(0.0, "ppm"))
         period : SIScalar, optional
-            Period for periodic dimensions
+            Period for periodic dimensions with units
         periodic : bool, optional
             Whether the dimension is periodic
         scaling : int, optional
@@ -43,7 +44,7 @@ cdef class Dimension:
         count : int, optional
             Number of points
         increment : SIScalar, optional
-            Increment between points
+            Increment between points with units (required)
         fft : bool, optional
             Whether to use FFT
         reciprocal : SIDimension, optional
@@ -71,8 +72,15 @@ cdef class Dimension:
             # Validate required parameters first (matching C function logic)
             if increment is None:
                 raise RMNLibError("increment parameter is required and must be a SIScalar")
+            if not isinstance(increment, SIScalar):
+                raise RMNLibError("increment must be a SIScalar object")
             if count < 2:
                 raise RMNLibError("count must be ≥2")
+                
+            # Validate SIScalar parameters
+            for param_name, param_value in [("offset", offset), ("origin", origin), ("period", period)]:
+                if param_value is not None and not isinstance(param_value, SIScalar):
+                    raise RMNLibError(f"{param_name} must be a SIScalar object, got {type(param_value)}")
                 
             # Convert string parameters to C types (these can be NULL)
             if label is not None:
@@ -102,19 +110,19 @@ cdef class Dimension:
             # The C function's impl_validateOrDefaultScalar creates appropriate defaults
             # when these are NULL, so we pass NULL rather than creating our own defaults
             if offset is not None:
-                c_offset = <SIScalarRef>offset._ref
+                c_offset = (<SIScalar>offset)._get_c_ref()
             # else: c_offset remains NULL → C function creates zero scalar in increment's unit
             
             if origin is not None:
-                c_origin = <SIScalarRef>origin._ref
+                c_origin = (<SIScalar>origin)._get_c_ref()
             # else: c_origin remains NULL → C function creates zero scalar in increment's unit
             
             if period is not None:
-                c_period = <SIScalarRef>period._ref
+                c_period = (<SIScalar>period)._get_c_ref()
             # else: c_period remains NULL → C function creates zero scalar in increment's unit
             
             # increment is required - get its C reference
-            c_increment = <SIScalarRef>increment._ref
+            c_increment = (<SIScalar>increment)._get_c_ref()
             
             # Create the linear dimension using the exact C API
             dimension._ref = <DimensionRef>SILinearDimensionCreate(

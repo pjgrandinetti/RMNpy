@@ -27,7 +27,11 @@
    
       ~DependentVariable.data
       ~DependentVariable.description
+      ~DependentVariable.label
       ~DependentVariable.name
+      ~DependentVariable.quantity_type
+      ~DependentVariable.shape
       ~DependentVariable.unit
+      ~DependentVariable.units
    
    

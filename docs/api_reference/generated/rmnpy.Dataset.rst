@@ -30,7 +30,10 @@
       ~Dataset.dependent_variable_count
       ~Dataset.dependent_variables
       ~Dataset.description
+      ~Dataset.dimension_precedence
       ~Dataset.dimensions
+      ~Dataset.metadata
+      ~Dataset.tags
       ~Dataset.title
    
    

@@ -17,6 +17,7 @@
       ~Dimension.create_labeled
       ~Dimension.create_linear
       ~Dimension.create_monotonic
+      ~Dimension.create_si_dimension
    
    
 

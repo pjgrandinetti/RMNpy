@@ -4,6 +4,7 @@
 
 # Main entry point for RMNpy Cython interface
 
+from .core cimport RMNLibTypesShutdown
 
 # Python-level imports for public API
 from .dataset import Dataset
