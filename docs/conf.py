@@ -171,13 +171,23 @@ class RMNLibValidationError(RMNLibError):
 
 # Write the main rmnpy __init__.py file
 rmnpy_init_file = _mock_rmnpy_dir / '__init__.py'
-rmnpy_init_file.write_text(rmnpy_init_content)
+rmnpy_init_file.write_text(rmnpy_init_content, encoding='utf-8')
+
+# Verify the file was written correctly
+try:
+    written_content = rmnpy_init_file.read_text(encoding='utf-8')
+    compile(written_content, str(rmnpy_init_file), 'exec')
+    print(f"SUCCESS: Mock file verified at {rmnpy_init_file}")
+except Exception as e:
+    print(f"ERROR: Mock file verification failed: {e}")
+    print(f"File exists: {rmnpy_init_file.exists()}")
+    print(f"File size: {rmnpy_init_file.stat().st_size if rmnpy_init_file.exists() else 'N/A'}")
 
 # Create sitypes subpackage
 sitypes_dir = _mock_rmnpy_dir / 'sitypes'
 sitypes_dir.mkdir(exist_ok=True)
 sitypes_init = sitypes_dir / '__init__.py'
-sitypes_init.write_text('"""Mock sitypes package for documentation."""\n')
+sitypes_init.write_text('"""Mock sitypes package for documentation."""\n', encoding='utf-8')
 
 # Add the mock directory to Python path so imports work
 sys.path.insert(0, str(_temp_dir))
@@ -202,6 +212,31 @@ def mock_import(name, *args, **kwargs):
     return original_import(name, *args, **kwargs)
 
 builtins.__import__ = mock_import
+
+# Prevent Sphinx pycode analyzer from trying to parse our mock files
+def setup(app):
+    """Setup function called by Sphinx."""
+    
+    # Override pycode analyzer to skip our mock files
+    from sphinx.pycode import ModuleAnalyzer
+    original_analyze = ModuleAnalyzer.analyze
+    
+    def safe_analyze(self):
+        """Override analyze method to skip mock files."""
+        try:
+            # Skip analysis of mock files
+            if hasattr(self, 'modname') and 'sphinx_mock_' in str(getattr(self, 'modname', '')):
+                return
+            if hasattr(self, '_filename') and self._filename and 'sphinx_mock_' in str(self._filename):
+                return
+            return original_analyze(self)
+        except Exception as e:
+            # If analysis fails, just skip it
+            print(f"Skipping pycode analysis due to error: {e}")
+            return
+    
+    ModuleAnalyzer.analyze = safe_analyze
+    return {'version': '1.0', 'parallel_read_safe': True}
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -233,7 +268,16 @@ sys.path.insert(0, str(src_path))
 print("PYTHONPATH for Sphinx:", sys.path)
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = [
+    '_build', 
+    'Thumbs.db', 
+    '.DS_Store',
+    '**/sphinx_mock_*',  # Exclude any temporary mock directories
+    '/tmp/sphinx_mock_*',  # Exclude temporary mock directories
+]
+
+# Exclude temporary mock files from source file scanning
+exclude_patterns.append(f'{tempfile.gettempdir()}/sphinx_mock_*/**')
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
