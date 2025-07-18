@@ -6,6 +6,7 @@
 
 import os
 import sys
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -18,21 +19,52 @@ print("PYTHONPATH for Sphinx:", sys.path)
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
 on_ci = os.environ.get('CI') == 'True' or on_rtd
 
+# Create a temporary directory for mock files that Sphinx can parse
+_temp_dir = tempfile.mkdtemp(prefix='sphinx_mock_')
+_mock_rmnpy_dir = Path(_temp_dir) / 'rmnpy'
+_mock_rmnpy_dir.mkdir(parents=True, exist_ok=True)
+
 # Mock C extension modules for documentation builds - ALWAYS apply mocking
 class MockModule:
     """A simple mock module that behaves correctly with Sphinx"""
     
-    def __init__(self, name="MockModule"):
+    def __init__(self, name="MockModule", create_file=True):
         self.__name__ = name
-        self.__file__ = f'/mock/{name}/__init__.py'
         self.__qualname__ = name
         self.__doc__ = f"Mock documentation for {name}"
         
+        # Create actual Python files for Sphinx to parse
+        if create_file:
+            if '.' in name:
+                # Handle submodules
+                parts = name.split('.')
+                mock_dir = Path(_temp_dir)
+                for part in parts[:-1]:
+                    mock_dir = mock_dir / part
+                    mock_dir.mkdir(exist_ok=True)
+                    init_file = mock_dir / '__init__.py'
+                    if not init_file.exists():
+                        init_file.write_text('# Mock module for Sphinx documentation\n')
+                
+                # Create the final module file
+                final_file = mock_dir / f'{parts[-1]}.py'
+                if not final_file.exists():
+                    final_file.write_text(f'"""Mock {name} module for documentation."""\n')
+                self.__file__ = str(final_file)
+            else:
+                # Handle top-level modules
+                mock_file = Path(_temp_dir) / f'{name}.py'
+                if not mock_file.exists():
+                    mock_file.write_text(f'"""Mock {name} module for documentation."""\n')
+                self.__file__ = str(mock_file)
+        else:
+            self.__file__ = f'/mock/{name}.py'
+        
     def __getattr__(self, name):
-        return MockModule(f"{self.__name__}.{name}")
+        return MockModule(f"{self.__name__}.{name}", create_file=False)
     
     def __call__(self, *args, **kwargs):
-        return MockModule(f"{self.__name__}()")
+        return MockModule(f"{self.__name__}()", create_file=False)
     
     def __bool__(self):
         return True
@@ -62,31 +94,98 @@ MOCK_MODULES = [
 ]
 
 for mod_name in MOCK_MODULES:
-    sys.modules[mod_name] = MockModule()
+    sys.modules[mod_name] = MockModule(mod_name)
 
-# Create a comprehensive mock rmnpy module structure
-mock_rmnpy = MockModule('rmnpy')
+# Create the main rmnpy package with proper __init__.py
+rmnpy_init_content = '''"""
+RMNpy - A Python library for NMR data processing and analysis.
 
-# Mock all the main classes that Sphinx needs to document
-mock_rmnpy.Dataset = MockModule('rmnpy.Dataset')
-mock_rmnpy.Dataset.create = MockModule('rmnpy.Dataset.create')
-mock_rmnpy.Dimension = MockModule('rmnpy.Dimension')
-mock_rmnpy.Dimension.create_linear = MockModule('rmnpy.Dimension.create_linear')
-mock_rmnpy.Dimension.create_labeled = MockModule('rmnpy.Dimension.create_labeled')
-mock_rmnpy.Dimension.create_monotonic = MockModule('rmnpy.Dimension.create_monotonic')
-mock_rmnpy.DependentVariable = MockModule('rmnpy.DependentVariable')
-mock_rmnpy.DependentVariable.create = MockModule('rmnpy.DependentVariable.create')
-mock_rmnpy.Datum = MockModule('rmnpy.Datum')
-mock_rmnpy.Datum.create = MockModule('rmnpy.Datum.create')
-mock_rmnpy.SparseSampling = MockModule('rmnpy.SparseSampling')
-mock_rmnpy.SIScalar = MockModule('rmnpy.SIScalar')
-mock_rmnpy.shutdown = MockModule('rmnpy.shutdown')
-mock_rmnpy.RMNLibError = MockModule('rmnpy.RMNLibError')
-mock_rmnpy.RMNLibMemoryError = MockModule('rmnpy.RMNLibMemoryError')
-mock_rmnpy.RMNLibValidationError = MockModule('rmnpy.RMNLibValidationError')
+This is a mock version for documentation generation.
+"""
 
-# Mock the __file__ attribute to prevent import errors
-mock_rmnpy.__file__ = '/mock/rmnpy/__init__.py'
+class Dataset:
+    """Mock Dataset class for documentation."""
+    
+    @classmethod
+    def create(cls):
+        """Create a new Dataset."""
+        pass
+
+class Dimension:
+    """Mock Dimension class for documentation."""
+    
+    @classmethod  
+    def create_linear(cls):
+        """Create a linear dimension."""
+        pass
+        
+    @classmethod
+    def create_labeled(cls):
+        """Create a labeled dimension."""
+        pass
+        
+    @classmethod
+    def create_monotonic(cls):
+        """Create a monotonic dimension."""
+        pass
+
+class DependentVariable:
+    """Mock DependentVariable class for documentation."""
+    
+    @classmethod
+    def create(cls):
+        """Create a new DependentVariable."""
+        pass
+
+class Datum:
+    """Mock Datum class for documentation."""
+    
+    @classmethod
+    def create(cls):
+        """Create a new Datum."""
+        pass
+
+class SparseSampling:
+    """Mock SparseSampling class for documentation."""
+    pass
+
+class SIScalar:
+    """Mock SIScalar class for documentation."""
+    pass
+
+def shutdown():
+    """Mock shutdown function."""
+    pass
+
+class RMNLibError(Exception):
+    """Mock RMNLibError exception."""
+    pass
+
+class RMNLibMemoryError(RMNLibError):
+    """Mock RMNLibMemoryError exception."""
+    pass
+
+class RMNLibValidationError(RMNLibError):
+    """Mock RMNLibValidationError exception."""
+    pass
+'''
+
+# Write the main rmnpy __init__.py file
+rmnpy_init_file = _mock_rmnpy_dir / '__init__.py'
+rmnpy_init_file.write_text(rmnpy_init_content)
+
+# Create sitypes subpackage
+sitypes_dir = _mock_rmnpy_dir / 'sitypes'
+sitypes_dir.mkdir(exist_ok=True)
+sitypes_init = sitypes_dir / '__init__.py'
+sitypes_init.write_text('"""Mock sitypes package for documentation."""\n')
+
+# Add the mock directory to Python path so imports work
+sys.path.insert(0, str(_temp_dir))
+
+# Now create the mock module and add to sys.modules
+mock_rmnpy = MockModule('rmnpy', create_file=False)
+mock_rmnpy.__file__ = str(rmnpy_init_file)
 
 sys.modules['rmnpy'] = mock_rmnpy
 
