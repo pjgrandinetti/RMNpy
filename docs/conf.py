@@ -28,25 +28,40 @@ if on_ci or on_rtd:
         def __call__(self, *args, **kwargs):
             return MagicMock()
     
-    # Mock the C extension modules that can't be imported without building
-    sys.modules['rmnpy.core'] = MockModule()
-    sys.modules['rmnpy.helpers'] = MockModule()
-    sys.modules['rmnpy.sitypes'] = MockModule()
-    sys.modules['rmnpy.sitypes.dimensionality'] = MockModule()
-    sys.modules['rmnpy.sitypes.unit'] = MockModule()
-    sys.modules['rmnpy.sitypes.scalar'] = MockModule()
-    sys.modules['rmnpy.sitypes.helpers'] = MockModule()
+    # Mock all the problematic modules before any imports
+    MOCK_MODULES = [
+        'rmnpy.core',
+        'rmnpy.helpers', 
+        'rmnpy.sitypes',
+        'rmnpy.sitypes.dimensionality',
+        'rmnpy.sitypes.unit',
+        'rmnpy.sitypes.scalar',
+        'rmnpy.sitypes.helpers',
+        'rmnpy.exceptions'
+    ]
     
-    # Try to import rmnpy and if it fails, mock it entirely
-    try:
-        import rmnpy
-        print("Successfully imported rmnpy")
-    except ImportError as e:
-        print(f"Failed to import rmnpy: {e}")
-        print("Creating mock rmnpy module")
-        sys.modules['rmnpy'] = MockModule()
-        
-    print("Mocked C extension modules for CI/RTD build")
+    for mod_name in MOCK_MODULES:
+        sys.modules[mod_name] = MockModule()
+    
+    # Create a mock rmnpy module structure
+    mock_rmnpy = MockModule()
+    
+    # Mock the main classes that Sphinx needs to document
+    mock_rmnpy.Dataset = MockModule()
+    mock_rmnpy.Dataset.create = MockModule()
+    mock_rmnpy.Dimension = MockModule()
+    mock_rmnpy.DependentVariable = MockModule()
+    mock_rmnpy.Datum = MockModule()
+    mock_rmnpy.SparseSampling = MockModule()
+    mock_rmnpy.SIScalar = MockModule()
+    mock_rmnpy.shutdown = MockModule()
+    mock_rmnpy.RMNLibError = MockModule()
+    mock_rmnpy.RMNLibMemoryError = MockModule()
+    mock_rmnpy.RMNLibValidationError = MockModule()
+    
+    sys.modules['rmnpy'] = mock_rmnpy
+    
+    print("Comprehensive mocking applied for CI/RTD build")
 
 # Check if we're building on Read the Docs
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
