@@ -19,15 +19,33 @@ on_rtd = os.environ.get('READTHEDOCS') == 'True'
 on_ci = os.environ.get('CI') == 'True' or on_rtd
 
 # Mock C extension modules for documentation builds
-if on_ci:
+if on_ci or on_rtd:
     class MockModule(MagicMock):
         @classmethod
         def __getattr__(cls, name):
+            return MagicMock()
+        
+        def __call__(self, *args, **kwargs):
             return MagicMock()
     
     # Mock the C extension modules that can't be imported without building
     sys.modules['rmnpy.core'] = MockModule()
     sys.modules['rmnpy.helpers'] = MockModule()
+    sys.modules['rmnpy.sitypes'] = MockModule()
+    sys.modules['rmnpy.sitypes.dimensionality'] = MockModule()
+    sys.modules['rmnpy.sitypes.unit'] = MockModule()
+    sys.modules['rmnpy.sitypes.scalar'] = MockModule()
+    sys.modules['rmnpy.sitypes.helpers'] = MockModule()
+    
+    # Try to import rmnpy and if it fails, mock it entirely
+    try:
+        import rmnpy
+        print("Successfully imported rmnpy")
+    except ImportError as e:
+        print(f"Failed to import rmnpy: {e}")
+        print("Creating mock rmnpy module")
+        sys.modules['rmnpy'] = MockModule()
+        
     print("Mocked C extension modules for CI/RTD build")
 
 # Check if we're building on Read the Docs
