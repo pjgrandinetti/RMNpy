@@ -217,22 +217,39 @@ builtins.__import__ = mock_import
 def setup(app):
     """Setup function called by Sphinx."""
     
-    # Override pycode analyzer to skip our mock files
+    # Override pycode analyzer to handle mock files gracefully
     from sphinx.pycode import ModuleAnalyzer
     original_analyze = ModuleAnalyzer.analyze
     
     def safe_analyze(self):
-        """Override analyze method to skip mock files."""
+        """Override analyze method to handle mock files gracefully."""
         try:
-            # Skip analysis of mock files
+            # Check if this is a mock file
+            is_mock_file = False
             if hasattr(self, 'modname') and 'sphinx_mock_' in str(getattr(self, 'modname', '')):
-                return
+                is_mock_file = True
             if hasattr(self, '_filename') and self._filename and 'sphinx_mock_' in str(self._filename):
+                is_mock_file = True
+                
+            if is_mock_file:
+                # Initialize the analyzer with empty data to avoid AttributeError
+                self.attr_docs = {}
+                self.annotations = {}
+                self.finals = set()
+                self.overloads = {}
+                self.tags = {}
+                print(f"Mock file detected, using minimal analysis: {getattr(self, '_filename', 'unknown')}")
                 return
+                
             return original_analyze(self)
         except Exception as e:
-            # If analysis fails, just skip it
+            # If analysis fails, initialize with empty data
             print(f"Skipping pycode analysis due to error: {e}")
+            self.attr_docs = {}
+            self.annotations = {}
+            self.finals = set()
+            self.overloads = {}
+            self.tags = {}
             return
     
     ModuleAnalyzer.analyze = safe_analyze
