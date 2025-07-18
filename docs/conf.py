@@ -97,8 +97,7 @@ for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = MockModule(mod_name)
 
 # Create the main rmnpy package with proper __init__.py
-rmnpy_init_content = '''"""
-RMNpy - A Python library for NMR data processing and analysis.
+rmnpy_init_content = '''"""RMNpy - A Python library for NMR data processing and analysis.
 
 This is a mock version for documentation generation.
 """
