@@ -34,20 +34,50 @@ RMNpy is a Cython-based Python package that wraps the RMNLib C library, allowing
 
 ```python
 import rmnpy
+import numpy as np
+from rmnpy.sitypes import kSIQuantityTime, kSIQuantityFrequency, kSIQuantityElectricPotential
 
-# Step 1: Create dimension first
-linear_dim = rmnpy.Dimension.create_linear(label="Frequency", count=512, increment="1.0 Hz", origin_offset="0.0 Hz")
+# Generate complex NMR data (damped oscillation)
+count = 1024
+frequency = 100.0    # Hz
+decay_rate = 50.0    # s⁻¹ (decay constant)
 
-# Step 2: Create dependent variable 
-dependent_var = rmnpy.DependentVariable.create(name="Intensity", data=[1.0, 2.0, 3.0])
+time_axis = np.arange(count) * 1.0e-6  # 1 µs sampling interval
+amplitude = np.exp(-decay_rate * time_axis)
+phase = 2.0 * np.pi * frequency * time_axis
+complex_data = amplitude * (np.cos(phase) + 1j * np.sin(phase))
 
-# Step 3: Create dataset using dimension and dependent variable
-dataset = rmnpy.Dataset.create(
-    dimensions=[linear_dim],
-    dependent_variables=[dependent_var]
+# Create time dimension with physical quantities
+time_dim = rmnpy.Dimension.create_linear(
+    label="time",
+    count=count,
+    increment="1.0 µs",           # String expression
+    quantity_name=kSIQuantityTime,   # Explicit quantity
+    description="NMR acquisition time axis"
 )
 
-print("RMNpy objects created successfully!")
+# Create dependent variable for NMR signal
+signal_var = rmnpy.DependentVariable.create(
+    data=complex_data,
+    name="nmr_signal",
+    description="Complex NMR signal with T2 decay",
+    units="V",
+    quantity_name=kSIQuantityElectricPotential,  # Required for C API
+    quantity_type="scalar",  # Required for C API
+    element_type="complex128"  # Required for C API
+)
+
+# Create complete scientific dataset
+dataset = rmnpy.Dataset.create(
+    title="Complex NMR Experiment",
+    description="Damped oscillation typical of NMR/ESR spectroscopy",
+    dimensions=[time_dim],
+    dependent_variables=[signal_var]
+)
+
+print(f"Created dataset: {dataset.title}")
+print(f"Data points: {count}, Time range: 1 µs steps")
+print("RMNpy scientific dataset created successfully!")
 ```
 
 ## Documentation

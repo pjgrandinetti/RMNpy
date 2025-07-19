@@ -41,33 +41,50 @@ The ``Dataset`` class represents a complete scientific dataset:
 Working with Dimensions
 -----------------------
 
-Dimensions represent coordinate axes in your dataset. Each type has specific requirements:
+Creating Scientific Dimensions
+------------------------------
+
+Dimensions represent coordinate axes in your scientific dataset. Each type has specific requirements for different experimental scenarios:
 
 .. code-block:: python
 
    import numpy as np
+   from rmnpy.sitypes import kSIQuantityTime, kSIQuantityFrequency
    
-   # Linear dimension: evenly spaced coordinates
+   # Linear dimension: evenly spaced coordinates (typical for NMR acquisition)
    linear_dim = rmnpy.Dimension.create_linear(
-       count=100,           # Number of points
-       increment=0.1,       # Spacing between points
-       label="time",        # Optional label
-       description="Time axis in seconds"
+       label="time",
+       count=1024,              # Number of acquisition points
+       increment="1.0 µs",      # Sampling interval (string expression)
+       quantity_name=kSIQuantityTime,  # Explicit physical quantity
+       description="Time axis for NMR acquisition"
    )
    
-   # Labeled dimension: explicit string/discrete labels  
-   labels = ["sample_A", "sample_B", "sample_C", "sample_D"]
+   # Labeled dimension: discrete categorical labels  
+   sample_labels = ["control", "treated_1hr", "treated_4hr", "treated_24hr"]
    labeled_dim = rmnpy.Dimension.create_labeled(
-       labels,              # Required: list of labels
-       label="samples",     # Optional dimension label
-       description="Sample identifiers"
+       labels=sample_labels,           # Required: list of labels
+       label="treatment_condition",    # Optional dimension label
+       description="Sample treatment time points"
    )
    
-   # Monotonic dimension: custom coordinates (requires SIScalar objects)
-   # Note: For monotonic dimensions, you need SIScalar coordinate objects
-   # This is a more advanced use case - see API documentation for details
+   # Monotonic dimension: non-uniform coordinates (T1 inversion recovery)
+   # Recovery times spanning 6 orders of magnitude
+   recovery_times = [
+       "10.0 µs", "50.0 µs", "100.0 µs", "500.0 µs",
+       "1.0 ms", "5.0 ms", "10.0 ms", "50.0 ms", 
+       "100.0 ms", "500.0 ms", "1.0 s", "5.0 s", "10.0 s"
+   ]
+   monotonic_dim = rmnpy.Dimension.create_monotonic(
+       coordinates=recovery_times,     # String expressions for time points
+       label="recovery_time",
+       quantity_name=kSIQuantityTime,    # Physical quantity constant
+       description="T1 inversion recovery time points"
+   )
    
-   print(f"Linear dimension: {linear_dim}")
+   print(f"Linear dimension: {linear_dim.label} ({linear_dim.count} points)")
+   print(f"Labeled dimension: {labeled_dim.label} ({len(sample_labels)} labels)")
+   print(f"Monotonic dimension: {monotonic_dim.label} ({len(recovery_times)} time points)")
    print(f"Labeled dimension: {labeled_dim}")
 
 Working with DependentVariables

@@ -59,12 +59,61 @@ Install from source::
 Quick Start
 ~~~~~~~~~~~
 
+Scientific Example - Complex NMR Data
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   import numpy as np
+   import rmnpy
+   from rmnpy.sitypes import kSIQuantityTime, kSIQuantityFrequency
+
+   # Generate complex NMR data (damped oscillation matching RMNLib examples)
+   count = 1024
+   frequency = 100.0    # Hz
+   decay_rate = 50.0    # s⁻¹ (decay constant)
+   
+   time_axis = np.arange(count) * 1.0e-6  # 1 µs sampling interval
+   amplitude = np.exp(-decay_rate * time_axis)
+   phase = 2.0 * np.pi * frequency * time_axis
+   complex_data = amplitude * (np.cos(phase) + 1j * np.sin(phase))
+
+   # Create time dimension with physical quantities
+   time_dim = rmnpy.Dimension.create_linear(
+       label="time",
+       count=count,
+       increment="1.0 µs",           # String expression like RMNLib C API
+       quantity_name=kSIQuantityTime,   # Explicit quantity constant
+       description="NMR acquisition time axis"
+   )
+
+   # Create dependent variable for NMR signal
+   signal_var = rmnpy.DependentVariable.create(
+       name="nmr_signal",
+       description="Complex NMR signal with T2 decay",
+       unit="V",
+       data=complex_data
+   )
+
+   # Create complete scientific dataset
+   dataset = rmnpy.Dataset.create(
+       title="Complex NMR Experiment", 
+       description="Damped oscillation typical of NMR/ESR spectroscopy",
+       dimensions=[time_dim],
+       dependent_variables=[signal_var]
+   )
+   
+   print(f"Created dataset: {dataset.title}")
+
+Basic Usage Example
+^^^^^^^^^^^^^^^^^^^
+
 .. code-block:: python
 
    import numpy as np
    import rmnpy
 
-   # Create sample data
+   # Simple example for getting started
    data = np.array([1.0, 2.0, 3.0, 4.0, 5.0], dtype=np.float64)
    
    # Create a dependent variable with data and metadata

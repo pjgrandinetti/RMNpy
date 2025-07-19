@@ -33,6 +33,7 @@ kSIQuantityPressure = "pressure"
 kSIQuantityEnergy = "energy"
 kSIQuantityPower = "power"
 kSIQuantityFrequency = "frequency"
+kSIQuantityElectricPotential = "electric_potential"
 
 __all__ = [
     "SIScalar",
@@ -45,5 +46,5 @@ __all__ = [
     "kSIQuantityArea", "kSIQuantityVolume", "kSIQuantityVelocity",
     "kSIQuantityAcceleration", "kSIQuantityDensity",
     "kSIQuantityForce", "kSIQuantityPressure", "kSIQuantityEnergy",
-    "kSIQuantityPower", "kSIQuantityFrequency"
+    "kSIQuantityPower", "kSIQuantityFrequency", "kSIQuantityElectricPotential"
 ]

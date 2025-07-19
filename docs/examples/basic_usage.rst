@@ -1,53 +1,97 @@
 Basic Usage
 ===========
 
-This example demonstrates the fundamental operations in RMNpy.
+This example demonstrates the fundamental operations in RMNpy, aligned with RMNLib C API patterns.
 
-Creating a Dataset
-------------------
+Creating a Scientific Dataset
+-----------------------------
 
 .. code-block:: python
 
    import rmnpy
-   from rmnpy import Dataset, LinearDimension, DependentVariable
    import numpy as np
+   from rmnpy import Dataset, Dimension, DependentVariable
+   from rmnpy.sitypes import kSIQuantityTime, kSIQuantityFrequency, kSIQuantityElectricPotential
 
-   # Create a dataset with metadata
+   # Create a dataset with scientific metadata
    dataset = Dataset.create(
-       title="Basic RMNpy Example",
-       description="Demonstrating core functionality"
+       title="Complex NMR Experiment",
+       description="Damped oscillation typical of NMR/ESR spectroscopy"
    )
    
    print(f"Created dataset: {dataset.title}")
 
-Adding Dimensions
------------------
+Generating Complex NMR Data
+---------------------------
 
 .. code-block:: python
 
-   # Create a frequency dimension
-   frequency_dim = LinearDimension.create(
-       label="frequency",
-       count=512,
-       increment=50.0,
-       unit="Hz",
-       origin=0.0
+   # Generate damped complex oscillation data (matching RMNLib example)
+   count = 1024
+   frequency = 100.0    # Hz  
+   decay_rate = 50.0    # s⁻¹ (decay constant)
+   
+   # Generate time axis and complex oscillating data
+   time_axis = np.arange(count) * 1.0e-6  # 1 µs sampling interval
+   amplitude = np.exp(-decay_rate * time_axis)
+   phase = 2.0 * np.pi * frequency * time_axis
+   complex_data = amplitude * (np.cos(phase) + 1j * np.sin(phase))
+
+Adding Scientific Dimensions  
+----------------------------
+
+.. code-block:: python
+
+   # Create a time dimension with proper physical quantities
+   time_dim = Dimension.create_linear(
+       label="time",
+       count=count,
+       increment="1.0 µs",           # String expression like C API
+       quantity_name=kSIQuantityTime,   # Explicit quantity name
+       description="Time axis for NMR acquisition"
    )
    
-   dataset.add_dimension(frequency_dim)
-   print(f"Added dimension: {frequency_dim.label}")
+   dataset.add_dimension(time_dim)
+   print(f"Added dimension: {time_dim.label}")
 
-Adding Data
------------
+Adding Scientific Data
+----------------------
 
 .. code-block:: python
 
-   # Generate sample data
-   data = np.sin(np.linspace(0, 4*np.pi, 512)) + 0.1 * np.random.random(512)
+   # Create dependent variable for complex NMR signal
+   signal_var = DependentVariable.create(
+       data=complex_data,
+       name="nmr_signal",
+       description="Complex NMR signal with T2 decay",
+       units="V",  # Voltage units
+       quantity_name=kSIQuantityElectricPotential,  # Required for C API
+       quantity_type="scalar",  # Required for C API
+       element_type="complex128"  # Required for C API
+   )
    
-   # Create dependent variable
-   intensity = DependentVariable.create(
-       name="intensity",
+   dataset.add_dependent_variable(signal_var)
+   print(f"Added variable: {signal_var.name}")
+
+T1 Inversion Recovery Example
+-----------------------------
+
+.. code-block:: python
+
+   # T1 inversion recovery with non-uniform time spacing (6 orders of magnitude)
+   recovery_times = [
+       "10.0 µs", "50.0 µs", "100.0 µs", "500.0 µs",
+       "1.0 ms", "5.0 ms", "10.0 ms", "50.0 ms", 
+       "100.0 ms", "500.0 ms", "1.0 s", "5.0 s", "10.0 s"
+   ]
+   
+   # Create monotonic time dimension
+   t1_recovery_dim = Dimension.create_monotonic(
+       coordinates=recovery_times,
+       label="recovery_time", 
+       quantity_name=kSIQuantityTime,
+       description="T1 inversion recovery time points"
+   )
        unit="arbitrary",
        data=data
    )
