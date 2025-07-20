@@ -1,0 +1,131 @@
+/* Custom styling for RMNpy documentation */
+
+/* Improve code block styling */
+.highlight {
+    background: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    margin: 16px 0;
+}
+
+/* Better table styling */
+.rst-content table.docutils {
+    border: 1px solid #e1e4e5;
+    border-collapse: collapse;
+}
+
+.rst-content table.docutils td,
+.rst-content table.docutils th {
+    border: 1px solid #e1e4e5;
+    padding: 8px 12px;
+}
+
+.rst-content table.docutils th {
+    background-color: #f3f6f6;
+    font-weight: bold;
+}
+
+/* Improve admonition styling */
+.rst-content .admonition {
+    margin: 24px 0;
+    padding: 12px;
+    border-left: 4px solid #ccc;
+    border-radius: 4px;
+}
+
+.rst-content .admonition.note {
+    border-left-color: #6ab0de;
+    background-color: #e7f2fa;
+}
+
+.rst-content .admonition.warning {
+    border-left-color: #f0b37e;
+    background-color: #ffedcc;
+}
+
+.rst-content .admonition.tip {
+    border-left-color: #1abc9c;
+    background-color: #dbfaf4;
+}
+
+/* Improve API documentation layout */
+.rst-content dl:not(.docutils) dt {
+    background-color: #f8f8f8;
+    border-top: 3px solid #6ab0de;
+    color: #555;
+    font-weight: bold;
+    margin-bottom: 6px;
+    padding: 6px;
+}
+
+/* Better spacing for parameter lists */
+.rst-content .field-list {
+    margin-bottom: 24px;
+}
+
+.rst-content .field-list .field-name {
+    font-weight: bold;
+    min-width: 100px;
+}
+
+/* Improve navigation styling */
+.wy-nav-content {
+    max-width: 1200px;
+}
+
+/* Better code formatting in tables */
+.rst-content table.docutils code {
+    background-color: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-size: 90%;
+}
+
+/* Improve inline code styling */
+.rst-content code {
+    background-color: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-size: 90%;
+    color: #c7254e;
+}
+
+/* Better section header styling */
+.rst-content h1 {
+    border-bottom: 3px solid #6ab0de;
+    padding-bottom: 10px;
+}
+
+.rst-content h2 {
+    border-bottom: 2px solid #6ab0de;
+    padding-bottom: 6px;
+}
+
+/* Improve version badge styling */
+.rst-versions {
+    border-top: 3px solid #6ab0de;
+}
+
+/* Better styling for function signatures */
+.rst-content .sig {
+    background-color: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px;
+    margin: 8px 0;
+    font-family: 'Courier New', monospace;
+}
+
+/* Improve cross-reference styling */
+.rst-content .xref {
+    color: #2980b9;
+    text-decoration: none;
+}
+
+.rst-content .xref:hover {
+    color: #3498db;
+    text-decoration: underline;
+}

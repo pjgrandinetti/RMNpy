@@ -1,0 +1,26 @@
+"""
+RMNpy: Python bindings for OCTypes, SITypes, and RMNLib
+
+This package provides Python access to three C libraries:
+- OCTypes: Objective-C style data structures and memory management
+- SITypes: Scientific units and dimensional analysis
+- RMNLib: High-level analysis and computation tools
+
+The package is organized into:
+- helpers: Internal conversion utilities for OCTypes
+- wrappers: High-level Python interfaces for SITypes and RMNLib
+"""
+
+__version__ = "0.1.0"
+__author__ = "Philip Grandinetti"
+__email__ = "grandinetti.1@osu.edu"
+
+# Import main functionality (will be added as we implement phases)
+# from .wrappers.sitypes import Scalar, Unit, Dimensionality
+# from .wrappers.rmnlib import *
+
+__all__ = [
+    "__version__",
+    "__author__", 
+    "__email__",
+]

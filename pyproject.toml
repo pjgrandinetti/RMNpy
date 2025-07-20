@@ -1,0 +1,217 @@
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "wheel>=0.37.0",
+    "cython>=0.29.24",
+    "numpy>=1.20.0",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rmnpy"
+version = "0.1.0"
+description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries"
+readme = "README.md"
+license = "MIT"
+authors = [
+    {name = "Philip Grandinetti", email = "grandinetti.1@osu.edu"}
+]
+maintainers = [
+    {name = "Philip Grandinetti", email = "grandinetti.1@osu.edu"}
+]
+keywords = [
+    "scientific-computing",
+    "units",
+    "dimensional-analysis", 
+    "nmr",
+    "spectroscopy",
+    "physics",
+    "chemistry"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10", 
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: C",
+    "Programming Language :: Cython",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed"
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.20.0",
+    "cython>=0.29.24",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.2.0",
+    "pytest-cov>=2.12.0",
+    "pytest-xdist>=2.4.0",
+    "black>=21.0.0",
+    "isort>=5.9.0",
+    "flake8>=3.9.0",
+    "mypy>=0.910",
+    "pre-commit>=2.15.0",
+]
+docs = [
+    "sphinx>=3.1.0",
+    "sphinx-rtd-theme>=0.5.2",
+    "breathe>=4.13.0",
+    "myst-parser>=0.15.0",
+    "sphinx-copybutton>=0.3.0",
+]
+test = [
+    "pytest>=6.2.0",
+    "pytest-cov>=2.12.0",
+    "pytest-xdist>=2.4.0",
+    "pytest-benchmark>=3.4.0",
+]
+all = [
+    "rmnpy[dev,docs,test]"
+]
+
+[project.urls]
+Homepage = "https://github.com/pjgrandinetti/RMNpy"
+Documentation = "https://rmnpy.readthedocs.io"
+Repository = "https://github.com/pjgrandinetti/RMNpy.git"
+"Bug Reports" = "https://github.com/pjgrandinetti/RMNpy/issues"
+Changelog = "https://github.com/pjgrandinetti/RMNpy/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+# Build configuration for extensions
+[tool.cython]
+language_level = 3
+embedsignature = true
+boundscheck = false
+wraparound = false
+initializedcheck = false
+
+# Black code formatting
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.pytest_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+# isort import sorting
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["rmnpy"]
+force_grid_wrap = 0
+combine_as_imports = true
+include_trailing_comma = true
+
+# MyPy type checking
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "numpy.*",
+    "cython.*",
+]
+ignore_missing_imports = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=rmnpy",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "memory: marks tests that check memory management",
+    "performance: marks tests that benchmark performance",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["src/rmnpy"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/build/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+# Flake8 linting (via setup.cfg since flake8 doesn't support pyproject.toml yet)
+# Configuration will be in setup.cfg
+
+# Pre-commit hooks configuration
+[tool.pre-commit]
+# This will be configured in .pre-commit-config.yaml

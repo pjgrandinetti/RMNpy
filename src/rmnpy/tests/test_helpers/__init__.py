@@ -1,0 +1,3 @@
+"""
+RMNpy test helpers package.
+"""

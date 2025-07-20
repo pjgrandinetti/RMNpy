@@ -1,0 +1,246 @@
+# RMNpy .gitignore
+# Python package with Cython extensions, C library dependencies, and Sphinx documentation
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+.Python
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Cython generated files
+*.c
+*.cpp
+*.html
+src/rmnpy/**/*.c
+src/rmnpy/**/*.cpp
+src/rmnpy/**/*.html
+
+# C/C++ compilation artifacts
+*.o
+*.a
+*.so
+*.dll
+*.dylib
+*.lib
+*.exp
+*.pdb
+
+# Local library dependencies
+lib/
+include/
+*.a
+*.lib
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Documentation
+docs/_build/
+docs/doxygen/
+docs/api/_autosummary/
+.doctrees/
+doctrees/
+htmldocs/
+
+# Sphinx
+docs/_static/generated/
+docs/_templates/generated/
+
+# Read the Docs
+site/
+
+# Distribution / packaging artifacts
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+MANIFEST
+
+# pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Environments
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Editor backup files
+*~
+*.swp
+*.swo
+.#*
+#*#
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+tmp/
+
+# Build artifacts specific to this project
+build-xcode/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+
+# Generated parser files (if any)
+*Parser.tab.c
+*Parser.tab.h
+*Scanner.c
+
+# Package management
+poetry.lock
+Pipfile.lock
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Log files
+*.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Configuration files that might contain secrets
+.secrets
+config.ini
+settings.ini
+
+# Downloaded dependencies (that should be rebuilt)
+downloads/
+external/
+third_party/lib/
+third_party/include/

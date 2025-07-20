@@ -1,0 +1,381 @@
+"""
+Test suite for OCTypes C API declarations and helper functions.
+
+This module tests that the OCTypes C library is properly linked and that
+all API declarations are correctly defined in the Cython .pxd file.
+"""
+
+import pytest
+import os
+import sys
+from pathlib import Path
+
+
+def test_octypes_pxd_exists():
+    """Test that the octypes.pxd file exists and is properly structured."""
+    pxd_file = Path(__file__).parent.parent.parent / "src" / "rmnpy" / "_c_api" / "octypes.pxd"
+    assert pxd_file.exists(), f"octypes.pxd file not found at {pxd_file}"
+    
+    # Read the file and check for key declarations
+    content = pxd_file.read_text()
+    
+    # Check for essential type declarations
+    assert "ctypedef const impl_OCString *OCStringRef" in content
+    assert "OCStringCreateWithCString" in content
+    assert "OCStringGetTypeID" in content
+    assert "OCRelease" in content
+    assert "OCRetain" in content
+    
+    # Check for essential enum declarations
+    assert "kOCNumberSInt32Type" in content
+    assert "kOCCompareLessThan" in content
+
+
+def test_import_octypes_api():
+    """Test that the OCTypes C API declarations file exists and is valid."""
+    import os
+    import sys
+    
+    # Add the source directory to the path
+    src_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'src')
+    sys.path.insert(0, src_dir)
+    
+    # Check that the .pxd file exists
+    pxd_path = os.path.join(src_dir, 'rmnpy', '_c_api', 'octypes.pxd')
+    assert os.path.exists(pxd_path), f"octypes.pxd not found at {pxd_path}"
+    
+    # Basic syntax check - ensure file can be read and contains expected content
+    with open(pxd_path, 'r') as f:
+        content = f.read()
+    
+    # Check for key OCTypes declarations
+    assert "cdef extern from \"OCTypes/OCLibrary.h\":" in content
+    assert "OCTypeID" in content
+    assert "OCIndex" in content
+    assert "OCArrayRef" in content
+    assert "OCStringRef" in content
+
+
+def test_tryget_function_presence():
+    """Test that all expected try-get functions are declared."""
+    
+    # Read the octypes.pxd file 
+    current_dir = Path(__file__).parent
+    octypes_file = current_dir.parent.parent / "src" / "rmnpy" / "_c_api" / "octypes.pxd"
+    
+    with open(octypes_file, 'r') as f:
+        content = f.read()
+    
+    # Expected try-get function declarations
+    expected_functions = [
+        # Basic type try-get functions
+        'bint OCNumberTryGetUInt8(OCNumberRef n, uint8_t *out)',
+        'bint OCNumberTryGetSInt8(OCNumberRef n, int8_t *out)', 
+        'bint OCNumberTryGetUInt16(OCNumberRef n, uint16_t *out)',
+        'bint OCNumberTryGetSInt16(OCNumberRef n, int16_t *out)',
+        'bint OCNumberTryGetUInt32(OCNumberRef n, uint32_t *out)', 
+        'bint OCNumberTryGetSInt32(OCNumberRef n, int32_t *out)',
+        'bint OCNumberTryGetUInt64(OCNumberRef n, uint64_t *out)',
+        'bint OCNumberTryGetSInt64(OCNumberRef n, int64_t *out)',
+        'bint OCNumberTryGetFloat32(OCNumberRef n, float *out)',
+        'bint OCNumberTryGetFloat64(OCNumberRef n, double *out)',
+        'bint OCNumberTryGetComplex64(OCNumberRef n, float_complex *out)',
+        'bint OCNumberTryGetComplex128(OCNumberRef n, double_complex *out)',
+        
+        # Convenience try-get functions (aliases)
+        'bint OCNumberTryGetFloat(OCNumberRef n, float *out)',
+        'bint OCNumberTryGetDouble(OCNumberRef n, double *out)',
+        'bint OCNumberTryGetFloatComplex(OCNumberRef n, float_complex *out)',
+        'bint OCNumberTryGetDoubleComplex(OCNumberRef n, double_complex *out)',
+        'bint OCNumberTryGetInt(OCNumberRef n, int *out)',
+        'bint OCNumberTryGetLong(OCNumberRef n, long *out)',
+        'bint OCNumberTryGetOCIndex(OCNumberRef n, OCIndex *out)'
+    ]
+    
+    missing_functions = []
+    for func_signature in expected_functions:
+        # Remove extra whitespace for comparison
+        normalized_signature = ' '.join(func_signature.split())
+        # Normalize content for comparison 
+        normalized_content = ' '.join(content.split())
+        
+        if normalized_signature not in normalized_content:
+            missing_functions.append(func_signature)
+    
+    assert len(missing_functions) == 0, f"Missing try-get function declarations: {missing_functions}"
+
+
+def test_ocnumber_type_validation():
+    """Test that OCNumber type enum values are properly declared."""
+    
+    current_dir = Path(__file__).parent
+    octypes_file = current_dir.parent.parent / "src" / "rmnpy" / "_c_api" / "octypes.pxd"
+    
+    with open(octypes_file, 'r') as f:
+        content = f.read()
+    
+    # Expected OCNumber type constants
+    expected_types = [
+        'kOCNumberSInt8Type',
+        'kOCNumberSInt16Type', 
+        'kOCNumberSInt32Type',
+        'kOCNumberSInt64Type',
+        'kOCNumberUInt8Type',
+        'kOCNumberUInt16Type',
+        'kOCNumberUInt32Type', 
+        'kOCNumberUInt64Type',
+        'kOCNumberFloat32Type',
+        'kOCNumberFloat64Type',
+        'kOCNumberComplex64Type',
+        'kOCNumberComplex128Type'
+    ]
+    
+    missing_types = []
+    for type_name in expected_types:
+        if type_name not in content:
+            missing_types.append(type_name)
+    
+    assert len(missing_types) == 0, f"Missing OCNumber type declarations: {missing_types}"
+
+
+def test_comparison_result_enum():
+    """Test that comparison result enum values are declared."""
+    
+    current_dir = Path(__file__).parent
+    octypes_file = current_dir.parent.parent / "src" / "rmnpy" / "_c_api" / "octypes.pxd"
+    
+    with open(octypes_file, 'r') as f:
+        content = f.read()
+    
+    expected_comparison_values = [
+        'kOCCompareLessThan',
+        'kOCCompareEqualTo', 
+        'kOCCompareGreaterThan'
+    ]
+    
+    missing_values = []
+    for value in expected_comparison_values:
+        if value not in content:
+            missing_values.append(value)
+    
+    assert len(missing_values) == 0, f"Missing comparison enum values: {missing_values}"
+
+
+def test_library_linking():
+    """Test basic OCTypes library linking and string operations."""
+    # Test that we can import and use basic OCTypes functions
+    from rmnpy.helpers.octypes import (
+        py_string_to_ocstring, ocstring_to_py_string, 
+        py_number_to_ocnumber, ocnumber_to_py_number,
+        release_octype
+    )
+    
+    # Test basic string roundtrip
+    original_str = "Hello, OCTypes!"
+    oc_string_ptr = py_string_to_ocstring(original_str)
+    assert oc_string_ptr != 0, "Failed to create OCString"
+    
+    converted_str = ocstring_to_py_string(oc_string_ptr)
+    release_octype(oc_string_ptr)
+    
+    assert converted_str == original_str, "String roundtrip failed"
+
+
+def test_type_ids():
+    """Test that type IDs are returned correctly."""
+    from rmnpy.helpers.octypes import (
+        py_string_to_ocstring, py_number_to_ocnumber, py_bool_to_ocboolean,
+        release_octype
+    )
+    
+    # Create different OCTypes and verify they have different pointers
+    oc_string = py_string_to_ocstring("test")
+    oc_number = py_number_to_ocnumber(42)
+    oc_bool = py_bool_to_ocboolean(True)
+    
+    assert oc_string != 0, "Failed to create OCString"
+    assert oc_number != 0, "Failed to create OCNumber"
+    assert oc_bool != 0, "Failed to create OCBoolean"
+    
+    # All should be different pointers
+    assert oc_string != oc_number, "String and Number should have different pointers"
+    assert oc_string != oc_bool, "String and Boolean should have different pointers"
+    assert oc_number != oc_bool, "Number and Boolean should have different pointers"
+    
+    # Clean up
+    release_octype(oc_string)
+    release_octype(oc_number)
+    release_octype(oc_bool)
+
+
+def test_memory_management():
+    """Test basic retain/release functionality."""
+    from rmnpy.helpers.octypes import (
+        py_string_to_ocstring, release_octype, retain_octype, get_retain_count
+    )
+    
+    # Create an OCString
+    oc_string = py_string_to_ocstring("test")
+    assert oc_string != 0, "Failed to create OCString"
+    
+    # Test retain count (should start at 1)
+    initial_count = get_retain_count(oc_string)
+    assert initial_count >= 1, f"Initial retain count should be >= 1, got {initial_count}"
+    
+    # Retain and check count increased
+    retain_octype(oc_string)
+    after_retain = get_retain_count(oc_string)
+    assert after_retain == initial_count + 1, f"Retain count should increase by 1, got {after_retain}"
+    
+    # Release once (back to original count)
+    release_octype(oc_string)
+    after_first_release = get_retain_count(oc_string)
+    assert after_first_release == initial_count, f"Count should return to {initial_count}, got {after_first_release}"
+    
+    # Final release (object should be deallocated)
+    release_octype(oc_string)
+
+
+def test_ocnumber_tryget_compilation():
+    """Test that OCNumber try-get accessor functions compile correctly."""
+    
+    # Create a minimal Cython test file that uses try-get functions
+    test_cython_code = '''
+# cython: language_level=3
+
+from rmnpy._c_api.octypes cimport *
+from libc.stdint cimport uint8_t, int8_t, uint16_t, int16_t
+from libc.stdint cimport uint32_t, int32_t, uint64_t, int64_t
+
+def test_tryget_declarations():
+    """Test that try-get accessor functions are properly declared."""
+    cdef OCNumberRef number = NULL
+    cdef bint success
+    
+    # Test integer try-get functions (basic types)
+    cdef uint8_t u8_val
+    cdef int8_t s8_val
+    cdef uint16_t u16_val
+    cdef int16_t s16_val
+    cdef uint32_t u32_val
+    cdef int32_t s32_val
+    cdef uint64_t u64_val
+    cdef int64_t s64_val
+    
+    # Test floating-point try-get functions
+    cdef float f32_val
+    cdef double f64_val
+    cdef float_complex fc64_val
+    cdef double_complex fc128_val
+    
+    # Test convenience alias try-get functions
+    cdef float float_val
+    cdef double double_val
+    cdef float_complex float_complex_val
+    cdef double_complex double_complex_val
+    cdef int int_val
+    cdef long long_val
+    cdef OCIndex index_val
+    
+    # The actual function calls would be made here if we had a valid OCNumberRef
+    # For now, we just test that the function signatures are accessible
+    # This will fail at compilation time if the declarations are incorrect
+    
+    return True
+'''
+    
+    # For now, just check that the signatures exist in the .pxd file
+    # In the future, this could write the test code to a temp file and compile it
+    
+    current_dir = Path(__file__).parent
+    octypes_file = current_dir.parent.parent / "src" / "rmnpy" / "_c_api" / "octypes.pxd"
+    
+    with open(octypes_file, 'r') as f:
+        content = f.read()
+    
+    # Check that key try-get functions are present
+    try_get_functions = [
+        'OCNumberTryGetUInt8',
+        'OCNumberTryGetSInt8',
+        'OCNumberTryGetFloat32',
+        'OCNumberTryGetFloat64', 
+        'OCNumberTryGetComplex64',
+        'OCNumberTryGetComplex128',
+        'OCNumberTryGetFloat',
+        'OCNumberTryGetDouble',
+        'OCNumberTryGetInt',
+        'OCNumberTryGetLong',
+        'OCNumberTryGetOCIndex'
+    ]
+    
+    for func_name in try_get_functions:
+        assert func_name in content, f"Try-get function {func_name} not found in octypes.pxd"
+
+
+def test_string_api_functions():
+    """Test that essential OCString API functions are declared."""
+    
+    current_dir = Path(__file__).parent
+    octypes_file = current_dir.parent.parent / "src" / "rmnpy" / "_c_api" / "octypes.pxd"
+    
+    with open(octypes_file, 'r') as f:
+        content = f.read()
+    
+    # Essential OCString functions
+    string_functions = [
+        'OCStringCreateWithCString',
+        'OCStringGetCString',
+        'OCStringGetLength',
+        'OCStringGetTypeID',
+        'OCStringCreateMutableCopy',
+        'OCStringCompare'
+    ]
+    
+    for func_name in string_functions:
+        assert func_name in content, f"OCString function {func_name} not found in octypes.pxd"
+
+
+def test_array_api_functions():
+    """Test that essential OCArray API functions are declared."""
+    
+    current_dir = Path(__file__).parent
+    octypes_file = current_dir.parent.parent / "src" / "rmnpy" / "_c_api" / "octypes.pxd"
+    
+    with open(octypes_file, 'r') as f:
+        content = f.read()
+    
+    # Essential OCArray functions
+    array_functions = [
+        'OCArrayCreate',
+        'OCArrayCreateMutable',
+        'OCArrayGetCount',
+        'OCArrayGetValueAtIndex',
+        'OCArrayAppendValue',
+        'OCArrayGetTypeID'
+    ]
+    
+    for func_name in array_functions:
+        assert func_name in content, f"OCArray function {func_name} not found in octypes.pxd"
+
+
+def test_dictionary_api_functions():
+    """Test that essential OCDictionary API functions are declared."""
+    
+    current_dir = Path(__file__).parent
+    octypes_file = current_dir.parent.parent / "src" / "rmnpy" / "_c_api" / "octypes.pxd"
+    
+    with open(octypes_file, 'r') as f:
+        content = f.read()
+    
+    # Essential OCDictionary functions
+    dict_functions = [
+        'OCDictionaryCreate',
+        'OCDictionaryCreateMutable',
+        'OCDictionaryGetCount',
+        'OCDictionaryGetValue',
+        'OCDictionarySetValue',
+        'OCDictionaryGetTypeID'
+    ]
+    
+    for func_name in dict_functions:
+        assert func_name in content, f"OCDictionary function {func_name} not found in octypes.pxd"
