@@ -1565,3 +1565,54 @@ def get_retain_count(uint64_t oc_object_ptr):
     if oc_object_ptr == 0:
         return 0
     return OCTypeGetRetainCount(<const void*>oc_object_ptr)
+
+
+# ====================================================================================
+# Convenience Helper Functions for SITypes Integration
+# ====================================================================================
+
+def parse_c_string(uint64_t oc_string_ptr):
+    """
+    Convenience function to parse an OCStringRef to Python string.
+    
+    This is an alias for ocstring_to_py_string() to match the naming
+    convention used in the SITypes wrappers.
+    
+    Args:
+        oc_string_ptr (uint64_t): Pointer to OCStringRef
+        
+    Returns:
+        str: Python string
+    """
+    return ocstring_to_py_string(oc_string_ptr)
+
+def create_oc_string(str py_string):
+    """
+    Convenience function to create an OCStringRef from Python string.
+    
+    This is an alias for py_string_to_ocstring() to match the naming
+    convention used in the SITypes wrappers.
+    
+    Args:
+        py_string (str): Python string to convert
+        
+    Returns:
+        uint64_t: OCStringRef as integer pointer (needs to be released)
+    """
+    return py_string_to_ocstring(py_string)
+
+
+def parse_c_string(uint64_t oc_string_ptr):
+    """
+    Convenience function to convert OCStringRef to Python string.
+    
+    This is an alias for ocstring_to_py_string() to match the naming
+    convention used in the SITypes wrappers.
+    
+    Args:
+        oc_string_ptr (uint64_t): OCStringRef as integer pointer
+        
+    Returns:
+        str: Python string
+    """
+    return ocstring_to_py_string(oc_string_ptr)

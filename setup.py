@@ -7,6 +7,42 @@ from Cython.Build import cythonize
 import numpy
 import sys
 from pathlib import Path
+import subprocess
+
+
+def generate_si_constants():
+    """Generate SI constants from C header file during build."""
+    print("Generating SI quantity constants from C header...")
+    
+    try:
+        script_path = Path(__file__).parent / "extract_si_constants.py"
+        
+        if script_path.exists():
+            # Run the extraction script
+            result = subprocess.run(
+                [sys.executable, str(script_path)], 
+                check=True, 
+                capture_output=True, 
+                text=True
+            )
+            print("✓ SI constants generated successfully")
+            if result.stdout:
+                # Only print summary line, not full output
+                lines = result.stdout.strip().split('\n')
+                for line in lines:
+                    if 'SI Constants extraction completed' in line or 'Constants:' in line:
+                        print(f"  {line.strip('=').strip()}")
+        else:
+            print(f"Warning: SI constants extraction script not found at {script_path}")
+            
+    except subprocess.CalledProcessError as e:
+        print(f"Warning: Failed to generate SI constants: {e}")
+        if e.stderr:
+            print(f"Error output: {e.stderr}")
+        print("Build will continue with existing constants file if available")
+    except Exception as e:
+        print(f"Warning: Error during SI constants generation: {e}")
+        print("Build will continue with existing constants file if available")
 
 class CustomBuildExt(build_ext):
     """Custom build extension that handles library dependencies."""
@@ -23,6 +59,9 @@ class CustomBuildExt(build_ext):
             sys.exit(1)
         
         print("✓ All required libraries found")
+        
+        # Generate SI constants before building
+        generate_si_constants()
         
         # Continue with normal build
         super().run()
@@ -101,31 +140,46 @@ def get_extensions():
         )
     ])
     
-    # Test modules (re-enabled now that OCTypes functions are implemented)
+    # Test modules are built separately for testing, not during installation
+    # Use: python setup.py build_ext --inplace to build tests for development
+    # extensions.extend([
+    #     Extension(
+    #         "test_octypes_linking",
+    #         sources=["tests/test_helpers/test_octypes_linking.pyx"],
+    #         include_dirs=include_dirs,
+    #         library_dirs=library_dirs,
+    #         libraries=libraries,
+    #         language="c",
+    #         extra_compile_args=extra_compile_args,
+    #         extra_link_args=extra_link_args
+    #     ),
+    #     Extension(
+    #         "test_octypes_roundtrip", 
+    #         sources=["tests/test_helpers/test_octypes_roundtrip.pyx"],
+    #         include_dirs=include_dirs,
+    #         library_dirs=library_dirs,
+    #         libraries=libraries,
+    #         language="c",
+    #         extra_compile_args=extra_compile_args,
+    #         extra_link_args=extra_link_args
+    #     ),
+    #     Extension(
+    #         "test_minimal",
+    #         sources=["tests/test_helpers/test_minimal.pyx"],
+    #         include_dirs=include_dirs,
+    #         library_dirs=library_dirs,
+    #         libraries=libraries,
+    #         language="c",
+    #         extra_compile_args=extra_compile_args,
+    #         extra_link_args=extra_link_args
+    #     )
+    # ])
+    
+    # Phase 2A: SIDimensionality wrapper (complete implementation)
     extensions.extend([
         Extension(
-            "rmnpy.tests.test_helpers.test_octypes_linking",
-            sources=["tests/test_helpers/test_octypes_linking.pyx"],
-            include_dirs=include_dirs,
-            library_dirs=library_dirs,
-            libraries=libraries,
-            language="c",
-            extra_compile_args=extra_compile_args,
-            extra_link_args=extra_link_args
-        ),
-        Extension(
-            "rmnpy.tests.test_helpers.test_octypes_roundtrip",
-            sources=["tests/test_helpers/test_octypes_roundtrip.pyx"],
-            include_dirs=include_dirs,
-            library_dirs=library_dirs,
-            libraries=libraries,
-            language="c",
-            extra_compile_args=extra_compile_args,
-            extra_link_args=extra_link_args
-        ),
-        Extension(
-            "rmnpy.tests.test_helpers.test_minimal",
-            sources=["tests/test_helpers/test_minimal.pyx"],
+            "rmnpy.wrappers.sitypes.dimensionality",
+            sources=["src/rmnpy/wrappers/sitypes/dimensionality.pyx"],
             include_dirs=include_dirs,
             library_dirs=library_dirs,
             libraries=libraries,

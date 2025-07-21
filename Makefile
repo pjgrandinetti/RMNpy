@@ -1,6 +1,6 @@
 # Makefile for RMNpy - provides library synchronization with local or GitHub sources
 
-.PHONY: synclib clean-libs help download-libs rebuild clean clean-all
+.PHONY: synclib clean-libs help download-libs rebuild clean clean-all generate-constants
 
 # Default help target
 help:
@@ -13,6 +13,7 @@ help:
 	@echo "  clean        - Remove generated C files and build artifacts"
 	@echo "  clean-all    - Remove all generated files and libraries"
 	@echo "  rebuild      - Clean libraries and rebuild Python package"
+	@echo "  generate-constants - Generate SI quantity constants from C header file"
 	@echo "  test         - Run the test suite"
 	@echo "  help         - Show this help message"
 
@@ -112,6 +113,11 @@ clean-all: clean clean-libs
 rebuild: clean-libs
 	@echo "Rebuilding RMNpy package..."
 	@pip install -e . --force-reinstall
+
+# Generate SI quantity constants from C header file
+generate-constants:
+	@echo "Generating SI quantity constants from C header file..."
+	@python extract_si_constants.py
 
 # Run tests
 test:
