@@ -86,6 +86,7 @@ cdef extern from "OCTypes/OCLibrary.h":
 cdef extern from "OCTypes/OCType.h":
     # Type introspection
     OCTypeID OCGetTypeID(const void *obj)
+    const char *OCTypeNameFromTypeID(OCTypeID typeID)
     
     # Memory management
     const void *OCRetain(const void *ptr)
@@ -363,6 +364,10 @@ cdef extern from "OCTypes/OCIndexPairSet.h":
     bint OCIndexPairSetContainsIndex(OCIndexPairSetRef theSet, OCIndex index)
     bint OCIndexPairSetContainsIndexPair(OCIndexPairSetRef theSet, OCIndexPair pair)
     OCIndex OCIndexPairSetValueForIndex(OCIndexPairSetRef theSet, OCIndex index)
+    
+    # Index pair set conversion
+    OCIndexSetRef OCIndexPairSetCreateIndexSetOfIndexes(OCIndexPairSetRef theSet)
+    OCIndexArrayRef OCIndexPairSetCreateIndexArrayOfValues(OCIndexPairSetRef theSet)
     
     # Mutable index pair set operations
     bint OCIndexPairSetAddIndexPair(OCMutableIndexPairSetRef theSet, OCIndex index, OCIndex value)

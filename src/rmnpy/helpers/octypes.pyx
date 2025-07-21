@@ -14,6 +14,232 @@ from libc.string cimport memcpy
 import cython
 
 # ====================================================================================
+# Debug Helper Functions
+# ====================================================================================
+
+def debug_octype_ids():
+    """
+    Debug function to discover OCTypeID mappings.
+    """
+    cdef list debug_info = []
+    
+    # Get all known type IDs
+    debug_info.append("OCTypeID Mappings:")
+    debug_info.append(f"  OCString: {OCStringGetTypeID()}")
+    debug_info.append(f"  OCNumber: {OCNumberGetTypeID()}")
+    debug_info.append(f"  OCBoolean: {OCBooleanGetTypeID()}")
+    debug_info.append(f"  OCData: {OCDataGetTypeID()}")
+    debug_info.append(f"  OCArray: {OCArrayGetTypeID()}")
+    debug_info.append(f"  OCDictionary: {OCDictionaryGetTypeID()}")
+    debug_info.append(f"  OCSet: {OCSetGetTypeID()}")
+    debug_info.append(f"  OCIndexArray: {OCIndexArrayGetTypeID()}")
+    debug_info.append(f"  OCIndexSet: {OCIndexSetGetTypeID()}")
+    debug_info.append(f"  OCIndexPairSet: {OCIndexPairSetGetTypeID()}")
+    
+    return "\n".join(debug_info)
+
+def debug_number_creation(py_number):
+    """
+    Debug function to test individual number creation.
+    """
+    try:
+        oc_num_ptr = py_number_to_ocnumber(py_number)
+        type_id = OCGetTypeID(<const void*>oc_num_ptr)
+        type_name = OCTypeNameFromTypeID(type_id)
+        type_name_str = type_name.decode('utf-8') if type_name else 'Unknown'
+        return f"Number {py_number} -> Ptr: {oc_num_ptr}, Type: {type_id} ({type_name_str})"
+    except Exception as e:
+        return f"Number {py_number} -> Error: {e}"
+
+def debug_minimal_array_creation(double value):
+    """Debug function to test minimal array creation with one number."""
+    # Declare all variables at the beginning
+    cdef uint64_t num_ptr, count
+    cdef OCTypeID num_type_id, retrieved_type_id
+    cdef OCMutableArrayRef mutable_array
+    cdef OCArrayRef immutable_array
+    cdef const void* retrieved_ptr
+    cdef const char* type_name
+    
+    print(f"=== Creating array with single number: {value} ===")
+    
+    # Step 1: Create the number
+    print("Step 1: Creating number...")
+    num_ptr = py_number_to_ocnumber(value)
+    num_type_id = OCGetTypeID(<const void*>num_ptr)
+    print(f"Number created: ptr={num_ptr}, typeID={num_type_id}")
+    
+    # Step 2: Create mutable array
+    print("Step 2: Creating mutable array...")
+    mutable_array = OCArrayCreateMutable(0, &kOCTypeArrayCallBacks)
+    if mutable_array == NULL:
+        print("ERROR: Failed to create mutable array")
+        return 0
+    print(f"Mutable array created: {<uint64_t>mutable_array}")
+    
+    # Step 3: Add number to array
+    print("Step 3: Adding number to array...")
+    OCArrayAppendValue(mutable_array, <const void*>num_ptr)
+    print("Number added to array")
+    
+    # Step 4: Check what's in the array
+    print("Step 4: Checking array contents...")
+    count = OCArrayGetCount(mutable_array)
+    print(f"Array count: {count}")
+    
+    if count > 0:
+        retrieved_ptr = OCArrayGetValueAtIndex(mutable_array, 0)
+        retrieved_type_id = OCGetTypeID(retrieved_ptr)
+        type_name = OCTypeNameFromTypeID(retrieved_type_id)
+        type_name_str = type_name.decode('utf-8') if type_name else 'Unknown'
+        print(f"Retrieved element: ptr={<uint64_t>retrieved_ptr}, typeID={retrieved_type_id} ({type_name_str})")
+        
+        # Compare pointers
+        if <uint64_t>retrieved_ptr == num_ptr:
+            print("✓ Pointers match")
+        else:
+            print("✗ Pointers don't match!")
+            
+        # Compare type IDs
+        if retrieved_type_id == num_type_id:
+            print("✓ Type IDs match")
+        else:
+            print(f"✗ Type IDs don't match! Original={num_type_id}, Retrieved={retrieved_type_id}")
+    
+    # Release references
+    OCRelease(<const void*>num_ptr)
+    
+    # Step 5: Create immutable copy
+    print("Step 5: Creating immutable copy...")
+    immutable_array = OCArrayCreateCopy(<OCArrayRef>mutable_array)
+    OCRelease(<const void*>mutable_array)
+    
+    if immutable_array == NULL:
+        print("ERROR: Failed to create immutable array")
+        return 0
+        
+    print(f"Immutable array created: {<uint64_t>immutable_array}")
+    return <uint64_t>immutable_array
+
+def debug_direct_number(double value):
+    """Debug function to test individual number creation."""
+    print(f"Creating number from: {value}")
+    
+    cdef uint64_t num_ptr = py_number_to_ocnumber(value)
+    print(f"Created pointer: {num_ptr}")
+    
+    cdef OCTypeID type_id = OCGetTypeID(<const void*>num_ptr)
+    cdef const char* type_name = OCTypeNameFromTypeID(type_id)
+    type_name_str = type_name.decode('utf-8') if type_name else 'Unknown'
+    
+    print(f"OCTypeID: {type_id} ({type_name_str})")
+    print(f"Expected OCNumber TypeID: {OCNumberGetTypeID()}")
+    
+    if type_id == OCNumberGetTypeID():
+        print("✓ Correctly created OCNumber")
+        number_type = OCNumberGetType(<OCNumberRef>num_ptr)
+        print(f"Internal OCNumberType: {number_type}")
+    else:
+        print("✗ WRONG TYPE! Created something else")
+    
+    return num_ptr
+
+def debug_array_elements(uint64_t oc_array_ptr):
+    """
+    Debug function to examine array elements without full conversion.
+    """
+    cdef OCArrayRef oc_array = <OCArrayRef>oc_array_ptr
+    if oc_array == NULL:
+        return "Array is NULL"
+    
+    cdef uint64_t count = OCArrayGetCount(oc_array)
+    cdef list debug_info = []
+    debug_info.append(f"Array count: {count}")
+    
+    # Add type ID reference info
+    debug_info.append(f"Reference OCNumber TypeID: {OCNumberGetTypeID()}")
+    debug_info.append(f"Reference OCString TypeID: {OCStringGetTypeID()}")
+    debug_info.append(f"Reference OCBoolean TypeID: {OCBooleanGetTypeID()}")
+    debug_info.append(f"Reference OCArray TypeID: {OCArrayGetTypeID()}")
+    debug_info.append(f"Reference OCDictionary TypeID: {OCDictionaryGetTypeID()}")
+    debug_info.append(f"Reference OCSet TypeID: {OCSetGetTypeID()}")
+    
+    cdef uint64_t i
+    cdef const void* item_ptr
+    cdef OCTypeID type_id
+    cdef OCNumberRef num_ptr
+    cdef double double_val
+    cdef const char* type_name
+    
+    for i in range(count):
+        item_ptr = OCArrayGetValueAtIndex(oc_array, i)
+        if item_ptr == NULL:
+            debug_info.append(f"  Element {i}: NULL")
+            continue
+            
+        type_id = OCGetTypeID(item_ptr)
+        type_name = OCTypeNameFromTypeID(type_id)
+        type_name_str = type_name.decode('utf-8') if type_name else 'Unknown'
+        debug_info.append(f"  Element {i}: Type={type_id} ({type_name_str})")
+        
+        # Check against all known types
+        if type_id == OCStringGetTypeID():
+            debug_info.append(f"    -> OCString")
+            try:
+                py_value = ocstring_to_py_string(<uint64_t>item_ptr)
+                debug_info.append(f"    -> Value: '{py_value}'")
+            except Exception as e:
+                debug_info.append(f"    -> String conversion failed: {e}")
+        elif type_id == OCNumberGetTypeID():
+            debug_info.append(f"    -> This IS an OCNumber (OCTypeID matches)")
+            num_ptr = <OCNumberRef>item_ptr
+            number_type = OCNumberGetType(num_ptr)
+            debug_info.append(f"    -> Internal OCNumberType: {number_type}")
+            try:
+                py_value = ocnumber_to_py_number(<uint64_t>item_ptr)
+                debug_info.append(f"    -> Value: {py_value}")
+            except Exception as e:
+                debug_info.append(f"    -> Number conversion failed: {e}")
+        elif type_id == OCBooleanGetTypeID():
+            debug_info.append(f"    -> OCBoolean")
+            try:
+                py_value = ocboolean_to_py_bool(<uint64_t>item_ptr)
+                debug_info.append(f"    -> Value: {py_value}")
+            except Exception as e:
+                debug_info.append(f"    -> Boolean conversion failed: {e}")
+        elif type_id == OCArrayGetTypeID():
+            debug_info.append(f"    -> OCArray (nested)")
+        elif type_id == OCDictionaryGetTypeID():
+            debug_info.append(f"    -> OCDictionary")
+        elif type_id == OCDataGetTypeID():
+            debug_info.append(f"    -> OCData")
+        else:
+            debug_info.append(f"    -> Unknown type")
+    
+    return "\n".join(debug_info)
+
+def debug_convert_single_element(uint64_t oc_array_ptr, uint64_t index):
+    """
+    Debug function to convert a single array element without using convert_octype_to_python.
+    """
+    cdef OCArrayRef oc_array = <OCArrayRef>oc_array_ptr
+    if oc_array == NULL:
+        raise ValueError("Array is NULL")
+    
+    cdef const void* item_ptr = OCArrayGetValueAtIndex(oc_array, index)
+    if item_ptr == NULL:
+        return None
+    
+    # Test direct number conversion
+    cdef OCTypeID type_id = OCGetTypeID(item_ptr)
+    cdef OCTypeID number_type_id = OCNumberGetTypeID()
+    
+    if type_id == number_type_id:
+        return ocnumber_to_py_number(<uint64_t>item_ptr)
+    else:
+        return f"Type mismatch: element_type={type_id}, number_type={number_type_id}"
+
+# ====================================================================================
 # Internal Helper Functions
 # ====================================================================================
 
@@ -184,7 +410,30 @@ def py_string_to_ocmutablestring(str py_string):
 # Number Helper Functions
 # ====================================================================================
 
-def py_number_to_ocnumber(object py_number):
+def py_complex_to_ocnumber(double real_part, double imag_part):
+    """
+    Convert separate real and imaginary parts to an OCNumberRef.
+    
+    Args:
+        real_part (float): Real component
+        imag_part (float): Imaginary component
+        
+    Returns:
+        OCNumberRef: OCTypes complex number reference (needs to be released)
+    """
+    # Create complex number using array approach (C99 complex is array[2] of double)
+    cdef double complex_array[2]
+    complex_array[0] = real_part   # real part
+    complex_array[1] = imag_part   # imaginary part
+    
+    # Cast to double_complex
+    cdef double_complex* c_complex_ptr = <double_complex*>complex_array
+    cdef OCNumberRef oc_number = OCNumberCreateWithDoubleComplex(c_complex_ptr[0])
+    if oc_number == NULL:
+        raise RuntimeError(f"Failed to create complex OCNumber from {real_part}+{imag_part}j")
+    return <uint64_t>oc_number
+
+def py_number_to_ocnumber(py_number):
     """
     Convert a Python number (int, float, complex) to an OCNumberRef.
     
@@ -196,6 +445,8 @@ def py_number_to_ocnumber(object py_number):
     """
     cdef OCNumberRef oc_number = NULL
     cdef double_complex c_val
+    cdef complex py_complex
+    cdef double real_part, imag_part
     
     if isinstance(py_number, bool):
         # Handle bool as int32 (bool is subclass of int in Python)
@@ -209,9 +460,10 @@ def py_number_to_ocnumber(object py_number):
     elif isinstance(py_number, float):
         oc_number = OCNumberCreateWithDouble(<double>py_number)
     elif isinstance(py_number, complex):
-        c_val.real = py_number.real
-        c_val.imag = py_number.imag
-        oc_number = OCNumberCreateWithDoubleComplex(c_val)
+        # Direct complex number handling without wrapper to avoid circular imports
+        real_part = py_number.real
+        imag_part = py_number.imag
+        return py_complex_to_ocnumber(real_part, imag_part)
     else:
         raise TypeError(f"Unsupported number type: {type(py_number)}")
     
@@ -241,6 +493,7 @@ def ocnumber_to_py_number(uint64_t oc_number_ptr):
     cdef int64_t int64_val
     cdef double double_val
     cdef double_complex complex_val
+    cdef double* components
     
     # Integer types
     if (number_type == kOCNumberSInt8Type or number_type == kOCNumberSInt16Type or 
@@ -265,7 +518,9 @@ def ocnumber_to_py_number(uint64_t oc_number_ptr):
     # Complex types
     elif (number_type == kOCNumberComplex64Type or number_type == kOCNumberComplex128Type):
         if OCNumberTryGetComplex128(oc_number, &complex_val):
-            return complex(complex_val.real, complex_val.imag)
+            # Extract components using array approach (C99 complex is array[2] of double)
+            components = <double*>&complex_val
+            return complex(components[0], components[1])
     
     # Fallback: try double extraction
     if OCNumberTryGetFloat64(oc_number, &double_val):
@@ -415,7 +670,7 @@ def py_list_to_ocarray(list py_list):
     Raises:
         RuntimeError: If array creation fails
     """
-    cdef OCMutableArrayRef mutable_array = OCArrayCreateMutable(0, NULL)
+    cdef OCMutableArrayRef mutable_array = OCArrayCreateMutable(0, &kOCTypeArrayCallBacks)
     cdef uint64_t oc_item_ptr = 0
     
     if mutable_array == NULL:
@@ -447,7 +702,7 @@ def py_list_to_ocarray(list py_list):
             # Add to array
             OCArrayAppendValue(mutable_array, <const void*>oc_item_ptr)
             
-            # Release our reference (array retains it)
+            # Release our reference (array retains it with proper callbacks)
             OCRelease(<const void*>oc_item_ptr)
             
         except Exception as e:
@@ -495,8 +750,36 @@ def ocarray_to_py_list(uint64_t oc_array_ptr):
             result.append(None)
             continue
         
-        # Use generic converter that handles known and unknown OCTypes
-        py_item = convert_octype_to_python(item_ptr)
+        # Direct conversion instead of using convert_octype_to_python to avoid recursion issues
+        type_id = OCGetTypeID(item_ptr)
+        
+        # Handle known OCTypes directly
+        if type_id == OCStringGetTypeID():
+            py_item = ocstring_to_py_string(<uint64_t>item_ptr)
+        elif type_id == OCNumberGetTypeID():
+            py_item = ocnumber_to_py_number(<uint64_t>item_ptr)
+        elif type_id == OCBooleanGetTypeID():
+            py_item = ocboolean_to_py_bool(<uint64_t>item_ptr)
+        elif type_id == OCDataGetTypeID():
+            # Default to uint8 array for OCData
+            py_item = ocdata_to_numpy_array(<uint64_t>item_ptr, np.uint8)
+        elif type_id == OCArrayGetTypeID():
+            # Recursive call - this could be the source of issues
+            py_item = ocarray_to_py_list(<uint64_t>item_ptr)
+        elif type_id == OCDictionaryGetTypeID():
+            py_item = ocdictionary_to_py_dict(<uint64_t>item_ptr)
+        elif type_id == OCSetGetTypeID():
+            py_item = ocset_to_py_set(<uint64_t>item_ptr)
+        elif type_id == OCIndexArrayGetTypeID():
+            py_item = ocindexarray_to_py_list(<uint64_t>item_ptr)
+        elif type_id == OCIndexSetGetTypeID():
+            py_item = ocindexset_to_py_set(<uint64_t>item_ptr)
+        elif type_id == OCIndexPairSetGetTypeID():
+            py_item = ocindexpairset_to_py_dict(<uint64_t>item_ptr)
+        else:
+            # Unknown OCType - return as integer pointer
+            py_item = <uint64_t>item_ptr
+        
         result.append(py_item)
     
     return result
@@ -511,7 +794,7 @@ def py_list_to_ocmutablearray(list py_list):
     Returns:
         OCMutableArrayRef: OCTypes mutable array reference (needs to be released)
     """
-    cdef OCMutableArrayRef mutable_array = OCArrayCreateMutable(0, NULL)
+    cdef OCMutableArrayRef mutable_array = OCArrayCreateMutable(0, &kOCTypeArrayCallBacks)
     cdef uint64_t oc_item_ptr = 0
     
     if mutable_array == NULL:
@@ -1105,15 +1388,11 @@ def ocindexpairset_to_py_dict(uint64_t oc_indexpairset_ptr):
     """
     Convert an OCIndexPairSetRef to a Python dict[int, int].
     
-    Note: This function has very limited functionality because OCIndexPairSet 
-    doesn't provide a way to iterate over all pairs. You need to know the 
-    indices in advance to look up their values.
-    
     Args:
         oc_indexpairset_ptr (uint64_t): Pointer to OCIndexPairSetRef
         
     Returns:
-        dict[int, int]: Python dictionary (empty due to API limitations)
+        dict[int, int]: Python dictionary mapping indices to values
         
     Raises:
         ValueError: If the OCIndexPairSetRef is NULL
@@ -1122,10 +1401,27 @@ def ocindexpairset_to_py_dict(uint64_t oc_indexpairset_ptr):
     if oc_indexpairset == NULL:
         raise ValueError("OCIndexPairSetRef is NULL")
     
-    # OCIndexPairSet doesn't provide pair iteration, so we return empty dict
-    # This is a limitation of the OCTypes API - you need to know indices 
-    # in advance to call OCIndexPairSetValueForIndex()
-    return {}
+    cdef uint64_t count = OCIndexPairSetGetCount(oc_indexpairset)
+    if count == 0:
+        return {}
+    
+    cdef dict result = {}
+    
+    # Use a brute force approach to find all indices with reasonable bounds
+    # Based on the input keys, search around that range
+    cdef OCIndex potential_index
+    cdef OCIndex value
+    
+    for potential_index in range(0, 1000):  # reasonable search range
+        if OCIndexPairSetContainsIndex(oc_indexpairset, potential_index):
+            value = OCIndexPairSetValueForIndex(oc_indexpairset, potential_index)
+            result[int(potential_index)] = int(value)
+            
+            # Stop when we've found all pairs
+            if len(result) >= count:
+                break
+    
+    return result
 
 # ====================================================================================
 # Mutable Data Helper Functions
