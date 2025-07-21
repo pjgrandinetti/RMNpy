@@ -10,22 +10,10 @@ from rmnpy._c_api.octypes cimport (OCStringRef, OCRelease, OCStringCreateWithCSt
                                    OCStringGetCString, OCTypeRef)
 from rmnpy._c_api.sitypes cimport *
 from rmnpy.exceptions import RMNError
-from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
+from rmnpy.wrappers.sitypes.dimensionality cimport Dimensionality
+from rmnpy.helpers.octypes import parse_c_string
 
 from libc.stdint cimport uint64_t, uintptr_t
-
-
-cdef str _parse_c_string(uint64_t oc_string_ptr):
-    """Helper to convert OCStringRef to Python string."""
-    if oc_string_ptr == 0:
-        return ""
-    
-    cdef OCStringRef oc_string = <OCStringRef>oc_string_ptr
-    cdef const char* c_str = OCStringGetCString(oc_string)
-    if c_str == NULL:
-        return ""
-    
-    return c_str.decode('utf-8')
 
 
 cdef class Unit:
@@ -37,8 +25,8 @@ cdef class Unit:
     
     Examples:
         >>> # Create from expression
-        >>> meter = Unit.parse("m")  # meter
-        >>> second = Unit.parse("s")  # second
+        >>> meter, mult1 = Unit.parse("m")  # meter
+        >>> second, mult2 = Unit.parse("s")  # second
         >>> velocity_unit = meter / second  # m/s
         >>> 
         >>> # Test properties
@@ -50,6 +38,16 @@ cdef class Unit:
         >>> # Unit operations
         >>> area_unit = meter * meter  # m^2
         >>> volume_unit = area_unit * meter  # m^3
+        >>> 
+        >>> # Parse with multiplier (usually 1.0)
+        >>> km_unit, km_mult = Unit.parse("km")  # kilometer
+        >>> km_unit.symbol  # "km"
+        >>> km_mult  # 1.0 (standard unit)
+        >>> 
+        >>> # Compound units also typically return 1.0
+        >>> vel_unit, vel_mult = Unit.parse("m/s")
+        >>> vel_unit.symbol  # "m/s"
+        >>> vel_mult  # 1.0
     """
     
     cdef SIUnitRef _c_unit
@@ -77,10 +75,21 @@ cdef class Unit:
             expression (str): Unit expression (e.g., "m/s", "kg*m/s^2")
             
         Returns:
-            Unit: Parsed unit object
+            tuple: (Unit, float) - Parsed unit object and multiplier
             
         Raises:
             RMNError: If parsing fails
+            
+        Examples:
+            >>> # Standard units return multiplier = 1.0
+            >>> unit, multiplier = Unit.parse("km")  # kilometer
+            >>> unit.symbol  # "km" (actual kilometer unit)
+            >>> multiplier   # 1.0 (no scaling needed)
+            >>> 
+            >>> # Most expressions also return multiplier = 1.0
+            >>> unit, multiplier = Unit.parse("m/s")  # meter per second
+            >>> unit.symbol  # "m/s"
+            >>> multiplier   # 1.0 (standard compound unit)
         """
         if not isinstance(expression, str):
             raise TypeError("Expression must be a string")
@@ -96,13 +105,13 @@ cdef class Unit:
             
             if c_unit == NULL:
                 if error_string != NULL:
-                    error_msg = _parse_c_string(<uint64_t>error_string)
+                    error_msg = parse_c_string(<uint64_t>error_string)
                     raise RMNError(f"Failed to parse unit expression '{expression}': {error_msg}")
                 else:
                     raise RMNError(f"Failed to parse unit expression '{expression}': Unknown error")
             
-            # Create Python wrapper using _from_ref
-            return Unit._from_ref(c_unit)
+            # Create Python wrapper using _from_ref and return both unit and multiplier
+            return Unit._from_ref(c_unit), unit_multiplier
         finally:
             OCRelease(<OCTypeRef>expr_string)
             if error_string != <OCStringRef>0:
@@ -195,7 +204,8 @@ cdef class Unit:
             raise TypeError("Expected Dimensionality object")
         
         # Access the _dim_ref attribute using the proper cdef approach
-        cdef SIDimensionalityRef dim_ref = (<Dimensionality>dimensionality)._dim_ref
+        cdef Dimensionality dim_obj = <Dimensionality>dimensionality
+        cdef SIDimensionalityRef dim_ref = dim_obj._dim_ref
         cdef SIUnitRef c_unit = SIUnitFindCoherentSIUnitWithDimensionality(dim_ref)
         
         if c_unit == NULL:
@@ -215,7 +225,7 @@ cdef class Unit:
             return ""
         
         try:
-            return _parse_c_string(<uint64_t>symbol_string)
+            return parse_c_string(<uint64_t>symbol_string)
         finally:
             OCRelease(<OCTypeRef>symbol_string)
     
@@ -230,7 +240,7 @@ cdef class Unit:
             return ""
         
         try:
-            return _parse_c_string(<uint64_t>name_string)
+            return parse_c_string(<uint64_t>name_string)
         finally:
             OCRelease(<OCTypeRef>name_string)
     
@@ -245,7 +255,7 @@ cdef class Unit:
             return ""
         
         try:
-            return _parse_c_string(<uint64_t>plural_string)
+            return parse_c_string(<uint64_t>plural_string)
         finally:
             OCRelease(<OCTypeRef>plural_string)
     
@@ -261,7 +271,6 @@ cdef class Unit:
         
         # Create Dimensionality wrapper using the proper _from_ref pattern
         # Note: SIUnitGetDimensionality does not transfer ownership, so we don't need to manage memory
-        from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
         return Dimensionality._from_ref(c_dim)
     
     @property
@@ -328,7 +337,7 @@ cdef class Unit:
         if result == NULL:
             error_msg = "Unknown error"
             if error_string != NULL:
-                error_msg = _parse_c_string(<uint64_t>error_string)
+                error_msg = parse_c_string(<uint64_t>error_string)
                 OCRelease(<OCTypeRef>error_string)
             raise RMNError(f"Unit multiplication failed: {error_msg}")
         
@@ -381,7 +390,7 @@ cdef class Unit:
         if result == NULL:
             error_msg = "Unknown error"
             if error_string != NULL:
-                error_msg = _parse_c_string(<uint64_t>error_string)
+                error_msg = parse_c_string(<uint64_t>error_string)
                 OCRelease(<OCTypeRef>error_string)
             raise RMNError(f"Unit power operation failed: {error_msg}")
         
@@ -411,7 +420,7 @@ cdef class Unit:
         if result == NULL:
             error_msg = "Unknown error"
             if error_string != NULL:
-                error_msg = _parse_c_string(<uint64_t>error_string)
+                error_msg = parse_c_string(<uint64_t>error_string)
                 OCRelease(<OCTypeRef>error_string)
             raise RMNError(f"Unit root operation failed: {error_msg}")
         

@@ -206,7 +206,7 @@ python -m http.server 8000 -d _build/html  # Any platform, then visit http://loc
 lib/
 ├── libOCTypes.a         # OCTypes static library
 ├── libSITypes.a         # SITypes static library  
-└── libRMN.a            # RMNLib static library (note: renamed from libRMNLib.a)
+└── libRMN.a            # RMNLib static library (note: renamed from libRMN.a)
 
 include/
 ├── OCTypes/
@@ -225,7 +225,7 @@ include/
 
 ### Library Naming
 
-Note that RMNLib's static library is renamed from `libRMNLib.a` to `libRMN.a` for consistency with linking conventions.
+Note that RMNLib's static library is renamed from `libRMN.a` to `libRMN.a` for consistency with linking conventions.
 
 ## Troubleshooting
 

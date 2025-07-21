@@ -61,8 +61,6 @@ cdef class Dimensionality:
         True
     """
     
-    cdef SIDimensionalityRef _dim_ref
-    
     def __cinit__(self):
         """Initialize empty dimensionality wrapper."""
         self._dim_ref = NULL

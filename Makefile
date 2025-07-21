@@ -22,42 +22,44 @@ synclib:
 	@echo "Synchronizing libraries from local directories..."
 	@echo "Copying from ../OCTypes, ../SITypes, and ../RMNLib to lib/ and include/"
 	@mkdir -p lib include/OCTypes include/SITypes include/RMNLib
-	@if [ -f ../OCTypes/lib/libOCTypes.a ]; then \
+	@if [ -f ../OCTypes/install/lib/libOCTypes.a ]; then \
 		echo "  ✓ Copying libOCTypes.a"; \
-		cp ../OCTypes/lib/libOCTypes.a lib/; \
+		cp ../OCTypes/install/lib/libOCTypes.a lib/; \
 	else \
-		echo "  ✗ ../OCTypes/lib/libOCTypes.a not found"; \
+		echo "  ✗ ../OCTypes/install/lib/libOCTypes.a not found"; \
 		echo "  Run 'make' in ../OCTypes first to build the library"; \
 		exit 1; \
 	fi
-	@if [ -f ../SITypes/libSITypes.a ]; then \
+	@if [ -f ../SITypes/install/lib/libSITypes.a ]; then \
 		echo "  ✓ Copying libSITypes.a"; \
-		cp ../SITypes/libSITypes.a lib/; \
+		cp ../SITypes/install/lib/libSITypes.a lib/; \
 	else \
-		echo "  ✗ ../SITypes/libSITypes.a not found"; \
+		echo "  ✗ ../SITypes/install/lib/libSITypes.a not found"; \
 		echo "  Run 'make' in ../SITypes first to build the library"; \
 		exit 1; \
 	fi
-	@if [ -f ../RMNLib/lib/libRMN.a ]; then \
+	@if [ -f ../RMNLib/install/lib/libRMN.a ]; then \
 		echo "  ✓ Copying libRMN.a"; \
-		cp ../RMNLib/lib/libRMN.a lib/; \
+		cp ../RMNLib/install/lib/libRMN.a lib/; \
 	else \
-		echo "  ✗ ../RMNLib/lib/libRMN.a not found"; \
+		echo "  ✗ ../RMNLib/install/lib/libRMN.a not found"; \
 		echo "  Run 'make' in ../RMNLib first to build the library"; \
 		exit 1; \
 	fi
-	@if [ -d ../OCTypes/src ]; then \
+	@if [ -d ../OCTypes/install/include/OCTypes ]; then \
 		echo "  ✓ Copying OCTypes headers"; \
-		cp ../OCTypes/src/*.h include/OCTypes/; \
+		cp ../OCTypes/install/include/OCTypes/*.h include/OCTypes/; \
 	else \
-		echo "  ✗ ../OCTypes/src directory not found"; \
+		echo "  ✗ ../OCTypes/install/include/OCTypes directory not found"; \
+		echo "  Run 'make install' in ../OCTypes first to create the organized header structure"; \
 		exit 1; \
 	fi
-	@if [ -d ../SITypes/src ]; then \
+	@if [ -d ../SITypes/install/include/SITypes ]; then \
 		echo "  ✓ Copying SITypes headers"; \
-		cp ../SITypes/src/*.h include/SITypes/; \
+		cp ../SITypes/install/include/SITypes/*.h include/SITypes/; \
 	else \
-		echo "  ✗ ../SITypes/src directory not found"; \
+		echo "  ✗ ../SITypes/install/include/SITypes directory not found"; \
+		echo "  Run 'make install' in ../SITypes first to create the organized header structure"; \
 		exit 1; \
 	fi
 	@if [ -d ../RMNLib/install/include/RMNLib ]; then \

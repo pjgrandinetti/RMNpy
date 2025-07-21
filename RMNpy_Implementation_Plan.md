@@ -63,7 +63,7 @@ RMNpy/
 - [x] **Configure build system integration**:
   - Ensure setup.py can locate libraries in `lib/` directory
   - Ensure setup.py can find headers in `include/` directory
-  - Support for different library naming conventions (libRMNLib.a → libRMN.a)
+  - Support for different library naming conventions (libRMN.a → libRMN.a)
 - [x] **Set up documentation system** (following OCTypes/SITypes approach):
   - Create `docs/` directory with Sphinx + Breathe + Doxygen integration
   - Create `docs/conf.py` for Sphinx configuration with Python autodoc support
