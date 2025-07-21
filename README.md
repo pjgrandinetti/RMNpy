@@ -2,6 +2,8 @@
 
 Python bindings for OCTypes, SITypes, and RMNLib C libraries.
 
+> **🚀 Setting up on a new computer?** See **[ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md)** for complete setup instructions.
+
 ## Overview
 
 RMNpy provides Python access to three scientific computing C libraries:
@@ -19,6 +21,29 @@ RMNpy provides Python access to three scientific computing C libraries:
 
 ## Installation
 
+### For Development (Recommended)
+
+See **[ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md)** for complete instructions.
+
+Quick version:
+```bash
+# Clone the repo with all C libraries
+git clone https://github.com/pjgrandinetti/OCTypes-SITypes.git
+cd OCTypes-SITypes
+
+# Build required C libraries first
+cd OCTypes && make && make install && cd ..
+cd SITypes && make && make synclib && make install && cd ..
+cd RMNLib && make && make synclib && make install && cd ..
+
+# Set up Python environment
+cd RMNpy
+conda env create -f environment.yml
+conda activate rmnpy
+pip install -e .
+```
+
+### For End Users (When Available)
 ```bash
 pip install rmnpy
 ```

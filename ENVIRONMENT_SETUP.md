@@ -1,40 +1,111 @@
-# Environment Setup Guide
+# RMNpy Environment Setup Guide
 
 This guide explains how to recreate the development environment for RMNpy on a new computer.
 
+> **📍 Repository**: This assumes you're cloning from the main OCTypes-SITypes repository which contains RMNpy as a subdirectory along with the required C libraries.
+
 ## Prerequisites
 
-- **Miniconda or Anaconda** installed
+- **Miniconda or Anaconda** installed ([Download here](https://docs.conda.io/en/latest/miniconda.html))
 - **Git** for cloning the repository
-- **C compiler** (Xcode Command Line Tools on macOS, gcc on Linux, MSVC on Windows)
+- **C compiler**: 
+  - **macOS**: Xcode Command Line Tools → `xcode-select --install`
+  - **Linux**: Build essentials → `sudo apt-get install build-essential`
+  - **Windows**: Visual Studio Build Tools or MSVC
+
+## 🚨 Common First-Time Issues
+
+**If you get "No such file or directory" errors during Python setup:**
+- ✅ Did you build the C libraries first? (OCTypes, SITypes, RMNLib)
+- ✅ Are you in the correct directory? (should be in `OCTypes-SITypes/RMNpy`)
+
+**If conda environment creation fails:**
+- Try the manual setup method below
+- Check that you have conda/miniconda installed and in your PATH
 
 ## Quick Setup (Recommended)
 
-1. **Clone the repository:**
-   ```bash
-   git clone <your-repo-url>
-   cd RMNpy
-   ```
+> **⚠️ IMPORTANT**: You must build the C libraries FIRST before Python setup will work!
 
-2. **Create the conda environment:**
-   ```bash
-   conda env create -f environment.yml
-   ```
+### Step 1: Clone and Build C Libraries
 
-3. **Activate the environment:**
-   ```bash
-   conda activate rmnpy
-   ```
+```bash
+# Clone the main repository containing all components
+git clone https://github.com/pjgrandinetti/OCTypes-SITypes.git
+cd OCTypes-SITypes
 
-4. **Install the package in development mode:**
-   ```bash
-   pip install -e .
-   ```
+# Build OCTypes library (REQUIRED)
+cd OCTypes
+make
+make install
+cd ..
 
-5. **Run tests to verify setup:**
-   ```bash
-   pytest
-   ```
+# Build SITypes library (REQUIRED) 
+cd SITypes
+make
+make synclib
+make install
+cd ..
+
+# Build RMNLib library (REQUIRED)
+cd RMNLib
+make
+make synclib
+make install
+cd ..
+```
+
+### Step 2: Set Up Python Environment
+
+```bash
+# Navigate to RMNpy directory
+cd RMNpy
+
+# Create the conda environment from the saved configuration
+conda env create -f environment.yml
+
+# Activate the environment
+conda activate rmnpy
+
+# Install RMNpy in development mode
+pip install -e .
+```
+
+### Step 3: Verify Everything Works
+
+```bash
+# Test basic imports
+python -c "import rmnpy; print('✅ RMNpy imported successfully')"
+
+# Test SITypes integration
+python -c "from rmnpy.wrappers.sitypes import Dimensionality; print('✅ SITypes integration working')"
+
+# Run the test suite (should show ~86 tests with most passing)
+pytest
+```
+
+**Expected Result**: You should see tests running with Phase 2A (Dimensionality) at 100% and Phase 2B (SIUnit) at ~72% completion.
+
+## ✅ What Success Looks Like
+
+When everything is working correctly, you should see:
+
+```
+pytest
+========================= test session starts =========================
+...
+tests/test_helpers/test_octypes.py ............                   [ 13%]  
+tests/test_sitypes/test_dimensionality.py ........................ [ 41%]
+tests/test_unit.py ..F.F..FF..FF.F.F..FF..FF....F...FF..F.FF.F....FFF [100%]
+
+================== 22 failed, 64 passed in 2.36s ==================
+```
+
+- **86 total tests collected**
+- **64 tests passing** (Phase 2A Dimensionality: 22/22, Phase 2B SIUnit: 36/50, OCTypes helpers: 6/6) 
+- **22 tests failing** (all in Phase 2B SIUnit - this is expected, development in progress)
+
+If you see significantly different results, check the troubleshooting section below.
 
 ## Alternative Setup Methods
 
