@@ -1,20 +1,8 @@
 """
 Tests for SIUnit wrapper (Phase 2B)
 
-Comprehensive test suite for the U    def test_parse_prefixed_units(self):
-        """Test parsing units with SI prefixes."""
-        kilometer, mult = Unit.parse("km")
-        assert kilometer.symbol == "km"
-        assert mult == 1.0  # km is a standard unit, not a scaled meter
-        
-        millisecond, mult = Unit.parse("ms")
-        assert millisecond.symbol == "ms"
-        assert mult == 1.0
-        
-        milligram, mult = Unit.parse("mg")
-        assert milligram.symbol == "mg"
-        assert mult == 1.0 mirroring the structure
-and coverage of test_dimensionality.py from Phase 2A.
+Comprehensive test suite for the Unit wrapper implementation,
+mirroring the structure and coverage of test_dimensionality.py from Phase 2A.
 """
 
 import pytest
@@ -329,11 +317,11 @@ class TestUnitAlgebra:
         
         # m^2
         area = meter.power(2)
-        assert "m" in area.symbol and ("²" in area.symbol or "2" in area.symbol)
+        assert area.symbol == "m^2"
         
         # m^3
         volume = meter.power(3)
-        assert "m" in volume.symbol and ("³" in volume.symbol or "3" in volume.symbol)
+        assert volume.symbol == "m^3"
         
         # m^0 = 1
         one = meter.power(0)
@@ -341,7 +329,7 @@ class TestUnitAlgebra:
         
         # m^-1
         inverse = meter.power(-1)
-        assert "m" in inverse.symbol and ("-1" in inverse.symbol or "⁻¹" in inverse.symbol)
+        assert inverse.symbol == "(1/m)"
         
         with pytest.raises(TypeError):
             meter.power("not_a_number")

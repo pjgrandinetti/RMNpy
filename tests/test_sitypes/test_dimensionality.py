@@ -65,9 +65,6 @@ def test_critical_parser_strictness():
             error_msg += f"  {failure}\n"
         error_msg += "\nThe parser MUST reject addition and subtraction for dimensional analysis correctness!"
         raise AssertionError(error_msg)
-    
-    print("✅ All addition/subtraction expressions properly rejected")
-    print("✅ CRITICAL TEST PASSED: Parser strictness working correctly")
 
 
 class TestDimensionalityFactoryMethods:

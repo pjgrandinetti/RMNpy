@@ -94,6 +94,10 @@ cdef class Unit:
         if not isinstance(expression, str):
             raise TypeError("Expression must be a string")
         
+        # Check for empty string - raise error at Python level
+        if not expression.strip():
+            raise RMNError("Failed to parse unit expression '': Empty unit expression")
+        
         cdef bytes expr_bytes = expression.encode('utf-8')
         cdef OCStringRef expr_string = OCStringCreateWithCString(expr_bytes)
         cdef OCStringRef error_string = <OCStringRef>0
@@ -220,6 +224,10 @@ cdef class Unit:
         if self._c_unit == NULL:
             return ""
         
+        # Special case for dimensionless unit
+        if SIUnitIsDimensionless(self._c_unit):
+            return "1"
+        
         cdef OCStringRef symbol_string = SIUnitCopySymbol(self._c_unit)
         if symbol_string == NULL:
             return ""
@@ -279,7 +287,7 @@ cdef class Unit:
         if self._c_unit == NULL:
             return 1.0
         
-        return SIUnitGetScaleNonSIToCoherentSI(self._c_unit)
+        return SIUnitScaleToCoherentSIUnit(self._c_unit)
     
     @property
     def is_dimensionless(self):
@@ -295,7 +303,8 @@ cdef class Unit:
         if self._c_unit == NULL:
             return False
         
-        return SIUnitIsCoherentDerivedUnit(self._c_unit)
+        # A unit is derived if its dimensionality is derived
+        return self.dimensionality.is_derived
     
     @property
     def is_si_base_unit(self):
@@ -311,8 +320,13 @@ cdef class Unit:
         if self._c_unit == NULL:
             return False
         
-        # Use base unit check as approximation for coherent SI
-        return SIUnitIsSIBaseUnit(self._c_unit)
+        # A unit is coherent SI if it's:
+        # 1. A coherent SI base unit (m, kg, s, A, K, mol, cd), OR
+        # 2. A coherent derived unit (constructed from base symbols), OR  
+        # 3. A special SI symbol (N, J, W, Pa, etc.) that is coherent
+        return (SIUnitIsCoherentSIBaseUnit(self._c_unit) or 
+                SIUnitIsCoherentDerivedUnit(self._c_unit) or
+                (SIUnitGetIsSpecialSISymbol(self._c_unit) and self.scale_factor == 1.0))
     
     # Algebraic operations
     def multiply(self, other):
@@ -384,7 +398,7 @@ cdef class Unit:
         cdef double unit_multiplier = 1.0
         cdef OCStringRef error_string = NULL
         
-        cdef SIUnitRef result = SIUnitByRaisingToPower(self._c_unit, power, 
+        cdef SIUnitRef result = SIUnitByRaisingToPowerWithoutReducing(self._c_unit, power, 
                                                       &unit_multiplier, &error_string)
         
         if result == NULL:
@@ -407,7 +421,9 @@ cdef class Unit:
         Returns:
             Unit: nth root of the unit
         """
-        if not isinstance(root, int) or root <= 0:
+        if not isinstance(root, int):
+            raise TypeError("Root must be an integer")
+        if root <= 0:
             raise ValueError("Root must be a positive integer")
         
         cdef uint8_t c_root = <uint8_t>root

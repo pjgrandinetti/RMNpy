@@ -113,11 +113,14 @@ cdef extern from "SITypes/SIUnit.h":
     OCStringRef SIUnitCopyRootName(SIUnitRef theUnit)
     OCStringRef SIUnitCopyRootPluralName(SIUnitRef theUnit)
     double SIUnitGetScaleNonSIToCoherentSI(SIUnitRef theUnit)
+    double SIUnitScaleToCoherentSIUnit(SIUnitRef theUnit)
     
     # Tests
     bint SIUnitEqual(SIUnitRef theUnit1, SIUnitRef theUnit2)
+    bint SIUnitIsCoherentSIBaseUnit(SIUnitRef theUnit)
     bint SIUnitIsSIBaseUnit(SIUnitRef theUnit)
     bint SIUnitIsCoherentDerivedUnit(SIUnitRef theUnit)
+    bint SIUnitGetIsSpecialSISymbol(SIUnitRef theUnit)
     bint SIUnitIsDimensionless(SIUnitRef theUnit)
     bint SIUnitIsDimensionlessAndUnderived(SIUnitRef theUnit)
     
