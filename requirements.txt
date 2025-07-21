@@ -1,24 +1,45 @@
-# Core dependencies
-numpy>=1.20.0
-
-# Development dependencies
-cython>=0.29.24
-setuptools>=61.0
-wheel>=0.37.0
-build>=0.8.0
-
-# Testing dependencies  
-pytest>=6.2.0
-pytest-cov>=2.12.0
-pytest-xdist>=2.4.0
-
-# Documentation dependencies (matches OCTypes/SITypes approach)
-sphinx>=3.1.0
-sphinx-rtd-theme>=0.5.2
-breathe>=4.13.0
-
-# Development tools
-black>=21.0.0
-isort>=5.9.0
-flake8>=3.9.0
-mypy>=0.910
+alabaster==1.0.0
+babel==2.17.0
+breathe==4.36.0
+build @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_67kiqen6lr/croot/build_1692303732972/work
+certifi==2025.7.14
+charset-normalizer==3.4.2
+colorama @ file:///home/conda/feedstock_root/build_artifacts/colorama_1733218098505/work
+coverage==7.9.2
+Cython==3.1.2
+docutils==0.21.2
+exceptiongroup @ file:///home/conda/feedstock_root/build_artifacts/exceptiongroup_1746947292760/work
+idna==3.10
+imagesize==1.4.1
+iniconfig @ file:///home/conda/feedstock_root/build_artifacts/iniconfig_1733223141826/work
+Jinja2==3.1.6
+markdown-it-py==3.0.0
+MarkupSafe==3.0.2
+mdit-py-plugins==0.4.2
+mdurl==0.1.2
+myst-parser==4.0.1
+numpy==2.3.1
+packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1745345660/work
+pluggy @ file:///home/conda/feedstock_root/build_artifacts/pluggy_1747339660894/work
+Pygments @ file:///home/conda/feedstock_root/build_artifacts/pygments_1750615794071/work
+pyproject_hooks @ file:///home/conda/feedstock_root/build_artifacts/pyproject_hooks_1733710025763/work
+pytest @ file:///home/conda/feedstock_root/build_artifacts/pytest_1750239416491/work
+pytest-cov==6.2.1
+PyYAML==6.0.2
+requests==2.32.4
+-e git+https://github.com/pjgrandinetti/RMNpy.git@9d5bf037e0b7d289f5d2c008231ceecf445b653f#egg=rmnpy
+roman-numerals-py==3.1.0
+snowballstemmer==3.0.1
+Sphinx==8.2.3
+sphinx-copybutton==0.5.2
+sphinx-rtd-theme==3.0.2
+sphinxcontrib-applehelp==2.0.0
+sphinxcontrib-devhelp==2.0.0
+sphinxcontrib-htmlhelp==2.1.0
+sphinxcontrib-jquery==4.1
+sphinxcontrib-jsmath==1.0.1
+sphinxcontrib-qthelp==2.0.0
+sphinxcontrib-serializinghtml==2.0.0
+tomli @ file:///home/conda/feedstock_root/build_artifacts/tomli_1733256695513/work
+typing_extensions @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_typing_extensions_1751643513/work
+urllib3==2.5.0
