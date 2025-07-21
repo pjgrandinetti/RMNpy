@@ -189,6 +189,20 @@ def get_extensions():
         )
     ])
     
+    # Phase 2B: SIUnit wrapper (complete implementation)
+    extensions.extend([
+        Extension(
+            "rmnpy.wrappers.sitypes.unit",
+            sources=["src/rmnpy/wrappers/sitypes/unit.pyx"],
+            include_dirs=include_dirs,
+            library_dirs=library_dirs,
+            libraries=libraries,
+            language="c",
+            extra_compile_args=extra_compile_args,
+            extra_link_args=extra_link_args
+        )
+    ])
+    
     # Phase 2: SITypes wrappers (will be implemented after Phase 1)
     # extensions.extend([
     #     Extension(

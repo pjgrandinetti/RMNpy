@@ -99,11 +99,57 @@ cdef extern from "SITypes/SIDimensionality.h":
     void SIDimensionalityShowFull(SIDimensionalityRef theDim)
 
 # ====================================================================================
-# Placeholder sections for Phase 2B and 2C (will be implemented later)
+# Phase 2B: SIUnit API (depends on SIDimensionality)
 # ====================================================================================
 
-# Phase 2B: SIUnit API (depends on SIDimensionality)
-# This section will be implemented after Phase 2A completion
+cdef extern from "SITypes/SIUnit.h":
+    
+    # Type system
+    OCTypeID SIUnitGetTypeID()
+    
+    # Accessors
+    SIDimensionalityRef SIUnitGetDimensionality(SIUnitRef theUnit)
+    OCStringRef SIUnitCopySymbol(SIUnitRef theUnit)
+    OCStringRef SIUnitCopyRootName(SIUnitRef theUnit)
+    OCStringRef SIUnitCopyRootPluralName(SIUnitRef theUnit)
+    double SIUnitGetScaleNonSIToCoherentSI(SIUnitRef theUnit)
+    
+    # Tests
+    bint SIUnitEqual(SIUnitRef theUnit1, SIUnitRef theUnit2)
+    bint SIUnitIsSIBaseUnit(SIUnitRef theUnit)
+    bint SIUnitIsCoherentDerivedUnit(SIUnitRef theUnit)
+    bint SIUnitIsDimensionless(SIUnitRef theUnit)
+    bint SIUnitIsDimensionlessAndUnderived(SIUnitRef theUnit)
+    
+    # Factory methods
+    SIUnitRef SIUnitDimensionlessAndUnderived()
+    SIUnitRef SIUnitFindWithName(OCStringRef input)
+    SIUnitRef SIUnitFindWithUnderivedSymbol(OCStringRef symbol)
+    SIUnitRef SIUnitFromExpression(OCStringRef expression, double *unit_multiplier, OCStringRef *error)
+    SIUnitRef SIUnitFindCoherentSIUnitWithDimensionality(SIDimensionalityRef theDimensionality)
+    SIUnitRef SIUnitFindCoherentSIUnit(SIUnitRef input, double *unit_multiplier)
+    SIUnitRef SIUnitFindEquivalentUnitWithShortestSymbol(SIUnitRef theUnit)
+    
+    # Operations
+    SIUnitRef SIUnitByReducing(SIUnitRef theUnit, double *unit_multiplier)
+    SIUnitRef SIUnitByMultiplying(SIUnitRef theUnit1, SIUnitRef theUnit2, double *unit_multiplier, OCStringRef *error)
+    SIUnitRef SIUnitByMultiplyingWithoutReducing(SIUnitRef theUnit1, SIUnitRef theUnit2, double *unit_multiplier, OCStringRef *error)
+    SIUnitRef SIUnitByDividing(SIUnitRef theUnit1, SIUnitRef theUnit2, double *unit_multiplier)
+    SIUnitRef SIUnitByDividingWithoutReducing(SIUnitRef theUnit1, SIUnitRef theUnit2, double *unit_multiplier)
+    SIUnitRef SIUnitByRaisingToPower(SIUnitRef input, double power, double *unit_multiplier, OCStringRef *error)
+    SIUnitRef SIUnitByRaisingToPowerWithoutReducing(SIUnitRef input, double power, double *unit_multiplier, OCStringRef *error)
+    SIUnitRef SIUnitByTakingNthRoot(SIUnitRef input, uint8_t root, double *unit_multiplier, OCStringRef *error)
+    
+    # Array operations
+    OCArrayRef SIUnitGetArrayOfUnitsWithDimensionality(SIDimensionalityRef theDimensionality)
+    OCArrayRef SIUnitGetArrayOfNamesWithDimensionality(SIDimensionalityRef theDimensionality)
+    
+    # Display
+    void SIUnitShow(SIUnitRef theUnit)
+
+# ====================================================================================
+# Phase 2C: SIQuantity & SIScalar API (depends on both above)
+# ====================================================================================
 
 # Phase 2C: SIQuantity & SIScalar API (depends on both above)  
 # This section will be implemented after Phase 2B completion
