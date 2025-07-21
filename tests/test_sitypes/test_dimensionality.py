@@ -407,12 +407,182 @@ def run_comprehensive_test_suite():
     
     print(f"\n📊 Results: {passed_tests}/{total_tests} tests passed")
     
+    # Run Python integration tests
+    print(f"\n📋 Running Python Integration Tests")
+    integration_tests = [
+        test_python_container_integration,
+        test_python_equality_semantics,
+        test_string_roundtrip_persistence,
+        test_memory_persistence,
+        test_python_integration_limitations
+    ]
+    
+    for test_func in integration_tests:
+        total_tests += 1
+        try:
+            test_func()
+            print(f"  ✅ {test_func.__name__}")
+            passed_tests += 1
+        except Exception as e:
+            print(f"  ❌ {test_func.__name__}: {e}")
+    
+    print(f"\n📊 Final Results: {passed_tests}/{total_tests} tests passed")
+    
     if passed_tests == total_tests:
         print("🎉 All SIDimensionality tests PASSED!")
         return True
     else:
         print("⚠️ Some SIDimensionality tests FAILED!")
         return False
+
+
+def test_python_container_integration():
+    """Test dimensionality objects work correctly in Python containers."""
+    print("🔄 Container Integration Tests")
+    
+    from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
+    
+    velocity = Dimensionality.parse('L/T')
+    force = Dimensionality.parse('M*L/T^2')
+    energy = Dimensionality.parse('M*L^2/T^2')
+    
+    # Test lists
+    dim_list = [velocity, force, energy]
+    assert len(dim_list) == 3
+    assert dim_list[0].is_equal(velocity)
+    
+    # Test dicts with string keys
+    dim_dict = {'velocity': velocity, 'force': force, 'energy': energy}
+    assert len(dim_dict) == 3
+    assert dim_dict['force'].is_equal(force)
+    
+    # Test tuple storage
+    dim_tuple = (velocity, force, energy)
+    assert len(dim_tuple) == 3
+    assert dim_tuple[2].is_equal(energy)
+    
+    print("✅ Container integration tests passed")
+
+
+def test_python_equality_semantics():
+    """Test equality and identity behavior in Python."""
+    print("🔄 Python Equality Tests")
+    
+    from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
+    
+    velocity1 = Dimensionality.parse('L/T')
+    velocity2 = Dimensionality.parse('L/T')
+    force = Dimensionality.parse('M*L/T^2')
+    
+    # Test that different objects have different identity
+    assert velocity1 is not velocity2
+    
+    # Test that equal dimensions compare equal
+    assert velocity1 == velocity2
+    assert velocity1.is_equal(velocity2)
+    
+    # Test that different dimensions compare unequal
+    assert velocity1 != force
+    assert not velocity1.is_equal(force)
+    
+    # Test compatibility
+    assert velocity1.is_compatible_with(velocity2)
+    assert not velocity1.is_compatible_with(force)
+    
+    print("✅ Python equality tests passed")
+
+
+def test_string_roundtrip_persistence():
+    """Test that dimensionalities can be persisted via string representation."""
+    print("🔄 String Roundtrip Tests")
+    
+    from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
+    
+    # Test various complex dimensionalities that can be parsed
+    test_cases = [
+        'L/T',
+        'M*L/T^2', 
+        'M*L^2/T^2',
+        'L^3',
+        'M/L^3'
+    ]
+    
+    for original_str in test_cases:
+        # Parse -> get symbol -> parse again
+        original = Dimensionality.parse(original_str)
+        symbol = original.symbol
+        recreated = Dimensionality.parse(symbol)
+        
+        assert original.is_equal(recreated), f"Roundtrip failed for {original_str}: {original} != {recreated}"
+    
+    # Note: Dimensionless ('1') cannot be parsed, only created via Dimensionality.dimensionless()
+    # This is a known limitation - use factory method for dimensionless quantities
+    
+    print("✅ String roundtrip tests passed")
+
+
+def test_memory_persistence():
+    """Test that objects persist correctly across function calls."""
+    print("🔄 Memory Persistence Tests")
+    
+    from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
+    
+    def create_dimensionalities():
+        return [
+            Dimensionality.parse('L'),
+            Dimensionality.parse('M'),
+            Dimensionality.parse('T'),
+            Dimensionality.parse('L/T')
+        ]
+    
+    # Create objects in function scope
+    dims = create_dimensionalities()
+    
+    # Verify they persist after function returns
+    assert len(dims) == 4
+    assert str(dims[0]) == 'L'
+    assert str(dims[1]) == 'M'
+    assert str(dims[2]) == 'T'
+    assert str(dims[3]) == 'L/T'
+    
+    # Test operations on persisted objects
+    result = dims[0] / dims[2]  # L / T
+    expected = dims[3]  # L/T
+    assert result.is_equal(expected)
+    
+    print("✅ Memory persistence tests passed")
+
+
+def test_python_integration_limitations():
+    """Document and verify known limitations in Python integration."""
+    print("🔄 Integration Limitations Tests")
+    
+    from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
+    
+    velocity = Dimensionality.parse('L/T')
+    
+    # Test that objects are not hashable (expected limitation)
+    try:
+        hash(velocity)
+        assert False, "Expected TypeError for hashing"
+    except TypeError:
+        pass  # Expected
+    
+    # Test that they can't be dict keys (expected limitation)
+    try:
+        test_dict = {velocity: 'speed'}
+        assert False, "Expected TypeError for dict keys"
+    except TypeError:
+        pass  # Expected
+    
+    # Test that they can't be in sets (expected limitation)
+    try:
+        test_set = {velocity}
+        assert False, "Expected TypeError for sets"
+    except TypeError:
+        pass  # Expected
+    
+    print("✅ Integration limitations verified")
 
 
 if __name__ == "__main__":
