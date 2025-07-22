@@ -24,6 +24,7 @@ from libc.stdint cimport uint8_t, int8_t
 ctypedef void* SIDimensionalityRef
 ctypedef void* SIUnitRef
 ctypedef void* SIQuantityRef  
+ctypedef void* SIMutableQuantityRef  
 ctypedef void* SIScalarRef
 ctypedef void* SIMutableScalarRef
 
@@ -154,5 +155,117 @@ cdef extern from "SITypes/SIUnit.h":
 # Phase 2C: SIQuantity & SIScalar API (depends on both above)
 # ====================================================================================
 
-# Phase 2C: SIQuantity & SIScalar API (depends on both above)  
-# This section will be implemented after Phase 2B completion
+# SINumber types and structures
+ctypedef enum SINumberType:
+    kSINumberFloat32Type = 31  # from OCNumber types
+    kSINumberFloat64Type = 32
+    kSINumberComplex64Type = 33
+    kSINumberComplex128Type = 34
+
+ctypedef enum complexPart:
+    kSIRealPart
+    kSIImaginaryPart
+    kSIMagnitudePart
+    kSIArgumentPart
+
+cdef extern from "SITypes/SIScalar.h":
+    
+    # Union for numeric values (must match C definition exactly)
+    ctypedef union impl_SINumber:
+        float floatValue
+        double doubleValue
+        float complex floatComplexValue
+        double complex doubleComplexValue
+    
+    # Type system
+    OCTypeID SIScalarGetTypeID()
+    
+    # Creators
+    SIScalarRef SIScalarCreateCopy(SIScalarRef theScalar)
+    SIMutableScalarRef SIScalarCreateMutableCopy(SIScalarRef theScalar)
+    SIScalarRef SIScalarCreateWithFloat(float input_value, SIUnitRef unit)
+    SIMutableScalarRef SIScalarCreateMutableWithFloat(float input_value, SIUnitRef unit)
+    SIScalarRef SIScalarCreateWithDouble(double input_value, SIUnitRef unit)
+    SIMutableScalarRef SIScalarCreateMutableWithDouble(double input_value, SIUnitRef unit)
+    SIScalarRef SIScalarCreateWithFloatComplex(float complex input_value, SIUnitRef unit)
+    SIMutableScalarRef SIScalarCreateMutableWithFloatComplex(float complex input_value, SIUnitRef unit)
+    SIScalarRef SIScalarCreateWithDoubleComplex(double complex input_value, SIUnitRef unit)
+    SIMutableScalarRef SIScalarCreateMutableWithDoubleComplex(double complex input_value, SIUnitRef unit)
+    SIScalarRef SIScalarCreateFromExpression(OCStringRef expression, OCStringRef *error)
+    
+    # Accessors
+    impl_SINumber SIScalarGetValue(SIScalarRef theScalar)
+    void SIScalarSetFloatValue(SIMutableScalarRef theScalar, float value)
+    void SIScalarSetDoubleValue(SIMutableScalarRef theScalar, double value)
+    void SIScalarSetFloatComplexValue(SIMutableScalarRef theScalar, float complex value)
+    void SIScalarSetDoubleComplexValue(SIMutableScalarRef theScalar, double complex value)
+    void SIScalarSetNumericType(SIMutableScalarRef theScalar, SINumberType numericType)
+    float SIScalarFloatValue(SIScalarRef theScalar)
+    double SIScalarDoubleValue(SIScalarRef theScalar)
+    float complex SIScalarFloatComplexValue(SIScalarRef theScalar)
+    double complex SIScalarDoubleComplexValue(SIScalarRef theScalar)
+    
+    # Unit conversions
+    bint SIScalarConvertToUnit(SIMutableScalarRef theScalar, SIUnitRef unit, OCStringRef *error)
+    SIScalarRef SIScalarCreateByConvertingToUnit(SIScalarRef theScalar, SIUnitRef unit, OCStringRef *error)
+    bint SIScalarConvertToUnitWithString(SIMutableScalarRef theScalar, OCStringRef unitString, OCStringRef *error)
+    SIScalarRef SIScalarCreateByConvertingToUnitWithString(SIScalarRef theScalar, OCStringRef unitString, OCStringRef *error)
+    bint SIScalarConvertToCoherentUnit(SIMutableScalarRef theScalar, OCStringRef *error)
+    SIScalarRef SIScalarCreateByConvertingToCoherentUnit(SIScalarRef theScalar, OCStringRef *error)
+    
+    # Arithmetic operations
+    SIScalarRef SIScalarCreateByAdding(SIScalarRef input1, SIScalarRef input2, OCStringRef *error)
+    bint SIScalarAdd(SIMutableScalarRef target, SIScalarRef input2, OCStringRef *error)
+    SIScalarRef SIScalarCreateBySubtracting(SIScalarRef input1, SIScalarRef input2, OCStringRef *error)
+    bint SIScalarSubtract(SIMutableScalarRef target, SIScalarRef input2, OCStringRef *error)
+    SIScalarRef SIScalarCreateByMultiplying(SIScalarRef input1, SIScalarRef input2, OCStringRef *error)
+    bint SIScalarMultiply(SIMutableScalarRef target, SIScalarRef input2, OCStringRef *error)
+    SIScalarRef SIScalarCreateByDividing(SIScalarRef input1, SIScalarRef input2, OCStringRef *error)
+    bint SIScalarDivide(SIMutableScalarRef target, SIScalarRef input2, OCStringRef *error)
+    
+    # Dimensionless constant operations
+    SIScalarRef SIScalarCreateByMultiplyingByDimensionlessRealConstant(SIScalarRef theScalar, double constant)
+    SIScalarRef SIScalarCreateByMultiplyingByDimensionlessComplexConstant(SIScalarRef theScalar, double complex constant)
+    bint SIScalarMultiplyByDimensionlessRealConstant(SIMutableScalarRef theScalar, double constant)
+    bint SIScalarMultiplyByDimensionlessComplexConstant(SIMutableScalarRef theScalar, double complex constant)
+    
+    SIScalarRef SIScalarCreateByRaisingToPower(SIScalarRef theScalar, double power, OCStringRef *error)
+    bint SIScalarRaiseToAPower(SIMutableScalarRef theScalar, double power, OCStringRef *error)
+    SIScalarRef SIScalarCreateByTakingAbsoluteValue(SIScalarRef theScalar, OCStringRef *error)
+    bint SIScalarTakeAbsoluteValue(SIMutableScalarRef theScalar, OCStringRef *error)
+    SIScalarRef SIScalarCreateByTakingNthRoot(SIScalarRef theScalar, uint8_t root, OCStringRef *error)
+    bint SIScalarTakeNthRoot(SIMutableScalarRef theScalar, uint8_t root, OCStringRef *error)
+    SIScalarRef SIScalarCreateByTakingComplexPart(SIScalarRef theScalar, complexPart part)
+    
+    # String representations
+    void SIScalarShow(SIScalarRef theScalar)
+    OCStringRef SIScalarCreateStringValue(SIScalarRef theScalar)
+    OCStringRef SIScalarCreateNumericStringValue(SIScalarRef theScalar)
+    OCStringRef SIScalarCreateUnitString(SIScalarRef theScalar)
+    OCStringRef SIScalarCreateStringValueWithFormat(SIScalarRef theScalar, OCStringRef format)
+    
+    # Tests
+    bint SIScalarIsReal(SIScalarRef theScalar)
+    bint SIScalarIsImaginary(SIScalarRef theScalar)
+    bint SIScalarIsComplex(SIScalarRef theScalar)
+    bint SIScalarIsZero(SIScalarRef theScalar)
+    bint SIScalarIsInfinite(SIScalarRef theScalar)
+    bint SIScalarEqual(SIScalarRef input1, SIScalarRef input2)
+    OCComparisonResult SIScalarCompare(SIScalarRef scalar, SIScalarRef otherScalar)
+    OCComparisonResult SIScalarCompareLoose(SIScalarRef scalar, SIScalarRef otherScalar)
+
+cdef extern from "SITypes/SIQuantity.h":
+    
+    # SIQuantity accessors and tests
+    SIUnitRef SIQuantityGetUnit(SIQuantityRef quantity)
+    bint SIQuantitySetUnit(SIMutableQuantityRef quantity, SIUnitRef unit)
+    SIDimensionalityRef SIQuantityGetUnitDimensionality(SIQuantityRef quantity)
+    SINumberType SIQuantityGetNumericType(SIQuantityRef quantity)
+    int SIQuantityElementSize(SIQuantityRef quantity)
+    bint SIQuantityHasNumericType(SIQuantityRef quantity, SINumberType numericType)
+    bint SIQuantityIsComplexType(SIQuantityRef theQuantity)
+    bint SIQuantityHasDimensionality(SIQuantityRef quantity, SIDimensionalityRef theDimensionality)
+    bint SIQuantityHasSameDimensionality(SIQuantityRef input1, SIQuantityRef input2)
+    bint SIQuantityHasSameReducedDimensionality(SIQuantityRef input1, SIQuantityRef input2)
+    SINumberType SIQuantityLargerNumericType(SIQuantityRef input1, SIQuantityRef input2)
+    SINumberType SIQuantitySmallerNumericType(SIQuantityRef input1, SIQuantityRef input2)

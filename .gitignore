@@ -55,6 +55,11 @@ coverage.xml
 *.cover
 .hypothesis/
 
+# Development artifacts
+*.xml
+debug_*.py
+update_*.py
+
 # Cython generated files
 *.c
 *.cpp
