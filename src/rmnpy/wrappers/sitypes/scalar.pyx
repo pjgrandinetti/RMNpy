@@ -30,30 +30,65 @@ cdef class Scalar:
     A scalar combines a numerical value with a unit, enabling type-safe scientific computing
     with automatic dimensional analysis and unit conversion capabilities.
     
+    The constructor accepts multiple usage patterns for maximum flexibility:
+    
+    **Single Argument Patterns:**
+        - String expression: `Scalar("100 J")` creates 100 Joules
+        - Numeric value: `Scalar(42)` creates dimensionless 42
+        - Complex value: `Scalar(3+4j)` creates dimensionless complex number
+    
+    **Two Argument Patterns:**
+        - Value and unit: `Scalar(100, "m")` creates 100 meters
+        - String value and unit: `Scalar("5.0", "m")` creates 5 meters (legacy)
+    
+    **Named Parameter Patterns:**
+        - Unit only: `Scalar(expression="m")` creates 1 meter
+        - Full specification: `Scalar(value=2.5, expression="W")` creates 2.5 Watts
+    
     Examples:
-        >>> # Create from value and unit
-        >>> distance = Scalar(5.0, "m")  # 5 meters
-        >>> time = Scalar(2.0, "s")      # 2 seconds
-        >>> velocity = distance / time    # 2.5 m/s
+        >>> # Single argument patterns
+        >>> energy = Scalar("100 J")           # 100 Joules from expression
+        >>> count = Scalar(42)                 # 42 dimensionless
+        >>> impedance = Scalar(3+4j)           # Complex dimensionless
         >>> 
-        >>> # Automatic unit handling
-        >>> velocity.value    # 2.5
-        >>> velocity.unit     # Unit('m/s')
-        >>> str(velocity)     # "2.5 m/s"
+        >>> # Two argument patterns
+        >>> distance = Scalar(100, "m")        # 100 meters
+        >>> mass = Scalar("5.0", "kg")         # 5 kilograms (legacy)
         >>> 
-        >>> # Unit conversion
+        >>> # Named parameter patterns
+        >>> unit_meter = Scalar(expression="m")              # 1 meter
+        >>> power = Scalar(value=2.5, expression="W")        # 2.5 Watts
+        >>> 
+        >>> # Scientific calculations with automatic unit handling
+        >>> time = Scalar(2.0, "s")            # 2 seconds
+        >>> velocity = distance / time          # 50 m/s (automatic unit derivation)
+        >>> acceleration = Scalar(9.8, "m/s^2") # 9.8 m/s²
+        >>> force = mass * acceleration         # Automatic unit: kg⋅m/s² (Newtons)
+        >>> 
+        >>> # Unit conversions
         >>> velocity_kmh = velocity.convert_to("km/h")  # Convert to km/h
-        >>> velocity_kmh.value  # 9.0
+        >>> velocity_si = velocity.to_coherent_si()      # Convert to SI base units
         >>> 
-        >>> # Arithmetic with automatic dimensional validation
-        >>> area = distance * distance  # 25 m^2
-        >>> volume = area * distance     # 125 m^3
+        >>> # Complex number support
+        >>> voltage = Scalar(230, "V")          # 230 Volts
+        >>> current = Scalar(2+1j, "A")        # Complex current
+        >>> power_complex = voltage * current   # Complex power calculation
         >>> 
-        >>> # Error on dimensionally incompatible operations
+        >>> # Dimensional validation
         >>> try:
-        ...     invalid = distance + time  # Error: can't add length + time
+        ...     invalid = distance + time       # Error: can't add length + time
         ... except RMNError:
         ...     print("Dimensional mismatch caught!")
+        >>> 
+        >>> # Access properties
+        >>> print(f"Value: {force.value}")              # Numeric value
+        >>> print(f"Unit: {force.unit.symbol}")         # Unit symbol
+        >>> print(f"Dimensionality: {force.dimensionality.symbol}")  # [M⋅L⋅T⁻²]
+        >>> print(f"Is complex: {current.is_complex}")  # True/False
+    
+    The Scalar class provides comprehensive arithmetic operations, unit conversions,
+    and dimensional analysis while maintaining type safety and preventing common
+    physics calculation errors through automatic dimensional validation.
     """
     
     cdef SIScalarRef _c_scalar
@@ -72,125 +107,213 @@ cdef class Scalar:
         result._c_scalar = scalar_ref
         return result
     
-    def __init__(self, value=None, unit=None):
+    def __init__(self, value=1.0, expression=None):
         """
-        Create a scalar with a numerical value and unit.
+        Create a scalar physical quantity with flexible argument patterns.
+        
+        This constructor intelligently handles multiple usage patterns to provide
+        maximum flexibility while maintaining backward compatibility.
         
         Args:
-            value (int, float, complex): Numerical value
-            unit (str or Unit): Unit specification
+            value (numeric or str, optional): 
+                - If `expression` is None and `value` is str: Full expression (e.g., "100 J")
+                - If `expression` is None and `value` is numeric: Dimensionless value
+                - If `expression` is provided: Numeric multiplier for the expression
+                - Default: 1.0
+            expression (str, optional): 
+                - Unit expression like "m", "m/s", "kg*m/s^2", "J", "W"
+                - If None, behavior depends on `value` type
+                - Default: None
+                
+        **Usage Patterns:**
+        
+        **Single Argument - String Expression:**
+            Creates scalar from complete expression including value and unit.
             
-        Examples:
-            >>> s1 = Scalar(5.0, "m")     # 5 meters
-            >>> s2 = Scalar(3+4j, "A")    # Complex current
-            >>> s3 = Scalar(42, Unit.parse("kg")[0])  # Using Unit object
+            >>> energy = Scalar("100 J")              # 100 Joules
+            >>> velocity = Scalar("25 m/s")           # 25 meters per second  
+            >>> force = Scalar("9.8 kg*m/s^2")        # 9.8 Newtons
+            >>> acceleration = Scalar("-9.8 m/s^2")   # Negative acceleration
+            
+        **Single Argument - Numeric Value:**
+            Creates dimensionless scalar with specified numeric value.
+            
+            >>> ratio = Scalar(0.75)                  # 0.75 (dimensionless)
+            >>> count = Scalar(42)                    # 42 (dimensionless) 
+            >>> efficiency = Scalar(0.95)             # 95% efficiency
+            >>> complex_num = Scalar(3+4j)            # Complex dimensionless
+            
+        **Two Arguments - Value and Unit:**
+            Multiplies numeric value by unit expression.
+            
+            >>> distance = Scalar(100, "m")           # 100 meters
+            >>> power = Scalar(2.5, "W")              # 2.5 Watts
+            >>> current = Scalar(3+4j, "A")           # Complex current
+            >>> temperature = Scalar(273.15, "K")     # 273.15 Kelvin
+            
+        **Two Arguments - String Value and Unit (Legacy):**
+            Parses string as numeric value, multiplies by unit.
+            
+            >>> mass = Scalar("5.0", "kg")            # 5.0 kilograms
+            >>> voltage = Scalar("230", "V")          # 230 Volts
+            >>> frequency = Scalar("50.0", "Hz")      # 50 Hz
+            
+        **Named Parameters - Expression Only:**
+            Creates unit scalar (value = 1.0) with specified unit.
+            
+            >>> unit_meter = Scalar(expression="m")         # 1 meter
+            >>> unit_second = Scalar(expression="s")        # 1 second
+            >>> unit_newton = Scalar(expression="kg*m/s^2") # 1 Newton
+            
+        **Named Parameters - Full Specification:**
+            Explicit specification of both value and expression.
+            
+            >>> power = Scalar(value=1500, expression="W")     # 1500 Watts
+            >>> charge = Scalar(value=1.6e-19, expression="C") # Elementary charge
+            >>> impedance = Scalar(value=50+0j, expression="Ohm") # 50Ω impedance
+            
+        **Advanced Examples:**
+        
+        **Scientific Constants:**
+            >>> c = Scalar(299792458, "m/s")          # Speed of light
+            >>> h = Scalar(6.626e-34, "J*s")          # Planck constant
+            >>> g = Scalar(9.80665, "m/s^2")          # Standard gravity
+            
+        **Complex Numbers in Electronics:**
+            >>> voltage = Scalar(230, "V")            # RMS voltage
+            >>> impedance = Scalar(50+25j, "Ohm")     # Complex impedance
+            >>> current = voltage / impedance         # Complex current
+            >>> power = voltage * current.real        # Real power
+            
+        **Compound Units:**
+            >>> energy_density = Scalar(250, "Wh/kg") # Energy density
+            >>> heat_capacity = Scalar(4.18, "J/(g*K)") # Specific heat
+            >>> pressure = Scalar(101325, "Pa")       # Standard pressure
+            
+        Returns:
+            Scalar: New scalar object with specified value and unit
+            
+        Raises:
+            TypeError: If arguments have incompatible types
+            ValueError: If string values cannot be parsed as numbers
+            RMNError: If unit expression is invalid or cannot be parsed
+            
+        Note:
+            All numeric types are supported including int, float, complex,
+            Decimal, and Fraction. The underlying SITypes library handles
+            dimensional analysis and unit validation automatically.
         """
         if self._c_scalar != NULL:
             return  # Already initialized by _from_ref
         
-        if value is None or unit is None:
-            raise TypeError("Both value and unit are required")
-        
-        # Handle unit parameter
-        cdef Unit unit_obj
-        if isinstance(unit, str):
-            unit_obj, _ = Unit.parse(unit)
-        elif isinstance(unit, Unit):
-            unit_obj = <Unit>unit
+        # Handle single argument cases
+        if expression is None:
+            if isinstance(value, str):
+                # Single string argument: treat as full expression
+                expression = value
+                value = 1.0
+            elif isinstance(value, (int, float, complex)):
+                # Single numeric argument: create dimensionless scalar
+                expression = "1"  # Dimensionless unit
+                # value stays as provided
+            else:
+                raise TypeError("Single argument must be a string expression or numeric value")
         else:
-            raise TypeError("Unit must be a string or Unit object")
-        
-        # Create scalar based on value type (using double precision)
-        if isinstance(value, str):
-            # Convert string to float
-            try:
-                value = float(value)
-            except (ValueError, TypeError):
-                raise ValueError(f"Cannot convert string '{value}' to a number")
-        
-        # Handle Decimal and Fraction types
-        try:
-            from decimal import Decimal
-            from fractions import Fraction
-            if isinstance(value, (Decimal, Fraction)):
-                value = float(value)
-        except ImportError:
-            pass  # Decimal/Fraction not available
-        
-        if isinstance(value, complex):
-            # Always treat complex as complex (don't convert to real)
-            self._c_scalar = SIScalarCreateWithDoubleComplex(value, unit_obj._c_unit)
-        elif isinstance(value, float):
-            self._c_scalar = SIScalarCreateWithDouble(value, unit_obj._c_unit)
-        elif isinstance(value, int):
-            self._c_scalar = SIScalarCreateWithDouble(float(value), unit_obj._c_unit)
-        else:
-            raise TypeError(f"Value must be int, float, complex, string, Decimal, or Fraction, got {type(value)}")
-        
-        if self._c_scalar == NULL:
-            raise RMNError("Failed to create scalar")
-    
-    @classmethod
-    def from_string(cls, expression):
-        """
-        Create a scalar from a string expression containing value and unit.
-        
-        Args:
-            expression (str): String like "5.0 m/s", "3.14 kg*m/s^2"
+            # Two arguments provided - both should be compatible
+            if not isinstance(expression, str):
+                raise TypeError("Expression must be a string")
             
-        Returns:
-            Scalar: Parsed scalar object
-            
-        Examples:
-            >>> velocity = Scalar.from_string("25 m/s")
-            >>> force = Scalar.from_string("9.8 kg*m/s^2") 
-        """
+            # If value is string, try to parse it as a number
+            if isinstance(value, str):
+                try:
+                    # Try to parse as float first, then int
+                    if '.' in value or 'e' in value.lower() or 'E' in value:
+                        value = float(value)
+                    else:
+                        value = int(value)
+                except ValueError:
+                    raise ValueError(f"Cannot parse numeric value from '{value}'")
+        
         if not isinstance(expression, str):
             raise TypeError("Expression must be a string")
         
+        # Create base scalar from expression
         cdef bytes expr_bytes = expression.encode('utf-8')
         cdef OCStringRef expr_ref = OCStringCreateWithCString(expr_bytes)
         cdef OCStringRef error_string = NULL
+        cdef SIScalarRef base_scalar
         cdef SIScalarRef result
         
         try:
-            result = SIScalarCreateFromExpression(expr_ref, &error_string)
+            base_scalar = SIScalarCreateFromExpression(expr_ref, &error_string)
             
-            if result == NULL:
+            if base_scalar == NULL:
                 if error_string != NULL:
                     error_msg = parse_c_string(<uint64_t>error_string)
                     OCRelease(<OCTypeRef>error_string)
-                    raise ValueError(f"Invalid scalar expression: {error_msg}")
+                    raise RMNError(f"Failed to parse scalar expression '{expression}': {error_msg}")
                 else:
-                    raise ValueError(f"Invalid scalar expression: '{expression}'")
+                    raise RMNError(f"Failed to parse scalar expression '{expression}'")
             
-            return Scalar._from_ref(result)
+            # If value is 1.0, use base scalar directly
+            if value == 1.0:
+                self._c_scalar = base_scalar
+            else:
+                # Multiply by the value
+                if isinstance(value, complex):
+                    result = SIScalarCreateByMultiplyingByDimensionlessComplexConstant(base_scalar, value)
+                else:
+                    result = SIScalarCreateByMultiplyingByDimensionlessRealConstant(base_scalar, float(value))
+                
+                # Release base scalar since we created a new one
+                OCRelease(<OCTypeRef>base_scalar)
+                
+                if result == NULL:
+                    raise RMNError("Failed to multiply scalar by value")
+                
+                self._c_scalar = result
             
         finally:
             OCRelease(<OCTypeRef>expr_ref)
     
     @classmethod
-    def from_value_and_unit(cls, value, unit):
+    def parse(cls, expression):
         """
-        Create a scalar from separate value and unit.
+        Create a scalar from a string expression containing value and unit.
+        
+        This method is provided for backward compatibility and convenience.
+        It is equivalent to calling `Scalar(expression)` with a single string argument.
         
         Args:
-            value (int, float, complex): Numerical value
-            unit (str or Unit): Unit specification
+            expression (str): Complete expression like "5.0 m/s", "100 J", "3.14 kg*m/s^2"
             
         Returns:
-            Scalar: New scalar object
+            Scalar: Parsed scalar object
+            
+        Raises:
+            RMNError: If the expression cannot be parsed or contains invalid units
+            TypeError: If expression is not a string
             
         Examples:
-            >>> s1 = Scalar.from_value_and_unit(5.0, "m")
-            >>> s2 = Scalar.from_value_and_unit(3+4j, "A")
+            >>> # These are equivalent:
+            >>> velocity1 = Scalar.parse("25 m/s")    # Classic method
+            >>> velocity2 = Scalar("25 m/s")          # Direct constructor
+            >>> 
+            >>> # More examples
+            >>> energy = Scalar.parse("100 J")        # 100 Joules
+            >>> force = Scalar.parse("9.8 N")         # 9.8 Newtons
+            >>> power = Scalar.parse("1.5 kW")        # 1.5 kilowatts
+            >>> 
+            >>> # Complex expressions
+            >>> acceleration = Scalar.parse("9.8 m/s^2")      # 9.8 m/s²
+            >>> momentum = Scalar.parse("50 kg*m/s")          # 50 kg⋅m/s
+            >>> energy_density = Scalar.parse("250 Wh/kg")    # 250 Wh/kg
+            
+        Note:
+            For new code, prefer using the constructor directly: `Scalar("expression")`
+            as it is more concise and provides the same functionality.
         """
-        return cls(value, unit)
-
-    @classmethod
-    def from_value_unit(cls, value, unit):
-        """Alias for from_value_and_unit for backward compatibility."""
-        return cls.from_value_and_unit(value, unit)
+        return cls(expression)
     
     # Properties
     @property

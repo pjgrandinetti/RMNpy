@@ -56,14 +56,13 @@ User Guide
 API Reference
 -------------
 
-.. note::
-   API documentation will be added as the Python interface is implemented.
+The RMNpy API provides Python interfaces for scientific computing with units and datasets.
 
 .. toctree::
    :maxdepth: 3
    :caption: API Documentation:
 
-   api/rmnpy
+   api/index
 
 C Libraries
 -----------

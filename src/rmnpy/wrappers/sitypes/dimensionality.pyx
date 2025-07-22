@@ -42,8 +42,8 @@ cdef class Dimensionality:
     
     Examples:
         >>> # Create from expression
-        >>> vel = Dimensionality.parse("L/T")  # velocity
-        >>> force = Dimensionality.parse("M*L/T^2")  # force
+        >>> vel = Dimensionality("L/T")  # velocity
+        >>> force = Dimensionality("M*L/T^2")  # force
         >>> 
         >>> # Test properties
         >>> vel.is_derived
@@ -52,18 +52,61 @@ cdef class Dimensionality:
         'kg*m/s^2'
         >>> 
         >>> # Dimensional algebra
-        >>> energy = force * Dimensionality.parse("L")  # F*L = energy
+        >>> energy = force * Dimensionality("L")  # F*L = energy
         >>> energy.symbol
         'kg*m^2/s^2'
         >>> 
         >>> # Check compatibility
-        >>> vel.is_compatible_with(Dimensionality.parse("m/s"))
+        >>> vel.is_compatible_with(Dimensionality("m/s"))
         True
+        >>> 
+        >>> # Legacy parse method still available
+        >>> frequency = Dimensionality.parse("T^-1")
     """
     
     def __cinit__(self):
         """Initialize empty dimensionality wrapper."""
         self._dim_ref = NULL
+    
+    def __init__(self, expression=None):
+        """
+        Create a Dimensionality from a string expression.
+        
+        Args:
+            expression (str, optional): Dimensional expression like "L^2*M/T^2" or "T^-1"
+                If None, creates an empty dimensionality wrapper (for internal use)
+            
+        Examples:
+            >>> velocity = Dimensionality("L/T")
+            >>> energy = Dimensionality("M*L^2/T^2")
+            >>> frequency = Dimensionality("T^-1")
+        """
+        if expression is None:
+            # Empty constructor for internal use 
+            return
+            
+        cdef bytes utf8_bytes = expression.encode('utf-8')
+        cdef const char* c_string = utf8_bytes
+        cdef OCStringRef expr_str = OCStringCreateWithCString(c_string)
+        cdef OCStringRef error_str = NULL
+        cdef SIDimensionalityRef dim_ref
+        
+        try:
+            dim_ref = SIDimensionalityParseExpression(expr_str, &error_str)
+            
+            if error_str != NULL:
+                error_msg = _parse_c_string(<uint64_t>error_str)
+                OCRelease(error_str)
+                raise RMNError(f"Failed to parse dimensionality expression '{expression}': {error_msg}")
+            
+            if dim_ref == NULL:
+                raise RMNError(f"Failed to parse dimensionality expression '{expression}': Unknown error")
+            
+            # Store the C reference
+            self._dim_ref = dim_ref
+            
+        finally:
+            OCRelease(expr_str)
     
     @staticmethod
     def parse(expression):

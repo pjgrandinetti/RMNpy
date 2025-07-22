@@ -51,9 +51,66 @@ pip install rmnpy
 ## Quick Start
 
 ```python
-import rmnpy
+from rmnpy.wrappers.sitypes import Scalar, Unit, Dimensionality
 
-# Example usage will be added as we implement the wrappers
+# === Flexible Scalar Creation ===
+
+# Single string expressions (value + unit)
+energy = Scalar("100 J")           # 100 Joules
+velocity = Scalar("25 m/s")        # 25 meters per second
+
+# Single numeric values (dimensionless) 
+ratio = Scalar(0.75)               # 0.75 (dimensionless)
+count = Scalar(42)                 # 42 (dimensionless)
+impedance = Scalar(3+4j)           # Complex number
+
+# Value and unit pairs
+distance = Scalar(100, "m")        # 100 meters
+power = Scalar(2.5, "W")           # 2.5 Watts
+current = Scalar(3+4j, "A")        # Complex current
+
+# Named parameters
+unit_meter = Scalar(expression="m")                  # 1 meter
+force = Scalar(value=9.8, expression="kg*m/s^2")    # 9.8 Newtons
+
+# === Scientific Calculations with Automatic Units ===
+
+# Basic physics calculations
+time = Scalar(2, "s")
+speed = distance / time             # Result: 50 m/s (automatic unit derivation)
+acceleration = Scalar(9.8, "m/s^2")
+force = Scalar(5, "kg") * acceleration  # Result: 49 N (automatic units)
+
+# Unit conversions
+speed_kmh = speed.convert_to("km/h")     # Convert to km/h
+speed_si = speed.to_coherent_si()        # Convert to SI base units
+
+# === Dimensional Analysis & Safety ===
+
+# Automatic dimensional validation
+try:
+    invalid = distance + time        # Error: cannot add length + time
+except RMNError:
+    print("Dimensional mismatch caught!")
+
+# Complex calculations with unit tracking
+kinetic_energy = 0.5 * Scalar(2, "kg") * speed**2  # Result: 2500 J
+
+# === Unit and Dimensionality Operations ===
+
+# Create and manipulate units
+meter = Unit("m")
+second = Unit("s")
+velocity_unit = meter / second       # Result: m/s
+
+# Dimensional analysis
+length_dim = Dimensionality("L")
+time_dim = Dimensionality("T")
+velocity_dim = length_dim / time_dim # Result: L/T
+
+print(f"Speed: {speed}")             # "50 m/s"
+print(f"Unit: {speed.unit.symbol}")  # "m/s" 
+print(f"Dimensionality: {speed.dimensionality.symbol}")  # "L/T"
 ```
 
 ## Development

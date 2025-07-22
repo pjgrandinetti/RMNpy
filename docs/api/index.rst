@@ -7,18 +7,16 @@ This section contains the complete API reference for RMNpy, organized by module 
    :maxdepth: 2
    :caption: Python API:
 
+   sitypes
    rmnpy
-   helpers
-   c_api
 
 Core Modules
 ------------
 
-The RMNpy API is organized into three main layers:
+The RMNpy API is organized into two main layers:
 
-1. **User API** (:mod:`rmnpy`) - High-level Pythonic interfaces
-2. **Helpers** (:mod:`rmnpy.helpers`) - Memory management and utilities  
-3. **C API** (:mod:`rmnpy._c_api`) - Low-level C library bindings
+1. **SITypes Wrappers** (:mod:`rmnpy.wrappers.sitypes`) - Physical units and dimensional analysis
+2. **User API** (:mod:`rmnpy`) - High-level Pythonic interfaces (planned)
 
 Quick Reference
 ---------------
@@ -27,29 +25,21 @@ Most common operations:
 
 .. code-block:: python
 
-   import rmnpy as rmn
+   # SITypes - Physical units and dimensional analysis
+   from rmnpy.wrappers.sitypes import Scalar, Unit, Dimensionality
    
-   # Arrays and collections
-   array = rmn.Array([1, 2, 3, 4, 5])
-   dictionary = rmn.Dictionary({'key': 'value'})
+   # Create physical quantities (clean, consistent syntax)
+   distance = Scalar("100.0 m")         # 100 meters
+   time = Scalar("5.0 s")               # 5 seconds
+   velocity = distance / time           # 20.0 m/s
    
-   # Physical quantities with units
-   length = rmn.SIQuantity(5.0, rmn.SI.meter)
-   energy = rmn.SIQuantity(2.1, rmn.SI.electronvolt)
+   # Unit conversion
+   velocity_kmh = velocity.convert_to("km/h")  # 72.0 km/h
    
-   # Memory management
-   with rmn.AutoreleasePool():
-       # All objects automatically managed
-       result = perform_calculations()
-
-Error Handling
---------------
-
-RMNpy uses standard Python exceptions:
-
-- :exc:`TypeError` - Unit incompatibility or type mismatches
-- :exc:`ValueError` - Invalid values or parameters
-- :exc:`MemoryError` - Memory allocation failures
-- :exc:`RuntimeError` - C library errors
+   # Work with units when needed
+   meter_unit, _ = Unit.parse("m")
+   
+   # Advanced dimensional analysis
+   force_dim = Dimensionality.parse("M*L/T^2")  # Force dimension
 
 All exceptions include descriptive error messages to help with debugging.

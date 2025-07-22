@@ -25,8 +25,8 @@ cdef class Unit:
     
     Examples:
         >>> # Create from expression
-        >>> meter, mult1 = Unit.parse("m")  # meter
-        >>> second, mult2 = Unit.parse("s")  # second
+        >>> meter = Unit("m")  # meter
+        >>> second = Unit("s")  # second
         >>> velocity_unit = meter / second  # m/s
         >>> 
         >>> # Test properties
@@ -39,19 +39,64 @@ cdef class Unit:
         >>> area_unit = meter * meter  # m^2
         >>> volume_unit = area_unit * meter  # m^3
         >>> 
-        >>> # Parse with multiplier (usually 1.0)
-        >>> km_unit, km_mult = Unit.parse("km")  # kilometer
-        >>> km_unit.symbol  # "km"
-        >>> km_mult  # 1.0 (standard unit)
+        >>> # More complex units
+        >>> force = Unit("kg*m/s^2")  # newton
+        >>> energy = Unit("kg*m^2/s^2")  # joule
         >>> 
-        >>> # Compound units also typically return 1.0
-        >>> vel_unit, vel_mult = Unit.parse("m/s")
-        >>> vel_unit.symbol  # "m/s"
-        >>> vel_mult  # 1.0
+        >>> # Legacy parse method still available
+        >>> km_unit, km_mult = Unit.parse("km")  # returns (unit, 1.0)
     """
     
     def __cinit__(self):
         self._c_unit = NULL
+    
+    def __init__(self, expression=None):
+        """
+        Create a Unit from a string expression.
+        
+        Args:
+            expression (str, optional): Unit expression (e.g., "m", "m/s", "kg*m/s^2")
+                If None, creates an empty unit wrapper (for internal use)
+            
+        Examples:
+            >>> meter = Unit("m")
+            >>> velocity = Unit("m/s")
+            >>> force = Unit("kg*m/s^2")
+        """
+        if expression is None:
+            # Empty constructor for internal use (e.g., _from_ref)
+            return
+            
+        if not isinstance(expression, str):
+            raise TypeError("Expression must be a string")
+        
+        # Check for empty string - raise error at Python level
+        if not expression.strip():
+            raise RMNError("Failed to parse unit expression '': Empty unit expression")
+        
+        cdef bytes expr_bytes = expression.encode('utf-8')
+        cdef OCStringRef expr_string = OCStringCreateWithCString(expr_bytes)
+        cdef OCStringRef error_string = <OCStringRef>0
+        cdef double unit_multiplier = 1.0
+        cdef SIUnitRef c_unit
+        
+        try:
+            c_unit = SIUnitFromExpression(expr_string, &unit_multiplier, &error_string)
+            
+            if c_unit == NULL:
+                if error_string != NULL:
+                    error_msg = parse_c_string(<uint64_t>error_string)
+                    raise RMNError(f"Failed to parse unit expression '{expression}': {error_msg}")
+                else:
+                    raise RMNError(f"Failed to parse unit expression '{expression}': Unknown error")
+            
+            # Store the C reference
+            self._c_unit = c_unit
+            
+        finally:
+            OCRelease(<OCTypeRef>expr_string)
+            if error_string != <OCStringRef>0:
+                OCRelease(<OCTypeRef>error_string)
     
     def __dealloc__(self):
         if self._c_unit != NULL:
