@@ -236,6 +236,59 @@ cdef class Unit:
             OCRelease(<OCTypeRef>plural_string)
     
     @property
+    def root_name(self):
+        """Get the root name (without prefix) of this unit."""
+        if self._c_unit == NULL:
+            return ""
+        
+        cdef OCStringRef root_string = SIUnitCopyRootName(self._c_unit)
+        if root_string == NULL:
+            return ""
+        
+        try:
+            return parse_c_string(<uint64_t>root_string)
+        finally:
+            OCRelease(<OCTypeRef>root_string)
+    
+    @property
+    def root_plural_name(self):
+        """Get the root plural name (without prefix) of this unit."""
+        if self._c_unit == NULL:
+            return ""
+        
+        cdef OCStringRef root_plural_string = SIUnitCopyRootPluralName(self._c_unit)
+        if root_plural_string == NULL:
+            return ""
+        
+        try:
+            return parse_c_string(<uint64_t>root_plural_string)
+        finally:
+            OCRelease(<OCTypeRef>root_plural_string)
+    
+    @property
+    def root_symbol(self):
+        """Get the root symbol (without prefix) of this unit."""
+        if self._c_unit == NULL:
+            return ""
+        
+        cdef OCStringRef root_symbol_string = SIUnitCopyRootSymbol(self._c_unit)
+        if root_symbol_string == NULL:
+            return ""
+        
+        try:
+            return parse_c_string(<uint64_t>root_symbol_string)
+        finally:
+            OCRelease(<OCTypeRef>root_symbol_string)
+    
+    @property
+    def allows_si_prefix(self):
+        """Check if this unit allows SI prefixes."""
+        if self._c_unit == NULL:
+            return False
+        
+        return SIUnitAllowsSIPrefix(self._c_unit)
+    
+    @property
     def dimensionality(self):
         """Get the dimensionality of this unit."""
         if self._c_unit == <SIUnitRef>0:
@@ -295,6 +348,76 @@ cdef class Unit:
         return (SIUnitIsCoherentSIBaseUnit(self._c_unit) or 
                 SIUnitIsCoherentDerivedUnit(self._c_unit) or
                 (SIUnitGetIsSpecialSISymbol(self._c_unit) and self.scale_factor == 1.0))
+    
+    @property
+    def is_reduced(self):
+        """Check if this unit is reduced to lowest terms."""
+        if self._c_unit == NULL:
+            return False
+        
+        # Since there's no direct function, we'll implement a basic check
+        # by comparing with the reduced version
+        cdef double multiplier = 1.0
+        cdef SIUnitRef reduced = SIUnitByReducing(self._c_unit, &multiplier)
+        
+        if reduced == NULL:
+            return False
+        
+        try:
+            return SIUnitEqual(self._c_unit, reduced)
+        finally:
+            OCRelease(<OCTypeRef>reduced)
+    
+    # Prefix introspection methods
+    def get_numerator_prefix_at_index(self, index):
+        """
+        Get the prefix for the numerator dimension at the given index.
+        
+        Args:
+            index (int): Base dimension index (0=length, 1=mass, etc.)
+            
+        Returns:
+            int: Prefix exponent (e.g., 3 for kilo, -3 for milli, 0 for none)
+        """
+        if not isinstance(index, int):
+            raise TypeError("Index must be an integer")
+        if index < 0 or index > 6:
+            raise ValueError("Index must be between 0 and 6 (SI base dimensions)")
+        
+        cdef uint8_t c_index = <uint8_t>index
+        return <int>SIUnitGetNumeratorPrefixAtIndex(self._c_unit, c_index)
+    
+    def get_denominator_prefix_at_index(self, index):
+        """
+        Get the prefix for the denominator dimension at the given index.
+        
+        Args:
+            index (int): Base dimension index (0=length, 1=mass, etc.)
+            
+        Returns:
+            int: Prefix exponent (e.g., 3 for kilo, -3 for milli, 0 for none)
+        """
+        if not isinstance(index, int):
+            raise TypeError("Index must be an integer")
+        if index < 0 or index > 6:
+            raise ValueError("Index must be between 0 and 6 (SI base dimensions)")
+        
+        cdef uint8_t c_index = <uint8_t>index
+        return <int>SIUnitGetDenominatorPrefixAtIndex(self._c_unit, c_index)
+    
+    def has_prefix(self):
+        """
+        Check if this unit has any SI prefix.
+        
+        Returns:
+            bool: True if unit has a prefix
+        """
+        # Check all dimensions for non-zero prefixes
+        for i in range(7):  # 7 SI base dimensions
+            if (self.get_numerator_prefix_at_index(i) != 0 or 
+                self.get_denominator_prefix_at_index(i) != 0):
+                return True
+        return False
     
     # Algebraic operations
     def multiply(self, other):
@@ -410,6 +533,208 @@ cdef class Unit:
         
         # Create wrapper for result using _from_ref
         return Unit._from_ref(result)
+    
+    # Unit conversion methods
+    def conversion_factor(self, other):
+        """
+        Get the conversion factor from this unit to another compatible unit.
+        
+        Args:
+            other (Unit): Target unit to convert to
+            
+        Returns:
+            float: Conversion factor (multiply by this to convert from self to other)
+            
+        Example:
+            >>> meter, _ = Unit.parse("m")
+            >>> kilometer, _ = Unit.parse("km")
+            >>> factor = meter.conversion_factor(kilometer)
+            >>> # factor should be 1000.0 (1 km = 1000 m)
+        """
+        if not isinstance(other, Unit):
+            raise TypeError("Can only get conversion factor with another Unit")
+        
+        # Check dimensional compatibility first
+        if not self.is_dimensionally_equal(other):
+            raise RMNError("Cannot convert between units with different dimensionalities")
+        
+        return SIUnitConversion(self._c_unit, (<Unit>other)._c_unit)
+    
+    # Advanced unit operations (non-reducing)
+    def multiply_without_reducing(self, other):
+        """
+        Multiply this unit by another without reducing to lowest terms.
+        
+        Args:
+            other (Unit): Unit to multiply by
+            
+        Returns:
+            Unit: Product unit (not reduced)
+        """
+        if not isinstance(other, Unit):
+            raise TypeError("Can only multiply with another Unit")
+        
+        cdef double unit_multiplier = 1.0
+        cdef OCStringRef error_string = NULL
+        
+        cdef SIUnitRef result = SIUnitByMultiplyingWithoutReducing(self._c_unit, (<Unit>other)._c_unit, 
+                                                                  &unit_multiplier, &error_string)
+        
+        if result == NULL:
+            error_msg = "Unknown error"
+            if error_string != NULL:
+                error_msg = parse_c_string(<uint64_t>error_string)
+                OCRelease(<OCTypeRef>error_string)
+            raise RMNError(f"Unit multiplication without reducing failed: {error_msg}")
+        
+        return Unit._from_ref(result)
+    
+    def divide_without_reducing(self, other):
+        """
+        Divide this unit by another without reducing to lowest terms.
+        
+        Args:
+            other (Unit): Unit to divide by
+            
+        Returns:
+            Unit: Quotient unit (not reduced)
+        """
+        if not isinstance(other, Unit):
+            raise TypeError("Can only divide by another Unit")
+        
+        cdef double unit_multiplier = 1.0
+        
+        cdef SIUnitRef result = SIUnitByDividingWithoutReducing(self._c_unit, (<Unit>other)._c_unit, 
+                                                               &unit_multiplier)
+        
+        if result == NULL:
+            raise RMNError("Unit division without reducing failed")
+        
+        return Unit._from_ref(result)
+    
+    def power_without_reducing(self, exponent):
+        """
+        Raise this unit to a power without reducing to lowest terms.
+        
+        Args:
+            exponent (float): Power to raise to
+            
+        Returns:
+            Unit: Unit raised to the power (not reduced)
+        """
+        if not isinstance(exponent, (int, float)):
+            raise TypeError("Exponent must be a number")
+        
+        cdef double power = float(exponent)
+        cdef double unit_multiplier = 1.0
+        cdef OCStringRef error_string = NULL
+        
+        cdef SIUnitRef result = SIUnitByRaisingToPowerWithoutReducing(self._c_unit, power, 
+                                                                     &unit_multiplier, &error_string)
+        
+        if result == NULL:
+            error_msg = "Unknown error"
+            if error_string != NULL:
+                error_msg = parse_c_string(<uint64_t>error_string)
+                OCRelease(<OCTypeRef>error_string)
+            raise RMNError(f"Unit power operation without reducing failed: {error_msg}")
+        
+        return Unit._from_ref(result)
+    
+    def nth_root_advanced(self, root):
+        """
+        Take the nth root of this unit with advanced options.
+        
+        Args:
+            root (int): Root to take (e.g., 2 for square root)
+            
+        Returns:
+            Unit: nth root of the unit
+        """
+        if not isinstance(root, int):
+            raise TypeError("Root must be an integer")
+        if root <= 0:
+            raise ValueError("Root must be a positive integer")
+        
+        cdef uint8_t c_root = <uint8_t>root
+        cdef double unit_multiplier = 1.0
+        cdef OCStringRef error_string = NULL
+        
+        cdef SIUnitRef result = SIUnitByTakingNthRoot(self._c_unit, c_root, 
+                                                     &unit_multiplier, &error_string)
+        
+        if result == NULL:
+            error_msg = "Unknown error"
+            if error_string != NULL:
+                error_msg = parse_c_string(<uint64_t>error_string)
+                OCRelease(<OCTypeRef>error_string)
+            raise RMNError(f"Advanced unit root operation failed: {error_msg}")
+        
+        return Unit._from_ref(result)
+    
+    # Unit reduction and conversion methods
+    def reduce_to_lowest_terms(self):
+        """
+        Reduce this unit to its lowest terms.
+        
+        Returns:
+            Unit: Unit in lowest terms
+        """
+        cdef double unit_multiplier = 1.0
+        
+        cdef SIUnitRef result = SIUnitByReducing(self._c_unit, &unit_multiplier)
+        
+        if result == NULL:
+            raise RMNError("Unit reduction to lowest terms failed")
+        
+        return Unit._from_ref(result)
+    
+    def to_coherent_si(self):
+        """
+        Convert this unit to its coherent SI representation.
+        
+        Returns:
+            Unit: Coherent SI unit
+        """
+        # Get the dimensionality and find the coherent SI unit for it
+        dim = self.dimensionality
+        if dim is None:
+            raise RMNError("Cannot get dimensionality for coherent SI conversion")
+        
+        cdef Dimensionality dim_obj = <Dimensionality>dim
+        cdef SIDimensionalityRef dim_ref = dim_obj._dim_ref
+        cdef SIUnitRef result = SIUnitFindCoherentSIUnitWithDimensionality(dim_ref)
+        
+        if result == NULL:
+            raise RMNError("Conversion to coherent SI unit failed")
+        
+        return Unit._from_ref(result)
+    
+    def to_best_representation(self):
+        """
+        Convert this unit to its best representation.
+        This is an alias for reduce_to_lowest_terms since there's no specific "best" function.
+        
+        Returns:
+            Unit: Unit in best representation
+        """
+        return self.reduce_to_lowest_terms()
+    
+    # Additional comparison method
+    def is_equivalent(self, other):
+        """
+        Check if this unit is equivalent to another unit.
+        
+        Args:
+            other (Unit): Unit to compare with
+            
+        Returns:
+            bool: True if units are equivalent
+        """
+        if not isinstance(other, Unit):
+            return False
+        
+        return SIUnitAreEquivalentUnits(self._c_unit, (<Unit>other)._c_unit)
     
     # Comparison methods
     def is_equal(self, other):
