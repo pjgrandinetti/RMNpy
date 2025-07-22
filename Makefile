@@ -119,7 +119,7 @@ rebuild: clean-libs
 # Generate SI quantity constants from C header file
 generate-constants:
 	@echo "Generating SI quantity constants from C header file..."
-	@python extract_si_constants.py
+	@python scripts/extract_si_constants.py
 
 # Run tests
 test:

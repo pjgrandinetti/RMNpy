@@ -50,8 +50,6 @@ cdef class Unit:
         >>> vel_mult  # 1.0
     """
     
-    cdef SIUnitRef _c_unit
-    
     def __cinit__(self):
         self._c_unit = NULL
     
@@ -150,36 +148,6 @@ cdef class Unit:
             
         finally:
             OCRelease(<OCTypeRef>name_string)
-    
-    @classmethod
-    def from_symbol(cls, symbol):
-        """
-        Find a unit by its symbol.
-        
-        Args:
-            symbol (str): Unit symbol (e.g., "m", "s", "kg")
-            
-        Returns:
-            Unit: Unit with the given symbol, or None if not found
-        """
-        if not isinstance(symbol, str):
-            raise TypeError("Symbol must be a string")
-        
-        cdef bytes symbol_bytes = symbol.encode('utf-8')
-        cdef OCStringRef symbol_string = OCStringCreateWithCString(symbol_bytes)
-        cdef SIUnitRef c_unit
-        
-        try:
-            c_unit = SIUnitFindWithUnderivedSymbol(symbol_string)
-            
-            if c_unit == NULL:
-                return None
-            
-            # Create Python wrapper using _from_ref
-            return Unit._from_ref(c_unit)
-            
-        finally:
-            OCRelease(<OCTypeRef>symbol_string)
     
     @classmethod
     def dimensionless(cls):

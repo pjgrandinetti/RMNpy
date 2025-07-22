@@ -124,7 +124,7 @@ def main():
         
         # Generate Python constants module
         script_dir = Path(__file__).parent
-        output_path = script_dir / "src" / "rmnpy" / "constants.pyx"
+        output_path = script_dir.parent / "src" / "rmnpy" / "constants.pyx"
         
         generate_python_constants(constants, output_path, header_path)
         

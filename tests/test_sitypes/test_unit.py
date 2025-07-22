@@ -137,21 +137,23 @@ class TestUnitCreation:
         with pytest.raises(TypeError):
             Unit.from_name(None)
     
-    def test_from_symbol(self):
-        """Test finding units by symbol."""
-        meter = Unit.from_symbol("m")
+    def test_parse_basic_symbols(self):
+        """Test parsing basic unit symbols (equivalent to old from_symbol test)."""
+        meter, mult1 = Unit.parse("m")
         assert meter is not None
         assert meter.name == "meter"
+        assert mult1 == 1.0
         
-        second = Unit.from_symbol("s")
+        second, mult2 = Unit.parse("s")
         assert second is not None
+        assert mult2 == 1.0
         
-        # Non-existent symbol should return None
-        unknown = Unit.from_symbol("xyz")
-        assert unknown is None
+        # Non-existent symbol should raise RMNError
+        with pytest.raises(RMNError):
+            Unit.parse("xyz")
         
         with pytest.raises(TypeError):
-            Unit.from_symbol(None)
+            Unit.parse(None)
     
     def test_dimensionless(self):
         """Test dimensionless unit creation."""
@@ -198,10 +200,13 @@ class TestUnitProperties:
         assert meter.plural_name == "meters"
         
         # Test gram (not kilogram, based on C tests)
-        gram = Unit.from_symbol("g")
-        if gram:  # Only test if gram is found
+        try:
+            gram, _ = Unit.parse("g")
             assert "gram" in gram.name.lower()
             assert "grams" in gram.plural_name.lower()
+        except RMNError:
+            # If gram parsing fails, skip this part of the test
+            pass
     
     def test_dimensionality_property(self):
         """Test dimensionality property."""
@@ -638,10 +643,9 @@ class TestUnitEdgeCases:
         
         # Bar (if supported)
         try:
-            bar = Unit.from_symbol("bar")
-            if bar:
-                assert bar.symbol == "bar"
-        except:
+            bar, _ = Unit.parse("bar")
+            assert bar.symbol == "bar"
+        except RMNError:
             pass  # Bar might not be supported
     
     def test_non_si_units(self):

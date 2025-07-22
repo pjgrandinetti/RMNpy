@@ -15,7 +15,7 @@ def generate_si_constants():
     print("Generating SI quantity constants from C header...")
     
     try:
-        script_path = Path(__file__).parent / "extract_si_constants.py"
+        script_path = Path(__file__).parent / "scripts" / "extract_si_constants.py"
         
         if script_path.exists():
             # Run the extraction script
@@ -194,6 +194,20 @@ def get_extensions():
         Extension(
             "rmnpy.wrappers.sitypes.unit",
             sources=["src/rmnpy/wrappers/sitypes/unit.pyx"],
+            include_dirs=include_dirs,
+            library_dirs=library_dirs,
+            libraries=libraries,
+            language="c",
+            extra_compile_args=extra_compile_args,
+            extra_link_args=extra_link_args
+        )
+    ])
+    
+    # Phase 2C: SIScalar wrapper (complete implementation)
+    extensions.extend([
+        Extension(
+            "rmnpy.wrappers.sitypes.scalar",
+            sources=["src/rmnpy/wrappers/sitypes/scalar.pyx"],
             include_dirs=include_dirs,
             library_dirs=library_dirs,
             libraries=libraries,

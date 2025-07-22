@@ -2,7 +2,7 @@
 
 Python bindings for OCTypes, SITypes, and RMNLib C libraries.
 
-> **🚀 Setting up on a new computer?** See **[ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md)** for complete setup instructions.
+> **🚀 Setting up on a new computer?** See **[docs/development/NEW_COMPUTER_SETUP.md](docs/development/NEW_COMPUTER_SETUP.md)** for quick setup or **[docs/development/ENVIRONMENT_SETUP.md](docs/development/ENVIRONMENT_SETUP.md)** for detailed instructions.
 
 ## Overview
 
@@ -23,7 +23,7 @@ RMNpy provides Python access to three scientific computing C libraries:
 
 ### For Development (Recommended)
 
-See **[ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md)** for complete instructions.
+See **[docs/development/ENVIRONMENT_SETUP.md](docs/development/ENVIRONMENT_SETUP.md)** for complete instructions.
 
 Quick version:
 ```bash
@@ -86,7 +86,7 @@ This package is built using Cython to provide efficient bindings to the underlyi
 ```bash
 git clone https://github.com/pjgrandinetti/RMNpy.git
 cd RMNpy
-conda env create -f environment-dev.yml
+conda env create -f environment.yml
 conda activate rmnpy
 make synclib  # Copy libraries from local development
 pip install -e .
@@ -102,11 +102,21 @@ pip install -e .
 - `make test` - Run the test suite
 - `make status` - Check library status
 
-See the documentation for more details on development workflows.
+See **[docs/development/DEVELOPMENT.md](docs/development/DEVELOPMENT.md)** for complete development workflows.
 
 ## Documentation
 
-Full documentation is available at [Read the Docs](https://rmnpy.readthedocs.io).
+### User Documentation
+
+- **API Documentation**: [Read the Docs](https://rmnpy.readthedocs.io) (when available)
+
+### Development Documentation
+
+- **[docs/development/README.md](docs/development/README.md)** - Navigation guide for all development docs
+- **[docs/development/NEW_COMPUTER_SETUP.md](docs/development/NEW_COMPUTER_SETUP.md)** - Quick setup guide
+- **[docs/development/ENVIRONMENT_SETUP.md](docs/development/ENVIRONMENT_SETUP.md)** - Detailed setup + troubleshooting
+- **[docs/development/DEVELOPMENT.md](docs/development/DEVELOPMENT.md)** - Development workflow
+- **[docs/development/RMNpy_Implementation_Plan.md](docs/development/RMNpy_Implementation_Plan.md)** - Project plan & progress
 
 ## License
 

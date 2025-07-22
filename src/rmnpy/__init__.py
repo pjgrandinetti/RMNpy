@@ -15,12 +15,14 @@ __version__ = "0.1.0"
 __author__ = "Philip Grandinetti"
 __email__ = "grandinetti.1@osu.edu"
 
-# Import main functionality (will be added as we implement phases)
-# from .wrappers.sitypes import Scalar, Unit, Dimensionality
-# from .wrappers.rmnlib import *
+# Import main functionality
+from .wrappers.sitypes import Dimensionality, Unit, Scalar
 
 __all__ = [
     "__version__",
     "__author__", 
     "__email__",
+    "Dimensionality",
+    "Unit", 
+    "Scalar",
 ]

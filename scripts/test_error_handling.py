@@ -2,7 +2,12 @@
 
 import sys
 import os
-sys.path.insert(0, '/Users/philip/Github/Software/OCTypes-SITypes/RMNpy/src')
+from pathlib import Path
+
+# Add the src directory to Python path (works from scripts/ directory)
+script_dir = Path(__file__).parent
+src_dir = script_dir.parent / "src"
+sys.path.insert(0, str(src_dir))
 
 from rmnpy.wrappers.sitypes.unit import Unit
 from rmnpy.exceptions import RMNError

@@ -3,6 +3,8 @@
 ## Overview
 This document outlines a systematic approach to creating RMNpy, a Python package that exposes three C libraries (OCTypes, SITypes, and RMNLib) using Cython. The plan follows a phased approach, building complexity incrementally.
 
+For each phase of the master plan, be sure to carefully review the relevant C API, and the existing cython and python code for helpers and wrappers before writing any code.
+
 ## Project Architecture
 
 ### Directory Structure
