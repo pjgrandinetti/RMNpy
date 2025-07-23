@@ -52,6 +52,7 @@ User Guide
    :caption: Contents:
 
    background
+   sitypes_demo
    
 API Reference
 -------------

@@ -5,3 +5,4 @@ sphinx-rtd-theme>=0.5.2
 breathe>=4.13.0
 myst-parser>=0.15.0
 sphinx-copybutton>=0.3.0
+nbsphinx>=0.8.0

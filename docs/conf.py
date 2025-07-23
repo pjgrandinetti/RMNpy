@@ -30,7 +30,13 @@ extensions = [
     'breathe',                 # C/C++ integration via Doxygen
     'myst_parser',            # Markdown support
     'sphinx_copybutton',      # Copy button for code blocks
+    'nbsphinx',               # Jupyter notebook support
 ]
+
+# -- nbsphinx configuration -------------------------------------------------
+
+# Allow errors in notebook execution so docs can build without the library installed
+nbsphinx_allow_errors = True
 
 # Paths that contain templates, relative to this directory.
 templates_path = ['_templates']
@@ -72,6 +78,16 @@ autodoc_default_options = {
     'exclude-members': '__weakref__'
 }
 
+# Add fully qualified names for cross-references to avoid ambiguity
+autodoc_typehints = 'description'
+autodoc_typehints_format = 'fully-qualified'
+
+# Suppress specific cross-reference warnings
+nitpick_ignore = [
+    ('py:class', 'rmnpy.wrappers.sitypes.Unit'),
+    ('py:class', 'rmnpy.wrappers.sitypes.Dimensionality'),
+]
+
 # -- Napoleon configuration -------------------------------------------------
 
 napoleon_google_docstring = True
@@ -102,7 +118,6 @@ html_theme_options = {
     'canonical_url': '',
     'analytics_id': 'UA-XXXXXXX-1',  # Provided by the user to enable tracking.
     'logo_only': False,
-    'display_version': True,
     'prev_next_buttons_location': 'bottom',
     'style_external_links': False,
     'vcs_pageview_mode': '',
