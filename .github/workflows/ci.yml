@@ -161,9 +161,12 @@ jobs:
         EOF
       shell: bash
 
-    - name: Build RMNpy extensions
+    - name: Build extensions in-place
       run: |
         python setup.py build_ext --inplace
+        # Copy compiled extensions to the in-place build directory
+        cp src/rmnpy/helpers/*.so rmnpy/helpers/ 2>/dev/null || true
+        cp src/rmnpy/wrappers/sitypes/*.so rmnpy/wrappers/sitypes/ 2>/dev/null || true
 
     - name: Run tests
       run: |
