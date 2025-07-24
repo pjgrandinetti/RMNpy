@@ -142,7 +142,8 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        python -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2"
+        # Use GitHub Actions Python explicitly (not MSYS2 Python)
+        & "$env:pythonLocation\python.exe" -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2"
 
     - name: Build Cython extension in-place (Windows)
       if: runner.os == 'Windows'
@@ -153,7 +154,8 @@ jobs:
         LIBRARY_PATH: ${{ runner.temp }}/msys64/mingw64/lib
         LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
       run: |
-        python setup.py build_ext --inplace
+        # Use GitHub Actions Python explicitly for build
+        & "$env:pythonLocation\python.exe" setup.py build_ext --inplace
 
     - name: Copy MinGW runtime DLLs (Windows)
       if: runner.os == 'Windows'
@@ -184,7 +186,8 @@ jobs:
         LIBRARY_PATH: ${{ runner.temp }}/msys64/mingw64/lib
         LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
       run: |
-        python -m pip install -e .[test]
+        # Use GitHub Actions Python explicitly for pip install
+        & "$env:pythonLocation\python.exe" -m pip install -e .[test]
 
     - name: Generate constants (Linux/macOS)
       if: runner.os != 'Windows'
@@ -211,7 +214,8 @@ jobs:
         LIBRARY_PATH: ${{ runner.temp }}/msys64/mingw64/lib
         LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
       run: |
-        python -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
+        # Use GitHub Actions Python explicitly for pytest
+        & "$env:pythonLocation\python.exe" -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
 
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
