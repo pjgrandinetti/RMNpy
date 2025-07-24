@@ -9,17 +9,29 @@ SIScalar represents a physical quantity with a numerical value, unit, and associ
 It supports comprehensive arithmetic operations with automatic unit handling and dimensional validation.
 """
 
-from rmnpy._c_api.octypes cimport (OCStringRef, OCRelease, OCStringCreateWithCString, 
-                                   OCStringGetCString, OCTypeRef, OCComparisonResult)
+from rmnpy._c_api.octypes cimport (
+    OCComparisonResult,
+    OCRelease,
+    OCStringCreateWithCString,
+    OCStringGetCString,
+    OCStringRef,
+    OCTypeRef,
+)
 from rmnpy._c_api.sitypes cimport *
-from rmnpy.exceptions import RMNError
-from rmnpy.wrappers.sitypes.dimensionality cimport Dimensionality
-from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
-from rmnpy.wrappers.sitypes.unit cimport Unit  
-from rmnpy.wrappers.sitypes.unit import Unit
-from rmnpy.helpers.octypes import parse_c_string
 
-from libc.stdint cimport uint64_t, uintptr_t, uint8_t
+from rmnpy.exceptions import RMNError
+
+from rmnpy.wrappers.sitypes.dimensionality cimport Dimensionality
+
+from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
+
+from rmnpy.wrappers.sitypes.unit cimport Unit
+
+from rmnpy.helpers.octypes import parse_c_string
+from rmnpy.wrappers.sitypes.unit import Unit
+
+from libc.stdint cimport uint8_t, uint64_t, uintptr_t
+
 import cmath
 
 

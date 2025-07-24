@@ -13,8 +13,10 @@ NOTE: All API declarations are based on actual SITypes headers
 """
 
 # Import OCTypes dependencies
+
+from libc.stdint cimport int8_t, uint8_t
+
 from rmnpy._c_api.octypes cimport *
-from libc.stdint cimport uint8_t, int8_t
 
 # ====================================================================================
 # SITypes Core Types and Constants (from SILibrary.h)

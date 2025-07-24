@@ -6,11 +6,19 @@ Complete wrapper for SIUnit providing comprehensive unit manipulation capabiliti
 This implementation builds on the SIDimensionality foundation from Phase 2A.
 """
 
-from rmnpy._c_api.octypes cimport (OCStringRef, OCRelease, OCStringCreateWithCString, 
-                                   OCStringGetCString, OCTypeRef)
+from rmnpy._c_api.octypes cimport (
+    OCRelease,
+    OCStringCreateWithCString,
+    OCStringGetCString,
+    OCStringRef,
+    OCTypeRef,
+)
 from rmnpy._c_api.sitypes cimport *
+
 from rmnpy.exceptions import RMNError
+
 from rmnpy.wrappers.sitypes.dimensionality cimport Dimensionality
+
 from rmnpy.helpers.octypes import parse_c_string
 
 from libc.stdint cimport uint64_t, uintptr_t

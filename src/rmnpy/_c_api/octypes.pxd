@@ -7,10 +7,19 @@ It defines the C types, structures, and functions needed to interface with
 OCTypes from Python using Cython.
 """
 
-from libc.stdint cimport uint32_t, int32_t, int64_t, int8_t, int16_t
-from libc.stdint cimport uint8_t, uint16_t, uint64_t
 from libc.stddef cimport size_t
+from libc.stdint cimport (
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t,
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t,
+)
 from libc.stdio cimport FILE
+
 
 # Complex number types (C99 complex)
 cdef extern from "complex.h":

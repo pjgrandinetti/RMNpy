@@ -8,7 +8,7 @@ the SITypes and RMNLib wrappers.
 """
 
 # Import convenience functions for SITypes integration
-from .octypes import parse_c_string, create_oc_string
+from .octypes import create_oc_string, parse_c_string
 
 __all__ = [
     'parse_c_string',

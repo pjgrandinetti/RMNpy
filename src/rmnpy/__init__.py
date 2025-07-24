@@ -16,13 +16,13 @@ __author__ = "Philip Grandinetti"
 __email__ = "grandinetti.1@osu.edu"
 
 # Import main functionality
-from .wrappers.sitypes import Dimensionality, Unit, Scalar
+from .wrappers.sitypes import Dimensionality, Scalar, Unit
 
 __all__ = [
     "__version__",
-    "__author__", 
+    "__author__",
     "__email__",
     "Dimensionality",
-    "Unit", 
+    "Unit",
     "Scalar",
 ]

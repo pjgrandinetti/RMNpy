@@ -6,9 +6,14 @@ Full-featured wrapper for SIDimensionality providing comprehensive dimensional a
 This implementation includes all essential methods for scientific computing applications.
 """
 
-from rmnpy._c_api.octypes cimport (OCStringRef, OCRelease, OCStringCreateWithCString, 
-                                   OCStringGetCString)
+from rmnpy._c_api.octypes cimport (
+    OCRelease,
+    OCStringCreateWithCString,
+    OCStringGetCString,
+    OCStringRef,
+)
 from rmnpy._c_api.sitypes cimport *
+
 from rmnpy.exceptions import RMNError
 
 from libc.stdint cimport uint64_t

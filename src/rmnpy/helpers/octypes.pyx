@@ -6,11 +6,21 @@ This module provides conversion utilities between Python types and OCTypes C str
 These helpers enable seamless integration between Python objects and the OCTypes library.
 """
 
-from rmnpy._c_api.octypes cimport *
-from libc.stdint cimport uint8_t, int8_t, uint16_t, int16_t
-from libc.stdint cimport uint32_t, int32_t, uint64_t, int64_t
-from libc.stdlib cimport malloc, free
+from libc.stdint cimport (
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t,
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t,
+)
+from libc.stdlib cimport free, malloc
 from libc.string cimport memcpy
+
+from rmnpy._c_api.octypes cimport *
+
 import cython
 
 # ====================================================================================
@@ -565,6 +575,7 @@ def ocboolean_to_py_bool(uint64_t oc_boolean_ptr):
 # ====================================================================================
 
 import numpy as np
+
 cimport numpy as cnp
 
 # Initialize NumPy C API
