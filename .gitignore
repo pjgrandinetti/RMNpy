@@ -68,6 +68,9 @@ src/rmnpy/**/*.c
 src/rmnpy/**/*.cpp
 src/rmnpy/**/*.html
 
+# In-place build directories (for setup.py build_ext --inplace)
+rmnpy/
+
 # C/C++ compilation artifacts
 *.o
 *.a
