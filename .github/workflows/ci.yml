@@ -27,24 +27,6 @@ jobs:
     - name: Checkout RMNpy
       uses: actions/checkout@v4
 
-    - name: Checkout OCTypes
-      uses: actions/checkout@v4
-      with:
-        repository: pjgrandinetti/OCTypes
-        path: OCTypes
-
-    - name: Checkout SITypes  
-      uses: actions/checkout@v4
-      with:
-        repository: pjgrandinetti/SITypes
-        path: SITypes
-
-    - name: Checkout RMNLib
-      uses: actions/checkout@v4
-      with:
-        repository: pjgrandinetti/RMNLib
-        path: RMNLib
-
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
@@ -75,33 +57,62 @@ jobs:
           flex
           bison
 
-    - name: Build OCTypes
+    - name: Download OCTypes from GitHub releases
       run: |
-        cd OCTypes
-        make clean || true
-        make
-        make install
+        mkdir -p lib include/OCTypes
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          LIB_SUFFIX="linux-x86_64.zip"
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          LIB_SUFFIX="macos-x86_64.zip"
+        elif [[ "${{ runner.os }}" == "Windows" ]]; then
+          LIB_SUFFIX="windows-x86_64.zip"
+        fi
+        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-${LIB_SUFFIX} -o octypes-lib.zip
+        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-headers.zip -o octypes-headers.zip
+        unzip -o -j -q octypes-lib.zip -d lib/
+        unzip -o -j -q octypes-headers.zip -d include/OCTypes/
+        rm octypes-lib.zip octypes-headers.zip
       shell: bash
 
-    - name: Build SITypes
+    - name: Download SITypes from GitHub releases
       run: |
-        cd SITypes  
-        make clean || true
-        make
-        make install
+        mkdir -p include/SITypes
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          LIB_SUFFIX="linux-x86_64.zip"
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          LIB_SUFFIX="macos-x86_64.zip"
+        elif [[ "${{ runner.os }}" == "Windows" ]]; then
+          LIB_SUFFIX="windows-x86_64.zip"
+        fi
+        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-${LIB_SUFFIX} -o sitypes-lib.zip
+        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-headers.zip -o sitypes-headers.zip
+        unzip -o -j -q sitypes-lib.zip -d lib/
+        unzip -o -j -q sitypes-headers.zip -d include/SITypes/
+        rm sitypes-lib.zip sitypes-headers.zip
       shell: bash
 
-    - name: Build RMNLib
+    - name: Download RMNLib from GitHub releases
       run: |
-        cd RMNLib
-        make clean || true
-        make
-        make install
+        mkdir -p include/RMNLib
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          LIB_SUFFIX="linux-x86_64.zip"
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          LIB_SUFFIX="macos-x86_64.zip"
+        elif [[ "${{ runner.os }}" == "Windows" ]]; then
+          LIB_SUFFIX="windows-x86_64.zip"
+        fi
+        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-${LIB_SUFFIX} -o rmnlib-lib.zip
+        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-headers.zip -o rmnlib-headers.zip
+        unzip -o -j -q rmnlib-lib.zip -d lib/
+        unzip -o -j -q rmnlib-headers.zip -d include/RMNLib/
+        rm rmnlib-lib.zip rmnlib-headers.zip
       shell: bash
 
-    - name: Sync libraries to RMNpy
+    - name: Verify downloaded libraries
       run: |
-        make synclib
+        ls -la lib/
+        ls -la include/
+        echo "✓ Libraries downloaded and ready for Python build"
       shell: bash
 
     - name: Install Python dependencies
