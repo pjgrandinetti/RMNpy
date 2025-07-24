@@ -25,7 +25,7 @@ Brief description of the changes in this PR.
 If this PR affects interaction with C libraries:
 
 - [ ] OCTypes changes tested
-- [ ] SITypes changes tested  
+- [ ] SITypes changes tested
 - [ ] RMNLib changes tested
 - [ ] Library synchronization working correctly
 

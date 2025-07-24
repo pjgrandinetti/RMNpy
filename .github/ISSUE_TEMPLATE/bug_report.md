@@ -34,7 +34,7 @@ If applicable, add screenshots to help explain your problem.
 **C Library Dependencies:**
 
 - OCTypes version: [e.g. latest commit hash]
-- SITypes version: [e.g. latest commit hash]  
+- SITypes version: [e.g. latest commit hash]
 - RMNLib version: [e.g. latest commit hash]
 
 **Additional context**

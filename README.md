@@ -9,7 +9,7 @@ Python bindings for OCTypes, SITypes, and RMNLib C libraries.
 RMNpy provides Python access to three scientific computing C libraries:
 
 - **OCTypes**: Objective-C style data structures and memory management
-- **SITypes**: Scientific units and dimensional analysis  
+- **SITypes**: Scientific units and dimensional analysis
 - **RMNLib**: High-level analysis and computation tools
 
 ## Features
@@ -59,7 +59,7 @@ from rmnpy.wrappers.sitypes import Scalar, Unit, Dimensionality
 energy = Scalar("100 J")           # 100 Joules
 velocity = Scalar("25 m/s")        # 25 meters per second
 
-# Single numeric values (dimensionless) 
+# Single numeric values (dimensionless)
 ratio = Scalar(0.75)               # 0.75 (dimensionless)
 count = Scalar(42)                 # 42 (dimensionless)
 impedance = Scalar(3+4j)           # Complex number
@@ -109,7 +109,7 @@ time_dim = Dimensionality("T")
 velocity_dim = length_dim / time_dim # Result: L/T
 
 print(f"Speed: {speed}")             # "50 m/s"
-print(f"Unit: {speed.unit.symbol}")  # "m/s" 
+print(f"Unit: {speed.unit.symbol}")  # "m/s"
 print(f"Dimensionality: {speed.dimensionality.symbol}")  # "L/T"
 ```
 

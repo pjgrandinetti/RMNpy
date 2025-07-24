@@ -9,7 +9,7 @@ echo "Creating stub libraries and headers for CI documentation build..."
 # Create directories
 mkdir -p lib
 mkdir -p include/OCTypes
-mkdir -p include/SITypes  
+mkdir -p include/SITypes
 mkdir -p include/RMNLib
 
 # Create minimal stub libraries (empty archives)
@@ -33,7 +33,7 @@ typedef struct OCDictionary OCDictionary;
 #endif // OC_LIBRARY_H
 EOF
 
-# Create minimal stub headers for SITypes  
+# Create minimal stub headers for SITypes
 cat > include/SITypes/SILibrary.h << 'EOF'
 #ifndef SI_LIBRARY_H
 #define SI_LIBRARY_H
@@ -49,7 +49,7 @@ EOF
 
 # Create minimal stub headers for RMNLib
 cat > include/RMNLib/RMNLibrary.h << 'EOF'
-#ifndef RMN_LIBRARY_H  
+#ifndef RMN_LIBRARY_H
 #define RMN_LIBRARY_H
 
 // Stub header for documentation builds

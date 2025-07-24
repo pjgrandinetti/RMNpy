@@ -8,7 +8,7 @@ This guide explains how to recreate the development environment for RMNpy on a n
 
 - **Miniconda or Anaconda** installed ([Download here](https://docs.conda.io/en/latest/miniconda.html))
 - **Git** for cloning the repository
-- **C compiler**: 
+- **C compiler**:
   - **macOS**: Xcode Command Line Tools → `xcode-select --install`
   - **Linux**: Build essentials → `sudo apt-get install build-essential`
   - **Windows**: Visual Studio Build Tools or MSVC
@@ -40,7 +40,7 @@ make
 make install
 cd ..
 
-# Build SITypes library (REQUIRED) 
+# Build SITypes library (REQUIRED)
 cd SITypes
 make
 make synclib
@@ -94,7 +94,7 @@ When everything is working correctly, you should see:
 pytest
 ========================= test session starts =========================
 ...
-tests/test_helpers/test_octypes.py ............                   [ 13%]  
+tests/test_helpers/test_octypes.py ............                   [ 13%]
 tests/test_sitypes/test_dimensionality.py ........................ [ 41%]
 tests/test_unit.py ..F.F..FF..FF.F.F..FF..FF....F...FF..F.FF.F....FFF [100%]
 
@@ -102,7 +102,7 @@ tests/test_unit.py ..F.F..FF..FF.F.F..FF..FF....F...FF..F.FF.F....FFF [100%]
 ```
 
 - **86 total tests collected**
-- **64 tests passing** (Phase 2A Dimensionality: 22/22, Phase 2B SIUnit: 36/50, OCTypes helpers: 6/6) 
+- **64 tests passing** (Phase 2A Dimensionality: 22/22, Phase 2B SIUnit: 36/50, OCTypes helpers: 6/6)
 - **22 tests failing** (all in Phase 2B SIUnit - this is expected, development in progress)
 
 If you see significantly different results, check the troubleshooting section below.

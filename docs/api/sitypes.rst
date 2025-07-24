@@ -18,7 +18,7 @@ Traditional scientific computing is error-prone:
 
    # Traditional approach (ERROR-PRONE!)
    distance_m = 1000      # meters? feet? who knows?
-   time_s = 3600          # seconds? minutes? 
+   time_s = 3600          # seconds? minutes?
    speed = distance_m / time_s  # Units completely lost!
 
 With Scalar, units are **tracked automatically**:
@@ -27,18 +27,18 @@ With Scalar, units are **tracked automatically**:
 
    # Safe approach with Scalar
    distance = Scalar("1000 m")     # Clearly 1000 meters
-   time = Scalar("1 h")            # Clearly 1 hour  
+   time = Scalar("1 h")            # Clearly 1 hour
    speed = distance / time         # Units calculated automatically!
-   print(speed)                    
+   print(speed)
    # Output: 277.778 m/s
-   
+
    # Convert to any compatible unit instantly
-   speed_kmh = speed.convert_to("km/h")  
-   print(speed_kmh)                
+   speed_kmh = speed.convert_to("km/h")
+   print(speed_kmh)
    # Output: 1000.0 km/h
-   
-   speed_mph = speed.convert_to("mph")   
-   print(speed_mph)                
+
+   speed_mph = speed.convert_to("mph")
+   print(speed_mph)
    # Output: 621.371 mph
 
 Key Benefits
@@ -314,7 +314,7 @@ SITypes includes a comprehensive database of fundamental physical constants. Sim
    kinetic_energy = Scalar("0.5 * m_e * (c_0 * 0.1)^2")  # Relativistic energy
    gas_pressure = Scalar("0.1 mol * R * 298 K / 0.001 m^3")  # Ideal gas law
    bohr_radius = Scalar("hbar^2 / (m_e * q_e^2 * k_e)")  # Atomic physics
-   
+
    # No need to remember: R = 8.314 J/(mol·K) - just use "R"!
    # No need to remember: c = 299792458 m/s - just use "c_0"!
 
@@ -335,9 +335,9 @@ Classes
 
 .. toctree::
    :maxdepth: 2
-   
+
    sitypes/scalar
-   sitypes/unit  
+   sitypes/unit
    sitypes/dimensionality
 
 Module Reference
@@ -346,7 +346,7 @@ Module Reference
 The detailed API documentation for each class is available in the following pages:
 
 * :doc:`sitypes/scalar` - Scalar class with units and dimensional analysis
-* :doc:`sitypes/unit` - Unit class for physical units  
+* :doc:`sitypes/unit` - Unit class for physical units
 * :doc:`sitypes/dimensionality` - Dimensionality class for dimensional analysis
    :undoc-members:
    :show-inheritance:

@@ -6,7 +6,7 @@ This file contains Cython declarations for the SITypes C library,
 focusing on dimensional analysis and unit conversion systems.
 
 Phase 2A: SIDimensionality (foundation component - no dependencies)
-Phase 2B: SIUnit (depends on SIDimensionality)  
+Phase 2B: SIUnit (depends on SIDimensionality)
 Phase 2C: SIQuantity & SIScalar (depend on both above)
 
 NOTE: All API declarations are based on actual SITypes headers
@@ -25,8 +25,8 @@ from rmnpy._c_api.octypes cimport *
 # Forward declarations from SILibrary.h
 ctypedef void* SIDimensionalityRef
 ctypedef void* SIUnitRef
-ctypedef void* SIQuantityRef  
-ctypedef void* SIMutableQuantityRef  
+ctypedef void* SIQuantityRef
+ctypedef void* SIMutableQuantityRef
 ctypedef void* SIScalarRef
 ctypedef void* SIMutableScalarRef
 
@@ -37,7 +37,7 @@ ctypedef void* SIMutableScalarRef
 # Base dimension indices (from SIDimensionality.h)
 ctypedef enum SIBaseDimensionIndex:
     kSILengthIndex = 0
-    kSIMassIndex = 1  
+    kSIMassIndex = 1
     kSITimeIndex = 2
     kSICurrentIndex = 3
     kSITemperatureIndex = 4
@@ -45,20 +45,20 @@ ctypedef enum SIBaseDimensionIndex:
     kSILuminousIntensityIndex = 6
 
 cdef extern from "SITypes/SIDimensionality.h":
-    
+
     # Parsing
     SIDimensionalityRef SIDimensionalityParseExpression(OCStringRef expression, OCStringRef *error)
-    
+
     # Type system
     OCTypeID SIDimensionalityGetTypeID()
-    
+
     # Accessors
     OCStringRef SIDimensionalityGetSymbol(SIDimensionalityRef theDim)
-    
+
     # JSON support (commented out - not needed for Phase 2A)
     # cJSON *SIDimensionalityCreateJSON(SIDimensionalityRef dim)
     # SIDimensionalityRef SIDimensionalityFromJSON(cJSON *json)
-    
+
     # Tests
     bint SIDimensionalityEqual(SIDimensionalityRef theDim1, SIDimensionalityRef theDim2)
     bint SIDimensionalityIsDimensionless(SIDimensionalityRef theDim)
@@ -69,13 +69,13 @@ cdef extern from "SITypes/SIDimensionality.h":
     bint SIDimensionalityHasSameReducedDimensionality(SIDimensionalityRef theDim1, SIDimensionalityRef theDim2)
     bint SIDimensionalityHasReducedExponents(SIDimensionalityRef theDim,
                                            int8_t length_exponent,
-                                           int8_t mass_exponent, 
+                                           int8_t mass_exponent,
                                            int8_t time_exponent,
                                            int8_t current_exponent,
                                            int8_t temperature_exponent,
                                            int8_t amount_exponent,
                                            int8_t luminous_intensity_exponent)
-    
+
     # Operations
     SIDimensionalityRef SIDimensionalityDimensionless()
     SIDimensionalityRef SIDimensionalityForBaseDimensionIndex(SIBaseDimensionIndex index)
@@ -89,14 +89,14 @@ cdef extern from "SITypes/SIDimensionality.h":
     SIDimensionalityRef SIDimensionalityByDividingWithoutReducing(SIDimensionalityRef theDim1, SIDimensionalityRef theDim2)
     SIDimensionalityRef SIDimensionalityByRaisingToPower(SIDimensionalityRef theDim, double power, OCStringRef *error)
     SIDimensionalityRef SIDimensionalityByRaisingToPowerWithoutReducing(SIDimensionalityRef theDim, double power, OCStringRef *error)
-    
-    # Array operations  
+
+    # Array operations
     OCArrayRef SIDimensionalityCreateArrayOfQuantities(SIDimensionalityRef theDim)
     OCArrayRef SIDimensionalityCreateArrayOfQuantitiesWithSameReducedDimensionality(SIDimensionalityRef theDim)
     OCArrayRef SIDimensionalityCreateArrayWithSameReducedDimensionality(SIDimensionalityRef theDim)
     OCArrayRef SIDimensionalityCreateArrayOfQuantityNames(SIDimensionalityRef dim)
     OCArrayRef SIDimensionalityCreateArrayOfQuantityNamesWithSameReducedDimensionality(SIDimensionalityRef dim)
-    
+
     # Display
     void SIDimensionalityShow(SIDimensionalityRef theDim)
     void SIDimensionalityShowFull(SIDimensionalityRef theDim)
@@ -106,7 +106,7 @@ cdef extern from "SITypes/SIDimensionality.h":
 # ====================================================================================
 
 cdef extern from "SITypes/SIUnit.h":
-    
+
     # Type definitions
     ctypedef enum SIPrefix:
         kSIPrefixYocto = -24
@@ -130,63 +130,63 @@ cdef extern from "SITypes/SIUnit.h":
         kSIPrefixExa = 18
         kSIPrefixZetta = 21
         kSIPrefixYotta = 24
-    
+
     # Parsing
     SIUnitRef SIUnitFromExpression(OCStringRef expression, SIDimensionalityRef dimensionality, OCStringRef *error)
-    
+
     # Memory management
     SIUnitRef SIUnitCopy(SIUnitRef theUnit)
-    
+
     # Properties - Basic
     SIDimensionalityRef SIUnitGetDimensionality(SIUnitRef theUnit)
-    OCStringRef SIUnitCopySymbol(SIUnitRef theUnit) 
+    OCStringRef SIUnitCopySymbol(SIUnitRef theUnit)
     OCStringRef SIUnitCopyName(SIUnitRef theUnit)
     OCStringRef SIUnitCopyPluralName(SIUnitRef theUnit)
     OCStringRef SIUnitCopyRootName(SIUnitRef theUnit)
     OCStringRef SIUnitCopyRootPluralName(SIUnitRef theUnit)
     OCStringRef SIUnitCopyRootSymbol(SIUnitRef theUnit)
-    
+
     # Properties - Prefix information
     SIPrefix SIUnitGetNumeratorPrefixAtIndex(SIUnitRef theUnit, uint8_t index)
     SIPrefix SIUnitGetDenominatorPrefixAtIndex(SIUnitRef theUnit, uint8_t index)
     bint SIUnitAllowsSIPrefix(SIUnitRef theUnit)
-    
+
     # Type checking
     bint SIUnitIsDimensionless(SIUnitRef theUnit)
     bint SIUnitIsSIBaseUnit(SIUnitRef theUnit)
     bint SIUnitIsCoherentSIBaseUnit(SIUnitRef theUnit)
     bint SIUnitIsCoherentDerivedUnit(SIUnitRef theUnit)
     bint SIUnitGetIsSpecialSISymbol(SIUnitRef theUnit)
-    
+
     # Comparison
     bint SIUnitEqual(SIUnitRef unit1, SIUnitRef unit2)
     bint SIUnitAreEquivalentUnits(SIUnitRef unit1, SIUnitRef unit2)
-    
+
     # Scale and conversion
     double SIUnitScaleToCoherentSIUnit(SIUnitRef theUnit)
-    
+
     # Unit creation and finding
     SIUnitRef SIUnitDimensionlessAndUnderived()
     SIUnitRef SIUnitFindWithName(OCStringRef input)
     SIUnitRef SIUnitFindCoherentSIUnitWithDimensionality(SIDimensionalityRef theDimensionality)
-    
+
     # Unit conversion
     double SIUnitConversion(SIUnitRef initialUnit, SIUnitRef finalUnit)
-    
+
     # Unit arithmetic - Basic (reducing)
     SIUnitRef SIUnitByMultiplying(SIUnitRef theUnit1, SIUnitRef theUnit2, double *unit_multiplier, OCStringRef *error)
-    SIUnitRef SIUnitByDividing(SIUnitRef theUnit1, SIUnitRef theUnit2, double *unit_multiplier) 
+    SIUnitRef SIUnitByDividing(SIUnitRef theUnit1, SIUnitRef theUnit2, double *unit_multiplier)
     SIUnitRef SIUnitByRaisingToPower(SIUnitRef input, double power, double *unit_multiplier, OCStringRef *error)
     SIUnitRef SIUnitByTakingNthRoot(SIUnitRef input, uint8_t root, double *unit_multiplier, OCStringRef *error)
-    
+
     # Unit arithmetic - Advanced (non-reducing)
     SIUnitRef SIUnitByMultiplyingWithoutReducing(SIUnitRef theUnit1, SIUnitRef theUnit2, double *unit_multiplier, OCStringRef *error)
     SIUnitRef SIUnitByDividingWithoutReducing(SIUnitRef theUnit1, SIUnitRef theUnit2, double *unit_multiplier)
     SIUnitRef SIUnitByRaisingToPowerWithoutReducing(SIUnitRef input, double power, double *unit_multiplier, OCStringRef *error)
-    
+
     # Unit reduction and conversion
     SIUnitRef SIUnitByReducing(SIUnitRef theUnit, double *unit_multiplier)
-    
+
     # Display
     void SIUnitShow(SIUnitRef theUnit)
 
@@ -208,17 +208,17 @@ ctypedef enum complexPart:
     kSIArgumentPart
 
 cdef extern from "SITypes/SIScalar.h":
-    
+
     # Union for numeric values (must match C definition exactly)
     ctypedef union impl_SINumber:
         float floatValue
         double doubleValue
         float complex floatComplexValue
         double complex doubleComplexValue
-    
+
     # Type system
     OCTypeID SIScalarGetTypeID()
-    
+
     # Creators
     SIScalarRef SIScalarCreateCopy(SIScalarRef theScalar)
     SIMutableScalarRef SIScalarCreateMutableCopy(SIScalarRef theScalar)
@@ -231,7 +231,7 @@ cdef extern from "SITypes/SIScalar.h":
     SIScalarRef SIScalarCreateWithDoubleComplex(double complex input_value, SIUnitRef unit)
     SIMutableScalarRef SIScalarCreateMutableWithDoubleComplex(double complex input_value, SIUnitRef unit)
     SIScalarRef SIScalarCreateFromExpression(OCStringRef expression, OCStringRef *error)
-    
+
     # Accessors
     impl_SINumber SIScalarGetValue(SIScalarRef theScalar)
     void SIScalarSetFloatValue(SIMutableScalarRef theScalar, float value)
@@ -243,7 +243,7 @@ cdef extern from "SITypes/SIScalar.h":
     double SIScalarDoubleValue(SIScalarRef theScalar)
     float complex SIScalarFloatComplexValue(SIScalarRef theScalar)
     double complex SIScalarDoubleComplexValue(SIScalarRef theScalar)
-    
+
     # Unit conversions
     bint SIScalarConvertToUnit(SIMutableScalarRef theScalar, SIUnitRef unit, OCStringRef *error)
     SIScalarRef SIScalarCreateByConvertingToUnit(SIScalarRef theScalar, SIUnitRef unit, OCStringRef *error)
@@ -251,7 +251,7 @@ cdef extern from "SITypes/SIScalar.h":
     SIScalarRef SIScalarCreateByConvertingToUnitWithString(SIScalarRef theScalar, OCStringRef unitString, OCStringRef *error)
     bint SIScalarConvertToCoherentUnit(SIMutableScalarRef theScalar, OCStringRef *error)
     SIScalarRef SIScalarCreateByConvertingToCoherentUnit(SIScalarRef theScalar, OCStringRef *error)
-    
+
     # Arithmetic operations
     SIScalarRef SIScalarCreateByAdding(SIScalarRef input1, SIScalarRef input2, OCStringRef *error)
     bint SIScalarAdd(SIMutableScalarRef target, SIScalarRef input2, OCStringRef *error)
@@ -261,13 +261,13 @@ cdef extern from "SITypes/SIScalar.h":
     bint SIScalarMultiply(SIMutableScalarRef target, SIScalarRef input2, OCStringRef *error)
     SIScalarRef SIScalarCreateByDividing(SIScalarRef input1, SIScalarRef input2, OCStringRef *error)
     bint SIScalarDivide(SIMutableScalarRef target, SIScalarRef input2, OCStringRef *error)
-    
+
     # Dimensionless constant operations
     SIScalarRef SIScalarCreateByMultiplyingByDimensionlessRealConstant(SIScalarRef theScalar, double constant)
     SIScalarRef SIScalarCreateByMultiplyingByDimensionlessComplexConstant(SIScalarRef theScalar, double complex constant)
     bint SIScalarMultiplyByDimensionlessRealConstant(SIMutableScalarRef theScalar, double constant)
     bint SIScalarMultiplyByDimensionlessComplexConstant(SIMutableScalarRef theScalar, double complex constant)
-    
+
     SIScalarRef SIScalarCreateByRaisingToPower(SIScalarRef theScalar, double power, OCStringRef *error)
     bint SIScalarRaiseToAPower(SIMutableScalarRef theScalar, double power, OCStringRef *error)
     SIScalarRef SIScalarCreateByTakingAbsoluteValue(SIScalarRef theScalar, OCStringRef *error)
@@ -275,14 +275,14 @@ cdef extern from "SITypes/SIScalar.h":
     SIScalarRef SIScalarCreateByTakingNthRoot(SIScalarRef theScalar, uint8_t root, OCStringRef *error)
     bint SIScalarTakeNthRoot(SIMutableScalarRef theScalar, uint8_t root, OCStringRef *error)
     SIScalarRef SIScalarCreateByTakingComplexPart(SIScalarRef theScalar, complexPart part)
-    
+
     # String representations
     void SIScalarShow(SIScalarRef theScalar)
     OCStringRef SIScalarCreateStringValue(SIScalarRef theScalar)
     OCStringRef SIScalarCreateNumericStringValue(SIScalarRef theScalar)
     OCStringRef SIScalarCreateUnitString(SIScalarRef theScalar)
     OCStringRef SIScalarCreateStringValueWithFormat(SIScalarRef theScalar, OCStringRef format)
-    
+
     # Tests
     bint SIScalarIsReal(SIScalarRef theScalar)
     bint SIScalarIsImaginary(SIScalarRef theScalar)
@@ -294,7 +294,7 @@ cdef extern from "SITypes/SIScalar.h":
     OCComparisonResult SIScalarCompareLoose(SIScalarRef scalar, SIScalarRef otherScalar)
 
 cdef extern from "SITypes/SIQuantity.h":
-    
+
     # SIQuantity accessors and tests
     SIUnitRef SIQuantityGetUnit(SIQuantityRef quantity)
     bint SIQuantitySetUnit(SIMutableQuantityRef quantity, SIUnitRef unit)

@@ -32,7 +32,7 @@ If you have the C libraries checked out locally in adjacent directories:
 ```text
 parent-directory/
 ├── OCTypes/          # Local OCTypes development
-├── SITypes/          # Local SITypes development  
+├── SITypes/          # Local SITypes development
 ├── RMNLib/           # Local RMNLib development
 └── RMNpy/            # This project
 ```
@@ -99,7 +99,7 @@ Removes generated C files, build directories, and compiled extensions.
 
    ```bash
    cd ../OCTypes && make        # Build OCTypes
-   cd ../SITypes && make        # Build SITypes  
+   cd ../SITypes && make        # Build SITypes
    cd ../RMNLib && make         # Build RMNLib
    cd ../RMNpy && make synclib  # Sync to RMNpy
    ```
@@ -205,7 +205,7 @@ python -m http.server 8000 -d _build/html  # Any platform, then visit http://loc
 ```text
 lib/
 ├── libOCTypes.a         # OCTypes static library
-├── libSITypes.a         # SITypes static library  
+├── libSITypes.a         # SITypes static library
 └── libRMN.a            # RMNLib static library (note: renamed from libRMN.a)
 
 include/

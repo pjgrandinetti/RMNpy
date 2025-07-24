@@ -9,4 +9,4 @@ from .dimensionality import Dimensionality
 from .scalar import Scalar
 from .unit import Unit
 
-__all__ = ['Dimensionality', 'Unit', 'Scalar']
+__all__ = ["Dimensionality", "Unit", "Scalar"]

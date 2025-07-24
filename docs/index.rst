@@ -4,7 +4,7 @@ Welcome to RMNpy's documentation!
 RMNpy is a Python library that provides high-level bindings for scientific computing with units and dataset management. It is built on top of the `SITypes`_ and `RMNLib`_ C libraries, using `OCTypes`_ as the underlying foundation for memory management and data structures.
 
 .. _OCTypes: https://github.com/drpjkgrandinetti/OCTypes
-.. _SITypes: https://github.com/drpjkgrandinetti/SITypes  
+.. _SITypes: https://github.com/drpjkgrandinetti/SITypes
 .. _RMNLib: https://github.com/drpjkgrandinetti/RMNLib
 
 Overview
@@ -53,7 +53,7 @@ User Guide
 
    background
    sitypes_demo
-   
+
 API Reference
 -------------
 

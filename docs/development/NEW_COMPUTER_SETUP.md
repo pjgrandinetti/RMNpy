@@ -9,7 +9,7 @@ cd OCTypes-SITypes
 
 # 2. Build C libraries (REQUIRED FIRST!)
 cd OCTypes && make && make install && cd ..
-cd SITypes && make && make synclib && make install && cd ..  
+cd SITypes && make && make synclib && make install && cd ..
 cd RMNLib && make && make synclib && make install && cd ..
 
 # 3. Set up Python
@@ -24,8 +24,8 @@ pytest
 
 ## Expected Results:
 
-✅ **~86 tests should run**  
-✅ **~64 tests should pass**  
+✅ **~86 tests should run**
+✅ **~64 tests should pass**
 ✅ **~22 tests should fail** (Phase 2B in development)
 
 ## If Something Goes Wrong:

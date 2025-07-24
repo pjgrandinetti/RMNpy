@@ -47,7 +47,7 @@ cdef extern from "OCTypes/OCLibrary.h":
     ctypedef uint32_t OCTypeID
     ctypedef signed long OCIndex
     ctypedef unsigned long OCOptionFlags
-    
+
     # Ref typedefs (const pointers)
     ctypedef const impl_OCType *OCTypeRef
     ctypedef const impl_OCString *OCStringRef
@@ -60,7 +60,7 @@ cdef extern from "OCTypes/OCLibrary.h":
     ctypedef const impl_OCIndexSet *OCIndexSetRef
     ctypedef const impl_OCIndexArray *OCIndexArrayRef
     ctypedef const impl_OCIndexPairSet *OCIndexPairSetRef
-    
+
     # Mutable Ref typedefs (non-const pointers)
     ctypedef impl_OCArray *OCMutableArrayRef
     ctypedef impl_OCSet *OCMutableSetRef
@@ -83,7 +83,7 @@ cdef extern from "OCTypes/OCLibrary.h":
     ctypedef OCComparisonResult (*OCComparatorFunction)(const void *val1,
                                                         const void *val2,
                                                         void *context)
-    
+
     ctypedef OCOptionFlags OCStringCompareFlags
 
     # Common constants
@@ -96,12 +96,12 @@ cdef extern from "OCTypes/OCType.h":
     # Type introspection
     OCTypeID OCGetTypeID(const void *obj)
     const char *OCTypeNameFromTypeID(OCTypeID typeID)
-    
+
     # Memory management
     const void *OCRetain(const void *ptr)
     void OCRelease(const void *ptr)
     int OCTypeGetRetainCount(const void *ptr)
-    
+
     # Object operations
     bint OCTypeEqual(const void *theType1, const void *theType2)
     void *OCTypeDeepCopy(const void *obj)
@@ -112,26 +112,26 @@ cdef extern from "OCTypes/OCType.h":
 cdef extern from "OCTypes/OCString.h":
     # Type identifier
     OCTypeID OCStringGetTypeID()
-    
+
     # String creation
     OCStringRef OCStringCreateWithCString(const char *string)
     OCMutableStringRef OCStringCreateMutableCopy(OCStringRef theString)
     OCMutableStringRef OCStringCreateMutable(uint64_t maxLength)
-    
+
     # String access
     const char *OCStringGetCString(OCStringRef theString)
     uint64_t OCStringGetLength(OCStringRef theString)
-    
+
     # String operations
-    OCComparisonResult OCStringCompare(OCStringRef theString1, 
+    OCComparisonResult OCStringCompare(OCStringRef theString1,
                                       OCStringRef theString2,
                                       OCStringCompareFlags compareOptions)
-    
+
     # Mutable string operations
     void OCStringAppend(OCMutableStringRef theString, OCStringRef appendedString)
     void OCStringAppendCString(OCMutableStringRef theString, const char *cStr)
 
-# OCNumber functions  
+# OCNumber functions
 cdef extern from "OCTypes/OCNumber.h":
     # Number types
     ctypedef enum OCNumberType:
@@ -150,7 +150,7 @@ cdef extern from "OCTypes/OCNumber.h":
 
     # Type identifier
     OCTypeID OCNumberGetTypeID()
-    
+
     # Number creation
     OCNumberRef OCNumberCreateWithSInt8(int8_t value)
     OCNumberRef OCNumberCreateWithSInt16(int16_t value)
@@ -167,11 +167,11 @@ cdef extern from "OCTypes/OCNumber.h":
     OCNumberRef OCNumberCreateWithDouble(double value)
     OCNumberRef OCNumberCreateWithFloatComplex(float_complex value)
     OCNumberRef OCNumberCreateWithDoubleComplex(double_complex value)
-    
+
     # Number access
     OCNumberType OCNumberGetType(OCNumberRef number)
     bint OCNumberGetValue(OCNumberRef number, OCNumberType theType, void *valuePtr)
-    
+
     # Try-get accessors (safe value extraction)
     bint OCNumberTryGetUInt8(OCNumberRef n, uint8_t *out)
     bint OCNumberTryGetSInt8(OCNumberRef n, int8_t *out)
@@ -185,7 +185,7 @@ cdef extern from "OCTypes/OCNumber.h":
     bint OCNumberTryGetFloat64(OCNumberRef n, double *out)
     bint OCNumberTryGetComplex64(OCNumberRef n, float_complex *out)
     bint OCNumberTryGetComplex128(OCNumberRef n, double_complex *out)
-    
+
     # Convenience try-get accessors (aliases)
     bint OCNumberTryGetFloat(OCNumberRef n, float *out)
     bint OCNumberTryGetDouble(OCNumberRef n, double *out)
@@ -194,7 +194,7 @@ cdef extern from "OCTypes/OCNumber.h":
     bint OCNumberTryGetInt(OCNumberRef n, int *out)
     bint OCNumberTryGetLong(OCNumberRef n, long *out)
     bint OCNumberTryGetOCIndex(OCNumberRef n, OCIndex *out)
-    
+
     # Number operations
     OCComparisonResult OCNumberCompare(OCNumberRef number1, OCNumberRef number2)
 
@@ -205,32 +205,32 @@ cdef extern from "OCTypes/OCArray.h":
     ctypedef void (*OCArrayReleaseCallBack)(const void *value)
     ctypedef OCStringRef (*OCArrayCopyDescriptionCallBack)(const void *value)
     ctypedef bint (*OCArrayEqualCallBack)(const void *value1, const void *value2)
-    
+
     ctypedef struct OCArrayCallBacks:
         int64_t version
         OCArrayRetainCallBack retain
         OCArrayReleaseCallBack release
         OCArrayCopyDescriptionCallBack copyDescription
         OCArrayEqualCallBack equal
-    
+
     # Predefined callbacks
     const OCArrayCallBacks kOCTypeArrayCallBacks
-    
+
     # Type identifier
     OCTypeID OCArrayGetTypeID()
-    
+
     # Array creation
-    OCArrayRef OCArrayCreate(const void **values, uint64_t numValues, 
+    OCArrayRef OCArrayCreate(const void **values, uint64_t numValues,
                             const OCArrayCallBacks *callBacks)
     OCArrayRef OCArrayCreateCopy(OCArrayRef theArray)
     OCMutableArrayRef OCArrayCreateMutable(uint64_t capacity,
                                           const OCArrayCallBacks *callBacks)
     OCMutableArrayRef OCArrayCreateMutableCopy(OCArrayRef theArray)
-    
+
     # Array access
     uint64_t OCArrayGetCount(OCArrayRef theArray)
     const void *OCArrayGetValueAtIndex(OCArrayRef theArray, uint64_t idx)
-    
+
     # Mutable array operations
     bint OCArrayAppendValue(OCMutableArrayRef theArray, const void *value)
     bint OCArrayInsertValueAtIndex(OCMutableArrayRef theArray, uint64_t idx, const void *value)
@@ -241,16 +241,16 @@ cdef extern from "OCTypes/OCArray.h":
 cdef extern from "OCTypes/OCData.h":
     # Type identifier
     OCTypeID OCDataGetTypeID()
-    
+
     # Data creation
     OCDataRef OCDataCreate(const uint8_t *bytes, uint64_t length)
     OCMutableDataRef OCDataCreateMutable(uint64_t capacity)
     OCMutableDataRef OCDataCreateMutableCopy(OCDataRef theData)
-    
+
     # Data access
     uint64_t OCDataGetLength(OCDataRef theData)
     const uint8_t *OCDataGetBytesPtr(OCDataRef theData)
-    
+
     # Mutable data operations
     bint OCDataAppendBytes(OCMutableDataRef theData, const uint8_t *bytes, uint64_t length)
 
@@ -258,11 +258,11 @@ cdef extern from "OCTypes/OCData.h":
 cdef extern from "OCTypes/OCBoolean.h":
     # Type identifier
     OCTypeID OCBooleanGetTypeID()
-    
+
     # Boolean singletons
     OCBooleanRef kOCBooleanTrue
     OCBooleanRef kOCBooleanFalse
-    
+
     # Boolean operations
     bint OCBooleanGetValue(OCBooleanRef boolean)
 
@@ -270,19 +270,19 @@ cdef extern from "OCTypes/OCBoolean.h":
 cdef extern from "OCTypes/OCDictionary.h":
     # Type identifier
     OCTypeID OCDictionaryGetTypeID()
-    
+
     # Dictionary creation
     OCDictionaryRef OCDictionaryCreate(const void **keys, const void **values, uint64_t numValues)
     OCMutableDictionaryRef OCDictionaryCreateMutable(uint64_t capacity)
     OCDictionaryRef OCDictionaryCreateCopy(OCDictionaryRef theDictionary)
     OCMutableDictionaryRef OCDictionaryCreateMutableCopy(OCDictionaryRef theDictionary)
-    
+
     # Dictionary access
     uint64_t OCDictionaryGetCount(OCDictionaryRef theDict)
     const void *OCDictionaryGetValue(OCDictionaryRef theDict, OCStringRef key)
     bint OCDictionaryContainsKey(OCDictionaryRef theDict, OCStringRef key)
     bint OCDictionaryGetKeysAndValues(OCDictionaryRef theDictionary, const void **keys, const void **values)
-    
+
     # Mutable dictionary operations
     bint OCDictionarySetValue(OCMutableDictionaryRef theDict, OCStringRef key, const void *value)
     bint OCDictionaryRemoveValue(OCMutableDictionaryRef theDict, OCStringRef key)
@@ -291,18 +291,18 @@ cdef extern from "OCTypes/OCDictionary.h":
 cdef extern from "OCTypes/OCSet.h":
     # Type identifier
     OCTypeID OCSetGetTypeID()
-    
+
     # Set creation
     OCSetRef OCSetCreate()
     OCMutableSetRef OCSetCreateMutable(OCIndex capacity)
     OCSetRef OCSetCreateCopy(OCSetRef theSet)
     OCMutableSetRef OCSetCreateMutableCopy(OCSetRef theSet)
-    
+
     # Set access
     OCIndex OCSetGetCount(OCSetRef theSet)
     bint OCSetContainsValue(OCSetRef theSet, OCTypeRef value)
     OCArrayRef OCSetCreateValueArray(OCSetRef theSet)
-    
+
     # Mutable set operations
     bint OCSetAddValue(OCMutableSetRef theSet, OCTypeRef value)
     bint OCSetRemoveValue(OCMutableSetRef theSet, OCTypeRef value)
@@ -312,18 +312,18 @@ cdef extern from "OCTypes/OCSet.h":
 cdef extern from "OCTypes/OCIndexArray.h":
     # Type identifier
     OCTypeID OCIndexArrayGetTypeID()
-    
+
     # Index array creation
     OCIndexArrayRef OCIndexArrayCreate(OCIndex *indexes, OCIndex numValues)
     OCMutableIndexArrayRef OCIndexArrayCreateMutable(OCIndex capacity)
     OCIndexArrayRef OCIndexArrayCreateCopy(OCIndexArrayRef theIndexArray)
     OCMutableIndexArrayRef OCIndexArrayCreateMutableCopy(OCIndexArrayRef theIndexArray)
-    
+
     # Index array access
     OCIndex OCIndexArrayGetCount(OCIndexArrayRef theArray)
     OCIndex OCIndexArrayGetValueAtIndex(OCIndexArrayRef theArray, OCIndex idx)
     bint OCIndexArrayContainsIndex(OCIndexArrayRef theArray, OCIndex index)
-    
+
     # Mutable index array operations
     bint OCIndexArrayAppendValue(OCMutableIndexArrayRef theArray, OCIndex value)
     bint OCIndexArraySetValueAtIndex(OCMutableIndexArrayRef theArray, OCIndex idx, OCIndex value)
@@ -333,7 +333,7 @@ cdef extern from "OCTypes/OCIndexArray.h":
 cdef extern from "OCTypes/OCIndexSet.h":
     # Type identifier
     OCTypeID OCIndexSetGetTypeID()
-    
+
     # Index set creation
     OCIndexSetRef OCIndexSetCreate()
     OCMutableIndexSetRef OCIndexSetCreateMutable()
@@ -341,13 +341,13 @@ cdef extern from "OCTypes/OCIndexSet.h":
     OCMutableIndexSetRef OCIndexSetCreateMutableCopy(OCIndexSetRef theIndexSet)
     OCIndexSetRef OCIndexSetCreateWithIndex(OCIndex index)
     OCIndexSetRef OCIndexSetCreateWithIndexesInRange(OCIndex location, OCIndex length)
-    
+
     # Index set access
     OCIndex OCIndexSetGetCount(OCIndexSetRef theSet)
     bint OCIndexSetContainsIndex(OCIndexSetRef theSet, OCIndex index)
     OCIndex OCIndexSetFirstIndex(OCIndexSetRef theSet)
     OCIndex OCIndexSetLastIndex(OCIndexSetRef theSet)
-    
+
     # Mutable index set operations
     bint OCIndexSetAddIndex(OCMutableIndexSetRef theSet, OCIndex index)
 
@@ -357,27 +357,27 @@ cdef extern from "OCTypes/OCIndexPairSet.h":
     ctypedef struct OCIndexPair:
         OCIndex index
         OCIndex value
-    
+
     # Type identifier
     OCTypeID OCIndexPairSetGetTypeID()
-    
+
     # Index pair set creation
     OCIndexPairSetRef OCIndexPairSetCreate()
     OCMutableIndexPairSetRef OCIndexPairSetCreateMutable()
     OCIndexPairSetRef OCIndexPairSetCreateCopy(OCIndexPairSetRef source)
     OCMutableIndexPairSetRef OCIndexPairSetCreateMutableCopy(OCIndexPairSetRef source)
     OCIndexPairSetRef OCIndexPairSetCreateWithIndexPair(OCIndex index, OCIndex value)
-    
+
     # Index pair set access
     OCIndex OCIndexPairSetGetCount(OCIndexPairSetRef theSet)
     bint OCIndexPairSetContainsIndex(OCIndexPairSetRef theSet, OCIndex index)
     bint OCIndexPairSetContainsIndexPair(OCIndexPairSetRef theSet, OCIndexPair pair)
     OCIndex OCIndexPairSetValueForIndex(OCIndexPairSetRef theSet, OCIndex index)
-    
+
     # Index pair set conversion
     OCIndexSetRef OCIndexPairSetCreateIndexSetOfIndexes(OCIndexPairSetRef theSet)
     OCIndexArrayRef OCIndexPairSetCreateIndexArrayOfValues(OCIndexPairSetRef theSet)
-    
+
     # Mutable index pair set operations
     bint OCIndexPairSetAddIndexPair(OCMutableIndexPairSetRef theSet, OCIndex index, OCIndex value)
     bint OCIndexPairSetRemoveIndexPairWithIndex(OCMutableIndexPairSetRef theSet, OCIndex index)

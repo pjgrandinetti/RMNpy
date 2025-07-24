@@ -11,6 +11,6 @@ the SITypes and RMNLib wrappers.
 from .octypes import create_oc_string, parse_c_string
 
 __all__ = [
-    'parse_c_string',
-    'create_oc_string',
+    "parse_c_string",
+    "create_oc_string",
 ]

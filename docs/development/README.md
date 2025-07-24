@@ -30,7 +30,7 @@ This directory contains development-related documentation for the RMNpy project.
 docs/development/
 ├── README.md                      # This file - navigation guide
 ├── NEW_COMPUTER_SETUP.md         # Quick setup (copy/paste)
-├── ENVIRONMENT_SETUP.md          # Detailed setup + troubleshooting  
+├── ENVIRONMENT_SETUP.md          # Detailed setup + troubleshooting
 ├── DEVELOPMENT.md                # Development workflow
 └── RMNpy_Implementation_Plan.md  # Master plan & phase tracking
 ```
@@ -38,7 +38,7 @@ docs/development/
 ## 🔗 Related Documentation
 
 - **Main README**: [`../../README.md`](../../README.md) - Project overview and basic usage
-- **API Documentation**: [`../index.rst`](../index.rst) - Sphinx-generated API docs  
+- **API Documentation**: [`../index.rst`](../index.rst) - Sphinx-generated API docs
 - **Scripts Documentation**: [`../../scripts/README.md`](../../scripts/README.md) - Development scripts
 
 ---

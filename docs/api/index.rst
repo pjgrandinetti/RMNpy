@@ -27,18 +27,18 @@ Most common operations:
 
    # SITypes - Physical units and dimensional analysis
    from rmnpy.wrappers.sitypes import Scalar, Unit, Dimensionality
-   
+
    # Create physical quantities (clean, consistent syntax)
    distance = Scalar("100.0 m")         # 100 meters
    time = Scalar("5.0 s")               # 5 seconds
    velocity = distance / time           # 20.0 m/s
-   
+
    # Unit conversion
    velocity_kmh = velocity.convert_to("km/h")  # 72.0 km/h
-   
+
    # Work with units when needed
    meter_unit, _ = Unit.parse("m")
-   
+
    # Advanced dimensional analysis
    force_dim = Dimensionality.parse("M*L/T^2")  # Force dimension
 
