@@ -43,19 +43,37 @@ jobs:
       run: |
         brew install cmake flex bison openblas lapack curl
 
-    - name: Install system dependencies (Windows)
+    - name: Setup MSYS2 and MinGW toolchain (Windows)
       if: runner.os == 'Windows'
       uses: msys2/setup-msys2@v2
       with:
-        msystem: MINGW64
         update: true
-        install: >-
-          mingw-w64-x86_64-gcc
+        msystem: MINGW64
+        install: |
+          mingw-w64-x86_64-toolchain
           mingw-w64-x86_64-cmake
           mingw-w64-x86_64-make
           mingw-w64-x86_64-pkg-config
+          mingw-w64-x86_64-python
           flex
           bison
+
+    - name: Add MinGW64 to PATH (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $mingw = "${{ runner.temp }}\msys64\mingw64\bin"
+        "${mingw}" | Out-File -FilePath $Env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Alias Python import library (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $pythonVersion = "${{ matrix.python-version }}"
+        $versionNoDot = $pythonVersion.Replace(".", "")
+        $lib = Join-Path $Env:RUNNER_TEMP "msys64\mingw64\lib\libpython$pythonVersion.dll.a"
+        $dest = Join-Path $Env:RUNNER_TEMP "msys64\mingw64\lib\libpython$versionNoDot.dll.a"
+        if (Test-Path $lib) { Copy-Item $lib $dest -Force }
 
     - name: Download OCTypes from GitHub releases
       run: |
@@ -115,62 +133,83 @@ jobs:
         echo "✓ Libraries downloaded and ready for Python build"
       shell: bash
 
-    - name: Install Python dependencies
+    - name: Install build tools
+      if: runner.os != 'Windows'
       run: |
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2"
+
+    - name: Install build tools (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        python -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2"
+
+    - name: Build Cython extension in-place (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        CC: x86_64-w64-mingw32-gcc
+        CXX: x86_64-w64-mingw32-g++
+        LIBRARY_PATH: ${{ runner.temp }}/msys64/mingw64/lib
+        LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
+      run: |
+        python setup.py build_ext --inplace
+
+    - name: Copy MinGW runtime DLLs (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $mingw = "${{ runner.temp }}\msys64\mingw64\bin"
+        # Copy runtime DLLs to package directories
+        $targetDirs = @("rmnpy/helpers", "rmnpy/wrappers/sitypes")
+        foreach ($dir in $targetDirs) {
+          if (Test-Path $dir) {
+            Copy-Item "$mingw\libgcc_s_seh-1.dll" $dir\ -Force -ErrorAction SilentlyContinue
+            Copy-Item "$mingw\libwinpthread-1.dll" $dir\ -Force -ErrorAction SilentlyContinue
+            Copy-Item "$mingw\libstdc++-6.dll" $dir\ -Force -ErrorAction SilentlyContinue
+          }
+        }
+
+    - name: Install Python dependencies (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
         python -m pip install -e .[test]
 
-    - name: Generate constants
+    - name: Install Python dependencies (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        CC: x86_64-w64-mingw32-gcc
+        CXX: x86_64-w64-mingw32-g++
+        LIBRARY_PATH: ${{ runner.temp }}/msys64/mingw64/lib
+        LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
+      run: |
+        python -m pip install -e .[test]
+
+    - name: Generate constants (Linux/macOS)
+      if: runner.os != 'Windows'
       run: |
         make generate-constants
 
-    - name: Create directories for in-place build
+    - name: Generate constants (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
       run: |
-        mkdir -p rmnpy/helpers rmnpy/wrappers/sitypes rmnpy/_c_api
-        # Copy essential Python modules needed for in-place builds
-        cp src/rmnpy/exceptions.py rmnpy/
-        cp -r src/rmnpy/_c_api/ rmnpy/
-        # Create __init__.py files with proper content
-        cat > rmnpy/helpers/__init__.py << 'EOF'
-        """RMNpy helpers module"""
-        try:
-            from .octypes import *
-        except ImportError:
-            pass
-        EOF
+        make generate-constants
 
-        cat > rmnpy/wrappers/__init__.py << 'EOF'
-        """RMNpy wrappers module"""
-        from . import sitypes
-        __all__ = ["sitypes"]
-        EOF
-
-        cat > rmnpy/wrappers/sitypes/__init__.py << 'EOF'
-        """SITypes Python wrappers"""
-        from .dimensionality import Dimensionality
-        from .unit import Unit
-        from .scalar import Scalar
-        __all__ = ["Dimensionality", "Unit", "Scalar"]
-        EOF
-
-        cat > rmnpy/__init__.py << 'EOF'
-        """RMNpy: Python bindings for OCTypes, SITypes, and RMNLib"""
-        __version__ = "0.1.0"
-        from .wrappers.sitypes import Dimensionality, Unit, Scalar
-        from .exceptions import RMNError
-        EOF
-      shell: bash
-
-    - name: Build extensions in-place
+    - name: Run tests (Linux/macOS)
+      if: runner.os != 'Windows'
       run: |
-        # Ensure setuptools is available for direct setup.py calls
-        python -m pip install setuptools
-        python setup.py build_ext --inplace
-        # Copy compiled extensions to the in-place build directory
-        cp src/rmnpy/helpers/*.so rmnpy/helpers/ 2>/dev/null || true
-        cp src/rmnpy/wrappers/sitypes/*.so rmnpy/wrappers/sitypes/ 2>/dev/null || true
+        python -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
 
-    - name: Run tests
+    - name: Run tests (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        CC: x86_64-w64-mingw32-gcc
+        CXX: x86_64-w64-mingw32-g++
+        LIBRARY_PATH: ${{ runner.temp }}/msys64/mingw64/lib
+        LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
       run: |
         python -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
 

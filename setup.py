@@ -4,14 +4,18 @@
 import subprocess
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy
 from Cython.Build import cythonize
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
+if TYPE_CHECKING:
+    pass
 
-def generate_si_constants():
+
+def generate_si_constants() -> None:
     """Generate SI constants from C header file during build."""
     print("Generating SI quantity constants from C header...")
 
@@ -52,7 +56,7 @@ def generate_si_constants():
 class CustomBuildExt(build_ext):
     """Custom build extension that handles library dependencies."""
 
-    def run(self):
+    def run(self) -> None:
         """Check dependencies before building extensions."""
         print("Checking library dependencies...")
 
@@ -71,7 +75,7 @@ class CustomBuildExt(build_ext):
         # Continue with normal build
         super().run()
 
-    def _check_libraries(self):
+    def _check_libraries(self) -> bool:
         """Check that all required libraries and headers are available."""
         base_dir = Path(__file__).parent
         lib_dir = base_dir / "lib"
@@ -105,10 +109,30 @@ class CustomBuildExt(build_ext):
                 return False
             print(f"[OK] Found headers: {header_dir.name}/")
 
+        # On Windows, check if we have MinGW compiler for compatibility
+        import os
+        import platform
+
+        if platform.system() == "Windows":
+            cc_env = os.environ.get("CC", "")
+            msystem = os.environ.get("MSYSTEM", "")
+
+            if not (
+                "mingw32" in cc_env.lower()
+                or "gcc" in cc_env.lower()
+                or msystem == "MINGW64"
+                or msystem == "MINGW32"
+            ):
+                print("[!] Warning: Windows detected without MinGW environment.")
+                print(
+                    "    The C libraries were built with GCC and may not be compatible with MSVC."
+                )
+                print("    Consider using MSYS2/MinGW64 for compilation.")
+
         return True
 
 
-def get_extensions():
+def get_extensions() -> list[Extension]:
     """Build list of Cython extensions for the project."""
 
     # Common include directories
@@ -126,15 +150,38 @@ def get_extensions():
     libraries = ["OCTypes", "SITypes", "RMN"]
 
     # Common compiler/linker options (platform-specific)
+    import os
     import platform
 
+    extra_link_args: list[str] = []
+
     if platform.system() == "Windows":
-        # MSVC flags
-        extra_compile_args = ["/std:c11"]
+        # Check if we're in MSYS2/MinGW environment or have CC set to MinGW
+        cc_env = os.environ.get("CC", "")
+        msystem = os.environ.get("MSYSTEM", "")
+
+        if (
+            "mingw32" in cc_env.lower()
+            or "gcc" in cc_env.lower()
+            or msystem == "MINGW64"
+            or msystem == "MINGW32"
+        ):
+            # Use GCC/MinGW flags for better C99/C11 support
+            extra_compile_args = [
+                "-std=c99",
+                "-Wno-unused-function",
+                "-Wno-sign-compare",
+            ]
+            print("Using MinGW/GCC compiler on Windows")
+        else:
+            # MSVC flags - but warn that complex numbers may not work
+            extra_compile_args = ["/std:c11"]
+            print(
+                "Using MSVC compiler on Windows (Warning: C complex numbers may not be supported)"
+            )
     else:
         # GCC/Clang flags
         extra_compile_args = ["-std=c99", "-Wno-unused-function"]
-    extra_link_args = []
 
     # Start with empty extensions list - we'll add them as we implement phases
     extensions = []
