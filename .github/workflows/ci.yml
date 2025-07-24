@@ -54,12 +54,12 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev libcurl4-openssl-dev
+        sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev libcurl4-openssl-dev
 
     - name: Install system dependencies (macOS)
       if: runner.os == 'macOS'  
       run: |
-        brew install cmake flex bison openblas curl
+        brew install cmake flex bison openblas lapack curl
 
     - name: Install system dependencies (Windows)
       if: runner.os == 'Windows'
@@ -173,7 +173,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev
+        sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev
 
     - name: Create stub libraries for docs
       run: |

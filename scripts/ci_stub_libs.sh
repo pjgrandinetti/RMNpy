@@ -57,6 +57,13 @@ cat > include/RMNLib/RMNLibrary.h << 'EOF'
 typedef struct RMNSpectrum RMNSpectrum;
 typedef struct RMNSignal RMNSignal;
 
+// Stub LAPACKE definitions to avoid missing header
+#ifndef LAPACK_COL_MAJOR
+#define LAPACK_COL_MAJOR 102
+#endif
+
+typedef int lapack_int;
+
 #endif // RMN_LIBRARY_H
 EOF
 
