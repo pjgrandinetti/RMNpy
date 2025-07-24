@@ -25,7 +25,7 @@ def generate_si_constants():
                 capture_output=True, 
                 text=True
             )
-            print("✓ SI constants generated successfully")
+            print("[OK] SI constants generated successfully")
             if result.stdout:
                 # Only print summary line, not full output
                 lines = result.stdout.strip().split('\n')
@@ -58,7 +58,7 @@ class CustomBuildExt(build_ext):
             print("  make download-libs # Download from GitHub releases")
             sys.exit(1)
         
-        print("✓ All required libraries found")
+        print("[OK] All required libraries found")
         
         # Generate SI constants before building
         generate_si_constants()
@@ -89,16 +89,16 @@ class CustomBuildExt(build_ext):
         # Check libraries
         for lib_file in required_libs:
             if not lib_file.exists():
-                print(f"✗ Missing library: {lib_file}")
+                print(f"[X] Missing library: {lib_file}")
                 return False
-            print(f"✓ Found library: {lib_file.name}")
+            print(f"[OK] Found library: {lib_file.name}")
         
         # Check headers
         for header_dir in required_headers:
             if not header_dir.exists() or not header_dir.is_dir():
-                print(f"✗ Missing headers: {header_dir}")
+                print(f"[X] Missing headers: {header_dir}")
                 return False
-            print(f"✓ Found headers: {header_dir.name}/")
+            print(f"[OK] Found headers: {header_dir.name}/")
         
         return True
 
