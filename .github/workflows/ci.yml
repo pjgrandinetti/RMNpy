@@ -126,8 +126,15 @@ jobs:
 
     - name: Create directories for in-place build
       run: |
-        mkdir -p rmnpy/helpers rmnpy/wrappers/sitypes
-        touch rmnpy/__init__.py rmnpy/helpers/__init__.py rmnpy/wrappers/__init__.py rmnpy/wrappers/sitypes/__init__.py
+        mkdir -p rmnpy/helpers rmnpy/wrappers/sitypes rmnpy/_c_api
+        # Copy essential Python modules needed for in-place builds
+        cp src/rmnpy/exceptions.py rmnpy/
+        cp -r src/rmnpy/_c_api/ rmnpy/
+        # Create __init__.py files with proper content
+        echo '"""RMNpy helpers module"""; try:; from .octypes import *; except ImportError:; pass' | tr ';' '\n' > rmnpy/helpers/__init__.py
+        echo '"""RMNpy wrappers module"""; from . import sitypes; __all__ = ["sitypes"]' | tr ';' '\n' > rmnpy/wrappers/__init__.py
+        echo '"""SITypes Python wrappers"""; from .dimensionality import Dimensionality; from .unit import Unit; from .scalar import Scalar; __all__ = ["Dimensionality", "Unit", "Scalar"]' | tr ';' '\n' > rmnpy/wrappers/sitypes/__init__.py
+        echo '"""RMNpy: Python bindings for OCTypes, SITypes, and RMNLib"""; __version__ = "0.1.0"; from .wrappers.sitypes import Dimensionality, Unit, Scalar; from .exceptions import RMNError' | tr ';' '\n' > rmnpy/__init__.py
       shell: bash
 
     - name: Build RMNpy extensions
