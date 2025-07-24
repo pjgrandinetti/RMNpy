@@ -72,8 +72,33 @@ class CustomBuildExt(build_ext):
         # Generate SI constants before building
         generate_si_constants()
 
+        # Force MinGW compiler on Windows if environment suggests it
+        self._setup_windows_compiler()
+
         # Continue with normal build
         super().run()
+
+    def _setup_windows_compiler(self) -> None:
+        """Set up compiler for Windows builds."""
+        import os
+        import platform
+
+        if platform.system() == "Windows":
+            # Check if we should use MinGW based on environment
+            cc_env = os.environ.get("CC", "")
+            msystem = os.environ.get("MSYSTEM", "")
+
+            if (
+                "mingw32" in cc_env.lower()
+                or "gcc" in cc_env.lower()
+                or msystem == "MINGW64"
+                or msystem == "MINGW32"
+            ):
+                print("Using MinGW/GCC compiler on Windows")
+                # Force the compiler to be mingw32
+                self.compiler = "mingw32"
+            else:
+                print("Using default Windows compiler (MSVC)")
 
     def _check_libraries(self) -> bool:
         """Check that all required libraries and headers are available."""

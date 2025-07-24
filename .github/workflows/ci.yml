@@ -153,9 +153,10 @@ jobs:
         CXX: x86_64-w64-mingw32-g++
         LIBRARY_PATH: ${{ runner.temp }}/msys64/mingw64/lib
         LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
+        DISTUTILS_USE_SDK: "1"
       run: |
-        # Use GitHub Actions Python explicitly for build
-        & "$env:pythonLocation\python.exe" setup.py build_ext --inplace
+        # Use GitHub Actions Python explicitly for build with MinGW compiler
+        & "$env:pythonLocation\python.exe" setup.py build_ext --inplace --compiler=mingw32
 
     - name: Copy MinGW runtime DLLs (Windows)
       if: runner.os == 'Windows'
@@ -185,8 +186,9 @@ jobs:
         CXX: x86_64-w64-mingw32-g++
         LIBRARY_PATH: ${{ runner.temp }}/msys64/mingw64/lib
         LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
+        DISTUTILS_USE_SDK: "1"
       run: |
-        # Use GitHub Actions Python explicitly for pip install
+        # Use GitHub Actions Python explicitly for pip install with MinGW compiler
         & "$env:pythonLocation\python.exe" -m pip install -e .[test]
 
     - name: Generate constants (Linux/macOS)
