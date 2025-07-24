@@ -7,7 +7,7 @@ from fractions import Fraction
 import pytest
 
 from rmnpy.exceptions import RMNError
-from rmnpy.wrappers.sitypes import Dimensionality, Scalar, Unit
+from rmnpy.wrappers.sitypes import Scalar
 
 
 class TestScalarCreation:
@@ -94,78 +94,15 @@ class TestScalarCreation:
 
     def test_create_expression_errors(self):
         """Test error handling in expression parsing."""
-        # Invalid format - SITypes raises ValueError for syntax errors
-        with pytest.raises(ValueError):
+        # Invalid format - RMNpy wrapper raises RMNError for syntax errors
+        with pytest.raises(RMNError):
             Scalar("invalid expression format")
 
         # Empty string
-        with pytest.raises(ValueError):
+        with pytest.raises(RMNError):
             Scalar("")
 
         with pytest.raises(TypeError):
-            Scalar(None)
-
-    def test_create_from_expression(self):
-        """Test creating scalar from complete expression string."""
-        scalar = Scalar("9.81 m/s^2")
-        assert abs(scalar.value - 9.81) < 1e-14
-        assert scalar.unit.symbol == "m/s^2"
-
-        # Test another expression - C library converts to SI base units automatically
-        scalar2 = Scalar("100 km/h")
-        # 100 km/h = 27.777... m/s = 0.027777... km/s (converted to SI base)
-        assert abs(scalar2.value - 0.027777777777777776) < 1e-14
-        assert scalar2.unit.symbol == "km/s"
-
-        # Test scientific notation
-        scalar_sci = Scalar("1.5e3 Hz")
-        assert scalar_sci.value == 1500.0
-        assert scalar_sci.unit.symbol == "Hz"
-
-        # Test negative value
-        scalar_neg = Scalar("-42.0 Hz")
-        assert scalar_neg.value == -42.0
-        assert scalar_neg.unit.symbol == "Hz"
-
-    def test_create_dimensionless(self):
-        """Test creating dimensionless scalars."""
-        scalar = Scalar("1.5", "1")
-        assert scalar.value == 1.5
-        assert scalar.unit.is_dimensionless
-
-    def test_create_invalid_unit(self):
-        """Test creation with invalid unit should raise error."""
-        with pytest.raises(RMNError):
-            Scalar("5.0", "invalid_unit_xyz")
-
-    def test_create_invalid_value(self):
-        """Test creation with invalid value should raise error."""
-        with pytest.raises(ValueError):
-            Scalar("not_a_number", "m")
-
-    def test_create_with_complex_numbers(self):
-        """Test scalar creation with complex numbers."""
-        try:
-            # SITypes may support complex numbers - test if available
-            scalar = Scalar(3.0 + 4.0j, "m")
-            # Verify complex value handling - may store only real part
-            assert isinstance(scalar.value, (float, complex))
-        except (TypeError, ValueError):
-            # Complex number support not implemented, which is acceptable
-            pytest.skip("Complex number support not implemented in SITypes")
-
-    def test_create_expression_errors(self):
-        """Test error handling in expression parsing."""
-        # Invalid format - SITypes wrapper raises RMNError for syntax errors
-        with pytest.raises(RMNError):
-            Scalar("invalid expression format")
-
-        # Empty string
-        with pytest.raises(RMNError):
-            Scalar("")
-
-        # None input
-        with pytest.raises((RMNError, TypeError)):
             Scalar(None)
 
 
@@ -356,7 +293,7 @@ class TestScalarUnitOperations:
 
             # Test if the unit is properly recognized/reduced
             unit_symbol = force_expr.unit.symbol
-            unit_name = force_expr.unit.name
+            _ = force_expr.unit.name  # Check that name is accessible
 
             # SITypes might reduce to "N" or keep as "kg⋅m/s²"
             assert unit_symbol in ["N", "kg•m/s^2", "m•kg/s^2"]
@@ -520,14 +457,14 @@ class TestScalarArithmetic:
         a = Scalar("5.0", "m")
         b = Scalar("3.0", "kg")
         with pytest.raises(RMNError):  # Wrapper raises RMNError, not ValueError
-            result = a + b
+            a + b
 
     def test_incompatible_subtraction(self):
         """Test subtraction of incompatible units should raise error."""
         a = Scalar("5.0", "m")
         b = Scalar("3.0", "s")
         with pytest.raises(RMNError):  # Wrapper raises RMNError, not ValueError
-            result = a - b
+            a - b
 
 
 class TestScalarComparison:
@@ -573,11 +510,11 @@ class TestScalarComparison:
         b = Scalar("3.0", "kg")
 
         # Equality comparison returns False for incompatible units (doesn't raise)
-        assert (a == b) == False
+        assert (a == b) is False
 
         # Ordering comparisons raise TypeError for incompatible units
         with pytest.raises(TypeError):
-            result = a < b
+            a < b
 
 
 class TestScalarPythonNumberArithmetic:
@@ -590,7 +527,7 @@ class TestScalarPythonNumberArithmetic:
 
         # Adding numbers to dimensional quantities should fail
         with pytest.raises(RMNError):
-            result = dimensional_scalar + 3
+            dimensional_scalar + 3
 
         # But adding numbers to dimensionless quantities should work
         dimensionless_scalar = Scalar("5.0")  # dimensionless
@@ -609,7 +546,7 @@ class TestScalarPythonNumberArithmetic:
 
         # Adding dimensional quantities to numbers should fail
         with pytest.raises(RMNError):
-            result = 5 + dimensional_scalar
+            5 + dimensional_scalar
 
         # But adding dimensionless quantities to numbers should work
         dimensionless_scalar = Scalar("3.0")  # dimensionless
@@ -628,7 +565,7 @@ class TestScalarPythonNumberArithmetic:
 
         # Subtracting numbers from dimensional quantities should fail
         with pytest.raises(RMNError):
-            result = dimensional_scalar - 3
+            dimensional_scalar - 3
 
         # But subtracting numbers from dimensionless quantities should work
         dimensionless_scalar = Scalar("10.0")  # dimensionless
@@ -647,7 +584,7 @@ class TestScalarPythonNumberArithmetic:
 
         # Subtracting dimensional quantities from numbers should fail
         with pytest.raises(RMNError):
-            result = 10 - dimensional_scalar
+            10 - dimensional_scalar
 
         # But subtracting dimensionless quantities from numbers should work
         dimensionless_scalar = Scalar("3.0")  # dimensionless
@@ -721,16 +658,16 @@ class TestScalarPythonNumberArithmetic:
 
         # Test division by zero integer
         with pytest.raises(ZeroDivisionError):
-            result = scalar / 0
+            scalar / 0
 
         # Test division by zero float
         with pytest.raises(ZeroDivisionError):
-            result = scalar / 0.0
+            scalar / 0.0
 
         # Test reverse division by zero scalar
         zero_scalar = Scalar("0.0", "s")
         with pytest.raises((ZeroDivisionError, RMNError)):
-            result = 5 / zero_scalar
+            5 / zero_scalar
 
     def test_complex_capacitor_calculation(self):
         """Test the specific capacitor calculation that motivated this feature."""
@@ -806,13 +743,13 @@ class TestScalarPythonNumberArithmetic:
 
         # Test that invalid types still raise errors
         with pytest.raises(TypeError):
-            result = dimensional_scalar + "invalid"
+            dimensional_scalar + "invalid"
 
         with pytest.raises(TypeError):
-            result = dimensional_scalar + [1, 2, 3]
+            dimensional_scalar + [1, 2, 3]
 
         with pytest.raises(TypeError):
-            result = dimensional_scalar + {"key": "value"}
+            dimensional_scalar + {"key": "value"}
 
 
 class TestScalarAdvancedComparison:
@@ -852,18 +789,18 @@ class TestScalarAdvancedComparison:
         time = Scalar("1.0", "s")
 
         # Equality comparison returns False for different dimensionalities
-        assert (length == time) == False
+        assert (length == time) is False
 
         # Inequality comparison raises RMNError
         with pytest.raises(RMNError):
-            result = length != time
+            length != time
 
         # Ordering should raise TypeError for incompatible dimensions
         with pytest.raises(TypeError):
-            result = length < time
+            length < time
 
         with pytest.raises(TypeError):
-            result = length > time
+            length > time
 
 
 class TestScalarConversion:
@@ -985,7 +922,7 @@ class TestScalarEdgeCases:
         zero = Scalar("0.0", "s")
 
         with pytest.raises(RMNError):  # Wrapper raises RMNError for division by zero
-            result = scalar / zero
+            scalar / zero
 
     def test_invalid_power(self):
         """Test power operations with extreme values."""

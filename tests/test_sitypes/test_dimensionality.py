@@ -139,17 +139,15 @@ class TestDimensionalityProperties:
         """Test symbol property."""
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-        length = Dimensionality.parse("L")
         velocity = Dimensionality.parse("L/T")
 
-        assert length.symbol == "L"
+        assert Dimensionality.parse("L").symbol == "L"
         assert velocity.symbol == "L/T"  # Using actual representation
 
     def test_is_derived_property(self):
         """Test is_derived property."""
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-        length = Dimensionality.parse("L")
         velocity = Dimensionality.parse("L/T")
 
         # Basic dimensions might not be considered "derived"
@@ -414,7 +412,7 @@ def run_comprehensive_test_suite():
     print(f"\n📊 Results: {passed_tests}/{total_tests} tests passed")
 
     # Run Python integration tests
-    print(f"\n📋 Running Python Integration Tests")
+    print("\n📋 Running Python Integration Tests")
     integration_tests = [
         test_python_container_integration,
         test_python_equality_semantics,
@@ -572,14 +570,14 @@ def test_python_integration_limitations():
 
     # Test that they can't be dict keys (expected limitation)
     try:
-        test_dict = {velocity: "speed"}
+        {velocity: "speed"}  # noqa: F841
         assert False, "Expected TypeError for dict keys"
     except TypeError:
         pass  # Expected
 
     # Test that they can't be in sets (expected limitation)
     try:
-        test_set = {velocity}
+        {velocity}  # noqa: F841
         assert False, "Expected TypeError for sets"
     except TypeError:
         pass  # Expected

@@ -5,12 +5,10 @@ These tests fill gaps identified by comparing our Python test coverage
 with the comprehensive C test suite in SITypes/tests/test_unit.c
 """
 
-import math
-
 import pytest
 
 from rmnpy.exceptions import RMNError
-from rmnpy.wrappers.sitypes import Dimensionality, Unit
+from rmnpy.wrappers.sitypes import Unit
 
 
 class TestUnitConversions:
@@ -177,7 +175,7 @@ class TestUnitRootProperties:
 
             # Compound units might not have simple root properties
             # This tests the behavior when root properties are accessed
-            root_symbol = getattr(velocity, "root_symbol", None)
+            getattr(velocity, "root_symbol", None)
             # Behavior is implementation-dependent
 
         except AttributeError:

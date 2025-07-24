@@ -5,8 +5,6 @@ This module tests that the OCTypes C library is properly linked and that
 all API declarations are correctly defined in the Cython .pxd file.
 """
 
-import os
-import sys
 from pathlib import Path
 
 import pytest
@@ -36,10 +34,10 @@ def test_octypes_pxd_exists():
 
 def test_import_octypes_api():
     """Test that the OCTypes C API declarations file exists and is valid."""
+    # Add the source directory to the path
     import os
     import sys
 
-    # Add the source directory to the path
     src_dir = os.path.join(os.path.dirname(__file__), "..", "..", "src")
     sys.path.insert(0, src_dir)
 
@@ -177,9 +175,7 @@ def test_library_linking():
     """Test basic OCTypes library linking and string operations."""
     # Test that we can import and use basic OCTypes functions
     from rmnpy.helpers.octypes import (
-        ocnumber_to_py_number,
         ocstring_to_py_string,
-        py_number_to_ocnumber,
         py_string_to_ocstring,
         release_octype,
     )
@@ -263,54 +259,20 @@ def test_memory_management():
 
 def test_ocnumber_tryget_compilation():
     """Test that OCNumber try-get accessor functions compile correctly."""
+    # Test that the OCNumber try-get functions are properly declared
+    # This is a placeholder test that validates API availability
+    from pathlib import Path
 
-    # Create a minimal Cython test file that uses try-get functions
-    test_cython_code = '''
-# cython: language_level=3
-
-from rmnpy._c_api.octypes cimport *
-from libc.stdint cimport uint8_t, int8_t, uint16_t, int16_t
-from libc.stdint cimport uint32_t, int32_t, uint64_t, int64_t
-
-def test_tryget_declarations():
-    """Test that try-get accessor functions are properly declared."""
-    cdef OCNumberRef number = NULL
-    cdef bint success
-
-    # Test integer try-get functions (basic types)
-    cdef uint8_t u8_val
-    cdef int8_t s8_val
-    cdef uint16_t u16_val
-    cdef int16_t s16_val
-    cdef uint32_t u32_val
-    cdef int32_t s32_val
-    cdef uint64_t u64_val
-    cdef int64_t s64_val
-
-    # Test floating-point try-get functions
-    cdef float f32_val
-    cdef double f64_val
-    cdef float_complex fc64_val
-    cdef double_complex fc128_val
-
-    # Test convenience alias try-get functions
-    cdef float float_val
-    cdef double double_val
-    cdef float_complex float_complex_val
-    cdef double_complex double_complex_val
-    cdef int int_val
-    cdef long long_val
-    cdef OCIndex index_val
-
-    # The actual function calls would be made here if we had a valid OCNumberRef
-    # For now, we just test that the function signatures are accessible
-    # This will fail at compilation time if the declarations are incorrect
-
-    return True
-'''
-
-    # For now, just check that the signatures exist in the .pxd file
-    # In the future, this could write the test code to a temp file and compile it
+    # Check that the .pxd file contains the expected try-get function declarations
+    pxd_file = (
+        Path(__file__).parent.parent.parent / "src" / "rmnpy" / "_c_api" / "octypes.pxd"
+    )
+    if pxd_file.exists():
+        content = pxd_file.read_text()
+        # Look for try-get function patterns
+        assert "OCNumber" in content, "OCNumber declarations not found in .pxd file"
+    else:
+        pytest.skip("octypes.pxd file not found, skipping API validation test")
 
     current_dir = Path(__file__).parent
     octypes_file = (

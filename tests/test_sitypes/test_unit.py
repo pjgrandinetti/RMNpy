@@ -5,8 +5,6 @@ Comprehensive test suite for the Unit wrapper implementation,
 mirroring the structure and coverage of test_dimensionality.py from Phase 2A.
 """
 
-import math
-
 import pytest
 
 from rmnpy.exceptions import RMNError
@@ -544,8 +542,6 @@ class TestUnitIntegration:
 
         # Distance/time = velocity
         velocity = m / s
-        velocity_dim = velocity.dimensionality
-
         # Distance/velocity = time
         time_unit = m / velocity
         time_dim = time_unit.dimensionality
