@@ -80,6 +80,7 @@ jobs:
         cd OCTypes
         make clean || true
         make
+        make install
       shell: bash
 
     - name: Build SITypes
@@ -87,6 +88,7 @@ jobs:
         cd SITypes  
         make clean || true
         make
+        make install
       shell: bash
 
     - name: Build RMNLib
@@ -94,6 +96,7 @@ jobs:
         cd RMNLib
         make clean || true
         make
+        make install
       shell: bash
 
     - name: Sync libraries to RMNpy
