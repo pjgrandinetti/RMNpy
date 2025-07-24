@@ -512,19 +512,51 @@ cdef class Scalar:
         if not isinstance(exponent, (int, float)):
             raise TypeError("Exponent must be a number")
         
-        cdef double power = float(exponent)
+        cdef int power
+        cdef uint8_t root
         cdef OCStringRef error_string = NULL
-        cdef SIScalarRef result = SIScalarCreateByRaisingToPower(self._c_scalar, power, &error_string)
+        cdef SIScalarRef result
         
-        if result == NULL:
-            if error_string != NULL:
-                error_msg = parse_c_string(<uint64_t>error_string)
-                OCRelease(<OCTypeRef>error_string)
-                raise RMNError(f"Power operation failed: {error_msg}")
-            else:
-                raise RMNError("Power operation failed")
+        # Check if exponent is an integer or can be treated as one
+        if isinstance(exponent, int) or (isinstance(exponent, float) and exponent.is_integer()):
+            # Use integer power function
+            power = int(exponent)
+            result = SIScalarCreateByRaisingToPower(self._c_scalar, power, &error_string)
+            
+            if result == NULL:
+                if error_string != NULL:
+                    error_msg = parse_c_string(<uint64_t>error_string)
+                    OCRelease(<OCTypeRef>error_string)
+                    raise RMNError(f"Power operation failed: {error_msg}")
+                else:
+                    raise RMNError("Power operation failed")
+            
+            return Scalar._from_ref(result)
         
-        return Scalar._from_ref(result)
+        # Check if it's a simple fractional power (1/n)
+        elif isinstance(exponent, float):
+            # Check if this is 1/n where n is a positive integer
+            if exponent > 0 and (1.0 / exponent).is_integer():
+                root_value = int(1.0 / exponent)
+                if root_value > 0 and root_value <= 255:  # uint8_t range
+                    root = <uint8_t>root_value
+                    result = SIScalarCreateByTakingNthRoot(self._c_scalar, root, &error_string)
+                    
+                    if result == NULL:
+                        if error_string != NULL:
+                            error_msg = parse_c_string(<uint64_t>error_string)
+                            OCRelease(<OCTypeRef>error_string)
+                            raise RMNError(f"Nth root operation failed: {error_msg}")
+                        else:
+                            raise RMNError("Nth root operation failed")
+                    
+                    return Scalar._from_ref(result)
+            
+            # Reject other fractional powers
+            raise RMNError(f"Fractional power {exponent} is not supported. Only integer powers and simple roots (like 0.5, 0.333...) are allowed.")
+        
+        else:
+            raise TypeError("Exponent must be a number")
     
     def abs(self):
         """

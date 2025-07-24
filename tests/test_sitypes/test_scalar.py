@@ -490,9 +490,9 @@ class TestScalarArithmetic:
         scalar = Scalar("9.0", "m^2")
         result = scalar ** 0.5
         assert abs(result.value - 3.0) < 1e-14
-        # TODO: Fix fractional power implementation in Python wrapper
-        # Currently (m^2)^0.5 incorrectly returns m^2 instead of m
-        assert result.unit.symbol == "m^2"  # Should be "m" when wrapper is fixed
+        # Fractional power implementation is now working correctly
+        # (m^2)^0.5 correctly returns m
+        assert result.unit.symbol == "m"  # Fixed! Fractional powers now work correctly
         
     def test_arithmetic_with_numbers(self):
         """Test arithmetic operations with plain numbers."""
