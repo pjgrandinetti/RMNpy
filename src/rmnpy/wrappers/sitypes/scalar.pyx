@@ -44,48 +44,7 @@ cdef class Scalar:
     **Named Parameter Patterns:**
         - Unit only: `Scalar(expression="m")` creates 1 meter
         - Full specification: `Scalar(value=2.5, expression="W")` creates 2.5 Watts
-    
-    Examples:
-        >>> # Single argument patterns
-        >>> energy = Scalar("100 J")           # 100 Joules from expression
-        >>> count = Scalar(42)                 # 42 dimensionless
-        >>> impedance = Scalar(3+4j)           # Complex dimensionless
-        >>> 
-        >>> # Two argument patterns
-        >>> distance = Scalar(100, "m")        # 100 meters
-        >>> mass = Scalar("5.0", "kg")         # 5 kilograms (legacy)
-        >>> 
-        >>> # Named parameter patterns
-        >>> unit_meter = Scalar(expression="m")              # 1 meter
-        >>> power = Scalar(value=2.5, expression="W")        # 2.5 Watts
-        >>> 
-        >>> # Scientific calculations with automatic unit handling
-        >>> time = Scalar(2.0, "s")            # 2 seconds
-        >>> velocity = distance / time          # 50 m/s (automatic unit derivation)
-        >>> acceleration = Scalar(9.8, "m/s^2") # 9.8 m/s²
-        >>> force = mass * acceleration         # Automatic unit: kg⋅m/s² (Newtons)
-        >>> 
-        >>> # Unit conversions
-        >>> velocity_kmh = velocity.convert_to("km/h")  # Convert to km/h
-        >>> velocity_si = velocity.to_coherent_si()      # Convert to SI base units
-        >>> 
-        >>> # Complex number support
-        >>> voltage = Scalar(230, "V")          # 230 Volts
-        >>> current = Scalar(2+1j, "A")        # Complex current
-        >>> power_complex = voltage * current   # Complex power calculation
-        >>> 
-        >>> # Dimensional validation
-        >>> try:
-        ...     invalid = distance + time       # Error: can't add length + time
-        ... except RMNError:
-        ...     print("Dimensional mismatch caught!")
-        >>> 
-        >>> # Access properties
-        >>> print(f"Value: {force.value}")              # Numeric value
-        >>> print(f"Unit: {force.unit.symbol}")         # Unit symbol
-        >>> print(f"Dimensionality: {force.dimensionality.symbol}")  # [M⋅L⋅T⁻²]
-        >>> print(f"Is complex: {current.is_complex}")  # True/False
-    
+        
     The Scalar class provides comprehensive arithmetic operations, unit conversions,
     and dimensional analysis while maintaining type safety and preventing common
     physics calculation errors through automatic dimensional validation.
@@ -124,72 +83,7 @@ cdef class Scalar:
                 - Unit expression like "m", "m/s", "kg*m/s^2", "J", "W"
                 - If None, behavior depends on `value` type
                 - Default: None
-                
-        **Usage Patterns:**
-        
-        **Single Argument - String Expression:**
-            Creates scalar from complete expression including value and unit.
-            
-            >>> energy = Scalar("100 J")              # 100 Joules
-            >>> velocity = Scalar("25 m/s")           # 25 meters per second  
-            >>> force = Scalar("9.8 kg*m/s^2")        # 9.8 Newtons
-            >>> acceleration = Scalar("-9.8 m/s^2")   # Negative acceleration
-            
-        **Single Argument - Numeric Value:**
-            Creates dimensionless scalar with specified numeric value.
-            
-            >>> ratio = Scalar(0.75)                  # 0.75 (dimensionless)
-            >>> count = Scalar(42)                    # 42 (dimensionless) 
-            >>> efficiency = Scalar(0.95)             # 95% efficiency
-            >>> complex_num = Scalar(3+4j)            # Complex dimensionless
-            
-        **Two Arguments - Value and Unit:**
-            Multiplies numeric value by unit expression.
-            
-            >>> distance = Scalar(100, "m")           # 100 meters
-            >>> power = Scalar(2.5, "W")              # 2.5 Watts
-            >>> current = Scalar(3+4j, "A")           # Complex current
-            >>> temperature = Scalar(273.15, "K")     # 273.15 Kelvin
-            
-        **Two Arguments - String Value and Unit (Legacy):**
-            Parses string as numeric value, multiplies by unit.
-            
-            >>> mass = Scalar("5.0", "kg")            # 5.0 kilograms
-            >>> voltage = Scalar("230", "V")          # 230 Volts
-            >>> frequency = Scalar("50.0", "Hz")      # 50 Hz
-            
-        **Named Parameters - Expression Only:**
-            Creates unit scalar (value = 1.0) with specified unit.
-            
-            >>> unit_meter = Scalar(expression="m")         # 1 meter
-            >>> unit_second = Scalar(expression="s")        # 1 second
-            >>> unit_newton = Scalar(expression="kg*m/s^2") # 1 Newton
-            
-        **Named Parameters - Full Specification:**
-            Explicit specification of both value and expression.
-            
-            >>> power = Scalar(value=1500, expression="W")     # 1500 Watts
-            >>> charge = Scalar(value=1.6e-19, expression="C") # Elementary charge
-            >>> impedance = Scalar(value=50+0j, expression="Ohm") # 50Ω impedance
-            
-        **Advanced Examples:**
-        
-        **Scientific Constants:**
-            >>> c = Scalar(299792458, "m/s")          # Speed of light
-            >>> h = Scalar(6.626e-34, "J*s")          # Planck constant
-            >>> g = Scalar(9.80665, "m/s^2")          # Standard gravity
-            
-        **Complex Numbers in Electronics:**
-            >>> voltage = Scalar(230, "V")            # RMS voltage
-            >>> impedance = Scalar(50+25j, "Ohm")     # Complex impedance
-            >>> current = voltage / impedance         # Complex current
-            >>> power = voltage * current.real        # Real power
-            
-        **Compound Units:**
-            >>> energy_density = Scalar(250, "Wh/kg") # Energy density
-            >>> heat_capacity = Scalar(4.18, "J/(g*K)") # Specific heat
-            >>> pressure = Scalar(101325, "Pa")       # Standard pressure
-            
+                                    
         Returns:
             Scalar: New scalar object with specified value and unit
             
@@ -275,45 +169,6 @@ cdef class Scalar:
             
         finally:
             OCRelease(<OCTypeRef>expr_ref)
-    
-    @classmethod
-    def parse(cls, expression):
-        """
-        Create a scalar from a string expression containing value and unit.
-        
-        This method is provided for backward compatibility and convenience.
-        It is equivalent to calling `Scalar(expression)` with a single string argument.
-        
-        Args:
-            expression (str): Complete expression like "5.0 m/s", "100 J", "3.14 kg*m/s^2"
-            
-        Returns:
-            Scalar: Parsed scalar object
-            
-        Raises:
-            RMNError: If the expression cannot be parsed or contains invalid units
-            TypeError: If expression is not a string
-            
-        Examples:
-            >>> # These are equivalent:
-            >>> velocity1 = Scalar.parse("25 m/s")    # Classic method
-            >>> velocity2 = Scalar("25 m/s")          # Direct constructor
-            >>> 
-            >>> # More examples
-            >>> energy = Scalar.parse("100 J")        # 100 Joules
-            >>> force = Scalar.parse("9.8 N")         # 9.8 Newtons
-            >>> power = Scalar.parse("1.5 kW")        # 1.5 kilowatts
-            >>> 
-            >>> # Complex expressions
-            >>> acceleration = Scalar.parse("9.8 m/s^2")      # 9.8 m/s²
-            >>> momentum = Scalar.parse("50 kg*m/s")          # 50 kg⋅m/s
-            >>> energy_density = Scalar.parse("250 Wh/kg")    # 250 Wh/kg
-            
-        Note:
-            For new code, prefer using the constructor directly: `Scalar("expression")`
-            as it is more concise and provides the same functionality.
-        """
-        return cls(expression)
     
     # Properties
     @property
@@ -524,7 +379,7 @@ cdef class Scalar:
         Add another scalar to this scalar.
         
         Args:
-            other (Scalar): Scalar to add
+            other (Scalar or numeric): Scalar to add, or numeric value (converted to dimensionless scalar)
             
         Returns:
             Scalar: Sum of the scalars
@@ -533,7 +388,11 @@ cdef class Scalar:
             Both scalars must have compatible (same) dimensionality
         """
         if not isinstance(other, Scalar):
-            raise TypeError("Can only add with another Scalar")
+            # Convert Python number to dimensionless scalar
+            if isinstance(other, (int, float, complex)):
+                other = Scalar(other, "1")  # Create dimensionless scalar
+            else:
+                raise TypeError("Can only add with another Scalar or numeric value")
         
         cdef OCStringRef error_string = NULL
         cdef SIScalarRef result = SIScalarCreateByAdding(self._c_scalar, (<Scalar>other)._c_scalar, &error_string)
@@ -553,13 +412,17 @@ cdef class Scalar:
         Subtract another scalar from this scalar.
         
         Args:
-            other (Scalar): Scalar to subtract
+            other (Scalar or numeric): Scalar to subtract, or numeric value (converted to dimensionless scalar)
             
         Returns:
             Scalar: Difference of the scalars
         """
         if not isinstance(other, Scalar):
-            raise TypeError("Can only subtract another Scalar")
+            # Convert Python number to dimensionless scalar
+            if isinstance(other, (int, float, complex)):
+                other = Scalar(other, "1")  # Create dimensionless scalar
+            else:
+                raise TypeError("Can only subtract another Scalar or numeric value")
         
         cdef OCStringRef error_string = NULL
         cdef SIScalarRef result = SIScalarCreateBySubtracting(self._c_scalar, (<Scalar>other)._c_scalar, &error_string)
@@ -579,13 +442,17 @@ cdef class Scalar:
         Multiply this scalar by another scalar.
         
         Args:
-            other (Scalar): Scalar to multiply by
+            other (Scalar or numeric): Scalar to multiply by, or numeric value (converted to dimensionless scalar)
             
         Returns:
             Scalar: Product of the scalars
         """
         if not isinstance(other, Scalar):
-            raise TypeError("Can only multiply with another Scalar")
+            # Convert Python number to dimensionless scalar
+            if isinstance(other, (int, float, complex)):
+                other = Scalar(other, "1")  # Create dimensionless scalar
+            else:
+                raise TypeError("Can only multiply with another Scalar or numeric value")
         
         cdef OCStringRef error_string = NULL
         cdef SIScalarRef result = SIScalarCreateByMultiplying(self._c_scalar, (<Scalar>other)._c_scalar, &error_string)
@@ -605,13 +472,19 @@ cdef class Scalar:
         Divide this scalar by another scalar.
         
         Args:
-            other (Scalar): Scalar to divide by
+            other (Scalar or numeric): Scalar to divide by, or numeric value (converted to dimensionless scalar)
             
         Returns:
             Scalar: Quotient of the scalars
         """
         if not isinstance(other, Scalar):
-            raise TypeError("Can only divide by another Scalar")
+            # Convert Python number to dimensionless scalar
+            if isinstance(other, (int, float, complex)):
+                if other == 0:
+                    raise ZeroDivisionError("Cannot divide by zero")
+                other = Scalar(other, "1")  # Create dimensionless scalar
+            else:
+                raise TypeError("Can only divide by another Scalar or numeric value")
         
         cdef OCStringRef error_string = NULL
         cdef SIScalarRef result = SIScalarCreateByDividing(self._c_scalar, (<Scalar>other)._c_scalar, &error_string)
@@ -776,9 +649,23 @@ cdef class Scalar:
         """Addition operator (+)."""
         return self.add(other)
     
+    def __radd__(self, other):
+        """Reverse addition operator (+)."""
+        # For addition, order doesn't matter: other + self = self + other
+        return self.add(other)
+    
     def __sub__(self, other):
         """Subtraction operator (-)."""
         return self.subtract(other)
+    
+    def __rsub__(self, other):
+        """Reverse subtraction operator (-)."""
+        # For reverse subtraction: other - self
+        if isinstance(other, (int, float, complex)):
+            other_scalar = Scalar(other, "1")  # Create dimensionless scalar
+            return other_scalar.subtract(self)
+        else:
+            return NotImplemented
     
     def __mul__(self, other):
         """Multiplication operator (*)."""
@@ -832,6 +719,15 @@ cdef class Scalar:
             if result == NULL:
                 raise RMNError("Failed to divide by dimensionless complex constant")
             return Scalar._from_ref(result)
+        else:
+            return NotImplemented
+    
+    def __rtruediv__(self, other):
+        """Reverse division operator (/)."""
+        # For reverse division: other / self
+        if isinstance(other, (int, float, complex)):
+            other_scalar = Scalar(other, "1")  # Create dimensionless scalar
+            return other_scalar.divide(self)
         else:
             return NotImplemented
     

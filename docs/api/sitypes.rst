@@ -8,7 +8,7 @@ The SITypes module provides Python wrappers for physical units, dimensions, and 
 Overview
 --------
 
-**Eliminate Unit Conversion Errors Forever**
+**Eliminate Unit Conversion Errors**
 
 The :class:`Scalar` class combines a numerical value with a physical unit, enabling type-safe scientific computing with automatic dimensional analysis and unit conversion. This is the primary class for working with physical quantities.
 
@@ -51,71 +51,6 @@ Key Benefits
 * **Complex Number Support**: Full support for engineering applications
 * **Mathematical Functions**: Complete function library (trig, log, exp, roots) that preserves units
 * **Chemical Database**: Built-in atomic weights, isotopic properties, and NMR parameters
-
-Quick Start
------------
-
-**Creating Scalars with Mathematical Expressions**
-
-The most powerful feature of Scalar is its ability to **evaluate complex mathematical expressions** with units. You don't just assign values - you can perform complete calculations within the constructor:
-
-.. code-block:: python
-
-   from rmnpy.wrappers.sitypes import Scalar, Unit, Dimensionality
-   
-   # === Complex Mathematical Expressions ===
-   
-   # Physics calculations with automatic unit derivation
-   kinetic_energy = Scalar("0.5 * 2 kg * (10 m/s)^2")          # Result: 100 J
-   potential_energy = Scalar("2 kg * 9.8 m/s^2 * 5 m")         # Result: 98 J
-   total_energy = Scalar("100 J + 98 J")                       # Result: 198 J
-   
-   # Chemistry calculations with built-in constants
-   molar_mass_water = Scalar("aw[H] * 2 + aw[O]")              # Atomic weights
-   moles_from_mass = Scalar("18 g / fw[H2O]")                  # Formula weight
-   concentration = Scalar("0.1 mol / 1 L")                     # Molarity
-   
-   # Engineering with mathematical functions
-   ac_power = Scalar("120 V * 5 A * cos(30°)")                 # AC power factor
-   resonance_freq = Scalar("1 / (2 * π * sqrt(10e-6 H * 100e-9 F))")  # LC circuit
-   exponential_decay = Scalar("100 Bq * exp(-ln(2) * 5 s / 12.3 s)")   # Radioactive decay
-   
-   # NMR calculations with nuclear properties
-   larmor_freq = Scalar("γ_I[H1] * 9.4 T / (2 * π)")          # ¹H Larmor frequency
-   chemical_shift = Scalar("γ_I[C13] * 9.4 T * 75e-6")         # ¹³C chemical shift
-   
-   # === Simple Value Assignment (When No Calculation Needed) ===
-   
-   # Basic quantities
-   distance = Scalar("5.0 m")                    # 5 meters
-   velocity = Scalar("25 m/s")                   # 25 meters per second  
-   energy = Scalar("500 J")                      # 500 joules
-   
-   # Programmatic assignment (value, unit pairs)
-   mass = Scalar(10.5, "kg")                     # 10.5 kilograms
-   temperature = Scalar(273.15, "K")             # 273.15 Kelvin
-   impedance = Scalar(3+4j, "Ω")                 # Complex impedance
-   
-   # === Automatic Unit Arithmetic ===
-   
-   time = Scalar("5 s")
-   velocity = distance / time         # Result: 1 m/s (automatic units!)
-   
-   mass = Scalar("2 kg") 
-   momentum = mass * velocity         # Result: 2 kg*m/s (automatic units!)
-   
-   # === Effortless Unit Conversions ===
-   
-   speed_ms = Scalar("100 m/s")
-   speed_kmh = speed_ms.convert_to("km/h")     # Result: 360 km/h
-   speed_mph = speed_ms.convert_to("mph")      # Result: 223.694 mph
-   
-   # === Dimensional Safety (Catches Errors) ===
-   
-   try:
-       invalid = distance + time      # Error: Cannot add length + time!
-   except Exception as e:
-       print("Dimensional mismatch prevented an error!")
 
 Available Mathematical Functions
 --------------------------------
@@ -239,8 +174,8 @@ Chemical and Physical Constants
 
    * - Function
      - Description
-   * - ``γ_I[isotope]``
-     - Gyromagnetic ratio of isotope (e.g., ``γ_I[H1]``, ``γ_I[C13]``)
+   * - ``𝛾_I[isotope]``
+     - Gyromagnetic ratio of isotope (e.g., ``𝛾_I[H1]``, ``𝛾_I[C13]``)
    * - ``μ_I[isotope]``
      - Nuclear magnetic dipole moment (e.g., ``μ_I[H1]``)
    * - ``Q_I[isotope]``
@@ -394,76 +329,6 @@ SITypes includes a comprehensive database of fundamental physical constants. Sim
    * - ``reduce(x)``
      - Simplify derived units to their most basic form
 
-Real-World Applications
------------------------
-
-**From Physics Labs to Engineering Design**
-
-.. code-block:: python
-
-   # === Physics Laboratory ===
-   
-   # Kinetic energy calculation
-   mass = Scalar("2.5 kg")
-   velocity = Scalar("15 m/s")
-   kinetic_energy = 0.5 * mass * velocity**2
-   print(kinetic_energy)                    # 281.25 J (automatic units!)
-   
-   # Convert to other energy units
-   energy_cal = kinetic_energy.convert_to("cal")   # 67.2 cal
-   energy_kwh = kinetic_energy.convert_to("kWh")   # 7.81e-05 kWh
-   
-   # === Engineering Design ===
-   
-   # Electrical power calculation
-   voltage = Scalar("120 V")
-   current = Scalar("5 A")  
-   power = voltage * current               # 600 W (automatic units!)
-   
-   # Convert power units
-   power_hp = power.convert_to("hp")       # 0.805 hp
-   power_btuh = power.convert_to("Btu/h")  # 2047 Btu/h
-   
-   # === Fluid Mechanics ===
-   
-   # Flow rate calculation
-   area = Scalar("0.5 m^2")
-   velocity_fluid = Scalar("2 m/s")
-   volume_flow = area * velocity_fluid     # 1.0 m^3/s
-   
-   # Convert flow units
-   flow_gpm = volume_flow.convert_to("gal/min")  # 15850 gal/min
-   flow_lps = volume_flow.convert_to("L/s")      # 1000 L/s
-   
-   # === Chemistry ===
-   
-   # Concentration and amount calculations  
-   molarity = Scalar("0.1 mol/L")
-   volume = Scalar("500 mL")
-   moles = molarity * volume               # 0.05 mol (automatic units!)
-   
-   # === NMR Calculations ===
-   
-   # Larmor frequency calculation
-   larmor_H1 = Scalar("γ_I[H1] * 9.4 T / (2 * π)")      # ¹H Larmor frequency at 9.4T
-   larmor_C13 = Scalar("γ_I[C13] * 9.4 T / (2 * π)")    # ¹³C Larmor frequency at 9.4T
-   
-   # Chemical shift calculation
-   ppm_shift = Scalar("γ_I[H1] * 9.4 T * 2.5e-6")      # 2.5 ppm shift frequency
-   
-   # === Example Usage ===
-   
-   # Trigonometric calculations
-   phase_shift = Scalar("sin(45°) * 100 V")                    # 70.7 V
-   impedance_z = Scalar("50 Ω * exp(1j * 30°)")               # Complex impedance
-   
-   # Chemical calculations
-   water_mass = Scalar("5 mol * fw[H2O]")                      # 90.075 g
-   carbon_ratio = Scalar("abundance[C13] / abundance[C12]")    # Isotope ratio
-   
-   # Complex engineering
-   transmission = Scalar("sqrt(50 Ω / (50 Ω + 1j * 2 * π * 1e6 Hz * 1e-6 H))")
-   decay_curve = Scalar("100 * exp(-ln(2) * 5 s / 12.26 s)")  # Radioactive decay
 
 Classes
 -------
