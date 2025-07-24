@@ -12,7 +12,7 @@ name = "rmnpy"
 version = "0.1.0"
 description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries"
 readme = "README.md"
-license = "MIT"
+license = {text = "MIT"}
 authors = [
     {name = "Philip Grandinetti", email = "grandinetti.1@osu.edu"}
 ]
