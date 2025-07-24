@@ -23,51 +23,69 @@ synclib:
 	@echo "Copying from ../OCTypes, ../SITypes, and ../RMNLib to lib/ and include/"
 	@mkdir -p lib include/OCTypes include/SITypes include/RMNLib
 	@if [ -f ../OCTypes/install/lib/libOCTypes.a ]; then \
-		echo "  ✓ Copying libOCTypes.a"; \
+		echo "  ✓ Copying libOCTypes.a (from ../OCTypes)"; \
 		cp ../OCTypes/install/lib/libOCTypes.a lib/; \
+	elif [ -f OCTypes/install/lib/libOCTypes.a ]; then \
+		echo "  ✓ Copying libOCTypes.a (from OCTypes)"; \
+		cp OCTypes/install/lib/libOCTypes.a lib/; \
 	else \
-		echo "  ✗ ../OCTypes/install/lib/libOCTypes.a not found"; \
-		echo "  Run 'make' in ../OCTypes first to build the library"; \
+		echo "  ✗ libOCTypes.a not found in ../OCTypes/install/lib/ or OCTypes/install/lib/"; \
+		echo "  Run 'make install' in ../OCTypes or OCTypes first to build and install the library"; \
 		exit 1; \
 	fi
 	@if [ -f ../SITypes/install/lib/libSITypes.a ]; then \
-		echo "  ✓ Copying libSITypes.a"; \
+		echo "  ✓ Copying libSITypes.a (from ../SITypes)"; \
 		cp ../SITypes/install/lib/libSITypes.a lib/; \
+	elif [ -f SITypes/install/lib/libSITypes.a ]; then \
+		echo "  ✓ Copying libSITypes.a (from SITypes)"; \
+		cp SITypes/install/lib/libSITypes.a lib/; \
 	else \
-		echo "  ✗ ../SITypes/install/lib/libSITypes.a not found"; \
-		echo "  Run 'make' in ../SITypes first to build the library"; \
+		echo "  ✗ libSITypes.a not found in ../SITypes/install/lib/ or SITypes/install/lib/"; \
+		echo "  Run 'make install' in ../SITypes or SITypes first to build and install the library"; \
 		exit 1; \
 	fi
 	@if [ -f ../RMNLib/install/lib/libRMN.a ]; then \
-		echo "  ✓ Copying libRMN.a"; \
+		echo "  ✓ Copying libRMN.a (from ../RMNLib)"; \
 		cp ../RMNLib/install/lib/libRMN.a lib/; \
+	elif [ -f RMNLib/install/lib/libRMN.a ]; then \
+		echo "  ✓ Copying libRMN.a (from RMNLib)"; \
+		cp RMNLib/install/lib/libRMN.a lib/; \
 	else \
-		echo "  ✗ ../RMNLib/install/lib/libRMN.a not found"; \
-		echo "  Run 'make' in ../RMNLib first to build the library"; \
+		echo "  ✗ libRMN.a not found in ../RMNLib/install/lib/ or RMNLib/install/lib/"; \
+		echo "  Run 'make install' in ../RMNLib or RMNLib first to build and install the library"; \
 		exit 1; \
 	fi
 	@if [ -d ../OCTypes/install/include/OCTypes ]; then \
-		echo "  ✓ Copying OCTypes headers"; \
+		echo "  ✓ Copying OCTypes headers (from ../OCTypes)"; \
 		cp ../OCTypes/install/include/OCTypes/*.h include/OCTypes/; \
+	elif [ -d OCTypes/install/include/OCTypes ]; then \
+		echo "  ✓ Copying OCTypes headers (from OCTypes)"; \
+		cp OCTypes/install/include/OCTypes/*.h include/OCTypes/; \
 	else \
-		echo "  ✗ ../OCTypes/install/include/OCTypes directory not found"; \
-		echo "  Run 'make install' in ../OCTypes first to create the organized header structure"; \
+		echo "  ✗ OCTypes headers not found in ../OCTypes/install/include/OCTypes/ or OCTypes/install/include/OCTypes/"; \
+		echo "  Run 'make install' in ../OCTypes or OCTypes first to create the organized header structure"; \
 		exit 1; \
 	fi
 	@if [ -d ../SITypes/install/include/SITypes ]; then \
-		echo "  ✓ Copying SITypes headers"; \
+		echo "  ✓ Copying SITypes headers (from ../SITypes)"; \
 		cp ../SITypes/install/include/SITypes/*.h include/SITypes/; \
+	elif [ -d SITypes/install/include/SITypes ]; then \
+		echo "  ✓ Copying SITypes headers (from SITypes)"; \
+		cp SITypes/install/include/SITypes/*.h include/SITypes/; \
 	else \
-		echo "  ✗ ../SITypes/install/include/SITypes directory not found"; \
-		echo "  Run 'make install' in ../SITypes first to create the organized header structure"; \
+		echo "  ✗ SITypes headers not found in ../SITypes/install/include/SITypes/ or SITypes/install/include/SITypes/"; \
+		echo "  Run 'make install' in ../SITypes or SITypes first to create the organized header structure"; \
 		exit 1; \
 	fi
 	@if [ -d ../RMNLib/install/include/RMNLib ]; then \
-		echo "  ✓ Copying RMNLib headers with proper structure"; \
+		echo "  ✓ Copying RMNLib headers with proper structure (from ../RMNLib)"; \
 		cp -r ../RMNLib/install/include/RMNLib/* include/RMNLib/; \
+	elif [ -d RMNLib/install/include/RMNLib ]; then \
+		echo "  ✓ Copying RMNLib headers with proper structure (from RMNLib)"; \
+		cp -r RMNLib/install/include/RMNLib/* include/RMNLib/; \
 	else \
-		echo "  ✗ ../RMNLib/install/include/RMNLib directory not found"; \
-		echo "  Run 'make install' in ../RMNLib first to create the organized header structure"; \
+		echo "  ✗ RMNLib headers not found in ../RMNLib/install/include/RMNLib/ or RMNLib/install/include/RMNLib/"; \
+		echo "  Run 'make install' in ../RMNLib or RMNLib first to create the organized header structure"; \
 		exit 1; \
 	fi
 	@echo "  ✓ Library synchronization complete!"
