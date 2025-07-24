@@ -1,0 +1,197 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }} - Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        exclude:
+          # Exclude some combinations to reduce CI time
+          - os: windows-latest
+            python-version: "3.8"
+          - os: windows-latest  
+            python-version: "3.9"
+
+    steps:
+    - name: Checkout RMNpy
+      uses: actions/checkout@v4
+
+    - name: Checkout OCTypes
+      uses: actions/checkout@v4
+      with:
+        repository: pjgrandinetti/OCTypes
+        path: OCTypes
+
+    - name: Checkout SITypes  
+      uses: actions/checkout@v4
+      with:
+        repository: pjgrandinetti/SITypes
+        path: SITypes
+
+    - name: Checkout RMNLib
+      uses: actions/checkout@v4
+      with:
+        repository: pjgrandinetti/RMNLib
+        path: RMNLib
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install system dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev libcurl4-openssl-dev
+
+    - name: Install system dependencies (macOS)
+      if: runner.os == 'macOS'  
+      run: |
+        brew install cmake flex bison openblas curl
+
+    - name: Install system dependencies (Windows)
+      if: runner.os == 'Windows'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-make
+          mingw-w64-x86_64-pkg-config
+          flex
+          bison
+
+    - name: Build OCTypes
+      run: |
+        cd OCTypes
+        make clean || true
+        make
+      shell: bash
+
+    - name: Build SITypes
+      run: |
+        cd SITypes  
+        make clean || true
+        make
+      shell: bash
+
+    - name: Build RMNLib
+      run: |
+        cd RMNLib
+        make clean || true
+        make
+      shell: bash
+
+    - name: Sync libraries to RMNpy
+      run: |
+        make synclib
+      shell: bash
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -e .[test]
+
+    - name: Generate constants
+      run: |
+        make generate-constants
+
+    - name: Build RMNpy extensions
+      run: |
+        python setup.py build_ext --inplace
+
+    - name: Run tests
+      run: |
+        python -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
+
+    - name: Upload coverage to Codecov
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  lint:
+    name: Lint and style checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install .[dev]
+
+    - name: Run black
+      run: |
+        python -m black --check --diff src/ tests/
+
+    - name: Run isort
+      run: |
+        python -m isort --check-only --diff src/ tests/
+
+    - name: Run flake8
+      run: |
+        python -m flake8 src/ tests/
+
+  docs:
+    name: Documentation build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev
+
+    - name: Create stub libraries for docs
+      run: |
+        bash scripts/ci_stub_libs.sh || echo "Stub creation failed, creating minimal directories"
+        mkdir -p lib include/OCTypes include/SITypes include/RMNLib
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install .[docs]
+
+    - name: Build documentation
+      run: |
+        cd docs
+        make html
+
+    - name: Upload docs artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation
+        path: docs/_build/html/
