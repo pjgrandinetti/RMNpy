@@ -119,8 +119,14 @@ def get_extensions():
     library_dirs = ["lib"]
     libraries = ["OCTypes", "SITypes", "RMN"]
     
-    # Common compiler/linker options
-    extra_compile_args = ["-std=c99", "-Wno-unused-function"]
+    # Common compiler/linker options (platform-specific)
+    import platform
+    if platform.system() == "Windows":
+        # MSVC flags
+        extra_compile_args = ["/std:c11"]
+    else:
+        # GCC/Clang flags
+        extra_compile_args = ["-std=c99", "-Wno-unused-function"]
     extra_link_args = []
     
     # Start with empty extensions list - we'll add them as we implement phases

@@ -106,7 +106,7 @@ def generate_python_constants(constants, output_path, header_path):
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines) + '\n')
     
-    print(f"✓ Generated {len(constants)} constants in {output_path}")
+    print(f"[OK] Generated {len(constants)} constants in {output_path}")
 
 
 def main():
@@ -129,9 +129,9 @@ def main():
         generate_python_constants(constants, output_path, header_path)
         
         print("=" * 60)
-        print("✅ SI Constants extraction completed successfully!")
-        print(f"📁 Output: {output_path}")
-        print(f"📊 Constants: {len(constants)} quantity constants")
+        print("[OK] SI Constants extraction completed successfully!")
+        print(f"Output: {output_path}")
+        print(f"Constants: {len(constants)} quantity constants")
         print("=" * 60)
         
         # Show some examples
@@ -142,7 +142,7 @@ def main():
             print(f"  ... and {len(constants) - 5} more")
         
     except Exception as e:
-        print(f"❌ Error: {e}", file=sys.stderr)
+        print(f"[X] Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 
