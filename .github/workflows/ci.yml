@@ -163,6 +163,8 @@ jobs:
 
     - name: Build extensions in-place
       run: |
+        # Ensure setuptools is available for direct setup.py calls
+        python -m pip install setuptools
         python setup.py build_ext --inplace
         # Copy compiled extensions to the in-place build directory
         cp src/rmnpy/helpers/*.so rmnpy/helpers/ 2>/dev/null || true
