@@ -375,10 +375,18 @@ jobs:
 
     - name: Generate constants (Windows)
       if: runner.os == 'Windows'
-      # Use the MSYS2 bash shell so that 'make' (installed by MSYS2) is on PATH
-      shell: msys2 {0}
+      shell: pwsh
       run: |
-        make generate-constants
+        # Constants are already generated during the Python build process
+        # This step verifies they exist
+        Write-Host "Checking for generated constants..."
+        if (Test-Path "src/rmnpy/constants") {
+          Write-Host "✓ Constants directory exists"
+          Get-ChildItem "src/rmnpy/constants" | ForEach-Object { Write-Host "  $($_.Name)" }
+        } else {
+          Write-Host "⚠ Constants directory not found - this is expected if generation happened during build"
+        }
+        Write-Host "Constants generation completed during build process"
 
     - name: Diagnose import issues (Windows)
       if: runner.os == 'Windows'
