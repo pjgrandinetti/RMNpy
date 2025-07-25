@@ -156,6 +156,9 @@ jobs:
         DISTUTILS_USE_SDK: "1"
       run: |
         # Use GitHub Actions Python explicitly for build with MinGW compiler
+        # Set proper definitions for Cython compatibility
+        $env:CPPFLAGS = "-DSIZEOF_VOID_P=8"
+        $env:CFLAGS = "-DSIZEOF_VOID_P=8"
         & "$env:pythonLocation\python.exe" setup.py build_ext --inplace --compiler=mingw32
 
     - name: Copy MinGW runtime DLLs (Windows)
