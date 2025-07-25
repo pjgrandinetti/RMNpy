@@ -147,7 +147,19 @@ jobs:
     - name: Install build tools (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
+      env:
+        CC: x86_64-w64-mingw32-gcc
+        CXX: x86_64-w64-mingw32-g++
       run: |
+        # Verify MinGW environment
+        Write-Host "MinGW PATH: ${{ runner.temp }}\msys64\mingw64\bin"
+        $env:PATH = "${{ runner.temp }}\msys64\mingw64\bin;$env:PATH"
+
+        # Verify compiler availability
+        & x86_64-w64-mingw32-gcc --version
+        Write-Host "CC environment: $env:CC"
+        Write-Host "CXX environment: $env:CXX"
+
         # Use GitHub Actions Python explicitly (not MSYS2 Python)
         & "$env:pythonLocation\python.exe" -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2"
 
@@ -157,7 +169,14 @@ jobs:
       env:
         CC: x86_64-w64-mingw32-gcc
         CXX: x86_64-w64-mingw32-g++
+        PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
       run: |
+        # Verify environment
+        Write-Host "Build environment:"
+        Write-Host "  CC: $env:CC"
+        Write-Host "  CXX: $env:CXX"
+        Write-Host "  PATH includes MinGW: $($env:PATH -like '*mingw64*')"
+
         # Use GitHub Actions Python explicitly for build with MinGW compiler
         & "$env:pythonLocation\python.exe" setup.py build_ext --inplace
 
@@ -169,7 +188,7 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        $mingw = "D:\a\_temp\msys64\mingw64\bin"
+        $mingw = "${{ runner.temp }}\msys64\mingw64\bin"
         # Copy runtime DLLs to main package directory (SpinOps approach)
         $targetDir = "src/rmnpy"
         if (Test-Path $targetDir) {
@@ -207,6 +226,7 @@ jobs:
       env:
         CC: x86_64-w64-mingw32-gcc
         CXX: x86_64-w64-mingw32-g++
+        PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
       run: |
         # Use GitHub Actions Python explicitly for pip install with MinGW compiler
         & "$env:pythonLocation\python.exe" -m pip install -e .[test]
@@ -219,17 +239,21 @@ jobs:
     - name: Generate constants (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
+      env:
+        PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
       run: |
         make generate-constants
 
     - name: Diagnose import issues (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
+      env:
+        PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
       run: |
         # Add main package directory to PATH for DLL resolution
         $currentDir = Get-Location
         $packageDir = Join-Path $currentDir "src\rmnpy"
-        $env:PATH = "$env:pythonLocation;D:\a\_temp\msys64\mingw64\bin;$packageDir;$env:PATH"
+        $env:PATH = "$env:pythonLocation;${{ runner.temp }}\msys64\mingw64\bin;$packageDir;$env:PATH"
 
         Write-Host "Testing basic Python import..."
         & "$env:pythonLocation\python.exe" -c "import sys; print('Python works:', sys.version)"
@@ -251,6 +275,7 @@ jobs:
         CXX: x86_64-w64-mingw32-g++
         LIBRARY_PATH: ${{ runner.temp }}/msys64/mingw64/lib
         LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
+        PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
       run: |
         # Add main package directory to PATH for DLL resolution (SpinOps approach)
         $currentDir = Get-Location

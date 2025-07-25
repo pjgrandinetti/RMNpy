@@ -11,29 +11,31 @@ import sysconfig
 
 # Handle distutils imports with fallbacks for different Python versions
 try:
-    from distutils.ccompiler import new_compiler
-    from distutils.sysconfig import customize_compiler, get_python_inc
+    from distutils.ccompiler import new_compiler  # type: ignore[import-untyped]
+    from distutils.sysconfig import customize_compiler  # type: ignore[import-untyped]
+    from distutils.sysconfig import get_python_inc  # type: ignore[import-untyped]
 except ImportError:
     try:
-        from setuptools._distutils.ccompiler import new_compiler  # type: ignore[misc]
-        from setuptools._distutils.sysconfig import (
-            customize_compiler,  # type: ignore[misc]
+        from setuptools._distutils.ccompiler import (
+            new_compiler,  # type: ignore[attr-defined]
         )
-
-        # Use sysconfig for get_python_inc as fallback
-        def get_python_inc() -> str:
-            return sysconfig.get_path("include")
-
+        from setuptools._distutils.sysconfig import (
+            customize_compiler,  # type: ignore[attr-defined]
+        )
+        from setuptools._distutils.sysconfig import (
+            get_python_inc,  # type: ignore[attr-defined]
+        )
     except ImportError:
-        # Ultimate fallback for testing
+        # Ultimate fallback for testing - use sysconfig only
+        from typing import Any
 
-        def new_compiler(*args, **kwargs):  # type: ignore[misc]
+        def new_compiler(*args: Any, **kwargs: Any) -> Any:
             return None
 
-        def customize_compiler(*args, **kwargs):  # type: ignore[misc]
-            return None
+        def customize_compiler(*args: Any, **kwargs: Any) -> None:
+            pass
 
-        def get_python_inc() -> str:
+        def get_python_inc(*args: Any, **kwargs: Any) -> str:
             return sysconfig.get_path("include")
 
 
@@ -47,6 +49,28 @@ from setuptools.command.build_ext import build_ext
 
 if TYPE_CHECKING:
     pass
+
+
+# Force MinGW compiler on Windows early in setup (SpinOps approach)
+# This must happen before any other setup code to ensure correct compiler selection
+if sys.platform == "win32":
+    # Get pointer size to determine 32-bit vs 64-bit
+    try:
+        from distutils.sysconfig import get_config_var
+
+        ptr_size = get_config_var("SIZEOF_VOID_P") or __import__("struct").calcsize("P")
+        ptr_size = int(ptr_size)
+    except Exception:
+        ptr_size = 8  # Default to 64-bit
+
+    # Set MinGW compiler environment variables early
+    os.environ["CC"] = (
+        "i686-w64-mingw32-gcc" if ptr_size == 4 else "x86_64-w64-mingw32-gcc"
+    )
+    os.environ["CXX"] = (
+        "i686-w64-mingw32-g++" if ptr_size == 4 else "x86_64-w64-mingw32-g++"
+    )
+    print(f"[setup.py] Set MinGW compiler environment: CC={os.environ['CC']}")
 
 
 def generate_si_constants() -> None:
