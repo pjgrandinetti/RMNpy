@@ -163,6 +163,9 @@ def get_extensions() -> list[Extension]:
     import platform
 
     extra_link_args: list[str] = []
+    define_macros: list[tuple[str, str]] = [
+        ("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")
+    ]
 
     if platform.system() == "Windows":
         # Check if we're in MSYS2/MinGW environment or have CC set to MinGW
@@ -176,14 +179,15 @@ def get_extensions() -> list[Extension]:
             or msystem == "MINGW32"
         ):
             # Use GCC/MinGW flags for better C99/C11 support
-            # Explicitly undefine SIZEOF_VOID_P to prevent Cython enum validation issues
+            # Define SIZEOF_VOID_P correctly for x64 Windows in define_macros
             extra_compile_args = [
                 "-std=c99",
                 "-Wno-unused-function",
                 "-Wno-sign-compare",
                 "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
-                "-USIZEOF_VOID_P",  # Explicitly undefine to prevent Cython validation
             ]
+            # Add the correct SIZEOF_VOID_P definition for x64 Windows
+            define_macros.append(("SIZEOF_VOID_P", "8"))
             print("Using MinGW/GCC compiler on Windows")
         else:
             # MSVC flags - but warn that complex numbers may not work
@@ -194,6 +198,7 @@ def get_extensions() -> list[Extension]:
     else:
         # GCC/Clang flags - let Python headers define SIZEOF_VOID_P correctly
         extra_compile_args = ["-std=c99", "-Wno-unused-function"]
+        define_macros = [("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]
 
     # Start with empty extensions list - we'll add them as we implement phases
     extensions = []
@@ -210,6 +215,7 @@ def get_extensions() -> list[Extension]:
                 language="c",
                 extra_compile_args=extra_compile_args,
                 extra_link_args=extra_link_args,
+                define_macros=define_macros,
             )
         ]
     )
