@@ -139,6 +139,26 @@ jobs:
         echo "✓ Libraries downloaded and ready for Python build"
       shell: bash
 
+    - name: Debug library downloads (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Write-Host "=== Library Download Debug ==="
+        Write-Host "Contents of lib directory:"
+        Get-ChildItem lib -ErrorAction SilentlyContinue | ForEach-Object {
+          Write-Host "  $($_.Name) - $($_.Length) bytes - Type: $($_.GetType().Name)"
+        }
+
+        Write-Host "Looking for DLL files specifically:"
+        Get-ChildItem lib\*.dll -ErrorAction SilentlyContinue | ForEach-Object {
+          Write-Host "  DLL: $($_.Name) - $($_.Length) bytes"
+        }
+
+        Write-Host "Looking for library files (.a, .lib):"
+        Get-ChildItem lib\*.a, lib\*.lib -ErrorAction SilentlyContinue | ForEach-Object {
+          Write-Host "  LIB: $($_.Name) - $($_.Length) bytes"
+        }
+
     - name: Install build tools
       if: runner.os != 'Windows'
       run: |
@@ -200,16 +220,26 @@ jobs:
 
           # Copy C library DLLs to package directory
           Write-Host "Copying C library DLLs..."
-          Copy-Item "lib\*.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          if (Test-Path "lib") {
+            Write-Host "Contents of lib directory:"
+            Get-ChildItem "lib" | ForEach-Object { Write-Host "  $($_.Name)" }
+            Copy-Item "lib\*.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+            Copy-Item "lib\*.a" $targetDir\ -Force -ErrorAction SilentlyContinue
+          } else {
+            Write-Host "lib directory does not exist"
+          }
 
           # Also copy to all wrapper subdirectories for better DLL resolution
-          Get-ChildItem "$targetDir\wrappers" -Directory | ForEach-Object {
+          Get-ChildItem "$targetDir\wrappers" -Directory -ErrorAction SilentlyContinue | ForEach-Object {
             $subDir = $_.FullName
             Write-Host "Copying DLLs to $subDir"
             Copy-Item "$mingw\libgcc_s_seh-1.dll" $subDir\ -Force -ErrorAction SilentlyContinue
             Copy-Item "$mingw\libwinpthread-1.dll" $subDir\ -Force -ErrorAction SilentlyContinue
             Copy-Item "$mingw\libstdc++-6.dll" $subDir\ -Force -ErrorAction SilentlyContinue
-            Copy-Item "lib\*.dll" $subDir\ -Force -ErrorAction SilentlyContinue
+            if (Test-Path "lib") {
+              Copy-Item "lib\*.dll" $subDir\ -Force -ErrorAction SilentlyContinue
+              Copy-Item "lib\*.a" $subDir\ -Force -ErrorAction SilentlyContinue
+            }
           }
 
           # List what was copied
@@ -281,15 +311,13 @@ jobs:
         Write-Host "Testing basic Python import..."
         & "$env:pythonLocation\python.exe" -c "import sys; print('Python works:', sys.version)"
 
-        Write-Host "Testing rmnpy import with enhanced DLL resolution..."
+        Write-Host "Adding DLL directories with os.add_dll_directory..."
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; print('Available DLL paths:'); [print(f'  {p}: exists={p.exists()}') for p in [Path('src/rmnpy'), Path('lib'), Path('src/rmnpy/wrappers/sitypes')]]; print('Adding DLL directories...'); [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib')] if hasattr(os, 'add_dll_directory') and p.exists()]; print('DLL directories added')"
 
-        # Step 1: Add DLL directories using os.add_dll_directory
-        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib')] if hasattr(os, 'add_dll_directory') and p.exists()]; print('DLL directories added')"
-
-        # Step 2: Test rmnpy import
+        Write-Host "Testing rmnpy import..."
         & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib')] if hasattr(os, 'add_dll_directory') and p.exists()]; import rmnpy; print('SUCCESS: rmnpy imported')"
 
-        # Step 3: Test Dimensionality import
+        Write-Host "Testing Dimensionality import..."
         & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib')] if hasattr(os, 'add_dll_directory') and p.exists()]; from rmnpy.wrappers.sitypes import Dimensionality; print('SUCCESS: Dimensionality imported')"
 
     - name: Run tests (Linux/macOS)
