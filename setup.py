@@ -239,11 +239,33 @@ def get_extensions() -> list[Extension]:
         ]
         # Add external dependencies required by RMNLib on Windows
         # These are needed because the static libraries don't include external deps
-        libraries.extend(["curl", "openblas", "lapack", "gfortran", "quadmath", "gomp"])
-        # Add MinGW library directory for external dependencies
+        # For MSYS2 MinGW64, use the actual library names from the installation
+        libraries.extend(["curl", "openblas", "lapack"])
+
+        # Add MinGW runtime libraries that might be needed
+        # Note: gfortran library name varies in MSYS2, try common variants
+        libraries.extend(["gcc_s_seh-1", "winpthread-1", "quadmath", "gomp"])
+
+        # Try to find the correct Fortran library name
         mingw_lib_dir = os.environ.get("MINGW_LIB_DIR")
         if mingw_lib_dir and os.path.exists(mingw_lib_dir):
             library_dirs.append(mingw_lib_dir)
+            # Look for Fortran library variants
+            fortran_libs = []
+            for lib_name in ["gfortran", "gfortran-5", "gcc_s_seh-1"]:
+                lib_path = os.path.join(mingw_lib_dir, f"lib{lib_name}.a")
+                dll_path = os.path.join(
+                    mingw_lib_dir.replace("/lib", "/bin"), f"lib{lib_name}.dll"
+                )
+                if os.path.exists(lib_path) or os.path.exists(dll_path):
+                    if lib_name not in libraries:
+                        fortran_libs.append(lib_name)
+            if fortran_libs:
+                libraries.extend(fortran_libs)
+                print(f"Found Fortran libraries: {fortran_libs}")
+            else:
+                print("Warning: No Fortran library found, linking may fail")
+        # Add MinGW library directory for external dependencies
         # Add SIZEOF_VOID_P=8 for x86_64 to prevent Cython's division by zero error
         define_macros.append(("SIZEOF_VOID_P", "8"))
         print("Configured for MinGW/GCC compiler on Windows")

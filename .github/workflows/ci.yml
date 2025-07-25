@@ -106,6 +106,16 @@ jobs:
         ls -la /mingw64/bin/libopenblas*.dll 2>/dev/null || echo "No OpenBLAS DLLs found"
         ls -la /mingw64/bin/liblapack*.dll 2>/dev/null || echo "No LAPACK DLLs found"
 
+        # Check for Fortran libraries (gfortran variants)
+        echo -e "\n=== Fortran libraries available ==="
+        ls -la /mingw64/bin/libgfortran*.dll 2>/dev/null || echo "No libgfortran DLLs found"
+        ls -la /mingw64/lib/libgfortran*.a 2>/dev/null || echo "No libgfortran static libs found"
+        ls -la /mingw64/lib/libgcc_s*.a 2>/dev/null || echo "No libgcc_s static libs found"
+
+        # List all Fortran-related libraries
+        echo -e "\n=== All Fortran-related files ==="
+        find /mingw64 -name "*fortran*" -o -name "*gfortran*" 2>/dev/null | head -10
+
     - name: Add MinGW64 to PATH (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
