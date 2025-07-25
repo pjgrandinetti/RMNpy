@@ -116,6 +116,13 @@ jobs:
         echo -e "\n=== All Fortran-related files ==="
         find /mingw64 -name "*fortran*" -o -name "*gfortran*" 2>/dev/null | head -10
 
+        # Check specific library directory structure
+        echo -e "\n=== MinGW64 library directory structure ==="
+        ls -la /mingw64/lib/libgcc* 2>/dev/null || echo "No libgcc files found"
+        ls -la /mingw64/lib/libgfortran* 2>/dev/null || echo "No libgfortran files found"
+        ls -la /mingw64/lib/libwinpthread* 2>/dev/null || echo "No libwinpthread files found"
+        ls -la /mingw64/lib/libquadmath* 2>/dev/null || echo "No libquadmath files found"
+
     - name: Add MinGW64 to PATH (Windows)
       if: runner.os == 'Windows'
       shell: pwsh

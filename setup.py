@@ -242,24 +242,49 @@ def get_extensions() -> list[Extension]:
         # For MSYS2 MinGW64, use the actual library names from the installation
         libraries.extend(["curl", "openblas", "lapack"])
 
-        # Add MinGW runtime libraries that might be needed
-        # Note: gfortran library name varies in MSYS2, try common variants
-        libraries.extend(["gcc_s_seh-1", "winpthread-1", "quadmath", "gomp"])
+        # Add MinGW runtime libraries with correct library names
+        # Note: In MSYS2 MinGW64, these are the correct linker names
+        libraries.extend(["gcc_s", "winpthread", "quadmath", "gomp"])
 
         # Try to find the correct Fortran library name
         mingw_lib_dir = os.environ.get("MINGW_LIB_DIR")
         if mingw_lib_dir and os.path.exists(mingw_lib_dir):
             library_dirs.append(mingw_lib_dir)
-            # Look for Fortran library variants
+            # Look for Fortran library variants - check actual library names
             fortran_libs = []
-            for lib_name in ["gfortran", "gfortran-5", "gcc_s_seh-1"]:
+            print(f"Checking Fortran libraries in: {mingw_lib_dir}")
+
+            # First check what library files actually exist
+            try:
+                import glob
+
+                static_libs = glob.glob(os.path.join(mingw_lib_dir, "lib*fortran*.a"))
+                dll_libs = glob.glob(
+                    os.path.join(
+                        mingw_lib_dir.replace("/lib", "/bin"), "lib*fortran*.dll"
+                    )
+                )
+                print(
+                    f"Found static libs: {[os.path.basename(f) for f in static_libs]}"
+                )
+                print(f"Found DLL libs: {[os.path.basename(f) for f in dll_libs]}")
+            except Exception as e:
+                print(f"Error checking library files: {e}")
+
+            # Check for common Fortran library names
+            for lib_name in ["gfortran", "gfortran-5"]:
                 lib_path = os.path.join(mingw_lib_dir, f"lib{lib_name}.a")
                 dll_path = os.path.join(
                     mingw_lib_dir.replace("/lib", "/bin"), f"lib{lib_name}.dll"
                 )
+                print(
+                    f"Checking {lib_name}: static={os.path.exists(lib_path)}, dll={os.path.exists(dll_path)}"
+                )
                 if os.path.exists(lib_path) or os.path.exists(dll_path):
-                    if lib_name not in libraries:
-                        fortran_libs.append(lib_name)
+                    # For gfortran-5.dll, we still link as -lgfortran
+                    link_name = "gfortran" if "gfortran" in lib_name else lib_name
+                    if link_name not in libraries and link_name not in fortran_libs:
+                        fortran_libs.append(link_name)
             if fortran_libs:
                 libraries.extend(fortran_libs)
                 print(f"Found Fortran libraries: {fortran_libs}")
