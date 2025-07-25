@@ -345,7 +345,13 @@ jobs:
         $pydFiles = Get-ChildItem -Path "src" -Filter "*.pyd" -Recurse
         ForEach ($pydFile in $pydFiles) {
             Write-Host "Analyzing dependencies for: $($pydFile.FullName)"
-            & "${{ runner.temp }}\msys64\usr\bin\objdump.exe" -p "$($pydFile.FullName)" | Select-String "DLL Name"
+            # Use MinGW objdump from the toolchain, not from usr/bin
+            $objdumpPath = "${{ runner.temp }}\msys64\mingw64\bin\objdump.exe"
+            if (Test-Path $objdumpPath) {
+                & $objdumpPath -p "$($pydFile.FullName)" | Select-String "DLL Name"
+            } else {
+                Write-Host "objdump not found at $objdumpPath, skipping dependency analysis"
+            }
         }
 
         # List all files in MinGW bin to see what's available
