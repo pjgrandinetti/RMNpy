@@ -60,16 +60,19 @@ coverage.xml
 debug_*.py
 update_*.py
 
-# Cython generated files
-*.c
-*.cpp
-*.html
+# Cython generated files (only the generated .c/.cpp/.html files, not source .py files)
 src/rmnpy/**/*.c
 src/rmnpy/**/*.cpp
 src/rmnpy/**/*.html
 
 # In-place build directories (for setup.py build_ext --inplace)
-rmnpy/
+# Only ignore rmnpy/ at root level, not src/rmnpy/
+/rmnpy/
+
+# Compiled extension files
+src/rmnpy/**/*.so
+src/rmnpy/**/*.pyd
+src/rmnpy/**/*.dll
 
 # C/C++ compilation artifacts
 *.o
