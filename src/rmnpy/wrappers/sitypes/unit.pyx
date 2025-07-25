@@ -6,20 +6,6 @@ Complete wrapper for SIUnit providing comprehensive unit manipulation capabiliti
 This implementation builds on the SIDimensionality foundation from Phase 2A.
 """
 
-# Fix for Windows MinGW pointer size issues
-cdef extern from *:
-    """
-    #ifdef _WIN32
-    #ifndef SIZEOF_VOID_P
-    #ifdef _WIN64
-    #define SIZEOF_VOID_P 8
-    #else
-    #define SIZEOF_VOID_P 4
-    #endif
-    #endif
-    #endif
-    """
-
 from rmnpy._c_api.octypes cimport (
     OCRelease,
     OCStringCreateWithCString,

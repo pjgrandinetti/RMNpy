@@ -9,20 +9,6 @@ SIScalar represents a physical quantity with a numerical value, unit, and associ
 It supports comprehensive arithmetic operations with automatic unit handling and dimensional validation.
 """
 
-# Fix for Windows MinGW pointer size issues
-cdef extern from *:
-    """
-    #ifdef _WIN32
-    #ifndef SIZEOF_VOID_P
-    #ifdef _WIN64
-    #define SIZEOF_VOID_P 8
-    #else
-    #define SIZEOF_VOID_P 4
-    #endif
-    #endif
-    #endif
-    """
-
 from rmnpy._c_api.octypes cimport (
     OCComparisonResult,
     OCRelease,

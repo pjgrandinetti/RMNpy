@@ -192,13 +192,13 @@ def get_extensions() -> list[Extension]:
             or msystem == "MINGW32"
         ):
             # Use GCC/MinGW flags for better C99/C11 support
-            # Let Python headers define SIZEOF_VOID_P correctly
-            # Add explicit pointer size for Windows MinGW builds
+            # Add explicit pointer size definition for Windows MinGW builds
             extra_compile_args = [
                 "-std=c99",
                 "-Wno-unused-function",
                 "-Wno-sign-compare",
                 "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
+                "-DSIZEOF_VOID_P=8",  # Explicit 64-bit pointer size for MinGW x64
             ]
             print("Using MinGW/GCC compiler on Windows")
         else:
