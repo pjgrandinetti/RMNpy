@@ -6,6 +6,20 @@ Full-featured wrapper for SIDimensionality providing comprehensive dimensional a
 This implementation includes all essential methods for scientific computing applications.
 """
 
+# Fix for Windows MinGW pointer size issues
+cdef extern from *:
+    """
+    #ifdef _WIN32
+    #ifndef SIZEOF_VOID_P
+    #ifdef _WIN64
+    #define SIZEOF_VOID_P 8
+    #else
+    #define SIZEOF_VOID_P 4
+    #endif
+    #endif
+    #endif
+    """
+
 from rmnpy._c_api.octypes cimport (
     OCRelease,
     OCStringCreateWithCString,

@@ -193,10 +193,12 @@ def get_extensions() -> list[Extension]:
         ):
             # Use GCC/MinGW flags for better C99/C11 support
             # Let Python headers define SIZEOF_VOID_P correctly
+            # Add explicit pointer size for Windows MinGW builds
             extra_compile_args = [
                 "-std=c99",
                 "-Wno-unused-function",
                 "-Wno-sign-compare",
+                "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
             ]
             print("Using MinGW/GCC compiler on Windows")
         else:
@@ -377,6 +379,8 @@ setup(
             "wraparound": False,
             "initializedcheck": False,
         },
+        # Add build configuration for Windows compatibility
+        build_dir="build",
     ),
     cmdclass={
         "build_ext": CustomBuildExt,

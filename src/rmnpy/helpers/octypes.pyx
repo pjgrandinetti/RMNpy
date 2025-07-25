@@ -1,10 +1,25 @@
 # cython: language_level=3
+# distutils: define_macros=NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION
 """
 OCTypes Helper Functions
 
 This module provides conversion utilities between Python types and OCTypes C structures.
 These helpers enable seamless integration between Python objects and the OCTypes library.
 """
+
+# Fix for Windows MinGW pointer size issues
+cdef extern from *:
+    """
+    #ifdef _WIN32
+    #ifndef SIZEOF_VOID_P
+    #ifdef _WIN64
+    #define SIZEOF_VOID_P 8
+    #else
+    #define SIZEOF_VOID_P 4
+    #endif
+    #endif
+    #endif
+    """
 
 from libc.stdint cimport (
     int8_t,
