@@ -179,15 +179,13 @@ def get_extensions() -> list[Extension]:
             or msystem == "MINGW32"
         ):
             # Use GCC/MinGW flags for better C99/C11 support
-            # Define SIZEOF_VOID_P correctly for x64 Windows in define_macros
+            # Following SpinOps approach: don't override SIZEOF_VOID_P, let Cython handle it
             extra_compile_args = [
                 "-std=c99",
                 "-Wno-unused-function",
                 "-Wno-sign-compare",
                 "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
             ]
-            # Add the correct SIZEOF_VOID_P definition for x64 Windows
-            define_macros.append(("SIZEOF_VOID_P", "8"))
             print("Using MinGW/GCC compiler on Windows")
         else:
             # MSVC flags - but warn that complex numbers may not work
