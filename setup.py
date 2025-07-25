@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """Setup script for RMNpy - Python bindings for OCTypes, SITypes, and RMNLib."""
 
+import os
+import platform
 import subprocess
 import sys
+
+# Import for SpinOps-style MinGW forcing
+from distutils.ccompiler import new_compiler
+from distutils.sysconfig import customize_compiler
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -54,9 +60,31 @@ def generate_si_constants() -> None:
 
 
 class CustomBuildExt(build_ext):
-    """Custom build extension that handles library dependencies."""
+    """Custom build extension that handles library dependencies and forces MinGW on Windows."""
+
+    def build_extensions(self) -> None:
+        """Override to force MinGW compiler on Windows like SpinOps does."""
+        # First do our dependency checking
+        self._check_dependencies()
+
+        # Force MinGW compiler on Windows (SpinOps approach)
+        if platform.system() == "Windows":
+            compiler = new_compiler(compiler="mingw32")
+            customize_compiler(compiler)
+            self.compiler = compiler
+            print("Forced MinGW compiler on Windows")
+
+        # Continue with normal build
+        super().build_extensions()
 
     def run(self) -> None:
+        """Check dependencies before building extensions."""
+        # Generate SI constants before building
+        generate_si_constants()
+        # Continue with normal build (which will call build_extensions)
+        super().run()
+
+    def _check_dependencies(self) -> None:
         """Check dependencies before building extensions."""
         print("Checking library dependencies...")
 
@@ -68,21 +96,6 @@ class CustomBuildExt(build_ext):
             sys.exit(1)
 
         print("[OK] All required libraries found")
-
-        # Generate SI constants before building
-        generate_si_constants()
-
-        # Force MinGW compiler on Windows if environment suggests it
-        self._setup_windows_compiler()
-
-        # Continue with normal build
-        super().run()
-
-    def _setup_windows_compiler(self) -> None:
-        """Set up compiler for Windows builds."""
-        # This method is called but the actual compiler setup happens later in the build process
-        # Just ensure libraries are available
-        pass
 
     def _check_libraries(self) -> bool:
         """Check that all required libraries and headers are available."""
@@ -119,9 +132,6 @@ class CustomBuildExt(build_ext):
             print(f"[OK] Found headers: {header_dir.name}/")
 
         # On Windows, check if we have MinGW compiler for compatibility
-        import os
-        import platform
-
         if platform.system() == "Windows":
             cc_env = os.environ.get("CC", "")
             msystem = os.environ.get("MSYSTEM", "")
@@ -159,42 +169,23 @@ def get_extensions() -> list[Extension]:
     libraries = ["OCTypes", "SITypes", "RMN"]
 
     # Common compiler/linker options (platform-specific)
-    import os
-    import platform
-
     extra_link_args: list[str] = []
     define_macros: list[tuple[str, str]] = [
         ("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")
     ]
 
     if platform.system() == "Windows":
-        # Check if we're in MSYS2/MinGW environment or have CC set to MinGW
-        cc_env = os.environ.get("CC", "")
-        msystem = os.environ.get("MSYSTEM", "")
-
-        if (
-            "mingw32" in cc_env.lower()
-            or "gcc" in cc_env.lower()
-            or msystem == "MINGW64"
-            or msystem == "MINGW32"
-        ):
-            # Use GCC/MinGW flags for better C99/C11 support
-            # Following SpinOps approach: don't override SIZEOF_VOID_P, let Cython handle it
-            extra_compile_args = [
-                "-std=c99",
-                "-Wno-unused-function",
-                "-Wno-sign-compare",
-                "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
-            ]
-            print("Using MinGW/GCC compiler on Windows")
-        else:
-            # MSVC flags - but warn that complex numbers may not work
-            extra_compile_args = ["/std:c11"]
-            print(
-                "Using MSVC compiler on Windows (Warning: C complex numbers may not be supported)"
-            )
+        # On Windows, our CustomBuildExt class forces MinGW, so use GCC-style flags
+        # Following SpinOps approach: don't override SIZEOF_VOID_P, let Cython handle it
+        extra_compile_args = [
+            "-std=c99",
+            "-Wno-unused-function",
+            "-Wno-sign-compare",
+            "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
+        ]
+        print("Configured for MinGW/GCC compiler on Windows")
     else:
-        # GCC/Clang flags - let Python headers define SIZEOF_VOID_P correctly
+        # GCC/Clang flags on Unix-like systems
         extra_compile_args = ["-std=c99", "-Wno-unused-function"]
         define_macros = [("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]
 
