@@ -189,17 +189,31 @@ jobs:
         $targetDir = "src/rmnpy"
         if (Test-Path $targetDir) {
           Write-Host "Copying DLLs to main package directory: $targetDir"
-          # Copy essential MinGW runtime DLLs
+
+          # Copy MinGW runtime DLLs
           Copy-Item "$mingw\libgcc_s_seh-1.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
           Copy-Item "$mingw\libwinpthread-1.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
           Copy-Item "$mingw\libstdc++-6.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-          # Copy additional potential dependencies
           Copy-Item "$mingw\libgomp-1.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
           Copy-Item "$mingw\libquadmath-0.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
           Copy-Item "$mingw\libgfortran-5.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
 
+          # Copy C library DLLs to package directory
+          Write-Host "Copying C library DLLs..."
+          Copy-Item "lib\*.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+
+          # Also copy to all wrapper subdirectories for better DLL resolution
+          Get-ChildItem "$targetDir\wrappers" -Directory | ForEach-Object {
+            $subDir = $_.FullName
+            Write-Host "Copying DLLs to $subDir"
+            Copy-Item "$mingw\libgcc_s_seh-1.dll" $subDir\ -Force -ErrorAction SilentlyContinue
+            Copy-Item "$mingw\libwinpthread-1.dll" $subDir\ -Force -ErrorAction SilentlyContinue
+            Copy-Item "$mingw\libstdc++-6.dll" $subDir\ -Force -ErrorAction SilentlyContinue
+            Copy-Item "lib\*.dll" $subDir\ -Force -ErrorAction SilentlyContinue
+          }
+
           # List what was copied
-          Write-Host "DLLs copied:"
+          Write-Host "DLLs copied to main directory:"
           Get-ChildItem $targetDir\*.dll | ForEach-Object { Write-Host "  $($_.Name)" }
 
           # Check the compiled extensions exist
@@ -250,12 +264,33 @@ jobs:
         $packageDir = Join-Path $currentDir "src\rmnpy"
         $env:PATH = "$env:pythonLocation;${{ runner.temp }}\msys64\mingw64\bin;$packageDir;$env:PATH"
 
+        Write-Host "=== Diagnostic Information ==="
+        Write-Host "Package directory: $packageDir"
+        Write-Host "DLLs in package directory:"
+        Get-ChildItem "$packageDir\*.dll" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
+
+        Write-Host "DLLs in lib directory:"
+        Get-ChildItem "lib\*.dll" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
+
+        Write-Host "Python extensions (.pyd files):"
+        Get-ChildItem "$packageDir\**\*.pyd" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+          Write-Host "  $($_.FullName.Replace($currentDir, '.'))"
+        }
+
+        Write-Host "=== Testing Python Import with Enhanced DLL Resolution ==="
         Write-Host "Testing basic Python import..."
         & "$env:pythonLocation\python.exe" -c "import sys; print('Python works:', sys.version)"
 
-        Write-Host "Testing rmnpy import..."
-        & "$env:pythonLocation\python.exe" -c "import rmnpy; print('SUCCESS: rmnpy imported')" 2>&1 || Write-Host "Import failed"
-        & "$env:pythonLocation\python.exe" -c "from rmnpy.wrappers.sitypes import Dimensionality; print('SUCCESS: Dimensionality imported')" 2>&1 || Write-Host "Dimensionality import failed"
+        Write-Host "Testing rmnpy import with enhanced DLL resolution..."
+
+        # Step 1: Add DLL directories using os.add_dll_directory
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib')] if hasattr(os, 'add_dll_directory') and p.exists()]; print('DLL directories added')"
+
+        # Step 2: Test rmnpy import
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib')] if hasattr(os, 'add_dll_directory') and p.exists()]; import rmnpy; print('SUCCESS: rmnpy imported')"
+
+        # Step 3: Test Dimensionality import
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib')] if hasattr(os, 'add_dll_directory') and p.exists()]; from rmnpy.wrappers.sitypes import Dimensionality; print('SUCCESS: Dimensionality imported')"
 
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
@@ -275,8 +310,10 @@ jobs:
         # Add main package directory to PATH for DLL resolution (SpinOps approach)
         $currentDir = Get-Location
         $packageDir = Join-Path $currentDir "src\rmnpy"
-        $env:PATH = "$env:pythonLocation;${{ runner.temp }}\msys64\mingw64\bin;$packageDir;$env:PATH"
-        Write-Host "Added to PATH: $packageDir"
+        $libDir = Join-Path $currentDir "lib"
+        $env:PATH = "$env:pythonLocation;${{ runner.temp }}\msys64\mingw64\bin;$packageDir;$libDir;$env:PATH"
+        Write-Host "Added to PATH: $packageDir and $libDir"
+
         # Use GitHub Actions Python explicitly for pytest
         & "$env:pythonLocation\python.exe" -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
 
