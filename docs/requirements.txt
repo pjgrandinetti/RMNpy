@@ -6,3 +6,7 @@ breathe>=4.13.0
 myst-parser>=0.15.0
 sphinx-copybutton>=0.3.0
 nbsphinx>=0.8.0
+
+# Build dependencies for Cython extensions
+Cython
+numpy>=1.21,<2

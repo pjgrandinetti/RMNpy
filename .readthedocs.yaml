@@ -9,10 +9,45 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
-    # Install system dependencies for Doxygen
   apt_packages:
     - doxygen
     - graphviz
+    - build-essential
+    - cmake
+    - pkg-config
+    - flex
+    - bison
+    - libopenblas-dev
+    - liblapacke-dev
+    - libcurl4-openssl-dev
+    - pandoc
+  jobs:
+    pre_build:
+      # Download required C libraries before building
+      - mkdir -p lib include/OCTypes include/SITypes include/RMNLib
+      # Download OCTypes
+      - curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-ubuntu-latest.x64.zip -o octypes-lib.zip
+      - curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-headers.zip -o octypes-headers.zip
+      - unzip -o -j -q octypes-lib.zip -d lib/
+      - unzip -o -j -q octypes-headers.zip -d include/OCTypes/
+      - rm octypes-lib.zip octypes-headers.zip
+      # Download SITypes
+      - curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-ubuntu-latest.x64.zip -o sitypes-lib.zip
+      - curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-headers.zip -o sitypes-headers.zip
+      - unzip -o -j -q sitypes-lib.zip -d lib/
+      - unzip -o -j -q sitypes-headers.zip -d include/SITypes/
+      - rm sitypes-lib.zip sitypes-headers.zip
+      # Download RMNLib
+      - curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-ubuntu-latest.x64.zip -o rmnlib-lib.zip
+      - curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-headers.zip -o rmnlib-headers.zip
+      - unzip -o -j -q rmnlib-lib.zip -d lib/
+      - unzip -o -j -q rmnlib-headers.zip -d include/RMNLib/
+      - rm rmnlib-lib.zip rmnlib-headers.zip
+      # Verify libraries
+      - ls -la lib/
+      - echo "✓ Libraries downloaded and ready for RTD build"
+      # Build Cython extensions for documentation
+      - python setup.py build_ext --inplace
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
