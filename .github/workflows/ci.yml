@@ -276,12 +276,43 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev
+        sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev libcurl4-openssl-dev
 
-    - name: Create stub libraries for docs
+    - name: Download OCTypes from GitHub releases
       run: |
-        bash scripts/ci_stub_libs.sh || echo "Stub creation failed, creating minimal directories"
-        mkdir -p lib include/OCTypes include/SITypes include/RMNLib
+        mkdir -p lib include/OCTypes
+        LIB_FILE="libOCTypes-ubuntu-latest.x64.zip"
+        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/${LIB_FILE} -o octypes-lib.zip
+        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-headers.zip -o octypes-headers.zip
+        unzip -o -j -q octypes-lib.zip -d lib/
+        unzip -o -j -q octypes-headers.zip -d include/OCTypes/
+        rm octypes-lib.zip octypes-headers.zip
+
+    - name: Download SITypes from GitHub releases
+      run: |
+        mkdir -p include/SITypes
+        LIB_FILE="libSITypes-ubuntu-latest.x64.zip"
+        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/${LIB_FILE} -o sitypes-lib.zip
+        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-headers.zip -o sitypes-headers.zip
+        unzip -o -j -q sitypes-lib.zip -d lib/
+        unzip -o -j -q sitypes-headers.zip -d include/SITypes/
+        rm sitypes-lib.zip sitypes-headers.zip
+
+    - name: Download RMNLib from GitHub releases
+      run: |
+        mkdir -p include/RMNLib
+        LIB_FILE="libRMN-ubuntu-latest.x64.zip"
+        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/${LIB_FILE} -o rmnlib-lib.zip
+        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-headers.zip -o rmnlib-headers.zip
+        unzip -o -j -q rmnlib-lib.zip -d lib/
+        unzip -o -j -q rmnlib-headers.zip -d include/RMNLib/
+        rm rmnlib-lib.zip rmnlib-headers.zip
+
+    - name: Verify downloaded libraries
+      run: |
+        ls -la lib/
+        ls -la include/
+        echo "✓ Libraries downloaded and ready for documentation build"
 
     - name: Install dependencies
       run: |
