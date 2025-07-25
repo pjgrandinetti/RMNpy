@@ -6,9 +6,37 @@ import platform
 import subprocess
 import sys
 
-# Import for SpinOps-style MinGW forcing
-from distutils.ccompiler import new_compiler
-from distutils.sysconfig import customize_compiler
+# Import for SpinOps-style MinGW forcing and Python headers
+import sysconfig
+
+# Handle distutils imports with fallbacks for different Python versions
+try:
+    from distutils.ccompiler import new_compiler
+    from distutils.sysconfig import customize_compiler, get_python_inc
+except ImportError:
+    try:
+        from setuptools._distutils.ccompiler import new_compiler  # type: ignore[misc]
+        from setuptools._distutils.sysconfig import (
+            customize_compiler,  # type: ignore[misc]
+        )
+
+        # Use sysconfig for get_python_inc as fallback
+        def get_python_inc() -> str:
+            return sysconfig.get_path("include")
+
+    except ImportError:
+        # Ultimate fallback for testing
+
+        def new_compiler(*args, **kwargs):  # type: ignore[misc]
+            return None
+
+        def customize_compiler(*args, **kwargs):  # type: ignore[misc]
+            return None
+
+        def get_python_inc() -> str:
+            return sysconfig.get_path("include")
+
+
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -162,6 +190,7 @@ def get_extensions() -> list[Extension]:
         "include/SITypes",  # SITypes headers
         "include/RMNLib",  # RMNLib headers
         numpy.get_include(),  # NumPy headers
+        get_python_inc(),  # Python headers (essential for MinGW builds)
     ]
 
     # Common library directories and libraries
