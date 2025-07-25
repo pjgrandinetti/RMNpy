@@ -251,7 +251,6 @@ def get_extensions() -> list[Extension]:
         if mingw_lib_dir and os.path.exists(mingw_lib_dir):
             library_dirs.append(mingw_lib_dir)
             # Look for Fortran library variants - check actual library names
-            fortran_libs = []
             print(f"Checking Fortran libraries in: {mingw_lib_dir}")
 
             # First check what library files actually exist
@@ -268,28 +267,23 @@ def get_extensions() -> list[Extension]:
                     f"Found static libs: {[os.path.basename(f) for f in static_libs]}"
                 )
                 print(f"Found DLL libs: {[os.path.basename(f) for f in dll_libs]}")
+
+                # Also check for import libraries (.dll.a files)
+                import_libs = glob.glob(
+                    os.path.join(mingw_lib_dir, "lib*fortran*.dll.a")
+                )
+                print(
+                    f"Found import libs: {[os.path.basename(f) for f in import_libs]}"
+                )
             except Exception as e:
                 print(f"Error checking library files: {e}")
 
-            # Check for common Fortran library names
-            for lib_name in ["gfortran", "gfortran-5"]:
-                lib_path = os.path.join(mingw_lib_dir, f"lib{lib_name}.a")
-                dll_path = os.path.join(
-                    mingw_lib_dir.replace("/lib", "/bin"), f"lib{lib_name}.dll"
-                )
-                print(
-                    f"Checking {lib_name}: static={os.path.exists(lib_path)}, dll={os.path.exists(dll_path)}"
-                )
-                if os.path.exists(lib_path) or os.path.exists(dll_path):
-                    # For gfortran-5.dll, we still link as -lgfortran
-                    link_name = "gfortran" if "gfortran" in lib_name else lib_name
-                    if link_name not in libraries and link_name not in fortran_libs:
-                        fortran_libs.append(link_name)
-            if fortran_libs:
-                libraries.extend(fortran_libs)
-                print(f"Found Fortran libraries: {fortran_libs}")
-            else:
-                print("Warning: No Fortran library found, linking may fail")
+            # In MSYS2 MinGW64, we need to link against the import library or use GCC's built-in libraries
+            # Since libgfortran-5.dll exists but no static/import library, we skip explicit gfortran linking
+            # GCC will automatically link the Fortran runtime when needed
+            print(
+                "MSYS2 MinGW64: Skipping explicit gfortran linking - GCC will handle it automatically"
+            )
         # Add MinGW library directory for external dependencies
         # Add SIZEOF_VOID_P=8 for x86_64 to prevent Cython's division by zero error
         define_macros.append(("SIZEOF_VOID_P", "8"))
