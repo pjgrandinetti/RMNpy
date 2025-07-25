@@ -652,13 +652,16 @@ jobs:
         & "$env:pythonLocation\python.exe" quick_test.py
 
         Write-Host "Step 5: Deep dependency analysis for import failure"
-        if (Test-Path "src\rmnpy\wrappers\sitypes\dimensionality.pyd") {
-            Write-Host "Found dimensionality.pyd, analyzing dependencies..."
-            & "$mingwBinPath\objdump.exe" -p "src\rmnpy\wrappers\sitypes\dimensionality.pyd" | Select-String "DLL Name:"
+        # Find the actual dimensionality extension file (platform-specific naming)
+        $pydFiles = Get-ChildItem -Path "src\rmnpy\wrappers\sitypes" -Filter "dimensionality*.pyd" -ErrorAction SilentlyContinue
+        if ($pydFiles.Count -gt 0) {
+            $pydFile = $pydFiles[0].FullName
+            Write-Host "Found dimensionality extension: $($pydFiles[0].Name), analyzing dependencies..."
+            & "$mingwBinPath\objdump.exe" -p "$pydFile" | Select-String "DLL Name:"
 
             Write-Host "Checking if all required DLLs are accessible..."
             $missingDlls = @()
-            $pydDeps = & "$mingwBinPath\objdump.exe" -p "src\rmnpy\wrappers\sitypes\dimensionality.pyd" | Select-String "DLL Name:" | ForEach-Object { $_.ToString().Split(":")[1].Trim() }
+            $pydDeps = & "$mingwBinPath\objdump.exe" -p "$pydFile" | Select-String "DLL Name:" | ForEach-Object { $_.ToString().Split(":")[1].Trim() }
             foreach ($dll in $pydDeps) {
                 $found = $false
                 foreach ($searchPath in @("src\rmnpy", "lib", "$mingwBinPath")) {
@@ -696,7 +699,9 @@ jobs:
                 Write-Host "All required DLLs found, import failure may be due to other issues"
             }
         } else {
-            Write-Host "dimensionality.pyd not found at expected location"
+            Write-Host "Dimensionality extension (.pyd) file not found at expected location"
+            Write-Host "Looking for any .pyd files in the sitypes directory..."
+            Get-ChildItem -Path "src\rmnpy\wrappers\sitypes" -Filter "*.pyd" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  Found: $($_.Name)" }
         }
 
     - name: Run tests (Linux/macOS)
