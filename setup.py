@@ -207,12 +207,10 @@ def get_extensions() -> list[Extension]:
                 "Using MSVC compiler on Windows (Warning: C complex numbers may not be supported)"
             )
     else:
-        # GCC/Clang flags
-        # Fix Cython's SIZEOF_VOID_P check by ensuring it matches sizeof(void*)
+        # GCC/Clang flags (macOS and Linux)
         extra_compile_args = [
             "-std=c99",
             "-Wno-unused-function",
-            "-D__pyx_check_sizeof_voidp=1",  # Override Cython's check
         ]
 
     # Start with empty extensions list - we'll add them as we implement phases
