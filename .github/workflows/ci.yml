@@ -174,10 +174,24 @@ jobs:
         $targetDir = "src/rmnpy"
         if (Test-Path $targetDir) {
           Write-Host "Copying DLLs to main package directory: $targetDir"
+          # Copy essential MinGW runtime DLLs
           Copy-Item "$mingw\libgcc_s_seh-1.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
           Copy-Item "$mingw\libwinpthread-1.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
           Copy-Item "$mingw\libstdc++-6.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-          Get-ChildItem $targetDir\*.dll | ForEach-Object { Write-Host "  Copied: $($_.Name)" }
+          # Copy additional potential dependencies
+          Copy-Item "$mingw\libgomp-1.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libquadmath-0.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libgfortran-5.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+
+          # List what was copied
+          Write-Host "DLLs copied:"
+          Get-ChildItem $targetDir\*.dll | ForEach-Object { Write-Host "  $($_.Name)" }
+
+          # Check the compiled extensions exist
+          Write-Host "Compiled extensions:"
+          Get-ChildItem "$targetDir\**\*.pyd" -Recurse | ForEach-Object {
+            Write-Host "  $($_.Name) - $($_.Length) bytes"
+          }
         } else {
           Write-Host "Main package directory not found: $targetDir"
         }
@@ -207,6 +221,22 @@ jobs:
       shell: pwsh
       run: |
         make generate-constants
+
+    - name: Diagnose import issues (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        # Add main package directory to PATH for DLL resolution
+        $currentDir = Get-Location
+        $packageDir = Join-Path $currentDir "src\rmnpy"
+        $env:PATH = "$env:pythonLocation;D:\a\_temp\msys64\mingw64\bin;$packageDir;$env:PATH"
+
+        Write-Host "Testing basic Python import..."
+        & "$env:pythonLocation\python.exe" -c "import sys; print('Python works:', sys.version)"
+
+        Write-Host "Testing rmnpy import..."
+        & "$env:pythonLocation\python.exe" -c "import rmnpy; print('SUCCESS: rmnpy imported')" 2>&1 || Write-Host "Import failed"
+        & "$env:pythonLocation\python.exe" -c "from rmnpy.wrappers.sitypes import Dimensionality; print('SUCCESS: Dimensionality imported')" 2>&1 || Write-Host "Dimensionality import failed"
 
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
