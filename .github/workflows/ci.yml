@@ -547,7 +547,55 @@ jobs:
         & "$env:pythonLocation\python.exe" -c "import sys; sys.path.insert(0, 'src'); import rmnpy; print('SUCCESS: rmnpy package imported')"
 
         Write-Host "Step 4: Testing direct module import with enhanced error handling"
-        & "$env:pythonLocation\python.exe" -c "import os, sys; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('$mingwBinPath')] if hasattr(os, 'add_dll_directory') and p.exists()]; sys.path.insert(0, 'src'); exec('try:\n    from rmnpy.wrappers.sitypes.dimensionality import Dimensionality\n    print(\"SUCCESS: Dimensionality imported\")\nexcept Exception as e:\n    import traceback; print(f\"ERROR: {e}\"); traceback.print_exc()')"
+        & "$env:pythonLocation\python.exe" -c "import os, sys, traceback; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('$mingwBinPath')] if hasattr(os, 'add_dll_directory') and p.exists()]; sys.path.insert(0, 'src'); exec('try: from rmnpy.wrappers.sitypes.dimensionality import Dimensionality; print(\"SUCCESS: Dimensionality imported\")\nexcept Exception as e: import traceback; print(f\"ERROR: {e}\"); traceback.print_exc()')"
+
+        Write-Host "Step 5: Deep dependency analysis for import failure"
+        if (Test-Path "src\rmnpy\wrappers\sitypes\dimensionality.pyd") {
+            Write-Host "Found dimensionality.pyd, analyzing dependencies..."
+            & "$mingwBinPath\objdump.exe" -p "src\rmnpy\wrappers\sitypes\dimensionality.pyd" | Select-String "DLL Name:"
+
+            Write-Host "Checking if all required DLLs are accessible..."
+            $missingDlls = @()
+            $pydDeps = & "$mingwBinPath\objdump.exe" -p "src\rmnpy\wrappers\sitypes\dimensionality.pyd" | Select-String "DLL Name:" | ForEach-Object { $_.ToString().Split(":")[1].Trim() }
+            foreach ($dll in $pydDeps) {
+                $found = $false
+                foreach ($searchPath in @("src\rmnpy", "lib", "$mingwBinPath")) {
+                    if (Test-Path "$searchPath\$dll") {
+                        Write-Host "✓ Found $dll in $searchPath"
+                        $found = $true
+                        break
+                    }
+                }
+                if (-not $found) {
+                    Write-Host "✗ Missing: $dll"
+                    $missingDlls += $dll
+                }
+            }
+
+            if ($missingDlls.Count -gt 0) {
+                Write-Host "Missing DLLs detected: $($missingDlls -join ', ')"
+                Write-Host "Searching for missing DLLs in MinGW installation..."
+                foreach ($dll in $missingDlls) {
+                    $foundPath = Get-ChildItem -Path "${{ runner.temp }}\msys64" -Name "$dll" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if ($foundPath) {
+                        Write-Host "Found $dll at: $foundPath"
+                        $fullPath = Join-Path "${{ runner.temp }}\msys64" $foundPath
+                        $destPath = Join-Path "lib" $dll
+                        Copy-Item $fullPath $destPath -Force
+                        Write-Host "Copied $dll to lib directory"
+                    } else {
+                        Write-Host "Could not locate $dll anywhere in MinGW installation"
+                    }
+                }
+
+                Write-Host "Step 6: Retry import after copying missing DLLs"
+                & "$env:pythonLocation\python.exe" -c "import os, sys, traceback; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('$mingwBinPath')] if hasattr(os, 'add_dll_directory') and p.exists()]; sys.path.insert(0, 'src'); exec('try: from rmnpy.wrappers.sitypes.dimensionality import Dimensionality; print(\"SUCCESS: Dimensionality imported after DLL fix\")\nexcept Exception as e: import traceback; print(f\"STILL FAILING: {e}\"); traceback.print_exc()')"
+            } else {
+                Write-Host "All required DLLs found, import failure may be due to other issues"
+            }
+        } else {
+            Write-Host "dimensionality.pyd not found at expected location"
+        }
 
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
