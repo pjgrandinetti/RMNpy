@@ -198,7 +198,8 @@ def get_extensions() -> list[Extension]:
                 "-Wno-unused-function",
                 "-Wno-sign-compare",
                 "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
-                "-DSIZEOF_VOID_P=8",  # Explicit 64-bit pointer size for MinGW x64
+                "-USIZEOF_VOID_P",  # Undefine Python's incorrect 32-bit definition
+                "-DSIZEOF_VOID_P=8",  # Define correct 64-bit pointer size for MinGW x64
             ]
             print("Using MinGW/GCC compiler on Windows")
         else:

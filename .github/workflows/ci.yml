@@ -153,7 +153,7 @@ jobs:
         CXX: x86_64-w64-mingw32-g++
         LIBRARY_PATH: ${{ runner.temp }}/msys64/mingw64/lib
         LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
-        CPPFLAGS: "-DSIZEOF_VOID_P=8"
+        CPPFLAGS: "-USIZEOF_VOID_P -DSIZEOF_VOID_P=8"
         DISTUTILS_USE_SDK: "1"
       run: |
         # Use GitHub Actions Python explicitly for build with MinGW compiler
