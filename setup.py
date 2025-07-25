@@ -192,23 +192,22 @@ def get_extensions() -> list[Extension]:
             or msystem == "MINGW32"
         ):
             # Use GCC/MinGW flags for better C99/C11 support
-            # Add SIZEOF_VOID_P definition for Cython compatibility
+            # Let Python headers define SIZEOF_VOID_P correctly
             extra_compile_args = [
                 "-std=c99",
                 "-Wno-unused-function",
                 "-Wno-sign-compare",
-                "-DSIZEOF_VOID_P=8",
             ]
             print("Using MinGW/GCC compiler on Windows")
         else:
             # MSVC flags - but warn that complex numbers may not work
-            extra_compile_args = ["/std:c11", "/DSIZEOF_VOID_P=8"]
+            extra_compile_args = ["/std:c11"]
             print(
                 "Using MSVC compiler on Windows (Warning: C complex numbers may not be supported)"
             )
     else:
-        # GCC/Clang flags
-        extra_compile_args = ["-std=c99", "-Wno-unused-function", "-DSIZEOF_VOID_P=8"]
+        # GCC/Clang flags - let Python headers define SIZEOF_VOID_P correctly
+        extra_compile_args = ["-std=c99", "-Wno-unused-function"]
 
     # Start with empty extensions list - we'll add them as we implement phases
     extensions = []
