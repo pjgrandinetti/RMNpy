@@ -180,10 +180,6 @@ jobs:
         # Use GitHub Actions Python explicitly for build with MinGW compiler
         & "$env:pythonLocation\python.exe" setup.py build_ext --inplace
 
-    - name: Copy MinGW runtime DLLs (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
     - name: Copy runtime DLLs (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
@@ -238,9 +234,8 @@ jobs:
 
     - name: Generate constants (Windows)
       if: runner.os == 'Windows'
-      shell: pwsh
-      env:
-        PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
+      # Use the MSYS2 bash shell so that 'make' (installed by MSYS2) is on PATH
+      shell: msys2 {0}
       run: |
         make generate-constants
 
