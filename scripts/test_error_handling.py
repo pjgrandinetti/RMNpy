@@ -12,7 +12,7 @@ from rmnpy.exceptions import RMNError  # noqa: E402
 from rmnpy.wrappers.sitypes.unit import Unit  # noqa: E402
 
 
-def test_empty_string_handling():
+def test_empty_string_handling() -> bool:
     """Test that empty string raises RMNError as expected."""
     print("Testing empty string handling...")
 
@@ -28,7 +28,7 @@ def test_empty_string_handling():
         return False
 
 
-def test_invalid_expression_handling():
+def test_invalid_expression_handling() -> bool:
     """Test that invalid expression raises RMNError as expected."""
     print("Testing invalid expression handling...")
 
