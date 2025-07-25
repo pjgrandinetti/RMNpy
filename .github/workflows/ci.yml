@@ -450,9 +450,9 @@ jobs:
         Write-Host "Testing basic Python execution..."
         try {
             $output = & "$env:pythonLocation\python.exe" -c "print('Python basic test successful'); import sys; print(f'Python version: {sys.version}')"
-            Write-Host "✓ Basic Python test: $output"
+            Write-Host "[OK] Basic Python test: $output"
         } catch {
-            Write-Host "✗ Basic Python test failed: $_"
+            Write-Host "[ERROR] Basic Python test failed: $_"
             exit 1
         }
 
@@ -460,9 +460,9 @@ jobs:
         Write-Host "Testing numpy import..."
         try {
             $output = & "$env:pythonLocation\python.exe" -c "import numpy; print(f'Numpy version: {numpy.__version__}')"
-            Write-Host "✓ Numpy import: $output"
+            Write-Host "[OK] Numpy import: $output"
         } catch {
-            Write-Host "✗ Numpy import failed: $_"
+            Write-Host "[ERROR] Numpy import failed: $_"
             exit 1
         }
 
@@ -486,13 +486,13 @@ jobs:
         "        if p.exists():" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "            try:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "                os.add_dll_directory(str(p.absolute()))" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "                print(f'✓ Added DLL directory: {p.absolute()}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
+        "                print(f'[OK] Added DLL directory: {p.absolute()}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "            except Exception as e:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "                print(f'✗ Failed to add DLL directory {p}: {e}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
+        "                print(f'[ERROR] Failed to add DLL directory {p}: {e}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "        else:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "            print(f'✗ DLL directory not found: {p}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
+        "            print(f'[WARN] DLL directory not found: {p}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "else:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print('⚠ os.add_dll_directory not available')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
+        "    print('[WARN] os.add_dll_directory not available')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "# Add src to Python path" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "sys.path.insert(0, 'src')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
@@ -502,30 +502,30 @@ jobs:
         "try:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    print('Step 1: Testing basic rmnpy import...')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    import rmnpy" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print('✓ rmnpy imported successfully')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
+        "    print('[OK] rmnpy imported successfully')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    print(f'  rmnpy location: {rmnpy.__file__}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    " | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    print('Step 2: Testing wrappers.sitypes module...')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    from rmnpy.wrappers import sitypes" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print('✓ wrappers.sitypes imported successfully')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
+        "    print('[OK] wrappers.sitypes imported successfully')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    " | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    print('Step 3: Testing Dimensionality import...')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    from rmnpy.wrappers.sitypes import Dimensionality" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print('✓ Dimensionality imported successfully')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
+        "    print('[OK] Dimensionality imported successfully')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    " | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    print('Step 4: Creating test Dimensionality object...')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    dim = Dimensionality('m')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print(f'✓ Created Dimensionality: {dim}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
+        "    print(f'[OK] Created Dimensionality: {dim}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    " | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    print('SUCCESS: All import tests passed!')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    " | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "except ImportError as e:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print(f'✗ Import failed: {e}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
+        "    print(f'[ERROR] Import failed: {e}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    import traceback" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    traceback.print_exc()" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    sys.exit(1)" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "except Exception as e:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print(f'✗ Unexpected error: {e}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
+        "    print(f'[ERROR] Unexpected error: {e}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    import traceback" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    traceback.print_exc()" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
         "    sys.exit(1)" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
@@ -568,7 +568,7 @@ jobs:
             exit $process.ExitCode
         }
 
-        Write-Host "✓ Import test completed successfully!"
+        Write-Host "[OK] Import test completed successfully!"
 
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
