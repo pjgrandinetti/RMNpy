@@ -174,6 +174,8 @@ jobs:
             Copy-Item "$mingw\libgcc_s_seh-1.dll" $dir\ -Force -ErrorAction SilentlyContinue
             Copy-Item "$mingw\libwinpthread-1.dll" $dir\ -Force -ErrorAction SilentlyContinue
             Copy-Item "$mingw\libstdc++-6.dll" $dir\ -Force -ErrorAction SilentlyContinue
+            # Copy Python DLL for runtime linking
+            Copy-Item "$env:pythonLocation\python312.dll" $dir\ -Force -ErrorAction SilentlyContinue
             Get-ChildItem $dir\*.dll | ForEach-Object { Write-Host "  Copied: $($_.Name)" }
           } else {
             Write-Host "Directory not found: $dir"
@@ -220,6 +222,8 @@ jobs:
         LIBRARY_PATH: ${{ runner.temp }}/msys64/mingw64/lib
         LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
       run: |
+        # Add Python and MinGW to PATH for DLL resolution
+        $env:PATH = "$env:pythonLocation;${{ runner.temp }}\msys64\mingw64\bin;$env:PATH"
         # Use GitHub Actions Python explicitly for pytest
         & "$env:pythonLocation\python.exe" -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
 
