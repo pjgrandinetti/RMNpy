@@ -61,8 +61,50 @@ jobs:
           mingw-w64-x86_64-cmake
           mingw-w64-x86_64-pkg-config
           mingw-w64-x86_64-python
+          mingw-w64-x86_64-curl
+          mingw-w64-x86_64-openblas
+          mingw-w64-x86_64-lapack
           flex
           bison
+
+    - name: Verify MSYS2 packages installation (Windows)
+      if: runner.os == 'Windows'
+      shell: msys2 {0}
+      run: |
+        echo "=== Verifying MSYS2 package installation ==="
+
+        # Check curl installation
+        echo "Checking curl:"
+        if pacman -Q mingw-w64-x86_64-curl; then
+          echo "✓ curl package installed"
+          find /mingw64 -name "*curl*.dll" | head -5
+        else
+          echo "✗ curl package NOT installed"
+        fi
+
+        # Check OpenBLAS installation
+        echo -e "\nChecking OpenBLAS:"
+        if pacman -Q mingw-w64-x86_64-openblas; then
+          echo "✓ OpenBLAS package installed"
+          find /mingw64 -name "*blas*.dll" | head -5
+        else
+          echo "✗ OpenBLAS package NOT installed"
+        fi
+
+        # Check LAPACK installation
+        echo -e "\nChecking LAPACK:"
+        if pacman -Q mingw-w64-x86_64-lapack; then
+          echo "✓ LAPACK package installed"
+          find /mingw64 -name "*lapack*.dll" | head -5
+        else
+          echo "✗ LAPACK package NOT installed"
+        fi
+
+        # List key DLL files we'll need
+        echo -e "\n=== Key DLL files available ==="
+        ls -la /mingw64/bin/libcurl*.dll 2>/dev/null || echo "No curl DLLs found"
+        ls -la /mingw64/bin/libopenblas*.dll 2>/dev/null || echo "No OpenBLAS DLLs found"
+        ls -la /mingw64/bin/liblapack*.dll 2>/dev/null || echo "No LAPACK DLLs found"
 
     - name: Add MinGW64 to PATH (Windows)
       if: runner.os == 'Windows'
@@ -230,6 +272,26 @@ jobs:
           Copy-Item "$mingw\libquadmath-0.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
           Copy-Item "$mingw\libgfortran-5.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
 
+          # Copy curl DLLs (required by RMNLib)
+          Write-Host "Copying curl dependencies..."
+          Copy-Item "$mingw\libcurl-4.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libssl-3-x64.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libcrypto-3-x64.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libzstd.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libbrotlidec.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libbrotlicommon.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libnghttp2-14.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libidn2-0.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libssh2-1.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libunistring-5.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libintl-8.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libiconv-2.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+
+          # Copy OpenBLAS DLLs (required by RMNLib)
+          Write-Host "Copying OpenBLAS dependencies..."
+          Copy-Item "$mingw\libopenblas.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\liblapack.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+
           # Copy C library DLLs to package directory
           Write-Host "Copying C library DLLs..."
           if (Test-Path "lib") {
@@ -248,6 +310,8 @@ jobs:
             Copy-Item "$mingw\libgcc_s_seh-1.dll" $subDir\ -Force -ErrorAction SilentlyContinue
             Copy-Item "$mingw\libwinpthread-1.dll" $subDir\ -Force -ErrorAction SilentlyContinue
             Copy-Item "$mingw\libstdc++-6.dll" $subDir\ -Force -ErrorAction SilentlyContinue
+            Copy-Item "$mingw\libcurl-4.dll" $subDir\ -Force -ErrorAction SilentlyContinue
+            Copy-Item "$mingw\libopenblas.dll" $subDir\ -Force -ErrorAction SilentlyContinue
             if (Test-Path "lib") {
               Copy-Item "lib\*.dll" $subDir\ -Force -ErrorAction SilentlyContinue
               Copy-Item "lib\*.a" $subDir\ -Force -ErrorAction SilentlyContinue
@@ -385,9 +449,32 @@ jobs:
             }
         }
 
-        # Test if we can import the extension with detailed error info
-        Write-Host "=== Final Import Test ==="
-        & "$env:pythonLocation\python.exe" -c "import os, sys; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib')] if hasattr(os, 'add_dll_directory') and p.exists()]; sys.path.insert(0, 'src'); from rmnpy.wrappers.sitypes.dimensionality import *; print('SUCCESS: dimensionality module imported!')"
+        # Copy additional required math libraries that might be missing
+        Write-Host "=== Copying Additional Math Libraries ==="
+        $mathLibs = @("libgmp-10.dll", "libmpfr-6.dll", "libmpc-3.dll", "libiconv-2.dll")
+        ForEach ($lib in $mathLibs) {
+            $libPath = Join-Path $mingwBinPath $lib
+            if (Test-Path $libPath) {
+                Write-Host "Copying $lib to package directory"
+                Copy-Item $libPath "src/rmnpy/" -Force
+            } else {
+                Write-Host "$lib not found in MinGW bin"
+            }
+        }
+
+        # Enhanced import test with step-by-step debugging
+        Write-Host "=== Enhanced Import Test ==="
+        Write-Host "Step 1: Testing basic Python functionality"
+        & "$env:pythonLocation\python.exe" -c "import sys; print('Python executable:', sys.executable)"
+
+        Write-Host "Step 2: Adding DLL directories"
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; dirs = [Path('src/rmnpy'), Path('lib'), Path('$mingwBinPath')]; [os.add_dll_directory(str(p.absolute())) for p in dirs if hasattr(os, 'add_dll_directory') and p.exists()]; print('DLL directories added')"
+
+        Write-Host "Step 3: Testing package structure"
+        & "$env:pythonLocation\python.exe" -c "import sys; sys.path.insert(0, 'src'); import rmnpy; print('SUCCESS: rmnpy package imported')"
+
+        Write-Host "Step 4: Testing direct module import with enhanced error handling"
+        & "$env:pythonLocation\python.exe" -c "import os, sys; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('$mingwBinPath')] if hasattr(os, 'add_dll_directory') and p.exists()]; sys.path.insert(0, 'src'); exec('try:\n    from rmnpy.wrappers.sitypes.dimensionality import Dimensionality\n    print(\"SUCCESS: Dimensionality imported\")\nexcept Exception as e:\n    import traceback; print(f\"ERROR: {e}\"); traceback.print_exc()')"
 
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
