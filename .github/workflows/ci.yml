@@ -328,16 +328,60 @@ jobs:
 
         # Also add MinGW bin directory to DLL search path
         Write-Host "Adding MinGW DLL directory..."
-        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; mingw_bin = Path('${{ runner.temp }}/msys64/mingw64/bin'); print(f'MinGW bin exists: {mingw_bin.exists()}'); os.add_dll_directory(str(mingw_bin.absolute())) if hasattr(os, 'add_dll_directory') and mingw_bin.exists() else None; print('MinGW DLL directory added')"
+        $mingwBin = "${{ runner.temp }}\msys64\mingw64\bin"
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; mingw_bin = Path(r'$mingwBin'); print(f'MinGW bin exists: {mingw_bin.exists()}'); os.add_dll_directory(str(mingw_bin.absolute())) if hasattr(os, 'add_dll_directory') and mingw_bin.exists() else None; print('MinGW DLL directory added')"
 
         Write-Host "Testing direct extension import..."
-        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('${{ runner.temp }}/msys64/mingw64/bin')] if hasattr(os, 'add_dll_directory') and p.exists()]; import sys; sys.path.insert(0, 'src'); from rmnpy.wrappers.sitypes.dimensionality import *; print('SUCCESS: Direct dimensionality import')"
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path(r'$mingwBin')] if hasattr(os, 'add_dll_directory') and p.exists()]; import sys; sys.path.insert(0, 'src'); from rmnpy.wrappers.sitypes.dimensionality import *; print('SUCCESS: Direct dimensionality import')"
 
         Write-Host "Testing rmnpy import..."
-        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('${{ runner.temp }}/msys64/mingw64/bin')] if hasattr(os, 'add_dll_directory') and p.exists()]; import rmnpy; print('SUCCESS: rmnpy imported')"
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path(r'$mingwBin')] if hasattr(os, 'add_dll_directory') and p.exists()]; import rmnpy; print('SUCCESS: rmnpy imported')"
 
         Write-Host "Testing Dimensionality import..."
-        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('${{ runner.temp }}/msys64/mingw64/bin')] if hasattr(os, 'add_dll_directory') and p.exists()]; from rmnpy.wrappers.sitypes import Dimensionality; print('SUCCESS: Dimensionality imported')"
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path(r'$mingwBin')] if hasattr(os, 'add_dll_directory') and p.exists()]; from rmnpy.wrappers.sitypes import Dimensionality; print('SUCCESS: Dimensionality imported')"
+
+        Write-Host "=== Comprehensive Dependency Analysis ==="
+        # Find all .pyd files and analyze their dependencies
+        $pydFiles = Get-ChildItem -Path "src" -Filter "*.pyd" -Recurse
+        ForEach ($pydFile in $pydFiles) {
+            Write-Host "Analyzing dependencies for: $($pydFile.FullName)"
+            & "${{ runner.temp }}\msys64\usr\bin\objdump.exe" -p "$($pydFile.FullName)" | Select-String "DLL Name"
+        }
+
+        # List all files in MinGW bin to see what's available
+        Write-Host "=== MinGW Bin Directory Contents ==="
+        $mingwBinPath = "${{ runner.temp }}\msys64\mingw64\bin"
+        if (Test-Path $mingwBinPath) {
+            Write-Host "MinGW bin directory exists at: $mingwBinPath"
+            $dllFiles = Get-ChildItem -Path $mingwBinPath -Filter "*.dll" | Select-Object -First 20
+            Write-Host "Available DLL files (first 20):"
+            ForEach ($dll in $dllFiles) {
+                Write-Host "  $($dll.Name)"
+            }
+        } else {
+            Write-Host "MinGW bin directory not found at: $mingwBinPath"
+        }
+
+        # Copy critical MinGW runtime DLLs that might be needed
+        Write-Host "=== Copying Critical Runtime DLLs ==="
+        if (Test-Path $mingwBinPath) {
+            $criticalDlls = @("libgcc_s_seh-1.dll", "libwinpthread-1.dll", "libstdc++-6.dll", "libgomp-1.dll", "libgfortran-5.dll", "libquadmath-0.dll")
+            ForEach ($dll in $criticalDlls) {
+                $dllPath = Join-Path $mingwBinPath $dll
+                if (Test-Path $dllPath) {
+                    Write-Host "Copying $dll to src/rmnpy/"
+                    Copy-Item $dllPath "src/rmnpy/" -Force
+                    Write-Host "Copying $dll to lib/"
+                    Copy-Item $dllPath "lib/" -Force
+                } else {
+                    Write-Host "$dll not found in MinGW bin"
+                }
+            }
+        }
+
+        # Test if we can import the extension with detailed error info
+        Write-Host "=== Final Import Test with Exception Details ==="
+        & "$env:pythonLocation\python.exe" -c "import os, sys, traceback; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path(r'$mingwBin')] if hasattr(os, 'add_dll_directory') and p.exists()]; sys.path.insert(0, 'src'); exec('try:\n    from rmnpy.wrappers.sitypes.dimensionality import *\n    print(\"SUCCESS: dimensionality module imported!\")\nexcept Exception as e:\n    print(f\"Error: {e}\"); traceback.print_exc()')"
 
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
