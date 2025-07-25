@@ -159,6 +159,18 @@ jobs:
           Write-Host "  LIB: $($_.Name) - $($_.Length) bytes"
         }
 
+        # Analyze dependencies of compiled extensions
+        Write-Host "=== Analyzing Extension Dependencies ==="
+        if (Get-Command objdump -ErrorAction SilentlyContinue) {
+          Write-Host "Using objdump to analyze dependencies..."
+          Get-ChildItem "src\rmnpy\**\*.pyd" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+            Write-Host "Dependencies for $($_.Name):"
+            & objdump -p $_.FullName | Select-String "DLL Name:"
+          }
+        } else {
+          Write-Host "objdump not available for dependency analysis"
+        }
+
     - name: Install build tools
       if: runner.os != 'Windows'
       run: |
@@ -314,11 +326,18 @@ jobs:
         Write-Host "Adding DLL directories with os.add_dll_directory..."
         & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; print('Available DLL paths:'); [print(f'  {p}: exists={p.exists()}') for p in [Path('src/rmnpy'), Path('lib'), Path('src/rmnpy/wrappers/sitypes')]]; print('Adding DLL directories...'); [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib')] if hasattr(os, 'add_dll_directory') and p.exists()]; print('DLL directories added')"
 
+        # Also add MinGW bin directory to DLL search path
+        Write-Host "Adding MinGW DLL directory..."
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; mingw_bin = Path('${{ runner.temp }}/msys64/mingw64/bin'); print(f'MinGW bin exists: {mingw_bin.exists()}'); os.add_dll_directory(str(mingw_bin.absolute())) if hasattr(os, 'add_dll_directory') and mingw_bin.exists() else None; print('MinGW DLL directory added')"
+
+        Write-Host "Testing direct extension import..."
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('${{ runner.temp }}/msys64/mingw64/bin')] if hasattr(os, 'add_dll_directory') and p.exists()]; import sys; sys.path.insert(0, 'src'); from rmnpy.wrappers.sitypes.dimensionality import *; print('SUCCESS: Direct dimensionality import')"
+
         Write-Host "Testing rmnpy import..."
-        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib')] if hasattr(os, 'add_dll_directory') and p.exists()]; import rmnpy; print('SUCCESS: rmnpy imported')"
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('${{ runner.temp }}/msys64/mingw64/bin')] if hasattr(os, 'add_dll_directory') and p.exists()]; import rmnpy; print('SUCCESS: rmnpy imported')"
 
         Write-Host "Testing Dimensionality import..."
-        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib')] if hasattr(os, 'add_dll_directory') and p.exists()]; from rmnpy.wrappers.sitypes import Dimensionality; print('SUCCESS: Dimensionality imported')"
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('${{ runner.temp }}/msys64/mingw64/bin')] if hasattr(os, 'add_dll_directory') and p.exists()]; from rmnpy.wrappers.sitypes import Dimensionality; print('SUCCESS: Dimensionality imported')"
 
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
@@ -335,12 +354,16 @@ jobs:
         LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
         PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
       run: |
-        # Add main package directory to PATH for DLL resolution (SpinOps approach)
+        # Add comprehensive DLL resolution for Windows tests
         $currentDir = Get-Location
         $packageDir = Join-Path $currentDir "src\rmnpy"
         $libDir = Join-Path $currentDir "lib"
-        $env:PATH = "$env:pythonLocation;${{ runner.temp }}\msys64\mingw64\bin;$packageDir;$libDir;$env:PATH"
-        Write-Host "Added to PATH: $packageDir and $libDir"
+        $mingwBin = "${{ runner.temp }}\msys64\mingw64\bin"
+        $env:PATH = "$env:pythonLocation;$mingwBin;$packageDir;$libDir;$env:PATH"
+        Write-Host "Added to PATH: $packageDir, $libDir, and $mingwBin"
+
+        # Set up DLL resolution in the test environment
+        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('${{ runner.temp }}/msys64/mingw64/bin')] if hasattr(os, 'add_dll_directory') and p.exists()]; print('DLL directories configured for tests')"
 
         # Use GitHub Actions Python explicitly for pytest
         & "$env:pythonLocation\python.exe" -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
