@@ -505,49 +505,151 @@ jobs:
             Write-Host "MinGW bin directory not found at: $mingwBinPath"
         }
 
-        # Copy critical MinGW runtime DLLs that might be needed
-        Write-Host "=== Copying Critical Runtime DLLs ==="
-        if (Test-Path $mingwBinPath) {
-            $criticalDlls = @("libgcc_s_seh-1.dll", "libwinpthread-1.dll", "libstdc++-6.dll", "libgomp-1.dll", "libgfortran-5.dll", "libquadmath-0.dll")
-            ForEach ($dll in $criticalDlls) {
-                $dllPath = Join-Path $mingwBinPath $dll
-                if (Test-Path $dllPath) {
-                    Write-Host "Copying $dll to src/rmnpy/"
-                    Copy-Item $dllPath "src/rmnpy/" -Force
-                    Write-Host "Copying $dll to lib/"
-                    Copy-Item $dllPath "lib/" -Force
+        # Copy essential DLLs (Claude Opus 4 simplified approach)
+        Write-Host "=== Copying Essential DLLs (Simplified) ==="
+        $mingw = "${{ runner.temp }}\msys64\mingw64\bin"
+        $target = "src\rmnpy"
+
+        # Essential runtime DLLs based on objdump analysis
+        $essentialDlls = @(
+            "libgcc_s_seh-1.dll",
+            "libwinpthread-1.dll",
+            "libpython3.12.dll"
+        )
+
+        Write-Host "=== Copying Essential DLLs ==="
+        foreach ($dll in $essentialDlls) {
+            $source = Join-Path $mingw $dll
+            if (Test-Path $source) {
+                Copy-Item $source $target -Force
+                Write-Host "Copied $dll"
+            } else {
+                # Try to find it elsewhere
+                $found = Get-ChildItem -Path "${{ runner.temp }}\msys64" `
+                    -Filter $dll -Recurse -ErrorAction SilentlyContinue |
+                    Select-Object -First 1
+                if ($found) {
+                    Copy-Item $found.FullName $target -Force
+                    Write-Host "Found and copied $dll from $($found.DirectoryName)"
                 } else {
-                    Write-Host "$dll not found in MinGW bin"
+                    Write-Host "Could not find $dll"
                 }
             }
         }
 
-        # Copy additional required math libraries that might be missing
-        Write-Host "=== Copying Additional Math Libraries ==="
-        $mathLibs = @("libgmp-10.dll", "libmpfr-6.dll", "libmpc-3.dll", "libiconv-2.dll")
-        ForEach ($lib in $mathLibs) {
-            $libPath = Join-Path $mingwBinPath $lib
-            if (Test-Path $libPath) {
-                Write-Host "Copying $lib to package directory"
-                Copy-Item $libPath "src/rmnpy/" -Force
-            } else {
-                Write-Host "$lib not found in MinGW bin"
-            }
-        }
+        # Enhanced import test with step-by-step debugging (Fixed Path Escaping)
+        Write-Host "=== Enhanced Import Test - Claude Opus 4 Solutions ==="
 
-        # Enhanced import test with step-by-step debugging
-        Write-Host "=== Enhanced Import Test ==="
-        Write-Host "Step 1: Testing basic Python functionality"
-        & "$env:pythonLocation\python.exe" -c "import sys; print('Python executable:', sys.executable)"
+        Write-Host "Step 1: Creating enhanced diagnostic script (avoiding PowerShell escaping)"
+        # Create the Python script content line by line to avoid escaping issues
+        "import os" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8
+        "import sys" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "import ctypes" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "import ctypes.util" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "from pathlib import Path" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "print('=== Python DLL Search Diagnostics ===')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "print(f'Python version: {sys.version}')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "print(f'Python executable: {sys.executable}')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "print(f'Platform: {sys.platform}')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "if hasattr(os, 'add_dll_directory'):" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "    print('DLL directory support: Available')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "else:" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "    print('DLL directory support: NOT available')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "package_dir = Path('src/rmnpy').absolute()" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "lib_dir = Path('lib').absolute()" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "mingw_bin = Path(r'D:\a\_temp\msys64\mingw64\bin').absolute()" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "print(f'Package dir: {package_dir}')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "print(f'Lib dir: {lib_dir}')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "print(f'MinGW bin: {mingw_bin}')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "if hasattr(os, 'add_dll_directory'):" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "    for path in [package_dir, lib_dir, mingw_bin]:" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "        if path.exists():" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "            os.add_dll_directory(str(path))" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "            print(f'Added DLL directory: {path}')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "dlls_to_find = ['libgcc_s_seh-1.dll', 'libwinpthread-1.dll', 'libpython3.12.dll', 'python312.dll', 'msvcrt.dll']" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "print('=== DLL Search Results ===')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "for dll in dlls_to_find:" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "    found = ctypes.util.find_library(dll)" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "    if found:" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "        print(f'Found {dll}: {found}')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "    else:" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "        print(f'NOT FOUND: {dll}')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "pyd_path = Path('src/rmnpy/wrappers/sitypes/dimensionality.cp312-win_amd64.pyd')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "if pyd_path.exists():" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "    print(f'PYD file exists: {pyd_path}')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "    try:" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "        ctypes.CDLL(str(pyd_path))" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "        print('Direct PYD load succeeded')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "    except Exception as e:" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
+        "        print(f'Direct PYD load failed: {e}')" | Out-File -FilePath dll_diagnostics.py -Encoding UTF8 -Append
 
-        Write-Host "Step 2: Adding DLL directories"
-        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; dirs = [Path('src/rmnpy'), Path('lib'), Path('$mingwBinPath')]; [os.add_dll_directory(str(p.absolute())) for p in dirs if hasattr(os, 'add_dll_directory') and p.exists()]; print('DLL directories added')"
+        Write-Host "Step 2: Running enhanced diagnostics"
+        & "$env:pythonLocation\python.exe" dll_diagnostics.py
 
-        Write-Host "Step 3: Testing package structure"
-        & "$env:pythonLocation\python.exe" -c "import sys; sys.path.insert(0, 'src'); import rmnpy; print('SUCCESS: rmnpy package imported')"
+        Write-Host "Step 3: Creating import test script (raw strings for paths)"
+        "import os" | Out-File -FilePath test_import.py -Encoding UTF8
+        "import sys" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "from pathlib import Path" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "print('=== DLL Resolution Test ===')" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "package_dir = Path('src/rmnpy').absolute()" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "lib_dir = Path('lib').absolute()" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "mingw_bin = Path(r'D:\a\_temp\msys64\mingw64\bin').absolute()" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "print(f'Package dir: {package_dir}')" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "print(f'Lib dir: {lib_dir}')" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "print(f'MinGW bin: {mingw_bin}')" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "if hasattr(os, 'add_dll_directory'):" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "    for path in [package_dir, lib_dir, mingw_bin]:" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "        if path.exists():" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "            os.add_dll_directory(str(path))" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "            print(f'Added DLL directory: {path}')" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "sys.path.insert(0, 'src')" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "try:" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "    import rmnpy" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "    print('Success: rmnpy imported successfully')" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "    from rmnpy.wrappers.sitypes import Dimensionality" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "    print('Success: Dimensionality imported successfully')" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "    dim = Dimensionality('m')" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "    print(f'Success: Created Dimensionality: {dim}')" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "except ImportError as e:" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "    print(f'Failed: Import failed: {e}')" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "    import traceback" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
+        "    traceback.print_exc()" | Out-File -FilePath test_import.py -Encoding UTF8 -Append
 
-        Write-Host "Step 4: Testing direct module import with enhanced error handling"
-        & "$env:pythonLocation\python.exe" -c "import os, sys, traceback; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('$mingwBinPath')] if hasattr(os, 'add_dll_directory') and p.exists()]; sys.path.insert(0, 'src'); exec('try: from rmnpy.wrappers.sitypes.dimensionality import Dimensionality; print(\"SUCCESS: Dimensionality imported\")\nexcept Exception as e: import traceback; print(f\"ERROR: {e}\"); traceback.print_exc()')"
+        Write-Host "Step 4: Running import test with proper path handling"
+        & "$env:pythonLocation\python.exe" test_import.py
+
+        Write-Host "Step 5: Quick DLL resolution test (Claude Opus 4 recommendation)"
+        # Create quick test script
+        "import os" | Out-File -FilePath quick_test.py -Encoding UTF8
+        "from pathlib import Path" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "# Use raw string for Windows path" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "mingw_path = r'D:\a\_temp\msys64\mingw64\bin'" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "if os.path.exists(mingw_path):" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "    os.add_dll_directory(mingw_path)" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "# Add package directory" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "os.add_dll_directory(str(Path('src/rmnpy').absolute()))" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "# Now try import" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "import sys" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "sys.path.insert(0, 'src')" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "from rmnpy.wrappers.sitypes.dimensionality import Dimensionality" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+        "print('SUCCESS: Import worked!')" | Out-File -FilePath quick_test.py -Encoding UTF8 -Append
+
+        & "$env:pythonLocation\python.exe" quick_test.py
 
         Write-Host "Step 5: Deep dependency analysis for import failure"
         if (Test-Path "src\rmnpy\wrappers\sitypes\dimensionality.pyd") {

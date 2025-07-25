@@ -11,6 +11,10 @@ The package is organized into:
 - wrappers: High-level Python interfaces for SITypes and RMNLib
 """
 
+# CRITICAL: Import DLL loader FIRST to set up Windows DLL paths
+# This implements Claude Opus 4's recommendation to fix DLL import issues
+from . import dll_loader  # This sets up DLL paths before any other imports
+
 __version__ = "0.1.0"
 __author__ = "Philip Grandinetti"
 __email__ = "grandinetti.1@osu.edu"
