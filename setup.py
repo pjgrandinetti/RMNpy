@@ -237,6 +237,13 @@ def get_extensions() -> list[Extension]:
             "-Wno-sign-compare",
             "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
         ]
+        # Add external dependencies required by RMNLib on Windows
+        # These are needed because the static libraries don't include external deps
+        libraries.extend(["curl", "openblas", "lapack", "gfortran", "quadmath", "gomp"])
+        # Add MinGW library directory for external dependencies
+        mingw_lib_dir = os.environ.get("MINGW_LIB_DIR")
+        if mingw_lib_dir and os.path.exists(mingw_lib_dir):
+            library_dirs.append(mingw_lib_dir)
         # Add SIZEOF_VOID_P=8 for x86_64 to prevent Cython's division by zero error
         define_macros.append(("SIZEOF_VOID_P", "8"))
         print("Configured for MinGW/GCC compiler on Windows")

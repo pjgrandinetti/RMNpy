@@ -244,12 +244,18 @@ jobs:
         CC: x86_64-w64-mingw32-gcc
         CXX: x86_64-w64-mingw32-g++
         PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
+        LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
+        LIBS: "-lcurl -lopenblas -llapack"
+        MINGW_LIB_DIR: "${{ runner.temp }}/msys64/mingw64/lib"
       run: |
         # Verify environment
         Write-Host "Build environment:"
         Write-Host "  CC: $env:CC"
         Write-Host "  CXX: $env:CXX"
         Write-Host "  PATH includes MinGW: $($env:PATH -like '*mingw64*')"
+        Write-Host "  LDFLAGS: $env:LDFLAGS"
+        Write-Host "  LIBS: $env:LIBS"
+        Write-Host "  MINGW_LIB_DIR: $env:MINGW_LIB_DIR"
 
         # Use GitHub Actions Python explicitly for build with MinGW compiler
         & "$env:pythonLocation\python.exe" setup.py build_ext --inplace
@@ -343,6 +349,7 @@ jobs:
         CC: x86_64-w64-mingw32-gcc
         CXX: x86_64-w64-mingw32-g++
         PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
+        MINGW_LIB_DIR: "${{ runner.temp }}/msys64/mingw64/lib"
       run: |
         # Use GitHub Actions Python explicitly for pip install with MinGW compiler
         & "$env:pythonLocation\python.exe" -m pip install -e .[test]
