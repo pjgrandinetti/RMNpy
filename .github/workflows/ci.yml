@@ -22,6 +22,12 @@ jobs:
             python-version: "3.8"
           - os: windows-latest
             python-version: "3.9"
+          # Following SpinOps approach: only Python 3.12 works with MinGW on Windows
+          # MSYS2 repositories only provide Python 3.12 for MinGW builds
+          - os: windows-latest
+            python-version: "3.10"
+          - os: windows-latest
+            python-version: "3.11"
 
     steps:
     - name: Checkout RMNpy

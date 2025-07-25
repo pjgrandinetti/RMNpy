@@ -206,12 +206,15 @@ def get_extensions() -> list[Extension]:
     if platform.system() == "Windows":
         # On Windows, our CustomBuildExt class forces MinGW, so use GCC-style flags
         # Following SpinOps approach: don't override SIZEOF_VOID_P, let Cython handle it
+        # But add the correct SIZEOF_VOID_P for x86_64 MinGW to prevent Cython check failure
         extra_compile_args = [
             "-std=c99",
             "-Wno-unused-function",
             "-Wno-sign-compare",
             "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
         ]
+        # Add SIZEOF_VOID_P=8 for x86_64 to prevent Cython's division by zero error
+        define_macros.append(("SIZEOF_VOID_P", "8"))
         print("Configured for MinGW/GCC compiler on Windows")
     else:
         # GCC/Clang flags on Unix-like systems
