@@ -80,25 +80,9 @@ class CustomBuildExt(build_ext):
 
     def _setup_windows_compiler(self) -> None:
         """Set up compiler for Windows builds."""
-        import os
-        import platform
-
-        if platform.system() == "Windows":
-            # Check if we should use MinGW based on environment
-            cc_env = os.environ.get("CC", "")
-            msystem = os.environ.get("MSYSTEM", "")
-
-            if (
-                "mingw32" in cc_env.lower()
-                or "gcc" in cc_env.lower()
-                or msystem == "MINGW64"
-                or msystem == "MINGW32"
-            ):
-                print("Using MinGW/GCC compiler on Windows")
-                # Force the compiler to be mingw32
-                self.compiler = "mingw32"
-            else:
-                print("Using default Windows compiler (MSVC)")
+        # This method is called but the actual compiler setup happens later in the build process
+        # Just ensure libraries are available
+        pass
 
     def _check_libraries(self) -> bool:
         """Check that all required libraries and headers are available."""
@@ -192,11 +176,13 @@ def get_extensions() -> list[Extension]:
             or msystem == "MINGW32"
         ):
             # Use GCC/MinGW flags for better C99/C11 support
+            # Explicitly undefine SIZEOF_VOID_P to prevent Cython enum validation issues
             extra_compile_args = [
                 "-std=c99",
                 "-Wno-unused-function",
                 "-Wno-sign-compare",
                 "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
+                "-USIZEOF_VOID_P",  # Explicitly undefine to prevent Cython validation
             ]
             print("Using MinGW/GCC compiler on Windows")
         else:
