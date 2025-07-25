@@ -165,21 +165,21 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        $mingw = "${{ runner.temp }}\msys64\mingw64\bin"
-        # Copy runtime DLLs to package directories
-        $targetDirs = @("src/rmnpy/helpers", "src/rmnpy/wrappers/sitypes")
-        foreach ($dir in $targetDirs) {
-          if (Test-Path $dir) {
-            Write-Host "Copying DLLs to $dir"
-            Copy-Item "$mingw\libgcc_s_seh-1.dll" $dir\ -Force -ErrorAction SilentlyContinue
-            Copy-Item "$mingw\libwinpthread-1.dll" $dir\ -Force -ErrorAction SilentlyContinue
-            Copy-Item "$mingw\libstdc++-6.dll" $dir\ -Force -ErrorAction SilentlyContinue
-            # Copy Python DLL for runtime linking
-            Copy-Item "$env:pythonLocation\python312.dll" $dir\ -Force -ErrorAction SilentlyContinue
-            Get-ChildItem $dir\*.dll | ForEach-Object { Write-Host "  Copied: $($_.Name)" }
-          } else {
-            Write-Host "Directory not found: $dir"
-          }
+    - name: Copy runtime DLLs (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $mingw = "D:\a\_temp\msys64\mingw64\bin"
+        # Copy runtime DLLs to main package directory (SpinOps approach)
+        $targetDir = "src/rmnpy"
+        if (Test-Path $targetDir) {
+          Write-Host "Copying DLLs to main package directory: $targetDir"
+          Copy-Item "$mingw\libgcc_s_seh-1.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libwinpthread-1.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Copy-Item "$mingw\libstdc++-6.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
+          Get-ChildItem $targetDir\*.dll | ForEach-Object { Write-Host "  Copied: $($_.Name)" }
+        } else {
+          Write-Host "Main package directory not found: $targetDir"
         }
 
     - name: Install Python dependencies (Linux/macOS)
@@ -222,8 +222,11 @@ jobs:
         LIBRARY_PATH: ${{ runner.temp }}/msys64/mingw64/lib
         LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
       run: |
-        # Add Python and MinGW to PATH for DLL resolution
-        $env:PATH = "$env:pythonLocation;${{ runner.temp }}\msys64\mingw64\bin;$env:PATH"
+        # Add main package directory to PATH for DLL resolution (SpinOps approach)
+        $currentDir = Get-Location
+        $packageDir = Join-Path $currentDir "src\rmnpy"
+        $env:PATH = "$env:pythonLocation;${{ runner.temp }}\msys64\mingw64\bin;$packageDir;$env:PATH"
+        Write-Host "Added to PATH: $packageDir"
         # Use GitHub Actions Python explicitly for pytest
         & "$env:pythonLocation\python.exe" -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
 
