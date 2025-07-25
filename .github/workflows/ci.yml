@@ -661,8 +661,15 @@ jobs:
 
             Write-Host "Checking if all required DLLs are accessible..."
             $missingDlls = @()
+            $systemDlls = @("KERNEL32.dll", "msvcrt.dll", "ntdll.dll", "USER32.dll", "ADVAPI32.dll")
             $pydDeps = & "$mingwBinPath\objdump.exe" -p "$pydFile" | Select-String "DLL Name:" | ForEach-Object { $_.ToString().Split(":")[1].Trim() }
             foreach ($dll in $pydDeps) {
+                # Skip Windows system DLLs
+                if ($systemDlls -contains $dll) {
+                    Write-Host "✓ System DLL: $dll (provided by Windows)"
+                    continue
+                }
+
                 $found = $false
                 foreach ($searchPath in @("src\rmnpy", "lib", "$mingwBinPath")) {
                     if (Test-Path "$searchPath\$dll") {
@@ -694,7 +701,21 @@ jobs:
                 }
 
                 Write-Host "Step 6: Retry import after copying missing DLLs"
-                & "$env:pythonLocation\python.exe" -c "import os, sys, traceback; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('$mingwBinPath')] if hasattr(os, 'add_dll_directory') and p.exists()]; sys.path.insert(0, 'src'); exec('try: from rmnpy.wrappers.sitypes.dimensionality import Dimensionality; print(\"SUCCESS: Dimensionality imported after DLL fix\")\nexcept Exception as e: import traceback; print(f\"STILL FAILING: {e}\"); traceback.print_exc()')"
+                # Create a simple retry test script
+                "import os, sys, traceback" | Out-File -FilePath retry_test.py -Encoding UTF8
+                "from pathlib import Path" | Out-File -FilePath retry_test.py -Encoding UTF8 -Append
+                "if hasattr(os, 'add_dll_directory'):" | Out-File -FilePath retry_test.py -Encoding UTF8 -Append
+                "    for p in [Path('src/rmnpy'), Path('lib'), Path(r'$mingwBinPath')]:" | Out-File -FilePath retry_test.py -Encoding UTF8 -Append
+                "        if p.exists():" | Out-File -FilePath retry_test.py -Encoding UTF8 -Append
+                "            os.add_dll_directory(str(p.absolute()))" | Out-File -FilePath retry_test.py -Encoding UTF8 -Append
+                "sys.path.insert(0, 'src')" | Out-File -FilePath retry_test.py -Encoding UTF8 -Append
+                "try:" | Out-File -FilePath retry_test.py -Encoding UTF8 -Append
+                "    from rmnpy.wrappers.sitypes.dimensionality import Dimensionality" | Out-File -FilePath retry_test.py -Encoding UTF8 -Append
+                "    print('SUCCESS: Dimensionality imported after DLL fix')" | Out-File -FilePath retry_test.py -Encoding UTF8 -Append
+                "except Exception as e:" | Out-File -FilePath retry_test.py -Encoding UTF8 -Append
+                "    print(f'STILL FAILING: {e}')" | Out-File -FilePath retry_test.py -Encoding UTF8 -Append
+                "    traceback.print_exc()" | Out-File -FilePath retry_test.py -Encoding UTF8 -Append
+                & "$env:pythonLocation\python.exe" retry_test.py
             } else {
                 Write-Host "All required DLLs found, import failure may be due to other issues"
             }
@@ -703,6 +724,28 @@ jobs:
             Write-Host "Looking for any .pyd files in the sitypes directory..."
             Get-ChildItem -Path "src\rmnpy\wrappers\sitypes" -Filter "*.pyd" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  Found: $($_.Name)" }
         }
+
+        # Final comprehensive import test
+        Write-Host "=== Final Import Test ==="
+        "import os, sys" | Out-File -FilePath final_test.py -Encoding UTF8
+        "from pathlib import Path" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "print('Setting up DLL directories...')" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "if hasattr(os, 'add_dll_directory'):" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "    for p in [Path('src/rmnpy'), Path('lib'), Path(r'${{ runner.temp }}\msys64\mingw64\bin')]:" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "        if p.exists():" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "            os.add_dll_directory(str(p.absolute()))" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "            print(f'Added DLL directory: {p}')" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "sys.path.insert(0, 'src')" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "print('Testing rmnpy import...')" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "import rmnpy" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "print('✓ rmnpy imported successfully')" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "from rmnpy.wrappers.sitypes import Dimensionality" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "print('✓ Dimensionality imported successfully')" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "dim = Dimensionality('m')" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "print(f'✓ Created Dimensionality object: {dim}')" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+        "print('SUCCESS: All imports working correctly!')" | Out-File -FilePath final_test.py -Encoding UTF8 -Append
+
+        & "$env:pythonLocation\python.exe" final_test.py
 
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
