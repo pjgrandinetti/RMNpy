@@ -22,12 +22,6 @@ jobs:
             python-version: "3.8"
           - os: windows-latest
             python-version: "3.9"
-          # Following SpinOps approach: only Python 3.12 works with MinGW on Windows
-          # MSYS2 repositories only provide Python 3.12 for MinGW builds
-          - os: windows-latest
-            python-version: "3.10"
-          - os: windows-latest
-            python-version: "3.11"
 
     steps:
     - name: Checkout RMNpy
@@ -167,12 +161,16 @@ jobs:
       run: |
         $mingw = "${{ runner.temp }}\msys64\mingw64\bin"
         # Copy runtime DLLs to package directories
-        $targetDirs = @("rmnpy/helpers", "rmnpy/wrappers/sitypes")
+        $targetDirs = @("src/rmnpy/helpers", "src/rmnpy/wrappers/sitypes")
         foreach ($dir in $targetDirs) {
           if (Test-Path $dir) {
+            Write-Host "Copying DLLs to $dir"
             Copy-Item "$mingw\libgcc_s_seh-1.dll" $dir\ -Force -ErrorAction SilentlyContinue
             Copy-Item "$mingw\libwinpthread-1.dll" $dir\ -Force -ErrorAction SilentlyContinue
             Copy-Item "$mingw\libstdc++-6.dll" $dir\ -Force -ErrorAction SilentlyContinue
+            Get-ChildItem $dir\*.dll | ForEach-Object { Write-Host "  Copied: $($_.Name)" }
+          } else {
+            Write-Host "Directory not found: $dir"
           }
         }
 
