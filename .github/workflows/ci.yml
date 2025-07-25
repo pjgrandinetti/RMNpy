@@ -377,16 +377,20 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        # Constants are already generated during the Python build process
-        # This step verifies they exist
+        # Constants are generated during the Python build process as constants.pyx
+        # Check for the generated constants file
         Write-Host "Checking for generated constants..."
-        if (Test-Path "src/rmnpy/constants") {
-          Write-Host "✓ Constants directory exists"
-          Get-ChildItem "src/rmnpy/constants" | ForEach-Object { Write-Host "  $($_.Name)" }
+        if (Test-Path "src/rmnpy/constants.pyx") {
+          Write-Host "✓ Constants file exists: src/rmnpy/constants.pyx"
+          $constantsContent = Get-Content "src/rmnpy/constants.pyx" -First 10
+          Write-Host "Contents preview:"
+          $constantsContent | ForEach-Object { Write-Host "  $_" }
         } else {
-          Write-Host "⚠ Constants directory not found - this is expected if generation happened during build"
+          Write-Host "⚠ Constants file not found - running manual generation"
+          # Manually run the constants generation
+          & "$env:pythonLocation\python.exe" scripts/extract_si_constants.py
         }
-        Write-Host "Constants generation completed during build process"
+        Write-Host "Constants generation check completed"
 
     - name: Diagnose import issues (Windows)
       if: runner.os == 'Windows'
@@ -520,18 +524,81 @@ jobs:
         LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
         PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
       run: |
-        # Add comprehensive DLL resolution for Windows tests
+        # Set up comprehensive DLL resolution for Windows tests
         $currentDir = Get-Location
         $packageDir = Join-Path $currentDir "src\rmnpy"
         $libDir = Join-Path $currentDir "lib"
         $mingwBin = "${{ runner.temp }}\msys64\mingw64\bin"
+
+        # Create a comprehensive PATH that includes all DLL locations
         $env:PATH = "$env:pythonLocation;$mingwBin;$packageDir;$libDir;$env:PATH"
-        Write-Host "Added to PATH: $packageDir, $libDir, and $mingwBin"
+        Write-Host "Enhanced PATH for DLL resolution"
 
-        # Set up DLL resolution in the test environment
-        & "$env:pythonLocation\python.exe" -c "import os; from pathlib import Path; [os.add_dll_directory(str(p.absolute())) for p in [Path('src/rmnpy'), Path('lib'), Path('${{ runner.temp }}/msys64/mingw64/bin')] if hasattr(os, 'add_dll_directory') and p.exists()]; print('DLL directories configured for tests')"
+        # Verify all critical components are in place
+        Write-Host "=== Final Verification Before Tests ==="
+        Write-Host "Package directory exists: $(Test-Path $packageDir)"
+        Write-Host "Lib directory exists: $(Test-Path $libDir)"
+        Write-Host "MinGW bin exists: $(Test-Path $mingwBin)"
 
-        # Use GitHub Actions Python explicitly for pytest
+        Write-Host "Python extensions found:"
+        Get-ChildItem "$packageDir\**\*.pyd" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+          Write-Host "  $($_.Name)"
+        }
+
+        Write-Host "Runtime DLLs in package directory:"
+        Get-ChildItem "$packageDir\*.dll" -ErrorAction SilentlyContinue | Select-Object -First 5 | ForEach-Object {
+          Write-Host "  $($_.Name)"
+        }
+
+        # Test critical import with DLL path enhancement
+        Write-Host "=== Testing Critical Import ==="
+
+        # Create simple Python test
+        $testImport = "import os; import sys"
+        $testImport += "; [os.add_dll_directory(str(p)) for p in ['src/rmnpy', 'lib', '${{ runner.temp }}/msys64/mingw64/bin'] if hasattr(os, 'add_dll_directory') and os.path.exists(p)]"
+        $testImport += "; sys.path.insert(0, 'src')"
+        $testImport += "; from rmnpy.wrappers.sitypes.dimensionality import Dimensionality"
+        $testImport += "; dim = Dimensionality('m')"
+        $testImport += "; print('SUCCESS: Dimensionality import and instantiation worked!')"
+
+        try {
+            & "$env:pythonLocation\python.exe" -c $testImport
+            Write-Host "✓ Critical import test passed - proceeding with full test suite"
+        } catch {
+            Write-Host "✗ Critical import failed - analyzing dependencies..."
+
+            # Simplified dependency check
+            Write-Host "=== Dependency Analysis ==="
+            $pydFiles = Get-ChildItem -Path "src" -Filter "*.pyd" -Recurse
+            ForEach ($pydFile in $pydFiles) {
+                Write-Host "Checking dependencies for: $($pydFile.Name)"
+                $objdumpPath = "${{ runner.temp }}\msys64\mingw64\bin\objdump.exe"
+                if (Test-Path $objdumpPath) {
+                    $dependencies = & $objdumpPath -p "$($pydFile.FullName)" 2>$null | Select-String "DLL Name"
+                    ForEach ($dep in $dependencies) {
+                        $dllName = ($dep -split ":")[1].Trim()
+                        $locations = @("$mingwBin\$dllName", "$packageDir\$dllName", "$libDir\$dllName")
+                        $found = $false
+                        ForEach ($loc in $locations) {
+                            if (Test-Path $loc) {
+                                $found = $true
+                                break
+                            }
+                        }
+                        $status = if ($found) { "✓" } else { "✗ MISSING" }
+                        Write-Host "    $status $dllName"
+                    }
+                }
+            }
+
+            # Try basic Python import to see where it fails
+            Write-Host "Testing basic Python import path..."
+            & "$env:pythonLocation\python.exe" -c "import sys; sys.path.insert(0, 'src'); print('Python path setup OK')"
+
+            exit 1
+        }
+
+        # Run the actual test suite with proper environment
         & "$env:pythonLocation\python.exe" -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
 
     - name: Upload coverage to Codecov
