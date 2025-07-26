@@ -249,7 +249,7 @@ jobs:
         Write-Host "CXX environment: $env:CXX"
 
         # Use GitHub Actions Python explicitly (not MSYS2 Python)
-        & "$env:pythonLocation\python.exe" -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2"
+        & "${{ runner.temp }}\msys64\mingw64\bin\python.exe" -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2"
 
     - name: Build Cython extension in-place (Windows)
       if: runner.os == 'Windows'
@@ -272,7 +272,7 @@ jobs:
         Write-Host "  MINGW_LIB_DIR: $env:MINGW_LIB_DIR"
 
         # Use GitHub Actions Python explicitly for build with MinGW compiler
-        & "$env:pythonLocation\python.exe" setup.py build_ext --inplace
+        & "${{ runner.temp }}\msys64\mingw64\bin\python.exe" setup.py build_ext --inplace
 
     - name: Copy runtime DLLs (Windows)
       if: runner.os == 'Windows'
@@ -406,7 +406,7 @@ jobs:
         MINGW_LIB_DIR: "${{ runner.temp }}/msys64/mingw64/lib"
       run: |
         # Use GitHub Actions Python explicitly for pip install with MinGW compiler
-        & "$env:pythonLocation\python.exe" -m pip install -e .[test]
+        & "${{ runner.temp }}\msys64\mingw64\bin\python.exe" -m pip install -e .[test]
 
     - name: Generate constants (Linux/macOS)
       if: runner.os != 'Windows'
@@ -428,7 +428,7 @@ jobs:
         } else {
           Write-Host "⚠ Constants file not found - running manual generation"
           # Manually run the constants generation
-          & "$env:pythonLocation\python.exe" scripts/extract_si_constants.py
+          & "${{ runner.temp }}\msys64\mingw64\bin\python.exe" scripts/extract_si_constants.py
         }
         Write-Host "Constants generation check completed"
 
