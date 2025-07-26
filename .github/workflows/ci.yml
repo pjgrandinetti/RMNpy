@@ -798,7 +798,8 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        Write-Host "Skipping tests on Windows due to known MinGW/GCC vs CPython ABI incompatibility"
+        # Run pytest on Windows using host Python with MinGW64-built extensions
+        python -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
 
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
