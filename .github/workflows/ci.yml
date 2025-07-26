@@ -491,7 +491,7 @@ jobs:
         # Direct import test with comprehensive error monitoring
         Write-Host "Testing rmnpy import with enhanced monitoring..."
 
-        $importScript = 'import sys; sys.path.insert(0, "src"); import rmnpy; print("SUCCESS: rmnpy imported successfully")'
+        $importScript = "import sys; sys.path.insert(0, `"src`"); import rmnpy; print(`"SUCCESS: rmnpy imported successfully`")"
 
         $process = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "-c", $importScript -NoNewWindow -PassThru -Wait -RedirectStandardOutput "import_output.txt" -RedirectStandardError "import_error.txt"
 
@@ -520,7 +520,7 @@ jobs:
             Write-Host "Attempting DLL pre-loading workaround..." -ForegroundColor Yellow
 
             # Create simple DLL pre-loading command
-            $preloadScript = "import ctypes; import os; dll_dir = r'$mingwBin'; [ctypes.CDLL(f'{dll_dir}\\{dll}') for dll in ['libgcc_s_seh-1.dll', 'libwinpthread-1.dll', 'libgfortran-5.dll'] if os.path.exists(f'{dll_dir}\\{dll}')]; import sys; sys.path.insert(0, 'src'); import rmnpy; print('SUCCESS with pre-loading')"
+            $preloadScript = "import ctypes; import os; dll_dir = r`'$mingwBin`'; [ctypes.CDLL(f`'{dll_dir}\\{dll}`') for dll in [`'libgcc_s_seh-1.dll`', `'libwinpthread-1.dll`', `'libgfortran-5.dll`'] if os.path.exists(f`'{dll_dir}\\{dll}`')]; import sys; sys.path.insert(0, `'src`'); import rmnpy; print(`'SUCCESS with pre-loading`')"
 
             $preloadProcess = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "-c", $preloadScript -NoNewWindow -PassThru -Wait -RedirectStandardOutput "preload_output.txt" -RedirectStandardError "preload_error.txt"
 
@@ -558,7 +558,7 @@ jobs:
         # Test Dimensionality import if basic import worked
         Write-Host "Testing Dimensionality import..."
 
-        $dimScript = 'import sys; sys.path.insert(0, "src"); from rmnpy.wrappers.sitypes import Dimensionality; d = Dimensionality("m"); print(f"SUCCESS: Created {d}")'
+        $dimScript = "import sys; sys.path.insert(0, `"src`"); from rmnpy.wrappers.sitypes import Dimensionality; d = Dimensionality(`"m`"); print(f`"SUCCESS: Created {d}`")"
 
         $dimProcess = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "-c", $dimScript -NoNewWindow -PassThru -Wait -RedirectStandardOutput "dim_output.txt" -RedirectStandardError "dim_error.txt"
 
