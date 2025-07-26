@@ -521,6 +521,40 @@ jobs:
         # Check for access violation specifically
         if ($process.ExitCode -eq -1073741819) {
             Write-Host "DETECTED: Access violation (-1073741819)" -ForegroundColor Red
+
+            # Analyze dependencies of compiled extensions with objdump
+            Write-Host "=== Analyzing Extension Dependencies ===" -ForegroundColor Yellow
+            $objdumpPath = "${{ runner.temp }}\msys64\mingw64\bin\objdump.exe"
+            if (Test-Path $objdumpPath) {
+                Get-ChildItem "src\rmnpy\**\*.pyd" -Recurse | ForEach-Object {
+                    Write-Host "Dependencies for $($_.Name):"
+                    $deps = & $objdumpPath -p $_.FullName 2>$null | Select-String "DLL Name:"
+                    $deps | ForEach-Object {
+                        $dllName = ($_ -split ":")[1].Trim()
+                        $locations = @(
+                            "${{ runner.temp }}\msys64\mingw64\bin\$dllName",
+                            "src\rmnpy\$dllName",
+                            "lib\$dllName",
+                            "$env:pythonLocation\$dllName"
+                        )
+                        $found = $false
+                        $foundLocation = ""
+                        foreach ($loc in $locations) {
+                            if (Test-Path $loc) {
+                                $found = $true
+                                $foundLocation = $loc
+                                break
+                            }
+                        }
+                        $status = if ($found) { "✓ Found at $foundLocation" } else { "✗ MISSING" }
+                        Write-Host "    $dllName - $status"
+                    }
+                    Write-Host ""
+                }
+            } else {
+                Write-Host "objdump not available for dependency analysis"
+            }
+
             Write-Host "Attempting DLL pre-loading workaround..." -ForegroundColor Yellow
 
             # Create DLL pre-loading script file to avoid PowerShell string truncation
