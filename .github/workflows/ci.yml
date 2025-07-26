@@ -314,11 +314,10 @@ jobs:
           # Rename compiled extension modules to remove version suffix for imports
           Write-Host "Renaming compiled modules to base names for Python imports..."
           $pattern = [regex]'\.cp\d+-win_amd64'
-          Get-ChildItem "$targetDir\wrappers\sitypes" -Filter "*.pyd" | ForEach-Object {
+          # Rename all compiled extension modules under target directory
+          Get-ChildItem "$targetDir" -Recurse -Filter "*.pyd" | ForEach-Object {
             $newName = $_.Name -replace $pattern, ''
-            if ($newName -ne $_.Name) {
-              Rename-Item $_.FullName -NewName $newName -Force
-            }
+            if ($newName -ne $_.Name) { Rename-Item $_.FullName -NewName $newName -Force }
           }
         } else {
           Write-Host "Main package directory not found: $targetDir"
