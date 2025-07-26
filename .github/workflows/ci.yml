@@ -295,24 +295,13 @@ jobs:
           # Copy curl DLLs (required by RMNLib)
           Write-Host "Copying curl dependencies..."
           Copy-Item "$mingw\libcurl-4.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-          Copy-Item "$mingw\libssl-3-x64.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-          Copy-Item "$mingw\libcrypto-3-x64.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-          Copy-Item "$mingw\libzstd.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-          Copy-Item "$mingw\libbrotlidec.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-          Copy-Item "$mingw\libbrotlicommon.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-          Copy-Item "$mingw\libnghttp2-14.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-          Copy-Item "$mingw\libidn2-0.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-          Copy-Item "$mingw\libssh2-1.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-          Copy-Item "$mingw\libunistring-5.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-          Copy-Item "$mingw\libintl-8.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-          Copy-Item "$mingw\libiconv-2.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
 
           # Copy OpenBLAS DLLs (required by RMNLib)
           Write-Host "Copying OpenBLAS dependencies..."
           Copy-Item "$mingw\libopenblas.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
           Copy-Item "$mingw\liblapack.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
 
-          # Copy Python runtime DLL (critical for .pyd imports)
+          # Copy Python runtime DLL
           Write-Host "Copying Python runtime DLL..."
           $pythonDll = Get-ChildItem "$env:pythonLocation" -Filter "python*.dll" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($pythonDll) {
@@ -322,70 +311,14 @@ jobs:
             Write-Host "  No Python DLL found in $env:pythonLocation"
           }
 
-          # Search for libpython3.12.dll specifically (required by objdump analysis)
-          Write-Host "Searching for libpython3.12.dll in targeted locations..."
-          $searchPaths = @(
-            "$env:pythonLocation",
-            "${{ runner.temp }}\msys64\mingw64\bin",
-            "${{ runner.temp }}\msys64\mingw64\lib",
-            "C:\hostedtoolcache\windows\Python",
-            "C:\Python*",
-            "C:\tools\Python*"
-          )
-
-          $libpython = $null
-          foreach ($searchPath in $searchPaths) {
-            if (Test-Path $searchPath) {
-              Write-Host "  Checking: $searchPath"
-              $found = Get-ChildItem $searchPath -Filter "libpython3.12.dll" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-              if ($found) {
-                $libpython = $found
-                break
-              }
+          # Rename compiled extension modules to remove version suffix for imports
+          Write-Host "Renaming compiled modules to base names for Python imports..."
+          $pattern = [regex]'\.cp\d+-win_amd64'
+          Get-ChildItem "$targetDir\wrappers\sitypes" -Filter "*.pyd" | ForEach-Object {
+            $newName = $_.Name -replace $pattern, ''
+            if ($newName -ne $_.Name) {
+              Rename-Item $_.FullName -NewName $newName -Force
             }
-          }
-
-          if ($libpython) {
-            Write-Host "  Found libpython3.12.dll: $($libpython.FullName)"
-            Copy-Item $libpython.FullName $targetDir\ -Force -ErrorAction SilentlyContinue
-          } else {
-            Write-Host "  libpython3.12.dll not found system-wide"
-          }
-
-          # Copy C library DLLs to package directory
-          Write-Host "Copying C library DLLs..."
-          if (Test-Path "lib") {
-            Write-Host "Contents of lib directory:"
-            Get-ChildItem "lib" | ForEach-Object { Write-Host "  $($_.Name)" }
-            Copy-Item "lib\*.dll" $targetDir\ -Force -ErrorAction SilentlyContinue
-            Copy-Item "lib\*.a" $targetDir\ -Force -ErrorAction SilentlyContinue
-          } else {
-            Write-Host "lib directory does not exist"
-          }
-
-          # Also copy to all wrapper subdirectories for better DLL resolution
-          Get-ChildItem "$targetDir\wrappers" -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-            $subDir = $_.FullName
-            Write-Host "Copying DLLs to $subDir"
-            Copy-Item "$mingw\libgcc_s_seh-1.dll" $subDir\ -Force -ErrorAction SilentlyContinue
-            Copy-Item "$mingw\libwinpthread-1.dll" $subDir\ -Force -ErrorAction SilentlyContinue
-            Copy-Item "$mingw\libstdc++-6.dll" $subDir\ -Force -ErrorAction SilentlyContinue
-            Copy-Item "$mingw\libcurl-4.dll" $subDir\ -Force -ErrorAction SilentlyContinue
-            Copy-Item "$mingw\libopenblas.dll" $subDir\ -Force -ErrorAction SilentlyContinue
-            if (Test-Path "lib") {
-              Copy-Item "lib\*.dll" $subDir\ -Force -ErrorAction SilentlyContinue
-              Copy-Item "lib\*.a" $subDir\ -Force -ErrorAction SilentlyContinue
-            }
-          }
-
-          # List what was copied
-          Write-Host "DLLs copied to main directory:"
-          Get-ChildItem $targetDir\*.dll | ForEach-Object { Write-Host "  $($_.Name)" }
-
-          # Check the compiled extensions exist
-          Write-Host "Compiled extensions:"
-          Get-ChildItem "$targetDir\**\*.pyd" -Recurse | ForEach-Object {
-            Write-Host "  $($_.Name) - $($_.Length) bytes"
           }
         } else {
           Write-Host "Main package directory not found: $targetDir"
