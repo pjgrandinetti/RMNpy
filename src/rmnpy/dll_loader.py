@@ -16,9 +16,18 @@ _handler.setFormatter(logging.Formatter("[%(asctime)s] DLL_LOADER: %(message)s")
 _logger.addHandler(_handler)
 _logger.setLevel(logging.INFO)
 
+# Global flag to prevent multiple initialization
+_dll_setup_completed = False
+
 
 def setup_dll_paths() -> None:
     """Setup DLL paths for Windows"""
+    global _dll_setup_completed
+
+    if _dll_setup_completed:
+        _logger.info("DLL setup already completed, skipping")
+        return
+
     if sys.platform == "win32":
         _logger.info("Starting Windows DLL path setup")
 
@@ -119,24 +128,19 @@ def setup_dll_paths() -> None:
         except Exception as e:
             _logger.error(f"Failed to load Python DLL: {e}")
 
-        # Explicitly preload MinGW runtime DLLs to ensure all dependencies are loaded
+        # Explicitly preload ONLY essential MinGW runtime DLLs to avoid conflicts
+        # Reduced set to minimize DLL loading conflicts during pytest
         runtime_dlls = [
             "libwinpthread-1.dll",
             "libgcc_s_seh-1.dll",
-            "libstdc++-6.dll",
-            "libgomp-1.dll",
-            "libquadmath-0.dll",
-            "libgfortran-5.dll",
-            "libopenblas.dll",
-            "liblapack.dll",
-            "libcurl-4.dll",
-            # GMP, MPFR, and MPC for SITypes
-            "libgmp-10.dll",
-            "libmpfr-6.dll",
-            "libmpc-3.dll",
+            "libgfortran-5.dll",  # Essential for Fortran code
+            "libopenblas.dll",  # Essential for BLAS operations
+            "liblapack.dll",  # Essential for LAPACK operations
         ]
 
-        _logger.info(f"Attempting to preload {len(runtime_dlls)} MinGW runtime DLLs")
+        _logger.info(
+            f"Attempting to preload {len(runtime_dlls)} essential MinGW runtime DLLs"
+        )
         loaded_dlls = 0
         try:
             import ctypes as _ct
@@ -167,6 +171,12 @@ def setup_dll_paths() -> None:
             f"Successfully loaded {loaded_dlls}/{len(runtime_dlls)} MinGW runtime DLLs"
         )
         _logger.info("Windows DLL path setup completed")
+
+        # Mark setup as completed
+        _dll_setup_completed = True
+    else:
+        _logger.info("Non-Windows platform, skipping DLL setup")
+        _dll_setup_completed = True
 
 
 def preload_mingw_runtime() -> None:
