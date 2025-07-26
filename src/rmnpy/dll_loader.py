@@ -74,9 +74,10 @@ def setup_dll_paths() -> None:
             "libopenblas.dll",
             "liblapack.dll",
             "libcurl-4.dll",
-            # GMP and MPFR for SITypes
+            # GMP, MPFR, and MPC for SITypes
             "libgmp-10.dll",
             "libmpfr-6.dll",
+            "libmpc-3.dll",
         ]
         # Extension directories including package root
         ext_dirs = [
