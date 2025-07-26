@@ -343,6 +343,8 @@ jobs:
         & "venv\Scripts\python.exe" -m pip install --upgrade pip
         & "venv\Scripts\python.exe" -m pip install numpy pytest pytest-cov
         & "venv\Scripts\python.exe" -m pip install -e .[test]
+        # Install Python packages for OCTypes, SITypes, and RMNLib
+        & "venv\Scripts\python.exe" -m pip install OCTypes SITypes RMNLib
         # Expose venv python path for subsequent steps
         "VENV_PY=venv\Scripts\python.exe" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8
 
