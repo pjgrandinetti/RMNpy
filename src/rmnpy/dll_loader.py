@@ -122,23 +122,7 @@ def setup_dll_paths() -> None:
                 py_dll = Path(sys.base_prefix) / "python3.dll"
             if py_dll.exists():
                 # Use WinDLL for proper Windows loader semantics
-                ctypes.CDLL(str(py_dll))
-        except Exception:
-            pass
-
-        # Explicitly load MinGW runtime DLLs to resolve threading and other dependencies
-        try:
-            import ctypes
-
-            for dll_name in runtime_dlls:
-                for d in valid_dirs:
-                    src = Path(d) / dll_name
-                    if src.exists():
-                        try:
-                            ctypes.CDLL(str(src))
-                        except Exception:
-                            pass
-                        break
+                ctypes.WinDLL(str(py_dll))
         except Exception:
             pass
 
