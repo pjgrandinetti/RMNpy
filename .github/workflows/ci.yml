@@ -491,9 +491,7 @@ jobs:
         # Direct import test with comprehensive error monitoring
         Write-Host "Testing rmnpy import with enhanced monitoring..."
 
-        $importScript = "import sys; sys.path.insert(0, `"src`"); import rmnpy; print(`"SUCCESS: rmnpy imported successfully`")"
-
-        $process = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "-c", $importScript -NoNewWindow -PassThru -Wait -RedirectStandardOutput "import_output.txt" -RedirectStandardError "import_error.txt"
+        $process = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "-c", "import sys; sys.path.insert(0, `"src`"); import rmnpy; print(`"SUCCESS: rmnpy imported successfully`")" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "import_output.txt" -RedirectStandardError "import_error.txt"
 
         Write-Host "Import test process exit code: $($process.ExitCode)"
 
@@ -558,9 +556,7 @@ jobs:
         # Test Dimensionality import if basic import worked
         Write-Host "Testing Dimensionality import..."
 
-        $dimScript = "import sys; sys.path.insert(0, `"src`"); from rmnpy.wrappers.sitypes import Dimensionality; d = Dimensionality(`"m`"); print(f`"SUCCESS: Created {d}`")"
-
-        $dimProcess = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "-c", $dimScript -NoNewWindow -PassThru -Wait -RedirectStandardOutput "dim_output.txt" -RedirectStandardError "dim_error.txt"
+        $dimProcess = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "-c", "import sys; sys.path.insert(0, `"src`"); from rmnpy.wrappers.sitypes import Dimensionality; d = Dimensionality(`"m`"); print(f`"SUCCESS: Created {d}`")" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "dim_output.txt" -RedirectStandardError "dim_error.txt"
 
         if ($dimProcess.ExitCode -eq 0) {
             $dimOutput = Get-Content "dim_output.txt" -Raw -ErrorAction SilentlyContinue
