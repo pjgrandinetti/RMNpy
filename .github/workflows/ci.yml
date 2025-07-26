@@ -491,7 +491,13 @@ jobs:
         # Direct import test with comprehensive error monitoring
         Write-Host "Testing rmnpy import with enhanced monitoring..."
 
-        $process = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "-c", "import sys; sys.path.insert(0, `"src`"); import rmnpy; print(`"SUCCESS: rmnpy imported successfully`")" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "import_output.txt" -RedirectStandardError "import_error.txt"
+        # Write import command to temporary script file to avoid PowerShell string truncation
+        'import sys' | Out-File -FilePath "test_import.py" -Encoding utf8
+        'sys.path.insert(0, "src")' | Out-File -FilePath "test_import.py" -Encoding utf8 -Append
+        'import rmnpy' | Out-File -FilePath "test_import.py" -Encoding utf8 -Append
+        'print("SUCCESS: rmnpy imported successfully")' | Out-File -FilePath "test_import.py" -Encoding utf8 -Append
+
+        $process = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "test_import.py" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "import_output.txt" -RedirectStandardError "import_error.txt"
 
         Write-Host "Import test process exit code: $($process.ExitCode)"
 
@@ -517,10 +523,21 @@ jobs:
             Write-Host "DETECTED: Access violation (-1073741819)" -ForegroundColor Red
             Write-Host "Attempting DLL pre-loading workaround..." -ForegroundColor Yellow
 
-            # Create simple DLL pre-loading command
-            $preloadScript = "import ctypes; import os; dll_dir = r`'$mingwBin`'; [ctypes.CDLL(f`'{dll_dir}\\{dll}`') for dll in [`'libgcc_s_seh-1.dll`', `'libwinpthread-1.dll`', `'libgfortran-5.dll`'] if os.path.exists(f`'{dll_dir}\\{dll}`')]; import sys; sys.path.insert(0, `'src`'); import rmnpy; print(`'SUCCESS with pre-loading`')"
+            # Create DLL pre-loading script file to avoid PowerShell string truncation
+            'import ctypes' | Out-File -FilePath "test_preload.py" -Encoding utf8
+            'import os' | Out-File -FilePath "test_preload.py" -Encoding utf8 -Append
+            "dll_dir = r'$mingwBin'" | Out-File -FilePath "test_preload.py" -Encoding utf8 -Append
+            "dlls = ['libgcc_s_seh-1.dll', 'libwinpthread-1.dll', 'libgfortran-5.dll']" | Out-File -FilePath "test_preload.py" -Encoding utf8 -Append
+            'for dll in dlls:' | Out-File -FilePath "test_preload.py" -Encoding utf8 -Append
+            '    dll_path = os.path.join(dll_dir, dll)' | Out-File -FilePath "test_preload.py" -Encoding utf8 -Append
+            '    if os.path.exists(dll_path):' | Out-File -FilePath "test_preload.py" -Encoding utf8 -Append
+            '        ctypes.CDLL(dll_path)' | Out-File -FilePath "test_preload.py" -Encoding utf8 -Append
+            'import sys' | Out-File -FilePath "test_preload.py" -Encoding utf8 -Append
+            'sys.path.insert(0, "src")' | Out-File -FilePath "test_preload.py" -Encoding utf8 -Append
+            'import rmnpy' | Out-File -FilePath "test_preload.py" -Encoding utf8 -Append
+            'print("SUCCESS with pre-loading")' | Out-File -FilePath "test_preload.py" -Encoding utf8 -Append
 
-            $preloadProcess = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "-c", $preloadScript -NoNewWindow -PassThru -Wait -RedirectStandardOutput "preload_output.txt" -RedirectStandardError "preload_error.txt"
+            $preloadProcess = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "test_preload.py" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "preload_output.txt" -RedirectStandardError "preload_error.txt"
 
             Write-Host "DLL pre-load test exit code: $($preloadProcess.ExitCode)"
 
@@ -556,7 +573,14 @@ jobs:
         # Test Dimensionality import if basic import worked
         Write-Host "Testing Dimensionality import..."
 
-        $dimProcess = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "-c", "import sys; sys.path.insert(0, `"src`"); from rmnpy.wrappers.sitypes import Dimensionality; d = Dimensionality(`"m`"); print(f`"SUCCESS: Created {d}`")" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "dim_output.txt" -RedirectStandardError "dim_error.txt"
+        # Write Dimensionality test to script file to avoid PowerShell string truncation
+        'import sys' | Out-File -FilePath "test_dimensionality.py" -Encoding utf8
+        'sys.path.insert(0, "src")' | Out-File -FilePath "test_dimensionality.py" -Encoding utf8 -Append
+        'from rmnpy.wrappers.sitypes import Dimensionality' | Out-File -FilePath "test_dimensionality.py" -Encoding utf8 -Append
+        'd = Dimensionality("m")' | Out-File -FilePath "test_dimensionality.py" -Encoding utf8 -Append
+        'print(f"SUCCESS: Created {d}")' | Out-File -FilePath "test_dimensionality.py" -Encoding utf8 -Append
+
+        $dimProcess = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "test_dimensionality.py" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "dim_output.txt" -RedirectStandardError "dim_error.txt"
 
         if ($dimProcess.ExitCode -eq 0) {
             $dimOutput = Get-Content "dim_output.txt" -Raw -ErrorAction SilentlyContinue
