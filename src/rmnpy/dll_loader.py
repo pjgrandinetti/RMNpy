@@ -44,8 +44,15 @@ def setup_dll_paths() -> None:
                     # Ignore errors if directory can't be added
                     pass
 
-        # Pre-load critical DLLs
-        critical_dlls = ["libgcc_s_seh-1.dll", "libwinpthread-1.dll"]
+        # Pre-load critical MinGW DLLs (include C++ and OpenMP runtimes)
+        critical_dlls = [
+            "libwinpthread-1.dll",
+            "libgcc_s_seh-1.dll",
+            "libstdc++-6.dll",
+            "libgomp-1.dll",
+            "libquadmath-0.dll",
+            "libgfortran-5.dll",
+        ]
         for dll_name in critical_dlls:
             for dll_dir in dll_dirs:
                 dll_path = dll_dir / dll_name
@@ -64,6 +71,8 @@ def preload_mingw_runtime() -> None:
         runtime_dlls = [
             "libwinpthread-1.dll",
             "libgcc_s_seh-1.dll",
+            "libstdc++-6.dll",
+            "libgomp-1.dll",
             "libquadmath-0.dll",  # Sometimes needed for Fortran libraries
             "libgfortran-5.dll",  # Fortran runtime
         ]
