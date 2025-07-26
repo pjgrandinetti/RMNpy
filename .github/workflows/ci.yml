@@ -481,7 +481,7 @@ jobs:
         # Test numpy import
         Write-Host "Testing numpy import..."
         try {
-            $numpyTest = & "$env:pythonLocation\python.exe" -c "import numpy; print('Numpy version:', numpy.__version__)"
+            $numpyTest = & "$env:pythonLocation\python.exe" -c "import numpy; print(`'Numpy version:`', numpy.__version__)"
             Write-Host "[OK] $numpyTest"
         } catch {
             Write-Host "[ERROR] Numpy import failed: $_"
@@ -620,11 +620,11 @@ jobs:
 
         # Create simple Python test
         $testImport = "import os; import sys"
-        $testImport += "; [os.add_dll_directory(str(p)) for p in ['src/rmnpy', 'lib', '${{ runner.temp }}/msys64/mingw64/bin'] if hasattr(os, 'add_dll_directory') and os.path.exists(p)]"
-        $testImport += "; sys.path.insert(0, 'src')"
+        $testImport += "; [os.add_dll_directory(str(p)) for p in [`'src/rmnpy`', `'lib`', `'${{ runner.temp }}/msys64/mingw64/bin`'] if hasattr(os, `'add_dll_directory`') and os.path.exists(p)]"
+        $testImport += "; sys.path.insert(0, `'src`')"
         $testImport += "; from rmnpy.wrappers.sitypes.dimensionality import Dimensionality"
-        $testImport += "; dim = Dimensionality('m')"
-        $testImport += "; print('SUCCESS: Dimensionality import and instantiation worked!')"
+        $testImport += "; dim = Dimensionality(`'m`')"
+        $testImport += "; print(`'SUCCESS: Dimensionality import and instantiation worked!`')"
 
         try {
             & "$env:pythonLocation\python.exe" -c $testImport
