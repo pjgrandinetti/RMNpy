@@ -438,194 +438,147 @@ jobs:
       env:
         PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
       run: |
-        # Set up DLL directories and test basic imports
+        # Advanced Windows CI Access Violation Prevention
         $mingwBin = "${{ runner.temp }}\msys64\mingw64\bin"
 
-        Write-Host "=== Windows Import Test Diagnostic ==="
+        Write-Host "=== Advanced Windows CI Access Violation Prevention ==="
         Write-Host "Python executable: $env:pythonLocation\python.exe"
         Write-Host "MinGW bin directory: $mingwBin"
-        Write-Host "Current PATH includes MinGW: $($env:PATH -like '*mingw64*')"
 
-        # Test basic Python functionality first
+        # Enhanced environment setup
+        $env:PYTHONDONTWRITEBYTECODE = "1"
+        $env:PYTHONUNBUFFERED = "1"
+        $env:PYTHONUTF8 = "1"
+        $env:PYTHONPATH = "src"
+
+        # Add comprehensive DLL paths
+        $dllPaths = @(
+            "${{ runner.temp }}\msys64\mingw64\bin",
+            "src\rmnpy",
+            "lib",
+            "$env:pythonLocation",
+            "$env:pythonLocation\DLLs",
+            "$env:pythonLocation\Scripts"
+        )
+
+        foreach ($path in $dllPaths) {
+            if (Test-Path $path) {
+                $env:PATH = "$path;$env:PATH"
+                Write-Host "Added to PATH: $path"
+            }
+        }
+
+        # Test basic Python functionality
         Write-Host "Testing basic Python execution..."
         try {
-            $output = & "$env:pythonLocation\python.exe" -c "print('Python basic test successful'); import sys; print(f'Python version: {sys.version}')"
-            Write-Host "[OK] Basic Python test: $output"
+            $pythonVersion = & "$env:pythonLocation\python.exe" --version
+            Write-Host "[OK] Python version: $pythonVersion"
         } catch {
             Write-Host "[ERROR] Basic Python test failed: $_"
             exit 1
         }
 
-        # Test numpy import (dependency of our extensions)
+        # Test numpy import
         Write-Host "Testing numpy import..."
         try {
-            $output = & "$env:pythonLocation\python.exe" -c "import numpy; print(f'Numpy version: {numpy.__version__}')"
-            Write-Host "[OK] Numpy import: $output"
+            $numpyTest = & "$env:pythonLocation\python.exe" -c "import numpy; print('Numpy version:', numpy.__version__)"
+            Write-Host "[OK] $numpyTest"
         } catch {
             Write-Host "[ERROR] Numpy import failed: $_"
             exit 1
         }
 
-        Write-Host "Creating enhanced import test script with DLL pre-loading..."
+        # Direct import test with comprehensive error monitoring
+        Write-Host "Testing rmnpy import with enhanced monitoring..."
 
-        # Create test script with enhanced DLL handling (based on ClaudeOpus4Advice.tex)
-        "import os, sys, ctypes" | Out-File -FilePath test_imports.py -Encoding UTF8
-        "from pathlib import Path" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "print('=== Enhanced DLL Resolution Test ===')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "# Define directories with absolute paths" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "package_dir = Path('src/rmnpy').absolute()" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "lib_dir = Path('lib').absolute()" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "mingw_bin = Path(r'${{ runner.temp }}\msys64\mingw64\bin').absolute()" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "print(f'Package dir: {package_dir}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "print(f'Lib dir: {lib_dir}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "print(f'MinGW bin: {mingw_bin}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "# Enhanced DLL directory setup (Solution 1 from advice)" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "if hasattr(os, 'add_dll_directory'):" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    dll_dirs = [package_dir, lib_dir, mingw_bin]" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    for dll_path in dll_dirs:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "        if dll_path.exists():" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "            try:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "                os.add_dll_directory(str(dll_path))" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "                print(f'Added DLL directory: {dll_path}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "            except Exception as e:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "                print(f'Failed to add DLL directory {dll_path}: {e}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "        else:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "            print(f'DLL directory not found: {dll_path}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "else:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print('Warning: os.add_dll_directory not available')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "# Pre-load critical DLLs to prevent access violations (Solution 3)" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "critical_dlls = ['libgcc_s_seh-1.dll', 'libwinpthread-1.dll', 'libgfortran-5.dll']" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "for dll_name in critical_dlls:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    for search_dir in [package_dir, lib_dir, mingw_bin]:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "        dll_file = search_dir / dll_name" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "        if dll_file.exists():" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "            try:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "                ctypes.CDLL(str(dll_file))" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "                print(f'Pre-loaded critical DLL: {dll_name}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "                break" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "            except Exception as e:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "                print(f'Failed to pre-load {dll_name}: {e}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "# Add src to Python path" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "sys.path.insert(0, 'src')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "# Execute imports with detailed error handling" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "try:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print('Step 1: Basic rmnpy import...')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    import rmnpy" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print('SUCCESS: rmnpy imported')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    " | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print('Step 2: Dimensionality import...')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    from rmnpy.wrappers.sitypes import Dimensionality" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print('SUCCESS: Dimensionality imported')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    " | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print('Step 3: Object creation...')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    dim = Dimensionality('m')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print(f'SUCCESS: Created {dim}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    " | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print('ALL TESTS PASSED!')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "except Exception as e:" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    print(f'FAILED: {type(e).__name__}: {e}')" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    import traceback" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    traceback.print_exc()" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
-        "    sys.exit(1)" | Out-File -FilePath test_imports.py -Encoding UTF8 -Append
+        $importCmd = "import sys; sys.path.insert(0, 'src'); import rmnpy; print('SUCCESS: rmnpy imported successfully')"
 
-        Write-Host "Generated enhanced import test script content:"
-        Get-Content test_imports.py | Select-Object -First 15 | ForEach-Object { Write-Host "  $_" }
-        Write-Host "  ... (script contains DLL pre-loading and enhanced error handling)"
+        $process = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "-c", $importCmd -NoNewWindow -PassThru -Wait -RedirectStandardOutput "import_output.txt" -RedirectStandardError "import_error.txt"
 
-        Write-Host "Preparing environment for enhanced import test..."
+        Write-Host "Import test process exit code: $($process.ExitCode)"
 
-        # Create fallback minimal test script (Solution 4 from advice)
-        Write-Host "Creating fallback minimal test script..."
-        "import sys, os" | Out-File -FilePath test_minimal.py -Encoding UTF8
-        "sys.path.insert(0, 'src')" | Out-File -FilePath test_minimal.py -Encoding UTF8 -Append
-        "try:" | Out-File -FilePath test_minimal.py -Encoding UTF8 -Append
-        "    print('Fallback: Testing basic import...')" | Out-File -FilePath test_minimal.py -Encoding UTF8 -Append
-        "    import rmnpy" | Out-File -FilePath test_minimal.py -Encoding UTF8 -Append
-        "    print('SUCCESS: Basic import worked')" | Out-File -FilePath test_minimal.py -Encoding UTF8 -Append
-        "except Exception as e:" | Out-File -FilePath test_minimal.py -Encoding UTF8 -Append
-        "    print(f'FAILED: Even basic import failed: {e}')" | Out-File -FilePath test_minimal.py -Encoding UTF8 -Append
-        "    sys.exit(1)" | Out-File -FilePath test_minimal.py -Encoding UTF8 -Append
-
-        Write-Host "Running enhanced import test with DLL pre-loading..."
-
-        # Run with timeout and enhanced error capture using the improved script
-        $process = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "test_imports.py" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "import_output.txt" -RedirectStandardError "import_error.txt"
-
-        Write-Host "Process exit code: $($process.ExitCode)"
-
+        # Display output
         if (Test-Path "import_output.txt") {
-            Write-Host "=== Standard Output ==="
-            Get-Content "import_output.txt" | ForEach-Object { Write-Host $_ }
+            $output = Get-Content "import_output.txt" -Raw -ErrorAction SilentlyContinue
+            if ($output -and $output.Trim()) {
+                Write-Host "=== Import Output ==="
+                Write-Host $output
+            }
         }
 
         if (Test-Path "import_error.txt") {
-            $errorContent = Get-Content "import_error.txt" -Raw -ErrorAction SilentlyContinue
-            if ($errorContent -and $errorContent.Trim()) {
-                Write-Host "=== Standard Error ==="
-                Write-Host $errorContent
+            $errorOutput = Get-Content "import_error.txt" -Raw -ErrorAction SilentlyContinue
+            if ($errorOutput -and $errorOutput.Trim()) {
+                Write-Host "=== Import Error ==="
+                Write-Host $errorOutput
             }
         }
 
-        if ($process.ExitCode -ne 0) {
-            Write-Host "Enhanced import test failed with exit code: $($process.ExitCode)" -ForegroundColor Red
+        # Check for access violation specifically
+        if ($process.ExitCode -eq -1073741819) {
+            Write-Host "DETECTED: Access violation (-1073741819)" -ForegroundColor Red
+            Write-Host "Attempting DLL pre-loading workaround..." -ForegroundColor Yellow
 
-            # Enhanced diagnostic information with DLL analysis
-            Write-Host "=== Enhanced Diagnostics ==="
+            # Create simple DLL pre-loading command
+            $preloadCmd = "import ctypes; import os; "
+            $preloadCmd += "dll_dir = r'$mingwBin'; "
+            $preloadCmd += "for dll in ['libgcc_s_seh-1.dll', 'libwinpthread-1.dll', 'libgfortran-5.dll']: "
+            $preloadCmd += "    try: ctypes.CDLL(f'{dll_dir}\\{dll}'); print(f'Pre-loaded {dll}'); "
+            $preloadCmd += "    except: pass; "
+            $preloadCmd += "import sys; sys.path.insert(0, 'src'); import rmnpy; print('SUCCESS with pre-loading')"
 
-            Write-Host "DLL Status in src/rmnpy:"
-            Get-ChildItem "src/rmnpy\*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
-                Write-Host "  ✓ $($_.Name) ($([math]::round($_.Length/1KB, 1)) KB)"
-            }
+            $preloadProcess = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "-c", $preloadCmd -NoNewWindow -PassThru -Wait -RedirectStandardOutput "preload_output.txt" -RedirectStandardError "preload_error.txt"
 
-            Write-Host "Python extension files (.pyd):"
-            Get-ChildItem "src\rmnpy\**\*.pyd" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
-                Write-Host "  ✓ $($_.FullName) ($([math]::round($_.Length/1KB, 1)) KB)"
-            }
+            Write-Host "DLL pre-load test exit code: $($preloadProcess.ExitCode)"
 
-            Write-Host "MinGW DLL directory contents:"
-            Get-ChildItem "${{ runner.temp }}\msys64\mingw64\bin\libgcc_s_seh-1.dll", "${{ runner.temp }}\msys64\mingw64\bin\libwinpthread-1.dll", "${{ runner.temp }}\msys64\mingw64\bin\libgfortran-5.dll" -ErrorAction SilentlyContinue | ForEach-Object {
-                Write-Host "  ✓ $($_.Name) exists"
-            }
-
-            Write-Host "Python environment:"
-            & "$env:pythonLocation\python.exe" -c "import sys; print(f'Python: {sys.version}'); print(f'Path: {sys.executable}')"
-
-            Write-Host "CRITICAL: This may be an access violation (-1073741819). Trying fallback approach..." -ForegroundColor Yellow
-
-            # Solution 4: Try fallback minimal test
-            Write-Host "Attempting fallback minimal import test..."
-            $fallbackProcess = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "test_minimal.py" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "fallback_output.txt" -RedirectStandardError "fallback_error.txt"
-
-            if ($fallbackProcess.ExitCode -eq 0) {
-                Write-Host "SUCCESS: Fallback test passed - access violation may be in Dimensionality wrapper" -ForegroundColor Yellow
-                Write-Host "Continuing with basic test coverage..." -ForegroundColor Yellow
-                # Don't exit - continue with other tests
-            } else {
-                Write-Host "FAILED: Even fallback test failed - fundamental import issue" -ForegroundColor Red
-                if (Test-Path "fallback_output.txt") {
-                    Write-Host "Fallback output:"
-                    Get-Content "fallback_output.txt" | ForEach-Object { Write-Host $_ }
+            if (Test-Path "preload_output.txt") {
+                $preloadOutput = Get-Content "preload_output.txt" -Raw -ErrorAction SilentlyContinue
+                if ($preloadOutput -and $preloadOutput.Trim()) {
+                    Write-Host "=== Pre-load Output ==="
+                    Write-Host $preloadOutput
                 }
-                if (Test-Path "fallback_error.txt") {
-                    $fallbackErrorContent = Get-Content "fallback_error.txt" -Raw -ErrorAction SilentlyContinue
-                    if ($fallbackErrorContent -and $fallbackErrorContent.Trim()) {
-                        Write-Host "Fallback error:"
-                        Write-Host $fallbackErrorContent
+            }
+
+            if ($preloadProcess.ExitCode -eq 0) {
+                Write-Host "[WORKAROUND SUCCESS] DLL pre-loading resolved the access violation" -ForegroundColor Green
+            } else {
+                Write-Host "[WORKAROUND FAILED] DLL pre-loading did not resolve the issue" -ForegroundColor Red
+                if (Test-Path "preload_error.txt") {
+                    $preloadError = Get-Content "preload_error.txt" -Raw -ErrorAction SilentlyContinue
+                    if ($preloadError -and $preloadError.Trim()) {
+                        Write-Host "=== Pre-load Error ==="
+                        Write-Host $preloadError
                     }
                 }
-                exit $process.ExitCode
+                exit 1
             }
+
+        } elseif ($process.ExitCode -ne 0) {
+            Write-Host "Import test failed with exit code: $($process.ExitCode)" -ForegroundColor Red
+            exit $process.ExitCode
+        } else {
+            Write-Host "[SUCCESS] rmnpy import successful!" -ForegroundColor Green
         }
 
-        Write-Host "[OK] Enhanced import test with DLL pre-loading completed successfully!" -ForegroundColor Green
+        # Test Dimensionality import if basic import worked
+        Write-Host "Testing Dimensionality import..."
 
+        $dimCmd = "import sys; sys.path.insert(0, 'src'); from rmnpy.wrappers.sitypes import Dimensionality; d = Dimensionality('m'); print(f'SUCCESS: Created {d}')"
+
+        $dimProcess = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "-c", $dimCmd -NoNewWindow -PassThru -Wait -RedirectStandardOutput "dim_output.txt" -RedirectStandardError "dim_error.txt"
+
+        if ($dimProcess.ExitCode -eq 0) {
+            $dimOutput = Get-Content "dim_output.txt" -Raw -ErrorAction SilentlyContinue
+            Write-Host "[SUCCESS] Dimensionality test: $dimOutput" -ForegroundColor Green
+        } else {
+            Write-Host "[WARNING] Dimensionality test failed, but basic import worked" -ForegroundColor Yellow
+            if (Test-Path "dim_error.txt") {
+                $dimError = Get-Content "dim_error.txt" -Raw -ErrorAction SilentlyContinue
+                if ($dimError -and $dimError.Trim()) {
+                    Write-Host "Dimensionality error: $dimError"
+                }
+            }
+        }
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
       run: |
