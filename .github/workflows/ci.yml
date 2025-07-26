@@ -454,6 +454,7 @@ jobs:
           exit 1
         } else {
           Write-Host "✓ All import tests passed"
+          exit 0
         }
 
     - name: Run tests (Windows)
