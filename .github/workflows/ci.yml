@@ -405,8 +405,8 @@ jobs:
         PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
         MINGW_LIB_DIR: "${{ runner.temp }}/msys64/mingw64/lib"
       run: |
-        # Use GitHub Actions Python explicitly for pip install with MinGW compiler
-        & "${{ runner.temp }}\msys64\mingw64\bin\python.exe" -m pip install -e .[test]
+        # Install pytest and coverage plugin only for MSYS2 Python
+        & "${{ runner.temp }}\msys64\mingw64\bin\python.exe" -m pip install pytest pytest-cov
 
     - name: Generate constants (Linux/macOS)
       if: runner.os != 'Windows'
