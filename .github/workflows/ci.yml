@@ -462,7 +462,21 @@ jobs:
       shell: pwsh
       env:
         VENV_PY: ${{ env.VENV_PY }}
-        PATH: ${{ env.PATH }}
       run: |
+        # Prepend required paths for DLL resolution
+        $dllPaths = @(
+          "${{ runner.temp }}\msys64\mingw64\bin",
+          "src\rmnpy",
+          "lib",
+          "$env:pythonLocation",
+          "$env:pythonLocation\DLLs",
+          "$env:pythonLocation\Scripts"
+        )
+        foreach ($path in $dllPaths) {
+          if (Test-Path $path) {
+            $env:PATH = "$path;$env:PATH"
+            Write-Host "Prepended to PATH: $path"
+          }
+        }
         Write-Host "Running full test suite..."
         & "$env:VENV_PY" -m pytest --maxfail=1 --disable-warnings -q
