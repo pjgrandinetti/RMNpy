@@ -345,16 +345,9 @@ jobs:
         & "venv\Scripts\python.exe" -m pip install numpy pytest pytest-cov
         # Upgrade pip
         & "venv\Scripts\python.exe" -m pip install --upgrade pip
-        # Pre-install OCTypes, SITypes, RMNLib from GitHub
-        & "venv\Scripts\python.exe" -m pip install git+https://github.com/pjgrandinetti/OCTypes.git@v0.1.0#egg=OCTypes
-        & "venv\Scripts\python.exe" -m pip install git+https://github.com/pjgrandinetti/SITypes.git@v0.1.0#egg=SITypes
-        & "venv\Scripts\python.exe" -m pip install git+https://github.com/pjgrandinetti/RMNLib.git@v0.1.0#egg=RMNLib
+        # Binaries for OCTypes, SITypes, and RMNLib have been downloaded from releases above and do not require pip installation
         # Install editable package with test extras
         & "venv\Scripts\python.exe" -m pip install -e .[test]
-        # Install Python packages for OCTypes, SITypes, and RMNLib
-        & "venv\Scripts\python.exe" -m pip install git+https://github.com/pjgrandinetti/OCTypes.git@v0.1.0#egg=OCTypes
-        & "venv\Scripts\python.exe" -m pip install git+https://github.com/pjgrandinetti/SITypes.git@v0.1.0#egg=SITypes
-        & "venv\Scripts\python.exe" -m pip install git+https://github.com/pjgrandinetti/RMNLib.git@v0.1.0#egg=RMNLib
         # Expose venv python path for subsequent steps
         'VENV_PY=venv\Scripts\python.exe' | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8
 
