@@ -337,14 +337,14 @@ jobs:
         PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
         MINGW_LIB_DIR: "${{ runner.temp }}/msys64/mingw64/lib"
       run: |
-        # Create virtual environment under MSYS2 Python to avoid system-managed restrictions
-        $mingw = "${{ runner.temp }}\msys64\mingw64\bin"
-        & "$mingw\python.exe" -m pip install --upgrade pip virtualenv
-        & "$mingw\python.exe" -m virtualenv venv
+        # Create a native Windows virtual environment
+        python -m venv venv
+        # Activate the virtual environment
+        & ".\venv\Scripts\Activate.ps1"
         # Install dependencies into venv
-        & ".\venv\Scripts\pip.exe" install --upgrade pip
-        & ".\venv\Scripts\pip.exe" install numpy pytest pytest-cov
-        & ".\venv\Scripts\pip.exe" install -e .[test]
+        pip install --upgrade pip
+        pip install numpy pytest pytest-cov
+        pip install -e .[test]
         # Expose venv python path for test step
         "VENV_PY=venv\\Scripts\\python.exe" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8
 
@@ -427,4 +427,67 @@ jobs:
         # Test numpy import
         Write-Host "Testing numpy import..."
         try {
-            $numpyTest = & "$env:VENV_PY" -c "import numpy; print('Numpy version:'
+            $numpyTest = & "$env:VENV_PY" -c "import numpy; print('Numpy version: ' + numpy.__version__)"
+            Write-Host "[OK] Numpy import successful"
+          } catch {
+            Write-Host "[ERROR] Numpy import test failed: $_"
+            $global:importFailed = $true
+        }
+
+        # Test RMNpy import
+        Write-Host "Testing RMNpy import..."
+        try {
+            $rmnpyTest = & "$env:VENV_PY" -c "import rmnpy"
+            Write-Host "[OK] RMNpy import successful"
+          } catch {
+            Write-Host "[ERROR] RMNpy import test failed: $_"
+            $global:importFailed = $true
+        }
+
+        # Test OCTypes import
+        Write-Host "Testing OCTypes import..."
+        try {
+            $octypesTest = & "$env:VENV_PY" -c "import OCTypes"
+            Write-Host "[OK] OCTypes import successful"
+          } catch {
+            Write-Host "[ERROR] OCTypes import test failed: $_"
+            $global:importFailed = $true
+        }
+
+        # Test SITypes import
+        Write-Host "Testing SITypes import..."
+        try {
+            $sitypesTest = & "$env:VENV_PY" -c "import SITypes"
+            Write-Host "[OK] SITypes import successful"
+          } catch {
+            Write-Host "[ERROR] SITypes import test failed: $_"
+            $global:importFailed = $true
+        }
+
+        # Test RMNLib import
+        Write-Host "Testing RMNLib import..."
+        try {
+            $rmnlibTest = & "$env:VENV_PY" -c "import RMNLib"
+            Write-Host "[OK] RMNLib import successful"
+          } catch {
+            Write-Host "[ERROR] RMNLib import test failed: $_"
+            $global:importFailed = $true
+        }
+
+        # Final status check
+        if ($global:importFailed) {
+          Write-Host "⚠ One or more import tests failed"
+          exit 1
+        } else {
+          Write-Host "✓ All import tests passed"
+        }
+
+    - name: Run tests (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        VENV_PY: ${{ env.VENV_PY }}
+        PATH: ${{ env.PATH }}
+      run: |
+        Write-Host "Running full test suite..."
+        & "$env:VENV_PY" -m pytest --maxfail=1 --disable-warnings -q

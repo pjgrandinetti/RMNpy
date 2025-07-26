@@ -44,8 +44,52 @@ pip install -e .
 ```
 
 ### For End Users (When Available)
+
 ```bash
 pip install rmnpy
+```
+
+### Windows (MSYS2/Mingw-w64 Python)
+
+To install RMNpy with C99-based Cython extensions on Windows you must use the MSYS2 MINGW64 Python runtime:
+
+1. Install [MSYS2](https://www.msys2.org/) and open the **MSYS2 MinGW64** shell.
+2. Update packages and install dependencies:
+
+   ```bash
+   pacman -Syu             # first-time update
+   pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-python-pip \
+                mingw-w64-x86_64-openblas mingw-w64-x86_64-lapack \
+                mingw-w64-x86_64-curl mingw-w64-x86_64-make
+   ```
+
+3. Create and activate a virtual environment (so pip can install into it):
+
+   ```bash
+   python -m pip install --upgrade pip virtualenv
+   python -m virtualenv venv
+   source venv/bin/activate
+   ```
+
+4. Install RMNpy and test extras:
+
+   ```bash
+   pip install numpy pytest pytest-cov
+   pip install -e .[test]
+   ```
+
+5. Run your scripts or pytest from this venv; it uses MinGW-built extensions compatible with Windows.
+
+#### Using Conda-forge MSYS2 Environment (Optional)
+If you prefer managing dependencies with conda, you can provision an MSYS2 toolchain via conda-forge:
+
+```bash
+conda create -n rmnpy-win python=3.12 pip m2-msys2-runtime m2-gcc m2-gcc-fortran m2-openblas m2-lapack m2-curl m2-make virtualenv -c conda-forge
+conda activate rmnpy-win
+# (Optional) isolate further via virtualenv within conda env:
+python -m venv venv
+source venv/bin/activate
+pip install -e .[test]
 ```
 
 ## Quick Start
