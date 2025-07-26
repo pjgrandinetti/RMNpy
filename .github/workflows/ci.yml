@@ -248,8 +248,8 @@ jobs:
         Write-Host "CC environment: $env:CC"
         Write-Host "CXX environment: $env:CXX"
 
-        # Use GitHub Actions Python explicitly (not MSYS2 Python)
-        & "${{ runner.temp }}\msys64\mingw64\bin\python.exe" -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2"
+        # Use GitHub Actions Python with MinGW compiler on PATH
+        & "$Env:pythonLocation\\python.exe" -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2"
 
     - name: Build Cython extension in-place (Windows)
       if: runner.os == 'Windows'
@@ -271,8 +271,8 @@ jobs:
         Write-Host "  LIBS: $env:LIBS"
         Write-Host "  MINGW_LIB_DIR: $env:MINGW_LIB_DIR"
 
-        # Use GitHub Actions Python explicitly for build with MinGW compiler
-        & "${{ runner.temp }}\msys64\mingw64\bin\python.exe" setup.py build_ext --inplace
+        # Build C extensions using GitHub Actions Python with MinGW compiler
+        & "$Env:pythonLocation\\python.exe" setup.py build_ext --inplace
 
     - name: Copy runtime DLLs (Windows)
       if: runner.os == 'Windows'
