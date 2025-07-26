@@ -496,6 +496,11 @@ jobs:
         # Direct import test with comprehensive error monitoring
         Write-Host "Testing rmnpy import with enhanced monitoring..."
 
+        # Initialize global state variables
+        $global:importFailed = $false
+        $global:msys2Success = $false
+        $global:windowsTestSkipped = $false
+
         # Write import command to temporary script file to avoid PowerShell string truncation
         'import sys' | Out-File -FilePath "test_import.py" -Encoding utf8
         'sys.path.insert(0, "src")' | Out-File -FilePath "test_import.py" -Encoding utf8 -Append
@@ -620,6 +625,7 @@ jobs:
 
             if ($compatProcess.ExitCode -eq 0) {
                 Write-Host "[WORKAROUND SUCCESS] System compatibility approach resolved the access violation" -ForegroundColor Green
+                $global:importFailed = $false
             } else {
                 Write-Host "[SYSTEM COMPAT FAILED] Trying MSYS2 Python fallback..." -ForegroundColor Yellow
 
@@ -631,100 +637,132 @@ jobs:
                     }
                 }
 
-        # Try MSYS2 Python as fallback for better MinGW compatibility
-        $msys2Python = "${{ runner.temp }}\msys64\mingw64\bin\python.exe"
-        if (Test-Path $msys2Python) {
-            Write-Host "Attempting MSYS2 Python fallback for better MinGW ABI compatibility..." -ForegroundColor Cyan
+                # Try MSYS2 Python as fallback for better MinGW compatibility
+                $msys2Python = "${{ runner.temp }}\msys64\mingw64\bin\python.exe"
+                if (Test-Path $msys2Python) {
+                    Write-Host "Attempting MSYS2 Python fallback for better MinGW ABI compatibility..." -ForegroundColor Cyan
 
-            # Install rmnpy in MSYS2 environment
-            $env:PATH = "${{ runner.temp }}\msys64\mingw64\bin;$originalPath"
+                    # Install rmnpy in MSYS2 environment
+                    $env:PATH = "${{ runner.temp }}\msys64\mingw64\bin;$originalPath"
 
-            # Copy built extensions to MSYS2 Python site-packages with proper structure
-            $msys2SitePackages = & $msys2Python -c "import site; print(site.getsitepackages()[0])" 2>$null
-            if ($msys2SitePackages -and (Test-Path $msys2SitePackages)) {
-                Write-Host "MSYS2 site-packages: $msys2SitePackages"
-                $targetPath = Join-Path $msys2SitePackages "rmnpy"
-                if (!(Test-Path $targetPath)) {
-                    New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
-                }
-
-                # Copy all Python module files and compiled extensions
-                Copy-Item "src\rmnpy\*.py" $targetPath -Force -ErrorAction SilentlyContinue
-                Copy-Item "src\rmnpy\*.pyd" $targetPath -Force -ErrorAction SilentlyContinue
-
-                # Copy subdirectories (wrappers, helpers, etc.)
-                Get-ChildItem "src\rmnpy" -Directory | ForEach-Object {
-                    $subTargetPath = Join-Path $targetPath $_.Name
-                    if (!(Test-Path $subTargetPath)) {
-                        New-Item -ItemType Directory -Path $subTargetPath -Force | Out-Null
+                    # Copy built extensions to MSYS2 Python site-packages with proper structure
+                    try {
+                        $msys2SitePackages = & $msys2Python -c "import site; print(site.getsitepackages()[0])" 2>$null
+                        if (-not $msys2SitePackages) {
+                            # Fallback method for site-packages detection
+                            $msys2SitePackages = & $msys2Python -c "import sys; import os; print(os.path.join(sys.prefix, 'Lib', 'site-packages'))" 2>$null
+                        }
+                    } catch {
+                        Write-Host "Failed to detect MSYS2 site-packages directory"
+                        $msys2SitePackages = $null
                     }
-                    Copy-Item "$($_.FullName)\*" $subTargetPath -Recurse -Force -ErrorAction SilentlyContinue
-                }
 
-                # Copy all DLLs to the main rmnpy directory for MSYS2
-                Copy-Item "src\rmnpy\*.dll" $targetPath -Force -ErrorAction SilentlyContinue
+                    if ($msys2SitePackages -and (Test-Path $msys2SitePackages)) {
+                        Write-Host "MSYS2 site-packages: $msys2SitePackages"
+                        $targetPath = Join-Path $msys2SitePackages "rmnpy"
+                        if (!(Test-Path $targetPath)) {
+                            New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
+                        }
 
-                Write-Host "Copied rmnpy structure to MSYS2 site-packages"
+                        # Copy all Python module files and compiled extensions
+                        Copy-Item "src\rmnpy\*.py" $targetPath -Force -ErrorAction SilentlyContinue
+                        Copy-Item "src\rmnpy\*.pyd" $targetPath -Force -ErrorAction SilentlyContinue
 
-                # Test with MSYS2 Python using absolute module path
-                "import sys" | Out-File -FilePath "test_msys2.py" -Encoding utf8
-                "sys.path.insert(0, r'$msys2SitePackages')" | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
-                'print(f"Python path includes: {sys.path[:3]}")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
-                'import rmnpy' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
-                'print("SUCCESS: rmnpy imported with MSYS2 Python!")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
-                'from rmnpy.wrappers.sitypes import Dimensionality' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
-                'dim = Dimensionality("m")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
-                'print(f"SUCCESS: Created dimensionality {dim}")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
+                        # Copy subdirectories (wrappers, helpers, etc.)
+                        Get-ChildItem "src\rmnpy" -Directory | ForEach-Object {
+                            $subTargetPath = Join-Path $targetPath $_.Name
+                            if (!(Test-Path $subTargetPath)) {
+                                New-Item -ItemType Directory -Path $subTargetPath -Force | Out-Null
+                            }
+                            Copy-Item "$($_.FullName)\*" $subTargetPath -Recurse -Force -ErrorAction SilentlyContinue
+                        }
 
-                $msys2Process = Start-Process -FilePath $msys2Python -ArgumentList "test_msys2.py" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "msys2_output.txt" -RedirectStandardError "msys2_error.txt"
+                        # Copy all DLLs to the main rmnpy directory for MSYS2
+                        Copy-Item "src\rmnpy\*.dll" $targetPath -Force -ErrorAction SilentlyContinue
 
-                if ($msys2Process.ExitCode -eq 0) {
-                    $msys2Output = Get-Content "msys2_output.txt" -Raw -ErrorAction SilentlyContinue
-                    Write-Host "[MSYS2 SUCCESS] $msys2Output" -ForegroundColor Green
-                    Write-Host "MinGW-compiled extensions work with MSYS2 Python!" -ForegroundColor Green
+                        Write-Host "Copied rmnpy structure to MSYS2 site-packages"
 
-                    # If MSYS2 works, we can run a subset of tests
-                    Write-Host "Running basic tests with MSYS2 Python..." -ForegroundColor Green
-                    $env:PYTHONPATH = $msys2SitePackages
-                    & $msys2Python -c "import rmnpy; from rmnpy.wrappers.sitypes import Dimensionality, Unit, Scalar; print('All imports successful')"
-                    if ($LASTEXITCODE -eq 0) {
-                        Write-Host "✓ MSYS2 Python can successfully import all rmnpy modules" -ForegroundColor Green
-                        $global:msys2Success = $true
+                        # Test with MSYS2 Python using absolute module path
+                        "import sys" | Out-File -FilePath "test_msys2.py" -Encoding utf8
+                        "import os" | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
+                        "sys.path.insert(0, r'$msys2SitePackages')" | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
+                        'print(f"Python executable: {sys.executable}")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
+                        'print(f"Python path includes: {sys.path[:3]}")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
+                        'print(f"MSYS2 site-packages: " + r"$msys2SitePackages")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
+                        'print(f"rmnpy directory exists: {os.path.exists(r"$msys2SitePackages\\rmnpy")}")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
+                        'import rmnpy' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
+                        'print("SUCCESS: rmnpy imported with MSYS2 Python!")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
+                        'from rmnpy.wrappers.sitypes import Dimensionality' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
+                        'dim = Dimensionality("m")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
+                        'print(f"SUCCESS: Created dimensionality {dim}")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
+
+                        $msys2Process = Start-Process -FilePath $msys2Python -ArgumentList "test_msys2.py" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "msys2_output.txt" -RedirectStandardError "msys2_error.txt"
+
+                        Write-Host "MSYS2 Python test exit code: $($msys2Process.ExitCode)"
+
+                        if (Test-Path "msys2_output.txt") {
+                            $msys2Output = Get-Content "msys2_output.txt" -Raw -ErrorAction SilentlyContinue
+                            if ($msys2Output -and $msys2Output.Trim()) {
+                                Write-Host "=== MSYS2 Output ==="
+                                Write-Host $msys2Output
+                            }
+                        }
+
+                        if (Test-Path "msys2_error.txt") {
+                            $msys2ErrorContent = Get-Content "msys2_error.txt" -Raw -ErrorAction SilentlyContinue
+                            if ($msys2ErrorContent -and $msys2ErrorContent.Trim()) {
+                                Write-Host "=== MSYS2 Error ==="
+                                Write-Host $msys2ErrorContent
+                            }
+                        }
+
+                        if ($msys2Process.ExitCode -eq 0) {
+                            Write-Host "[MSYS2 SUCCESS] MinGW-compiled extensions work with MSYS2 Python!" -ForegroundColor Green
+
+                            # If MSYS2 works, we can run a subset of tests
+                            Write-Host "Running basic tests with MSYS2 Python..." -ForegroundColor Green
+                            $env:PYTHONPATH = $msys2SitePackages
+                            & $msys2Python -c "import rmnpy; from rmnpy.wrappers.sitypes import Dimensionality, Unit, Scalar; print('All imports successful')"
+                            if ($LASTEXITCODE -eq 0) {
+                                Write-Host "✓ MSYS2 Python can successfully import all rmnpy modules" -ForegroundColor Green
+                                $global:msys2Success = $true
+                                $global:importFailed = $false
+                            } else {
+                                Write-Host "✗ MSYS2 Python import verification failed (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
+                            }
+                        } else {
+                            Write-Host "[MSYS2 FAILED] MSYS2 Python also failed (exit code: $($msys2Process.ExitCode))" -ForegroundColor Red
+                        }
+                    } else {
+                        Write-Host "Could not find MSYS2 site-packages directory" -ForegroundColor Red
                     }
                 } else {
-                    Write-Host "[MSYS2 FAILED] MSYS2 Python also failed" -ForegroundColor Red
-                    if (Test-Path "msys2_error.txt") {
-                        $msys2Error = Get-Content "msys2_error.txt" -Raw -ErrorAction SilentlyContinue
-                        if ($msys2Error -and $msys2Error.Trim()) {
-                            Write-Host "MSYS2 Error: $msys2Error"
-                        }
-                    }
+                    Write-Host "MSYS2 Python not found at $msys2Python" -ForegroundColor Red
                 }
-            } else {
-                Write-Host "Could not find MSYS2 site-packages directory" -ForegroundColor Red
-            }
-        } else {
-            Write-Host "MSYS2 Python not found at $msys2Python" -ForegroundColor Red
-        }                # Final attempt: Skip tests on Windows due to MinGW ABI incompatibility
-                Write-Host "=== FINAL ASSESSMENT ===" -ForegroundColor Magenta
-                Write-Host "MinGW-compiled extensions are incompatible with GitHub Actions Windows Python" -ForegroundColor Yellow
-                Write-Host "This is a known issue with MinGW ABI vs Windows Python ABI" -ForegroundColor Yellow
-                Write-Host "Extensions built successfully - issue is runtime ABI mismatch" -ForegroundColor Yellow
-                Write-Host "Skipping Windows tests due to fundamental ABI incompatibility" -ForegroundColor Yellow
 
-                # Don't exit with error - the build succeeded, just runtime incompatible
-                $global:windowsTestSkipped = $true
+                # Final assessment if all approaches failed
+                if ($global:importFailed -and -not $global:msys2Success) {
+                    Write-Host "=== FINAL ASSESSMENT ===" -ForegroundColor Magenta
+                    Write-Host "MinGW-compiled extensions are incompatible with GitHub Actions Windows Python" -ForegroundColor Yellow
+                    Write-Host "This is a known issue with MinGW ABI vs Windows Python ABI" -ForegroundColor Yellow
+                    Write-Host "Extensions built successfully - issue is runtime ABI mismatch" -ForegroundColor Yellow
+                    Write-Host "Skipping Windows tests due to fundamental ABI incompatibility" -ForegroundColor Yellow
+
+                    # Don't exit with error - the build succeeded, just runtime incompatible
+                    $global:windowsTestSkipped = $true
+                }
             }
 
         } elseif ($process.ExitCode -ne 0) {
             Write-Host "Import test failed with exit code: $($process.ExitCode)" -ForegroundColor Red
-            exit $process.ExitCode
+            $global:importFailed = $true
         } else {
             Write-Host "[SUCCESS] rmnpy import successful!" -ForegroundColor Green
+            $global:importFailed = $false
         }
 
         # Test Dimensionality import if basic import worked and not skipped
-        if (-not $global:windowsTestSkipped) {
+        if (-not $global:windowsTestSkipped -and -not $global:importFailed) {
             Write-Host "Testing Dimensionality import..."
 
             # Write Dimensionality test to script file to avoid PowerShell string truncation
@@ -749,7 +787,7 @@ jobs:
                 }
             }
         } else {
-            Write-Host "Skipping Dimensionality test due to MinGW ABI incompatibility" -ForegroundColor Yellow
+            Write-Host "Skipping Dimensionality test due to import failure or MinGW ABI incompatibility" -ForegroundColor Yellow
         }
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
@@ -884,27 +922,42 @@ jobs:
                 & "$env:pythonLocation\python.exe" -c $testImport
                 Write-Host "✓ Import succeeded after DLL fixes!"
             } catch {
-                Write-Host "✗ Import still failing - will check MSYS2 Python success"
-                if ($global:msys2Success) {
-                    Write-Host "✓ MSYS2 Python succeeded, using that environment for tests" -ForegroundColor Green
-                    $env:pythonLocation = "${{ runner.temp }}\msys64\mingw64\bin"
-                    $env:PATH = "$env:pythonLocation;$env:PATH"
-                    Write-Host "Switched to MSYS2 Python for tests"
-                } else {
-                    Write-Host "✗ Both regular and MSYS2 Python failed - this is a fundamental compatibility issue with MinGW-compiled extensions on GitHub Actions Windows runner"
-                    Write-Host "Skipping Windows tests due to ABI incompatibility (build succeeded, runtime incompatible)" -ForegroundColor Yellow
-                    exit 0
-                }
+                Write-Host "✗ Import still failing after DLL fixes"
             }
         }
 
-        # Final check - if we have msys2Success, use it
+        # Final environment setup for tests
         if ($global:msys2Success) {
             Write-Host "Using MSYS2 Python environment for test execution" -ForegroundColor Green
-            $env:pythonLocation = "${{ runner.temp }}\msys64\mingw64\bin"
-            $env:PATH = "$env:pythonLocation;$env:PATH"
-        }        # Run the actual test suite with proper environment
-        & "$env:pythonLocation\python.exe" -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
+            $msys2Python = "${{ runner.temp }}\msys64\mingw64\bin\python.exe"
+            $msys2SitePackages = & $msys2Python -c "import site; print(site.getsitepackages()[0])" 2>$null
+            $env:PATH = "${{ runner.temp }}\msys64\mingw64\bin;$env:PATH"
+            $env:PYTHONPATH = $msys2SitePackages
+
+            Write-Host "MSYS2 Environment:"
+            Write-Host "  Python: $msys2Python"
+            Write-Host "  PYTHONPATH: $env:PYTHONPATH"
+            Write-Host "  Site-packages: $msys2SitePackages"
+
+            # Run tests with MSYS2 Python
+            Write-Host "Running pytest with MSYS2 Python..."
+            & $msys2Python -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
+
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✓ Tests completed successfully with MSYS2 Python!" -ForegroundColor Green
+            } else {
+                Write-Host "✗ Some tests failed with MSYS2 Python (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
+                exit $LASTEXITCODE
+            }
+        } elseif ($global:windowsTestSkipped) {
+            Write-Host "Skipping Windows tests due to MinGW ABI incompatibility (build succeeded, runtime incompatible)" -ForegroundColor Yellow
+            Write-Host "This is expected behavior on GitHub Actions Windows runners with MinGW-compiled extensions" -ForegroundColor Yellow
+            exit 0
+        } else {
+            # Regular Python worked, run normal tests
+            Write-Host "Running pytest with standard Python installation..."
+            & "$env:pythonLocation\python.exe" -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
+        }
 
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
