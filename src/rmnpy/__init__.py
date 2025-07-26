@@ -15,12 +15,12 @@ The package is organized into:
 # This implements Claude Opus 4's recommendation to fix DLL import issues
 # CRITICAL: Import DLL loader FIRST to set up Windows DLL paths
 # This implements Claude Opus 4's recommendation to fix DLL import issues
-from . import dll_loader  # This sets up DLL paths before any other imports
-from .wrappers.sitypes import Dimensionality, Scalar, Unit
+from . import dll_loader  # Import DLL loader first
 
-# Automatically initialize DLL loading on import
+# Initialize DLL loader before loading C extension modules
 dll_loader.setup_dll_paths()
-dll_loader.preload_mingw_runtime()
+
+from .wrappers.sitypes import Dimensionality, Scalar, Unit  # noqa: E402
 
 __version__ = "0.1.0"
 __author__ = "Philip Grandinetti"

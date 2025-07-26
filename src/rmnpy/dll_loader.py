@@ -4,7 +4,6 @@ Windows DLL loader module for RMNpy.
 Implements Claude Opus 4's recommendation for pre-loading critical DLLs
 and setting up proper DLL search paths.
 """
-import ctypes
 import os
 import shutil
 import sys
@@ -105,13 +104,6 @@ def setup_dll_paths() -> None:
                         pass
                     break
 
-        # Pre-load Python versioned DLL for extension linking
-        if python_versioned.exists():
-            try:
-                ctypes.CDLL(str(python_versioned))
-            except Exception:
-                pass
-
         # Copy MinGW runtime and Python DLLs into package directory for direct loading
         dll_names = [
             "libwinpthread-1.dll",
@@ -169,67 +161,26 @@ def setup_dll_paths() -> None:
                     # Ignore errors if directory can't be added
                     pass
 
-        # Pre-load critical MinGW DLLs (include C++ and OpenMP runtimes)
-        critical_dlls = [
-            "libwinpthread-1.dll",
-            "libgcc_s_seh-1.dll",
-            "libstdc++-6.dll",
-            "libgomp-1.dll",
-            "libquadmath-0.dll",
-            "libgfortran-5.dll",
-            "libopenblas.dll",  # OpenBLAS
-            "liblapack.dll",  # LAPACK
-            "libcurl-4.dll",  # curl
-        ]
-        for dll_name in critical_dlls:
-            for dll_dir in dll_dirs:
-                dll_path = dll_dir / dll_name
-                if dll_path.exists():
-                    try:
-                        ctypes.CDLL(str(dll_path))
-                        break
-                    except Exception:
-                        pass
-
 
 def preload_mingw_runtime() -> None:
-    """Pre-load MinGW runtime libraries in the correct order"""
+    """Register MinGW runtime directories for Windows DLL loader without loading DLLs explicitly"""
     if sys.platform == "win32":
-        # Order matters for dependency loading
-        runtime_dlls = [
-            "libwinpthread-1.dll",
-            "libgcc_s_seh-1.dll",
-            "libstdc++-6.dll",
-            "libgomp-1.dll",
-            "libquadmath-0.dll",  # Sometimes needed for Fortran libraries
-            "libgfortran-5.dll",  # Fortran runtime
-            "libopenblas.dll",  # OpenBLAS
-            "liblapack.dll",  # LAPACK
-            "libcurl-4.dll",  # curl
-        ]
-
-        # Search paths (include extension module directory)
         base_dir = Path(__file__).parent
-        search_paths = [
+        # Directories where runtime DLLs reside
+        runtime_dirs = [
             base_dir,
             base_dir / "wrappers" / "sitypes",
-            base_dir.parent.parent.parent / "lib",
             Path(r"D:\a\_temp\msys64\mingw64\bin"),
             Path(r"C:\msys64\mingw64\bin"),
         ]
-
-        for dll_name in runtime_dlls:
-            for search_path in search_paths:
-                dll_path = search_path / dll_name
-                if dll_path.exists():
-                    try:
-                        ctypes.CDLL(str(dll_path))
-                        break
-                    except Exception:
-                        continue
-
-
-# Call this before any imports
-if __name__ != "__main__":
-    setup_dll_paths()
-    preload_mingw_runtime()
+        # Prepend directories to PATH and register via add_dll_directory
+        for d in runtime_dirs:
+            if d.exists():
+                try:
+                    os.environ["PATH"] = (
+                        str(d) + os.pathsep + os.environ.get("PATH", "")
+                    )
+                    if hasattr(os, "add_dll_directory"):
+                        os.add_dll_directory(str(d))
+                except Exception:
+                    pass
