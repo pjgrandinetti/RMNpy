@@ -32,14 +32,31 @@ def setup_dll_paths() -> None:
             dll_dirs.append(Path(sys.exec_prefix))
             dll_dirs.append(Path(sys.exec_prefix) / "DLLs")
 
-        # Register all dll_dirs: prepend to PATH and add via add_dll_directory
+        # Determine valid directories
         existing_path = os.environ.get("PATH", "")
         valid_dirs = [d for d in dll_dirs if d.exists()]
-        # Prepend to PATH
+        # Prepend only Python installation and MinGW bin dirs to PATH
+        path_dirs = []
+        # Python base and DLL dirs
+        py_base = Path(sys.base_prefix)
+        if py_base.exists():
+            path_dirs.append(py_base)
+            path_dirs.append(py_base / "DLLs")
+        # Virtual environment exec_prefix if different
+        if hasattr(sys, "exec_prefix") and sys.exec_prefix != sys.base_prefix:
+            py_exec = Path(sys.exec_prefix)
+            if py_exec.exists():
+                path_dirs.append(py_exec)
+                path_dirs.append(py_exec / "DLLs")
+        # MinGW bin if present
+        for d in valid_dirs:
+            if "msys64" in str(d).lower() and d.is_dir():
+                path_dirs.append(d)
+        # Apply new PATH
         os.environ["PATH"] = os.pathsep.join(
-            [str(d) for d in valid_dirs] + [existing_path]
+            [str(d) for d in path_dirs] + [existing_path]
         )
-        # Register directories for DLL search
+        # Register all valid dirs for DLL search
         for d in valid_dirs:
             if hasattr(os, "add_dll_directory"):
                 try:
@@ -64,6 +81,7 @@ def setup_dll_paths() -> None:
             base_dir / "wrappers" / "sitypes",
             base_dir / "wrappers" / "rmnlib",
         ]
+        # Copy MinGW runtime DLLs adjacent to extension modules for loader adjacency
         for dll_name in runtime_dlls:
             for ext_dir in ext_dirs:
                 try:
@@ -81,6 +99,27 @@ def setup_dll_paths() -> None:
                         except Exception:
                             pass
                         break
+        # Remove any python*.dll in extension directories to avoid loading mismatched Python DLL
+        for ext_dir in ext_dirs:
+            try:
+                for py_dll in Path(ext_dir).glob("python*.dll"):
+                    py_dll.unlink()
+            except Exception:
+                pass
+        # Explicitly load Python runtime DLL globally to resolve extension module symbols
+        try:
+            import ctypes
+
+            # Determine Python DLL path
+            dll_name = f"python{sys.version_info.major}{sys.version_info.minor}.dll"
+            py_dll = Path(sys.base_prefix) / dll_name
+            if not py_dll.exists():
+                # fallback to generic python3.dll
+                py_dll = Path(sys.base_prefix) / "python3.dll"
+            if py_dll.exists():
+                ctypes.CDLL(str(py_dll))
+        except Exception:
+            pass
 
 
 def preload_mingw_runtime() -> None:
@@ -94,14 +133,10 @@ def preload_mingw_runtime() -> None:
             Path(r"D:\a\_temp\msys64\mingw64\bin"),
             Path(r"C:\msys64\mingw64\bin"),
         ]
-        # Prepend directories to PATH and register via add_dll_directory
+        # Register runtime dirs for DLL search without modifying PATH
         for d in runtime_dirs:
-            if d.exists():
+            if d.exists() and hasattr(os, "add_dll_directory"):
                 try:
-                    os.environ["PATH"] = (
-                        str(d) + os.pathsep + os.environ.get("PATH", "")
-                    )
-                    if hasattr(os, "add_dll_directory"):
-                        os.add_dll_directory(str(d))
+                    os.add_dll_directory(str(d))
                 except Exception:
                     pass
