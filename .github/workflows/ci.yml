@@ -661,7 +661,7 @@ jobs:
                         Write-Host "MSYS2 site-packages: $msys2SitePackages"
                         $targetPath = Join-Path $msys2SitePackages "rmnpy"
                         if (!(Test-Path $targetPath)) {
-                            New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
+                          New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
                         }
 
                         # Copy all Python module files and compiled extensions
@@ -670,11 +670,11 @@ jobs:
 
                         # Copy subdirectories (wrappers, helpers, etc.)
                         Get-ChildItem "src\rmnpy" -Directory | ForEach-Object {
-                            $subTargetPath = Join-Path $targetPath $_.Name
-                            if (!(Test-Path $subTargetPath)) {
-                                New-Item -ItemType Directory -Path $subTargetPath -Force | Out-Null
-                            }
-                            Copy-Item "$($_.FullName)\*" $subTargetPath -Recurse -Force -ErrorAction SilentlyContinue
+                          $subTargetPath = Join-Path $targetPath $_.Name
+                          if (!(Test-Path $subTargetPath)) {
+                            New-Item -ItemType Directory -Path $subTargetPath -Force | Out-Null
+                          }
+                          Copy-Item "$($_.FullName)\*" $subTargetPath -Recurse -Force -ErrorAction SilentlyContinue
                         }
 
                         # Copy all DLLs to the main rmnpy directory for MSYS2
@@ -693,7 +693,7 @@ jobs:
                         'import rmnpy' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
                         'print("SUCCESS: rmnpy imported with MSYS2 Python!")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
                         'from rmnpy.wrappers.sitypes import Dimensionality' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
-                        'dim = Dimensionality("m")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
+                        'dim = Dimensionality("L")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
                         'print(f"SUCCESS: Created dimensionality {dim}")' | Out-File -FilePath "test_msys2.py" -Encoding utf8 -Append
 
                         $msys2Process = Start-Process -FilePath $msys2Python -ArgumentList "test_msys2.py" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "msys2_output.txt" -RedirectStandardError "msys2_error.txt"
@@ -769,7 +769,7 @@ jobs:
             'import sys' | Out-File -FilePath "test_dimensionality.py" -Encoding utf8
             'sys.path.insert(0, "src")' | Out-File -FilePath "test_dimensionality.py" -Encoding utf8 -Append
             'from rmnpy.wrappers.sitypes import Dimensionality' | Out-File -FilePath "test_dimensionality.py" -Encoding utf8 -Append
-            'd = Dimensionality("m")' | Out-File -FilePath "test_dimensionality.py" -Encoding utf8 -Append
+            'd = Dimensionality("L")' | Out-File -FilePath "test_dimensionality.py" -Encoding utf8 -Append
             'print(f"SUCCESS: Created {d}")' | Out-File -FilePath "test_dimensionality.py" -Encoding utf8 -Append
 
             $dimProcess = Start-Process -FilePath "$env:pythonLocation\python.exe" -ArgumentList "test_dimensionality.py" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "dim_output.txt" -RedirectStandardError "dim_error.txt"
@@ -797,167 +797,8 @@ jobs:
     - name: Run tests (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      env:
-        CC: x86_64-w64-mingw32-gcc
-        CXX: x86_64-w64-mingw32-g++
-        LIBRARY_PATH: ${{ runner.temp }}/msys64/mingw64/lib
-        LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
-        PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
       run: |
-        # Set up comprehensive DLL resolution for Windows tests
-        $currentDir = Get-Location
-        $packageDir = Join-Path $currentDir "src\rmnpy"
-        $libDir = Join-Path $currentDir "lib"
-        $mingwBin = "${{ runner.temp }}\msys64\mingw64\bin"
-
-        # Create a comprehensive PATH that includes all DLL locations
-        $env:PATH = "$env:pythonLocation;$mingwBin;$packageDir;$libDir;$env:PATH"
-        Write-Host "Enhanced PATH for DLL resolution"
-
-        # Verify all critical components are in place
-        Write-Host "=== Final Verification Before Tests ==="
-        Write-Host "Package directory exists: $(Test-Path $packageDir)"
-        Write-Host "Lib directory exists: $(Test-Path $libDir)"
-        Write-Host "MinGW bin exists: $(Test-Path $mingwBin)"
-
-        Write-Host "Python extensions found:"
-        Get-ChildItem "$packageDir\**\*.pyd" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
-          Write-Host "  $($_.Name)"
-        }
-
-        Write-Host "Runtime DLLs in package directory:"
-        Get-ChildItem "$packageDir\*.dll" -ErrorAction SilentlyContinue | Select-Object -First 5 | ForEach-Object {
-          Write-Host "  $($_.Name)"
-        }
-
-        # Test critical import with DLL path enhancement
-        Write-Host "=== Testing Critical Import ==="
-
-        # Create simple Python test
-        $testImport = "import os; import sys"
-        $testImport += "; [os.add_dll_directory(str(p)) for p in [`'src/rmnpy`', `'lib`', `'${{ runner.temp }}/msys64/mingw64/bin`'] if hasattr(os, `'add_dll_directory`') and os.path.exists(p)]"
-        $testImport += "; sys.path.insert(0, `'src`')"
-        $testImport += "; from rmnpy.wrappers.sitypes.dimensionality import Dimensionality"
-        $testImport += "; dim = Dimensionality(`'m`')"
-        $testImport += "; print(`'SUCCESS: Dimensionality import and instantiation worked!`')"
-
-        try {
-            & "$env:pythonLocation\python.exe" -c $testImport
-            Write-Host "✓ Critical import test passed - proceeding with full test suite"
-        } catch {
-            Write-Host "✗ Critical import failed - analyzing dependencies..."
-
-            # Check for missing libpython DLL issue
-            Write-Host "=== Python DLL Analysis ==="
-            Write-Host "Python location: $env:pythonLocation"
-            Write-Host "Looking for libpython3.12.dll in Python installation..."
-            $pythonDll = Get-ChildItem "$env:pythonLocation" -Recurse -Filter "python*.dll" -ErrorAction SilentlyContinue
-            if ($pythonDll) {
-                Write-Host "Found Python DLLs:"
-                $pythonDll | ForEach-Object { Write-Host "  $($_.FullName)" }
-
-                # Copy Python DLL to package directory
-                $pythonDll | ForEach-Object {
-                    Write-Host "Copying $($_.Name) to package directory"
-                    Copy-Item $_.FullName "src\rmnpy\" -Force -ErrorAction SilentlyContinue
-                }
-            } else {
-                Write-Host "No Python DLLs found in $env:pythonLocation"
-            }
-
-            # Also check for missing libpython3.12.dll specifically
-            Write-Host "Checking targeted locations for libpython3.12.dll..."
-            $searchPaths = @(
-                "$env:pythonLocation",
-                "${{ runner.temp }}\msys64\mingw64\bin",
-                "${{ runner.temp }}\msys64\mingw64\lib",
-                "C:\hostedtoolcache\windows\Python"
-            )
-
-            $libpythonDlls = @()
-            foreach ($searchPath in $searchPaths) {
-                if (Test-Path $searchPath) {
-                    $found = Get-ChildItem $searchPath -Filter "libpython3.12.dll" -Recurse -ErrorAction SilentlyContinue
-                    $libpythonDlls += $found
-                }
-            }
-
-            if ($libpythonDlls.Count -gt 0) {
-                Write-Host "Found libpython3.12.dll:"
-                $libpythonDlls | Select-Object -First 3 | ForEach-Object {
-                    Write-Host "  $($_.FullName)"
-                    Copy-Item $_.FullName "src\rmnpy\" -Force -ErrorAction SilentlyContinue
-                }
-            } else {
-                Write-Host "libpython3.12.dll not found in targeted locations"
-            }
-
-            # Simplified dependency check
-            Write-Host "=== Dependency Analysis ==="
-            $pydFiles = Get-ChildItem -Path "src" -Filter "*.pyd" -Recurse
-            ForEach ($pydFile in $pydFiles) {
-                Write-Host "Checking dependencies for: $($pydFile.Name)"
-                $objdumpPath = "${{ runner.temp }}\msys64\mingw64\bin\objdump.exe"
-                if (Test-Path $objdumpPath) {
-                    $dependencies = & $objdumpPath -p "$($pydFile.FullName)" 2>$null | Select-String "DLL Name"
-                    ForEach ($dep in $dependencies) {
-                        $dllName = ($dep -split ":")[1].Trim()
-                        $locations = @("$mingwBin\$dllName", "$packageDir\$dllName", "$libDir\$dllName")
-                        $found = $false
-                        ForEach ($loc in $locations) {
-                            if (Test-Path $loc) {
-                                $found = $true
-                                break
-                            }
-                        }
-                        $status = if ($found) { "✓" } else { "✗ MISSING" }
-                        Write-Host "    $status $dllName"
-                    }
-                }
-            }
-
-            # Try the import again after copying Python DLLs
-            Write-Host "=== Retrying Import After DLL Fixes ==="
-            try {
-                & "$env:pythonLocation\python.exe" -c $testImport
-                Write-Host "✓ Import succeeded after DLL fixes!"
-            } catch {
-                Write-Host "✗ Import still failing after DLL fixes"
-            }
-        }
-
-        # Final environment setup for tests
-        if ($global:msys2Success) {
-            Write-Host "Using MSYS2 Python environment for test execution" -ForegroundColor Green
-            $msys2Python = "${{ runner.temp }}\msys64\mingw64\bin\python.exe"
-            $msys2SitePackages = & $msys2Python -c "import site; print(site.getsitepackages()[0])" 2>$null
-            $env:PATH = "${{ runner.temp }}\msys64\mingw64\bin;$env:PATH"
-            $env:PYTHONPATH = $msys2SitePackages
-
-            Write-Host "MSYS2 Environment:"
-            Write-Host "  Python: $msys2Python"
-            Write-Host "  PYTHONPATH: $env:PYTHONPATH"
-            Write-Host "  Site-packages: $msys2SitePackages"
-
-            # Run tests with MSYS2 Python
-            Write-Host "Running pytest with MSYS2 Python..."
-            & $msys2Python -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
-
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "✓ Tests completed successfully with MSYS2 Python!" -ForegroundColor Green
-            } else {
-                Write-Host "✗ Some tests failed with MSYS2 Python (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
-                exit $LASTEXITCODE
-            }
-        } elseif ($global:windowsTestSkipped) {
-            Write-Host "Skipping Windows tests due to MinGW ABI incompatibility (build succeeded, runtime incompatible)" -ForegroundColor Yellow
-            Write-Host "This is expected behavior on GitHub Actions Windows runners with MinGW-compiled extensions" -ForegroundColor Yellow
-            exit 0
-        } else {
-            # Regular Python worked, run normal tests
-            Write-Host "Running pytest with standard Python installation..."
-            & "$env:pythonLocation\python.exe" -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
-        }
+        python -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
 
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
