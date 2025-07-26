@@ -126,23 +126,6 @@ def setup_dll_paths() -> None:
         except Exception:
             pass
 
-        # Explicitly load MinGW runtime DLLs to resolve threading and other dependencies
-        try:
-            import ctypes
-
-            for dll_name in runtime_dlls:
-                for d in valid_dirs:
-                    src = Path(d) / dll_name
-                    if src.exists():
-                        try:
-                            # Use WinDLL for proper Windows loader flags
-                            ctypes.WinDLL(str(src))
-                        except Exception:
-                            pass
-                        break
-        except Exception:
-            pass
-
 
 def preload_mingw_runtime() -> None:
     """Register MinGW runtime directories for Windows DLL loader without loading DLLs explicitly"""
