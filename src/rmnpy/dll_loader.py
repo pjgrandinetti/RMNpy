@@ -19,6 +19,14 @@ def setup_dll_paths() -> None:
             Path(__file__).parent.parent.parent / "lib",  # lib directory
             Path(r"D:\a\_temp\msys64\mingw64\bin"),  # MinGW bin (CI environment)
         ]
+        # Add Python installation directories for runtime DLL resolution
+        # Always include host Python base installation directories
+        dll_dirs.append(Path(sys.base_prefix))
+        dll_dirs.append(Path(sys.base_prefix) / "DLLs")
+        # Also include venv exec_prefix if different from base_prefix
+        if hasattr(sys, "exec_prefix") and sys.exec_prefix != sys.base_prefix:
+            dll_dirs.append(Path(sys.exec_prefix))
+            dll_dirs.append(Path(sys.exec_prefix) / "DLLs")
 
         # Also try common MinGW installation paths
         common_mingw_paths = [
