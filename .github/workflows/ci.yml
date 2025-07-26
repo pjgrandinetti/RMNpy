@@ -338,6 +338,7 @@ jobs:
         MINGW_LIB_DIR: "${{ runner.temp }}/msys64/mingw64/lib"
       run: |
         # Install test dependencies and project package in MSYS2 Python
+        $mingw = "${{ runner.temp }}\msys64\mingw64\bin"
         & "$mingw\python.exe" -m pip install --upgrade pip
         & "$mingw\python.exe" -m pip install numpy pytest pytest-cov
         & "$mingw\python.exe" -m pip install -e .[test]
