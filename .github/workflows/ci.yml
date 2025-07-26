@@ -798,8 +798,8 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        # Run pytest on Windows using host Python with MinGW64-built extensions
-        & "$env:pythonLocation\python.exe" -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
+        # Run pytest under MSYS2 Python to use the same MinGW ABI
+        & "${{ runner.temp }}\msys64\mingw64\bin\python.exe" -m pytest tests/ -v --cov=rmnpy --cov-report=xml --cov-report=term
 
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
