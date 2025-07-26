@@ -334,7 +334,8 @@ jobs:
       env:
         CC: x86_64-w64-mingw32-gcc
         CXX: x86_64-w64-mingw32-g++
-        PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
+        # Ensure Git is in PATH for pip git+ installs
+        PATH: 'C:\\Program Files\\Git\\cmd;${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}'
         MINGW_LIB_DIR: "${{ runner.temp }}/msys64/mingw64/lib"
       run: |
         # Create a native Windows virtual environment using the Windows Python
