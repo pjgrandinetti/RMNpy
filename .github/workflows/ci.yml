@@ -337,8 +337,10 @@ jobs:
         PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
         MINGW_LIB_DIR: "${{ runner.temp }}/msys64/mingw64/lib"
       run: |
-        # Install pytest and coverage plugin only for MSYS2 Python
-        & "${{ runner.temp }}\msys64\mingw64\bin\python.exe" -m pip install pytest pytest-cov
+        # Install test dependencies and project package in MSYS2 Python
+        & "$mingw\python.exe" -m pip install --upgrade pip
+        & "$mingw\python.exe" -m pip install numpy pytest pytest-cov
+        & "$mingw\python.exe" -m pip install -e .[test]
 
     - name: Generate constants (Linux/macOS)
       if: runner.os != 'Windows'
