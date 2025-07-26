@@ -464,13 +464,14 @@ jobs:
         VENV_PY: ${{ env.VENV_PY }}
       run: |
         # Prepend required paths for DLL resolution
+        $venvScripts = Split-Path $env:VENV_PY -Parent
+        $venvRoot = Split-Path $venvScripts -Parent
         $dllPaths = @(
           "${{ runner.temp }}\msys64\mingw64\bin",
+          "$venvScripts",
+          "$venvRoot\DLLs",
           "src\rmnpy",
-          "lib",
-          "$env:pythonLocation",
-          "$env:pythonLocation\DLLs",
-          "$env:pythonLocation\Scripts"
+          "lib"
         )
         foreach ($path in $dllPaths) {
           if (Test-Path $path) {
