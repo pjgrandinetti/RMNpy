@@ -444,32 +444,32 @@ jobs:
 
         # Test OCTypes import
         Write-Host "Testing OCTypes import..."
-        try {
-            $octypesTest = & "$env:VENV_PY" -c "import OCTypes"
-            Write-Host "[OK] OCTypes import successful"
-          } catch {
-            Write-Host "[ERROR] OCTypes import test failed: $_"
+        & "$env:VENV_PY" -c "import OCTypes"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[ERROR] OCTypes import test failed"
             $global:importFailed = $true
+        } else {
+            Write-Host "[OK] OCTypes import successful"
         }
 
         # Test SITypes import
         Write-Host "Testing SITypes import..."
-        try {
-            $sitypesTest = & "$env:VENV_PY" -c "import SITypes"
-            Write-Host "[OK] SITypes import successful"
-          } catch {
-            Write-Host "[ERROR] SITypes import test failed: $_"
+        & "$env:VENV_PY" -c "import SITypes"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[ERROR] SITypes import test failed"
             $global:importFailed = $true
+        } else {
+            Write-Host "[OK] SITypes import successful"
         }
 
         # Test RMNLib import
         Write-Host "Testing RMNLib import..."
-        try {
-            $rmnlibTest = & "$env:VENV_PY" -c "import RMNLib"
-            Write-Host "[OK] RMNLib import successful"
-          } catch {
-            Write-Host "[ERROR] RMNLib import test failed: $_"
+        & "$env:VENV_PY" -c "import RMNLib"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[ERROR] RMNLib import test failed"
             $global:importFailed = $true
+        } else {
+            Write-Host "[OK] RMNLib import successful"
         }
 
         # Final status check
