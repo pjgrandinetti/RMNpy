@@ -337,16 +337,14 @@ jobs:
         PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
         MINGW_LIB_DIR: "${{ runner.temp }}/msys64/mingw64/lib"
       run: |
-        # Create a native Windows virtual environment
-        python -m venv venv
-        # Activate the virtual environment
-        & ".\venv\Scripts\Activate.ps1"
-        # Install dependencies into venv
-        pip install --upgrade pip
-        pip install numpy pytest pytest-cov
-        pip install -e .[test]
-        # Expose venv python path for test step
-        "VENV_PY=venv\\Scripts\\python.exe" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8
+        # Create a native Windows virtual environment using the Windows Python
+        & "$Env:pythonLocation\python.exe" -m venv venv
+        # Install dependencies into the venv via its Python exe
+        & "venv\Scripts\python.exe" -m pip install --upgrade pip
+        & "venv\Scripts\python.exe" -m pip install numpy pytest pytest-cov
+        & "venv\Scripts\python.exe" -m pip install -e .[test]
+        # Expose venv python path for subsequent steps
+        "VENV_PY=venv\Scripts\python.exe" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8
 
     - name: Generate constants (Linux/macOS)
       if: runner.os != 'Windows'
