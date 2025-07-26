@@ -13,10 +13,14 @@ from pathlib import Path
 def setup_dll_paths() -> None:
     """Setup DLL paths for Windows"""
     if sys.platform == "win32":
-        # Add DLL directories
+        # Add DLL directories (including subdirectories for extension modules)
+        base_dir = Path(__file__).parent  # Package directory
         dll_dirs = [
-            Path(__file__).parent,  # Package directory
-            Path(__file__).parent.parent.parent / "lib",  # lib directory
+            base_dir,
+            base_dir / "helpers",  # Helper extensions
+            base_dir / "wrappers" / "sitypes",  # SITypes extensions
+            base_dir / "wrappers" / "rmnlib",  # RMNLib extensions
+            base_dir.parent.parent.parent / "lib",  # lib directory
             Path(r"D:\a\_temp\msys64\mingw64\bin"),  # MinGW bin (CI environment)
         ]
         # Add Python installation directories for runtime DLL resolution
@@ -36,6 +40,11 @@ def setup_dll_paths() -> None:
         ]
         dll_dirs.extend(common_mingw_paths)
 
+        # Prepend all existing dll_dirs to PATH for Windows DLL loader
+        existing_path = os.environ.get("PATH", "")
+        new_paths = [str(d) for d in dll_dirs if d.exists()]
+        os.environ["PATH"] = os.pathsep.join(new_paths + [existing_path])
+
         for dll_dir in dll_dirs:
             if dll_dir.exists() and hasattr(os, "add_dll_directory"):
                 try:
@@ -52,6 +61,9 @@ def setup_dll_paths() -> None:
             "libgomp-1.dll",
             "libquadmath-0.dll",
             "libgfortran-5.dll",
+            "libopenblas.dll",  # OpenBLAS
+            "liblapack.dll",  # LAPACK
+            "libcurl-4.dll",  # curl
         ]
         for dll_name in critical_dlls:
             for dll_dir in dll_dirs:
@@ -75,12 +87,17 @@ def preload_mingw_runtime() -> None:
             "libgomp-1.dll",
             "libquadmath-0.dll",  # Sometimes needed for Fortran libraries
             "libgfortran-5.dll",  # Fortran runtime
+            "libopenblas.dll",  # OpenBLAS
+            "liblapack.dll",  # LAPACK
+            "libcurl-4.dll",  # curl
         ]
 
-        # Search paths
+        # Search paths (include extension module directory)
+        base_dir = Path(__file__).parent
         search_paths = [
-            Path(__file__).parent,
-            Path(__file__).parent.parent.parent / "lib",
+            base_dir,
+            base_dir / "wrappers" / "sitypes",
+            base_dir.parent.parent.parent / "lib",
             Path(r"D:\a\_temp\msys64\mingw64\bin"),
             Path(r"C:\msys64\mingw64\bin"),
         ]
