@@ -122,7 +122,7 @@ def setup_dll_paths() -> None:
                 py_dll = Path(sys.base_prefix) / "python3.dll"
             if py_dll.exists():
                 # Use WinDLL for proper Windows loader semantics
-                ctypes.WinDLL(str(py_dll))
+                ctypes.CDLL(str(py_dll))
         except Exception:
             pass
 
@@ -135,8 +135,7 @@ def setup_dll_paths() -> None:
                     src = Path(d) / dll_name
                     if src.exists():
                         try:
-                            # Use WinDLL for proper Windows loader flags
-                            ctypes.WinDLL(str(src))
+                            ctypes.CDLL(str(src))
                         except Exception:
                             pass
                         break
