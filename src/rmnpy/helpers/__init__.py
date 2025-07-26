@@ -33,9 +33,8 @@ def _is_pytest_reimport() -> bool:
     if module_name in sys.modules:
         existing_module = sys.modules[module_name]
         # If the existing module has our functions, this is a re-import
-        return (
-            hasattr(existing_module, "create_oc_string")
-            and hasattr(existing_module, "parse_c_string")
+        return hasattr(existing_module, "create_oc_string") and hasattr(
+            existing_module, "parse_c_string"
         )
 
     return False
@@ -72,7 +71,10 @@ if not _octypes_extension_loaded:
 
         try:
             _logger.info("Importing octypes extension")
-            from .octypes import create_oc_string, parse_c_string  # type: ignore[attr-defined,misc]
+            from .octypes import (  # type: ignore[attr-defined,misc]
+                create_oc_string,
+                parse_c_string,
+            )
 
             _octypes_extension_loaded = True
             _logger.info(
