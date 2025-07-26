@@ -19,6 +19,7 @@ from . import dll_loader  # Import DLL loader first
 
 # Initialize DLL loader before loading C extension modules
 dll_loader.setup_dll_paths()
+_ = getattr(dll_loader, "preload_mingw_runtime", lambda: None)()
 
 from .wrappers.sitypes import Dimensionality, Scalar, Unit  # noqa: E402
 
