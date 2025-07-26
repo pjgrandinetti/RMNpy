@@ -125,6 +125,19 @@ def setup_dll_paths() -> None:
                 ctypes.WinDLL(str(py_dll))
         except Exception:
             pass
+        # Explicitly preload MinGW runtime DLLs to ensure all dependencies are loaded
+        try:
+            import ctypes as _ct
+
+            for _dll in runtime_dlls:
+                for _dir in valid_dirs:
+                    _path = Path(_dir) / _dll
+                    if _path.exists():
+                        # Load each runtime DLL with standard calling convention
+                        _ct.CDLL(str(_path))
+                        break
+        except Exception:
+            pass
 
 
 def preload_mingw_runtime() -> None:
