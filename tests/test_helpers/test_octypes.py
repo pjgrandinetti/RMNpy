@@ -37,7 +37,6 @@ def test_import_octypes_api():
     """Test that the OCTypes C API declarations file exists and is valid."""
     # Add the source directory to the path
     import os
-    import sys
 
     src_dir = os.path.join(os.path.dirname(__file__), "..", "..", "src")
     sys.path.insert(0, src_dir)
@@ -174,13 +173,6 @@ def test_comparison_result_enum():
 
 def test_library_linking():
     """Test basic OCTypes library linking and string operations."""
-
-    # Skip this test on Windows due to known string conversion issue
-    # TODO: Investigate OCTypes Windows string handling
-    if sys.platform == "win32":
-        pytest.skip(
-            "Skipping OCTypes string test on Windows - known issue with string conversion"
-        )
 
     # Test that we can import and use basic OCTypes functions
     from rmnpy.helpers.octypes import (
