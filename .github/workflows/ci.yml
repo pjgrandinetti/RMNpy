@@ -333,11 +333,27 @@ jobs:
       run: |
         # Use MSYS2 Python with system package override for our project
         echo "=== Installing Python dependencies using MSYS2 Python ==="
-        # Install build tools that we need from pip
+
+        # Install test dependencies via pacman where possible
+        echo "Installing test dependencies via pacman..."
+        pacman --noconfirm -S --needed mingw-w64-x86_64-python-pytest || echo "pytest not available via pacman"
+        pacman --noconfirm -S --needed mingw-w64-x86_64-python-pytest-cov || echo "pytest-cov not available via pacman"
+        pacman --noconfirm -S --needed mingw-w64-x86_64-python-pytest-xdist || echo "pytest-xdist not available via pacman"
+        pacman --noconfirm -S --needed mingw-w64-x86_64-python-pytest-benchmark || echo "pytest-benchmark not available via pacman"
+
+        # Install remaining dependencies via pip with system override
+        echo "Installing remaining dependencies via pip..."
         python -m pip install --break-system-packages --upgrade pip setuptools wheel
         python -m pip install --break-system-packages Cython
-        # Install our project in development mode
-        python -m pip install --break-system-packages -e .[test]
+        python -m pip install --break-system-packages pytest pytest-cov pytest-xdist pytest-benchmark
+
+        # Install our project without test dependencies first (to avoid numpy build issues)
+        echo "Installing project without test dependencies..."
+        python -m pip install --break-system-packages -e . --no-deps
+
+        # Verify installation
+        echo "Verifying installation..."
+        python -c "import rmnpy; print('RMNpy installed successfully')"
 
     - name: Generate constants (Linux/macOS)
       if: runner.os != 'Windows'

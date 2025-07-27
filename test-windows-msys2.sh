@@ -40,8 +40,17 @@ python -m pip install --break-system-packages --upgrade pip setuptools wheel Cyt
     python -m pip install --upgrade pip setuptools wheel Cython
 
 echo "Step 3: Install Python dependencies (Windows MSYS2 style)"
-python -m pip install --break-system-packages -e .[test] 2>/dev/null || \
-    python -m pip install -e .[test]
+echo "Installing test dependencies via pacman where possible..."
+echo "Would run: pacman --noconfirm -S --needed mingw-w64-x86_64-python-pytest"
+echo "(Skipping pacman on macOS, using pip instead)"
+
+echo "Installing remaining dependencies via pip with --break-system-packages..."
+python -m pip install --break-system-packages pytest pytest-cov pytest-xdist pytest-benchmark 2>/dev/null || \
+    python -m pip install pytest pytest-cov pytest-xdist pytest-benchmark
+
+echo "Installing project without test dependencies..."
+python -m pip install --break-system-packages -e . --no-deps 2>/dev/null || \
+    python -m pip install -e . --no-deps
 
 echo "Step 4: Generate constants"
 if command -v make >/dev/null 2>&1; then
