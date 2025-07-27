@@ -50,18 +50,23 @@ def _is_dangerous_pytest_phase() -> bool:
         return False
 
     # CRITICAL DISCOVERY: In Windows CI, access violations occur during BOTH collection AND execution
-    # The previous assumption that execution phase was safe was incorrect
-    # We must activate protection for ANY pytest context in Windows CI
+    # However, we need to distinguish between collection phase (always dangerous) and
+    # execution phase (allow real extensions unless we detect specific danger patterns)
 
     pytest_current_test = os.environ.get("PYTEST_CURRENT_TEST")
     _logger.info(f"PYTEST_CURRENT_TEST environment variable: {pytest_current_test}")
 
+    # If we're in active test execution (not collection), allow real extensions
+    if pytest_current_test and "(call)" in pytest_current_test:
+        _logger.info(
+            f"PYTEST_CURRENT_TEST={pytest_current_test} - test execution phase detected, allowing real C extensions"
+        )
+        return False  # Safe to use real extensions during test execution
+
     if pytest_current_test:
         _logger.warning(
-            f"PYTEST_CURRENT_TEST={pytest_current_test} - this is test execution phase, but Windows CI requires protection even during execution"
+            f"PYTEST_CURRENT_TEST={pytest_current_test} - non-execution phase, activating protection"
         )
-        # Changed: Previously returned False here, but Windows CI crashes during execution too
-        # Fall through to activate protection
 
     # Check for pytest command line indicators
     pytest_args = " ".join(sys.argv)
