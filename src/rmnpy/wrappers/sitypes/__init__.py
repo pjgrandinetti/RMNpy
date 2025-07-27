@@ -6,6 +6,7 @@ scientific units, dimensional analysis, and physical quantities.
 """
 
 import logging
+import os
 import sys
 from typing import Any
 
@@ -20,15 +21,9 @@ _logger.setLevel(logging.INFO)
 _sitypes_extensions_loaded = False
 
 
-# Advanced pytest detection and protection
+# Enhanced pytest detection - prevent access violations during Windows CI only
 def _is_dangerous_pytest_phase() -> bool:
-    """
-    Enhanced detection for dangerous pytest phases that cause access violations during C extension loading.
-
-    Returns True for dangerous pytest contexts on Windows CI where C extension access causes crashes,
-    False for safe contexts where real C extensions can be used.
-    """
-    import os
+    """Detect if we're in a dangerous pytest phase that could cause access violations (Windows CI only)"""
     import platform
 
     # Only activate protection on Windows in CI environments
@@ -49,60 +44,75 @@ def _is_dangerous_pytest_phase() -> bool:
     if not is_ci:
         return False
 
-    # In Windows CI, ANY pytest presence is dangerous for C extension loading
-    if "pytest" in sys.modules:
-        _logger.warning(
-            "Windows CI + pytest detected - activating comprehensive SITypes protection"
-        )
-        return True
+    # Check if we're in pytest environment
+    pytest_present = "pytest" in sys.modules
+    if not pytest_present:
+        return False
 
-    # Also check for pytest in the command line or process
+    # Key insight: Only activate protection during COLLECTION phase, not TEST EXECUTION phase
+    # During test execution, we want real C extensions to work properly
+
+    # Check for pytest collection phase indicators
     pytest_args = " ".join(sys.argv)
-    dangerous_indicators = [
-        "pytest",
+    collection_indicators = [
         "--collect-only",
         "--co",
-        "-q",
         "--setup-show",
         "--setup-plan",
-        "test_",
-        ".py::test",
     ]
 
-    if any(indicator in pytest_args for indicator in dangerous_indicators):
-        _logger.warning(f"Windows CI pytest execution detected: {pytest_args}")
+    # If explicit collection flags are present, definitely dangerous
+    if any(indicator in pytest_args for indicator in collection_indicators):
+        _logger.warning(f"Windows CI pytest collection phase detected: {pytest_args}")
         return True
 
-    # Check for pytest collection environment variables
-    pytest_env_vars = [
-        "PYTEST_CURRENT_TEST",
+    # Check for pytest environment variables that indicate collection phase
+    collection_env_vars = [
         "_PYTEST_RAISE",
         "PYTEST_PLUGINS",
     ]
 
-    if any(os.environ.get(var) for var in pytest_env_vars):
-        _logger.warning("Windows CI pytest environment variables detected")
+    if any(os.environ.get(var) for var in collection_env_vars):
+        _logger.warning("Windows CI pytest collection environment variables detected")
         return True
 
-    # Check if we're being imported by pytest using stack inspection
+    # Check if we're being imported during pytest collection using stack inspection
     import inspect
 
     try:
         for frame_info in inspect.stack():
             frame_filename = frame_info.filename.lower()
+            # Look for collection-specific pytest files, not just any pytest
+            collection_indicators = ["collect.py", "loader.py", "runner.py", "main.py"]
+
+            # Only activate if we're in pytest collection code, not test execution
             if any(
-                pytest_path in frame_filename
-                for pytest_path in ["pytest", "_pytest", "test_"]
+                collection_indicator in frame_filename and "pytest" in frame_filename
+                for collection_indicator in collection_indicators
             ):
                 _logger.warning(
-                    f"Windows CI pytest import stack detected: {frame_filename}"
+                    f"Windows CI pytest collection stack detected: {frame_filename}"
                 )
                 return True
     except Exception:
-        # If stack inspection fails, err on the side of caution in Windows CI
-        _logger.warning("Windows CI stack inspection failed - activating protection")
-        return True
+        # If stack inspection fails, check if we have PYTEST_CURRENT_TEST set
+        # This env var is only set during actual test execution, not collection
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            _logger.info(
+                "PYTEST_CURRENT_TEST detected - this is test execution, not collection"
+            )
+            return False
+        else:
+            # No PYTEST_CURRENT_TEST means likely collection phase - err on side of caution
+            _logger.warning(
+                "Windows CI: pytest detected but phase unclear - activating protection"
+            )
+            return True
 
+    # If pytest is present but we can't detect collection phase, allow real extensions for test execution
+    _logger.info(
+        "Windows CI: pytest detected but appears to be test execution phase - allowing real extensions"
+    )
     return False
 
 
