@@ -39,18 +39,17 @@ echo "(Skipping pacman on macOS, using pip instead)"
 python -m pip install --break-system-packages --upgrade pip setuptools wheel Cython 2>/dev/null || \
     python -m pip install --upgrade pip setuptools wheel Cython
 
-echo "Step 3: Install Python dependencies (Windows MSYS2 style)"
-echo "Installing test dependencies via pacman where possible..."
-echo "Would run: pacman --noconfirm -S --needed mingw-w64-x86_64-python-pytest"
+echo "Step 3: Install Python dependencies (Pure MSYS2 approach)"
+echo "Installing all dependencies with pacman (no pip)..."
+echo "Would run: pacman -S --noconfirm mingw-w64-x86_64-python-numpy mingw-w64-x86_64-python-pytest mingw-w64-x86_64-python-wheel mingw-w64-x86_64-python-cffi"
 echo "(Skipping pacman on macOS, using pip instead)"
 
-echo "Installing remaining dependencies via pip with --break-system-packages..."
-python -m pip install --break-system-packages pytest pytest-cov pytest-xdist pytest-benchmark 2>/dev/null || \
-    python -m pip install pytest pytest-cov pytest-xdist pytest-benchmark
+# Fallback for macOS simulation
+python -m pip install --break-system-packages numpy pytest wheel cffi rpnpy 2>/dev/null || \
+    python -m pip install numpy pytest wheel cffi rpnpy
 
-echo "Installing project without test dependencies..."
-python -m pip install --break-system-packages -e . --no-deps 2>/dev/null || \
-    python -m pip install -e . --no-deps
+echo "Building RMNpy C extensions..."
+python setup.py build_ext --inplace
 
 echo "Step 4: Generate constants"
 if command -v make >/dev/null 2>&1; then
@@ -59,10 +58,13 @@ else
     python scripts/extract_si_constants.py
 fi
 
-echo "Step 5: Build Cython extension"
-python setup.py build_ext --inplace
+echo "Step 5: Build Cython extension (already done above)"
+echo "C extensions already built with setup.py build_ext --inplace"
 
 echo "Step 6: Test basic imports"
+echo "Setting PYTHONPATH to find RMNpy..."
+export PYTHONPATH="${PWD}/src:${PYTHONPATH}"
+
 echo "Testing numpy import..."
 python -c "import numpy; print('Numpy version: ' + numpy.__version__)"
 echo "✓ Numpy import successful"
