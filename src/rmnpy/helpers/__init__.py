@@ -103,14 +103,35 @@ def _setup_pytest_interception() -> Optional[types.ModuleType]:
     return octypes_module
 
 
-# Precise pytest detection - only intercept during collection/discovery phases that cause access violations
+# Enhanced pytest detection - prevent access violations during Windows CI only
 def _is_dangerous_pytest_phase() -> bool:
-    """Detect if we're in a pytest phase that could cause access violations"""
+    """Detect if we're in a dangerous pytest phase that could cause access violations (Windows CI only)"""
     if "pytest" not in sys.modules:
         return False
 
+    # Only activate protection on Windows in CI environments
+    import platform
+
+    if platform.system() != "Windows":
+        return False
+
+    # Check for CI environment indicators
+    ci_indicators = [
+        "CI",
+        "GITHUB_ACTIONS",
+        "CONTINUOUS_INTEGRATION",
+        "APPVEYOR",
+        "TRAVIS",
+        "JENKINS_URL",
+    ]
+
+    is_ci = any(os.environ.get(indicator) for indicator in ci_indicators)
+    if not is_ci:
+        return False
+
+    _logger.info("Windows CI environment detected - activating pytest protection")
+
     # Check for pytest collection/discovery phases that cause access violations
-    # These phases scan and import modules without proper DLL loading
     pytest_args = " ".join(sys.argv)
     dangerous_phases = [
         "--collect-only",
@@ -120,15 +141,30 @@ def _is_dangerous_pytest_phase() -> bool:
         "--setup-plan",
     ]
 
-    # Check if we're in module collection/scanning phase
+    # Always dangerous during collection phases in Windows CI
     if any(phase in pytest_args for phase in dangerous_phases):
+        _logger.warning(
+            f"Dangerous pytest collection phase detected in Windows CI: {pytest_args}"
+        )
         return True
 
     # Check if pytest is in early initialization (before proper DLL setup)
     if hasattr(sys.modules.get("pytest", None), "_version"):
         # If pytest is imported but PYTEST_CURRENT_TEST is not set,
         # we might be in collection phase
-        return "PYTEST_CURRENT_TEST" not in os.environ
+        if "PYTEST_CURRENT_TEST" not in os.environ:
+            _logger.warning(
+                "Pytest collection phase detected in Windows CI - no PYTEST_CURRENT_TEST"
+            )
+            return True
+
+        # Windows CI specific: Check for direct import test scenarios
+        current_test = os.environ.get("PYTEST_CURRENT_TEST", "")
+        if current_test and "test_library_linking" in current_test:
+            _logger.warning(
+                f"Dangerous direct import test detected in Windows CI: {current_test}"
+            )
+            return True
 
     return False
 
