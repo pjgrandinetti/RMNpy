@@ -62,6 +62,7 @@ jobs:
           mingw-w64-x86_64-python-pip
           mingw-w64-x86_64-python-numpy
           mingw-w64-x86_64-python-pytest
+          mingw-w64-x86_64-cython
           mingw-w64-x86_64-curl
           mingw-w64-x86_64-openblas
           mingw-w64-x86_64-lapack
