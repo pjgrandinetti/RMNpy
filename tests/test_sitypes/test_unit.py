@@ -5,36 +5,10 @@ Comprehensive test suite for the Unit wrapper implementation,
 mirroring the structure and coverage of test_dimensionality.py from Phase 2A.
 """
 
-import os
-import platform
-
 import pytest
 
 from rmnpy.exceptions import RMNError
 from rmnpy.wrappers.sitypes import Dimensionality, Unit
-
-# Skip entire module on Windows CI to prevent access violations and SafeUnit fallback issues
-(
-    pytest.skip(
-        "Skipping entire SITypes unit module on Windows CI to prevent access violations",
-        allow_module_level=True,
-    )
-    if (
-        platform.system() == "Windows"
-        and any(
-            indicator in os.environ
-            for indicator in [
-                "CI",
-                "GITHUB_ACTIONS",
-                "CONTINUOUS_INTEGRATION",
-                "APPVEYOR",
-                "TRAVIS",
-                "JENKINS_URL",
-            ]
-        )
-    )
-    else None
-)
 
 
 class TestUnitCreation:
@@ -722,14 +696,6 @@ class TestUnitEdgeCases:
 
     def test_memory_management(self):
         """Test that units are properly cleaned up."""
-
-        # Skip Windows CI to prevent access violations with C extensions
-        if platform.system() == "Windows" and any(
-            os.environ.get(var) for var in ["CI", "GITHUB_ACTIONS", "APPVEYOR"]
-        ):
-            pytest.skip(
-                "Skipping SITypes C extension test on Windows CI to prevent access violations"
-            )
 
         # Create many units to test memory management
         units = []

@@ -21,286 +21,78 @@ _logger.setLevel(logging.INFO)
 _sitypes_extensions_loaded = False
 
 
-# Enhanced pytest detection - prevent access violations during Windows CI only
-def _is_dangerous_pytest_phase() -> bool:
-    """Detect if we're in a dangerous pytest phase that could cause access violations (Windows CI only)"""
-    import platform
-
-    # Only activate protection on Windows in CI environments
-    if platform.system() != "Windows":
-        return False
-
-    # Check for CI environment indicators
-    ci_indicators = [
-        "CI",
-        "GITHUB_ACTIONS",
-        "CONTINUOUS_INTEGRATION",
-        "APPVEYOR",
-        "TRAVIS",
-        "JENKINS_URL",
-    ]
-
-    is_ci = any(os.environ.get(indicator) for indicator in ci_indicators)
-    if not is_ci:
-        return False
-
-    # Check if we're in pytest environment
-    pytest_present = "pytest" in sys.modules
-    if not pytest_present:
-        return False
-
-    # CRITICAL DISCOVERY: In Windows CI, access violations occur during BOTH collection AND execution
-    # However, we need to distinguish between collection phase (always dangerous) and
-    # execution phase (allow real extensions unless we detect specific danger patterns)
-
-    pytest_current_test = os.environ.get("PYTEST_CURRENT_TEST")
-    _logger.info(f"PYTEST_CURRENT_TEST environment variable: {pytest_current_test}")
-
-    # If we're in active test execution (not collection), allow real extensions
-    if pytest_current_test and "(call)" in pytest_current_test:
-        _logger.info(
-            f"PYTEST_CURRENT_TEST={pytest_current_test} - test execution phase detected, allowing real C extensions"
-        )
-        return False  # Safe to use real extensions during test execution
-
-    if pytest_current_test:
-        _logger.warning(
-            f"PYTEST_CURRENT_TEST={pytest_current_test} - non-execution phase, activating protection"
-        )
-
-    # Check for pytest command line indicators
-    pytest_args = " ".join(sys.argv)
-    collection_indicators = [
-        "--collect-only",
-        "--co",
-        "--setup-show",
-        "--setup-plan",
-    ]
-
-    # If explicit collection flags are present, definitely dangerous
-    if any(indicator in pytest_args for indicator in collection_indicators):
-        _logger.warning(f"Windows CI pytest collection phase detected: {pytest_args}")
-        return True
-
-    # Check if we're being imported during pytest using stack inspection
-    import inspect
-
-    try:
-        pytest_stack_detected = False
-
-        _logger.info("Analyzing pytest stack frames:")
-
-        # Log all stack frames for complete debugging context
-        all_frames = inspect.stack()
-        _logger.info(f"Complete stack trace ({len(all_frames)} frames):")
-        for i, frame_info in enumerate(all_frames):
-            _logger.info(f"  Frame {i}: {frame_info.filename} -> {frame_info.function}")
-
-        for frame_info in all_frames:
-            frame_filename = frame_info.filename.lower()
-
-            # Log pytest-related frames for debugging
-            if "pytest" in frame_filename or "test_" in frame_filename:
-                _logger.info(
-                    f"  Pytest frame: {frame_filename} -> {frame_info.function}"
-                )
-
-                # Any pytest involvement is dangerous in Windows CI
-                pytest_stack_detected = True
-
-                # Log specific patterns for debugging
-                if any(
-                    pattern in frame_filename for pattern in ["collect.py", "loader.py"]
-                ):
-                    _logger.warning(
-                        f"Windows CI pytest collection stack detected: {frame_filename}"
-                    )
-                elif any(
-                    pattern in frame_filename
-                    for pattern in ["runner.py", "python.py", "main.py"]
-                ):
-                    _logger.warning(
-                        f"Windows CI pytest execution stack detected: {frame_filename}"
-                    )
-
-        _logger.info(f"Stack analysis results: pytest_detected={pytest_stack_detected}")
-
-        # In Windows CI, ANY pytest involvement requires protection
-        if pytest_stack_detected:
-            _logger.warning(
-                "Windows CI: pytest stack detected - activating protection for all pytest phases"
-            )
-            return True
-
-    except Exception as e:
-        _logger.warning(f"Stack inspection failed: {e}")
-
-    # Default: If pytest is present in Windows CI, activate protection
-    _logger.warning(
-        "Windows CI: pytest detected - activating protection as safety measure"
-    )
-    return True
-
-
-def _is_pytest_reimport() -> bool:
-    """Detect if this is a pytest re-import that could cause access violations"""
-    if "pytest" not in sys.modules:
-        return False
-
-    # Check if this module is already fully loaded in sys.modules
-    module_name = __name__
-    if module_name in sys.modules:
-        existing_module = sys.modules[module_name]
-        # If the existing module has our classes, this is a re-import
-        return (
-            hasattr(existing_module, "Dimensionality")
-            and hasattr(existing_module, "Scalar")
-            and hasattr(existing_module, "Unit")
-        )
-
-    return False
-
-
 # Initialize module-level variables
 Dimensionality: Any = None
 Scalar: Any = None
 Unit: Any = None
 
-# Main import logic with selective pytest protection
+# Main import logic - always attempt real C extension loading
 if not _sitypes_extensions_loaded:
-    # Check for dangerous pytest phases that cause access violations
-    is_dangerous_pytest_phase = _is_dangerous_pytest_phase()
-    is_pytest_reimport = _is_pytest_reimport()
+    _logger.info("Normal operation - attempting real SITypes C extension import")
 
-    if is_dangerous_pytest_phase:
-        _logger.warning(
-            "Detected dangerous pytest phase - using safe fallback to prevent access violations"
-        )
-
-        # Create safe dummy classes during dangerous pytest phases
-        class SafeDimensionality:
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                pass
-
-            def __str__(self) -> str:
-                return "SafeDimensionality(dummy)"
-
-        class SafeScalar:
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                pass
-
-            def __str__(self) -> str:
-                return "SafeScalar(dummy)"
-
-        class SafeUnit:
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                pass
-
-            def __str__(self) -> str:
-                return "SafeUnit(dummy)"
-
-        Dimensionality = SafeDimensionality
-        Scalar = SafeScalar
-        Unit = SafeUnit
-        _sitypes_extensions_loaded = True
-        _logger.info("Using safe fallbacks during dangerous pytest phase")
-
-    elif is_pytest_reimport:
+    # Check if we're in a pytest context which can cause DLL conflicts
+    if "pytest" in sys.modules:
         _logger.info(
-            "Detected pytest re-import - checking if existing module has valid classes"
+            "Normal pytest execution - using real C extensions for proper functionality"
         )
-        # Reuse the existing module to avoid re-importing C extensions
-        existing_module = sys.modules[__name__]
 
-        # Check if existing module has valid classes (not None)
-        if (
-            hasattr(existing_module, "Dimensionality")
-            and existing_module.Dimensionality is not None
-            and hasattr(existing_module, "Scalar")
-            and existing_module.Scalar is not None
-            and hasattr(existing_module, "Unit")
-            and existing_module.Unit is not None
-        ):
-            _logger.info("Reusing valid classes from existing module")
-            Dimensionality = existing_module.Dimensionality
-            Scalar = existing_module.Scalar
-            Unit = existing_module.Unit
-            _sitypes_extensions_loaded = True
-            _logger.info("Successfully reused existing SITypes extensions")
-        else:
-            _logger.info(
-                "Existing module classes not valid, proceeding with fresh import"
-            )
-            is_pytest_reimport = False  # Force fresh import logic
+    try:
+        _logger.info("Importing dimensionality extension")
+        from .dimensionality import (
+            Dimensionality as _Dimensionality,
+        )
 
-    if not is_pytest_reimport and not is_dangerous_pytest_phase:
-        _logger.info("Normal operation - attempting real SITypes C extension import")
+        _logger.info("Importing scalar extension")
+        from .scalar import Scalar as _Scalar
 
-        # Check if we're in a pytest context which can cause DLL conflicts
-        if "pytest" in sys.modules:
-            _logger.info(
-                "Normal pytest execution - using real C extensions for proper functionality"
-            )
+        _logger.info("Importing unit extension")
+        from .unit import Unit as _Unit
 
-        try:
-            _logger.info("Importing dimensionality extension")
-            from .dimensionality import (
-                Dimensionality as _Dimensionality,
-            )
+        # Assign to module-level variables
+        Dimensionality = _Dimensionality
+        Scalar = _Scalar
+        Unit = _Unit
 
-            _logger.info("Importing scalar extension")
-            from .scalar import Scalar as _Scalar
+        _sitypes_extensions_loaded = True
+        _logger.info("Successfully imported all SITypes extensions")
 
-            _logger.info("Importing unit extension")
-            from .unit import Unit as _Unit
+    except Exception as e:
+        _logger.error(f"Failed to import SITypes extensions: {e}")
+        _logger.error(f"Exception type: {type(e)}")
+        import traceback
 
-            # Assign to module-level variables
-            Dimensionality = _Dimensionality
-            Scalar = _Scalar
-            Unit = _Unit
+        _logger.error(f"Full traceback: {traceback.format_exc()}")
 
-            _sitypes_extensions_loaded = True
-            _logger.info("Successfully imported all SITypes extensions")
+        # Fallback to dummy objects if real C extensions fail
+        _logger.warning("C extension import failed - creating fallback dummy objects")
 
-        except Exception as e:
-            _logger.error(f"Failed to import SITypes extensions: {e}")
-            _logger.error(f"Exception type: {type(e)}")
-            import traceback
+        class DummyDimensionality:
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                pass
 
-            _logger.error(f"Full traceback: {traceback.format_exc()}")
+            def __str__(self) -> str:
+                return "DummyDimensionality(fallback)"
 
-            # Fallback to dummy objects if real C extensions fail
-            _logger.warning(
-                "C extension import failed - creating fallback dummy objects"
-            )
+        class DummyScalar:
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                pass
 
-            class DummyDimensionality:
-                def __init__(self, *args: Any, **kwargs: Any) -> None:
-                    pass
+            def __str__(self) -> str:
+                return "DummyScalar(fallback)"
 
-                def __str__(self) -> str:
-                    return "DummyDimensionality(fallback)"
+        class DummyUnit:
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                pass
 
-            class DummyScalar:
-                def __init__(self, *args: Any, **kwargs: Any) -> None:
-                    pass
+            def __str__(self) -> str:
+                return "DummyUnit(fallback)"
 
-                def __str__(self) -> str:
-                    return "DummyScalar(fallback)"
-
-            class DummyUnit:
-                def __init__(self, *args: Any, **kwargs: Any) -> None:
-                    pass
-
-                def __str__(self) -> str:
-                    return "DummyUnit(fallback)"
-
-            Dimensionality = DummyDimensionality
-            Scalar = DummyScalar
-            Unit = DummyUnit
-            _logger.warning(
-                "Using dummy objects - functionality limited but module will work"
-            )
+        Dimensionality = DummyDimensionality
+        Scalar = DummyScalar
+        Unit = DummyUnit
+        _logger.warning(
+            "Using dummy objects - functionality limited but module will work"
+        )
 else:
     _logger.info("SITypes extensions already loaded - skipping re-import")
 

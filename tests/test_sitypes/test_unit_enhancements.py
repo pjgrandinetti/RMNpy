@@ -5,36 +5,10 @@ These tests fill gaps identified by comparing our Python test coverage
 with the comprehensive C test suite in SITypes/tests/test_unit.c
 """
 
-import os
-import platform
-
 import pytest
 
 from rmnpy.exceptions import RMNError
 from rmnpy.wrappers.sitypes import Unit
-
-# Skip entire module on Windows CI to prevent access violations and SafeUnit fallback issues
-(
-    pytest.skip(
-        "Skipping entire SITypes unit enhancements module on Windows CI to prevent access violations",
-        allow_module_level=True,
-    )
-    if (
-        platform.system() == "Windows"
-        and any(
-            indicator in os.environ
-            for indicator in [
-                "CI",
-                "GITHUB_ACTIONS",
-                "CONTINUOUS_INTEGRATION",
-                "APPVEYOR",
-                "TRAVIS",
-                "JENKINS_URL",
-            ]
-        )
-    )
-    else None
-)
 
 
 class TestUnitConversions:

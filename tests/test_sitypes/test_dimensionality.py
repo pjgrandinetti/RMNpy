@@ -13,21 +13,9 @@ This test suite validates all aspects of the SIDimensionality wrapper:
 Tests are written to match the actual API implementation.
 """
 
-import os
-import platform
-
 import pytest
 
 from rmnpy.exceptions import RMNError
-
-# Skip entire module on Windows CI to prevent access violations
-if platform.system() == "Windows" and any(
-    os.environ.get(var) for var in ["CI", "GITHUB_ACTIONS", "APPVEYOR"]
-):
-    pytest.skip(
-        "Skipping entire SITypes dimensionality module on Windows CI to prevent access violations",
-        allow_module_level=True,
-    )
 
 
 def test_critical_parser_strictness():

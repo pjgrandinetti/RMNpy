@@ -5,8 +5,6 @@ This module tests that the OCTypes C library is properly linked and that
 all API declarations are correctly defined in the Cython .pxd file.
 """
 
-import os
-import platform
 from pathlib import Path
 
 import pytest
@@ -175,14 +173,6 @@ def test_comparison_result_enum():
 
 def test_library_linking():
     """Test basic OCTypes library linking and string operations."""
-    # Skip this test on Windows CI to prevent access violations
-    if platform.system() == "Windows" and any(
-        os.environ.get(indicator)
-        for indicator in ["CI", "GITHUB_ACTIONS", "CONTINUOUS_INTEGRATION"]
-    ):
-        pytest.skip(
-            "Skipping C extension test on Windows CI to prevent access violations"
-        )
 
     # Test that we can import and use basic OCTypes functions
     from rmnpy.helpers.octypes import (
@@ -204,14 +194,6 @@ def test_library_linking():
 
 def test_type_ids():
     """Test that type IDs are returned correctly."""
-    # Skip this test on Windows CI to prevent access violations
-    if platform.system() == "Windows" and any(
-        os.environ.get(indicator)
-        for indicator in ["CI", "GITHUB_ACTIONS", "CONTINUOUS_INTEGRATION"]
-    ):
-        pytest.skip(
-            "Skipping C extension test on Windows CI to prevent access violations"
-        )
 
     from rmnpy.helpers.octypes import (
         py_bool_to_ocboolean,
@@ -242,14 +224,6 @@ def test_type_ids():
 
 def test_memory_management():
     """Test basic retain/release functionality."""
-    # Skip this test on Windows CI to prevent access violations
-    if platform.system() == "Windows" and any(
-        os.environ.get(indicator)
-        for indicator in ["CI", "GITHUB_ACTIONS", "CONTINUOUS_INTEGRATION"]
-    ):
-        pytest.skip(
-            "Skipping C extension test on Windows CI to prevent access violations"
-        )
 
     from rmnpy.helpers.octypes import (
         get_retain_count,

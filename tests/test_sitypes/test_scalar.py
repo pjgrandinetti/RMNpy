@@ -1,8 +1,6 @@
 """Tests for SIScalar wrapper functionality."""
 
 import math
-import os
-import platform
 from decimal import Decimal
 from fractions import Fraction
 
@@ -10,29 +8,6 @@ import pytest
 
 from rmnpy.exceptions import RMNError
 from rmnpy.wrappers.sitypes import Scalar
-
-# Skip entire module on Windows CI to prevent access violations and SafeScalar fallback issues
-(
-    pytest.skip(
-        "Skipping entire SITypes scalar module on Windows CI to prevent access violations",
-        allow_module_level=True,
-    )
-    if (
-        platform.system() == "Windows"
-        and any(
-            indicator in os.environ
-            for indicator in [
-                "CI",
-                "GITHUB_ACTIONS",
-                "CONTINUOUS_INTEGRATION",
-                "APPVEYOR",
-                "TRAVIS",
-                "JENKINS_URL",
-            ]
-        )
-    )
-    else None
-)
 
 
 class TestScalarCreation:
