@@ -234,45 +234,40 @@ jobs:
 
     - name: Install build tools (Windows)
       if: runner.os == 'Windows'
-      shell: pwsh
-      env:
-        CC: x86_64-w64-mingw32-gcc
-        CXX: x86_64-w64-mingw32-g++
+      shell: msys2 {0}
       run: |
-        # Verify MinGW environment
-        Write-Host "MinGW PATH: ${{ runner.temp }}\msys64\mingw64\bin"
-        $env:PATH = "${{ runner.temp }}\msys64\mingw64\bin;$env:PATH"
+        # Verify MinGW environment and compilers
+        echo "=== MinGW Environment Verification ==="
+        which gcc
+        gcc --version
+        which python
+        python --version
 
-        # Verify compiler availability
-        & x86_64-w64-mingw32-gcc --version
-        Write-Host "CC environment: $env:CC"
-        Write-Host "CXX environment: $env:CXX"
-
-        # Use GitHub Actions Python with MinGW compiler on PATH
-        & "$Env:pythonLocation\\python.exe" -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2"
+        # Use MSYS2 Python for all operations
+        echo "=== Installing Python build tools via MSYS2 ==="
+        python -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2"
 
     - name: Build Cython extension in-place (Windows)
       if: runner.os == 'Windows'
-      shell: pwsh
+      shell: msys2 {0}
       env:
         CC: x86_64-w64-mingw32-gcc
         CXX: x86_64-w64-mingw32-g++
-        PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
-        LDFLAGS: "-L${{ runner.temp }}/msys64/mingw64/lib"
+        LDFLAGS: "-L/mingw64/lib"
         LIBS: "-lcurl -lopenblas -llapack"
-        MINGW_LIB_DIR: "${{ runner.temp }}/msys64/mingw64/lib"
       run: |
         # Verify environment
-        Write-Host "Build environment:"
-        Write-Host "  CC: $env:CC"
-        Write-Host "  CXX: $env:CXX"
-        Write-Host "  PATH includes MinGW: $($env:PATH -like '*mingw64*')"
-        Write-Host "  LDFLAGS: $env:LDFLAGS"
-        Write-Host "  LIBS: $env:LIBS"
-        Write-Host "  MINGW_LIB_DIR: $env:MINGW_LIB_DIR"
+        echo "=== Build Environment ==="
+        echo "CC: $CC"
+        echo "CXX: $CXX"
+        echo "LDFLAGS: $LDFLAGS"
+        echo "LIBS: $LIBS"
+        which gcc
+        which python
+        python --version
 
-        # Build C extensions using GitHub Actions Python with MinGW compiler
-        & "$Env:pythonLocation\\python.exe" setup.py build_ext --inplace
+        # Build C extensions using MSYS2 Python with MinGW compiler
+        python setup.py build_ext --inplace
 
     - name: Copy runtime DLLs (Windows)
       if: runner.os == 'Windows'
@@ -330,26 +325,12 @@ jobs:
 
     - name: Install Python dependencies (Windows)
       if: runner.os == 'Windows'
-      shell: pwsh
-      env:
-        CC: x86_64-w64-mingw32-gcc
-        CXX: x86_64-w64-mingw32-g++
-        # Ensure Git is in PATH for pip git+ installs
-        PATH: 'C:\\Program Files\\Git\\cmd;${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}'
-        MINGW_LIB_DIR: "${{ runner.temp }}/msys64/mingw64/lib"
+      shell: msys2 {0}
       run: |
-        # Create a native Windows virtual environment using the Windows Python
-        & "$Env:pythonLocation\python.exe" -m venv venv
-        # Install dependencies into the venv via its Python exe
-        & "venv\Scripts\python.exe" -m pip install --upgrade pip
-        & "venv\Scripts\python.exe" -m pip install numpy pytest pytest-cov
-        # Upgrade pip
-        & "venv\Scripts\python.exe" -m pip install --upgrade pip
-        # Binaries for OCTypes, SITypes, and RMNLib have been downloaded from releases above and do not require pip installation
-        # Install editable package with test extras
-        & "venv\Scripts\python.exe" -m pip install -e .[test]
-        # Expose venv python path for subsequent steps
-        'VENV_PY=venv\Scripts\python.exe' | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8
+        # Install package in editable mode with test dependencies using MSYS2 Python
+        echo "=== Installing RMNpy package with test dependencies ==="
+        python -m pip install -e .[test]
+        echo "✓ Package installation completed"
 
     - name: Generate constants (Linux/macOS)
       if: runner.os != 'Windows'
@@ -358,126 +339,42 @@ jobs:
 
     - name: Generate constants (Windows)
       if: runner.os == 'Windows'
-      shell: pwsh
+      shell: msys2 {0}
       run: |
         # Constants are generated during the Python build process as constants.pyx
         # Check for the generated constants file
-        Write-Host "Checking for generated constants..."
-        if (Test-Path "src/rmnpy/constants.pyx") {
-          Write-Host "✓ Constants file exists: src/rmnpy/constants.pyx"
-          $constantsContent = Get-Content "src/rmnpy/constants.pyx" -First 10
-          Write-Host "Contents preview:"
-          $constantsContent | ForEach-Object { Write-Host "  $_" }
-        } else {
-          Write-Host "⚠ Constants file not found - running manual generation"
-          # Manually run the constants generation
-          & "${{ runner.temp }}\msys64\mingw64\bin\python.exe" scripts/extract_si_constants.py
-        }
-        Write-Host "Constants generation check completed"
+        echo "Checking for generated constants..."
+        if [ -f "src/rmnpy/constants.pyx" ]; then
+          echo "✓ Constants file exists: src/rmnpy/constants.pyx"
+          head -10 "src/rmnpy/constants.pyx"
+        else
+          echo "⚠ Constants file not found - running manual generation"
+          # Manually run the constants generation using MSYS2 Python
+          python scripts/extract_si_constants.py
+        fi
+        echo "Constants generation check completed"
 
     - name: Test basic imports (Windows)
       if: runner.os == 'Windows'
-      shell: pwsh
-      env:
-        PATH: ${{ runner.temp }}/msys64/mingw64/bin;${{ env.PATH }}
-        VENV_PY: ${{ env.VENV_PY }}
+      shell: msys2 {0}
       run: |
-        # Initialize control variables
-        $global:importFailed = $false
-        $global:windowsTestSkipped = $false
-        $global:msys2Success = $false
+        echo "=== Testing Basic Imports ==="
+        echo "Python version:"
+        python --version
 
-        # Advanced Windows CI Access Violation Prevention
-        $mingwBin = "${{ runner.temp }}\msys64\mingw64\bin"
+        echo "Testing numpy import..."
+        python -c "import numpy; print('Numpy version: ' + numpy.__version__)"
+        echo "✓ Numpy import successful"
 
-        Write-Host "=== Advanced Windows CI Access Violation Prevention ==="
-        Write-Host "Python executable: $env:VENV_PY"
-        Write-Host "MinGW bin directory: $mingwBin"
+        echo "Testing RMNpy import..."
+        python -c "import rmnpy; print('RMNpy imported successfully')"
+        echo "✓ RMNpy import successful"
 
-        # Enhanced environment setup
-        $env:PYTHONDONTWRITEBYTECODE = "1"
-        $env:PYTHONUNBUFFERED = "1"
-        $env:PYTHONUTF8 = "1"
-        $env:PYTHONPATH = "src"
-
-        # Add comprehensive DLL paths
-        $dllPaths = @(
-            "${{ runner.temp }}\msys64\mingw64\bin",
-            "src\rmnpy",
-            "lib",
-            "$env:pythonLocation",
-            "$env:pythonLocation\DLLs",
-            "$env:pythonLocation\Scripts"
-        )
-
-        foreach ($path in $dllPaths) {
-            if (Test-Path $path) {
-                $env:PATH = "$path;$env:PATH"
-                Write-Host "Added to PATH: $path"
-            }
-        }
-
-        # Test basic Python functionality
-        Write-Host "Testing basic Python execution..."
-        try {
-            $pythonVersion = & "$env:VENV_PY" --version
-            Write-Host "[OK] Python version: $pythonVersion"
-        } catch {
-            Write-Host "[ERROR] Basic Python test failed: $_"
-            exit 1
-        }
-
-        # Test numpy import
-        Write-Host "Testing numpy import..."
-        try {
-            $numpyTest = & "$env:VENV_PY" -c "import numpy; print('Numpy version: ' + numpy.__version__)"
-            Write-Host "[OK] Numpy import successful"
-          } catch {
-            Write-Host "[ERROR] Numpy import test failed: $_"
-            $global:importFailed = $true
-        }
-
-        # Test RMNpy import
-        Write-Host "Testing RMNpy import..."
-        try {
-            $rmnpyTest = & "$env:VENV_PY" -c "import rmnpy"
-            Write-Host "[OK] RMNpy import successful"
-          } catch {
-            Write-Host "[ERROR] RMNpy import test failed: $_"
-            $global:importFailed = $true
-        }
-
-
-        # Final status check
-        if ($global:importFailed) {
-          Write-Host "⚠ One or more import tests failed"
-          exit 1
-        } else {
-          Write-Host "✓ All import tests passed"
-          exit 0
-        }
+        echo "✓ All import tests passed"
 
     - name: Run tests (Windows)
       if: runner.os == 'Windows'
-      shell: pwsh
-      env:
-        VENV_PY: ${{ env.VENV_PY }}
+      shell: msys2 {0}
       run: |
-        # Prepend required paths for DLL resolution
-        $venvScripts = Split-Path $env:VENV_PY -Parent
-        $venvRoot = Split-Path $venvScripts -Parent
-        $dllPaths = @(
-          "${{ runner.temp }}\msys64\mingw64\bin",
-          "$venvScripts",
-          "$venvRoot\DLLs",
-          "src\rmnpy",
-          "lib"
-        )
-        foreach ($path in $dllPaths) {
-          if (Test-Path $path) {
-            $env:PATH = "$path;$env:PATH"
-            Write-Host "Prepended to PATH: $path"
-          }
-        }
-        Write-Host "Running full test suite..."
-        & "$env:VENV_PY" -m pytest --maxfail=1 --disable-warnings -q
+        echo "=== Running Full Test Suite ==="
+        python -m pytest --maxfail=1 --disable-warnings -q
