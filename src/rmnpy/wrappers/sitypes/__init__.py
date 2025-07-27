@@ -74,14 +74,19 @@ if not _sitypes_extensions_loaded:
         try:
             _logger.info("Importing dimensionality extension")
             from .dimensionality import (
-                Dimensionality,  # type: ignore[attr-defined,misc]
+                Dimensionality as _Dimensionality,
             )
 
             _logger.info("Importing scalar extension")
-            from .scalar import Scalar  # type: ignore[misc]
+            from .scalar import Scalar as _Scalar
 
             _logger.info("Importing unit extension")
-            from .unit import Unit  # type: ignore[attr-defined,misc]
+            from .unit import Unit as _Unit
+
+            # Assign to module-level variables
+            Dimensionality = _Dimensionality
+            Scalar = _Scalar
+            Unit = _Unit
 
             _sitypes_extensions_loaded = True
             _logger.info(
@@ -114,9 +119,9 @@ if not _sitypes_extensions_loaded:
                     def __init__(self, *args: Any, **kwargs: Any) -> None:
                         pass
 
-                Dimensionality = DummyDimensionality  # type: ignore[misc]
-                Scalar = DummyScalar  # type: ignore[misc]
-                Unit = DummyUnit  # type: ignore[misc]
+                Dimensionality = DummyDimensionality
+                Scalar = DummyScalar
+                Unit = DummyUnit
                 _logger.warning(
                     "Using dummy objects - tests may be skipped but collection will continue"
                 )
