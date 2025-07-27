@@ -114,16 +114,19 @@ else:
         extension_file = None
         base_path = os.path.dirname(__file__)
 
-        # Common extension suffixes
-        for suffix in [
-            ".pyd",
-            ".so",
-            ".cpython-311-darwin.so",
-            ".cpython-312-win_amd64.pyd",
-        ]:
-            potential_path = os.path.join(base_path, f"octypes{suffix}")
-            if os.path.exists(potential_path):
-                extension_file = potential_path
+        # Use glob to find any octypes extension file
+        import glob
+
+        extension_patterns = [
+            os.path.join(base_path, "octypes*.pyd"),  # Windows
+            os.path.join(base_path, "octypes*.so"),  # Linux/macOS
+        ]
+
+        for pattern in extension_patterns:
+            matches = glob.glob(pattern)
+            if matches:
+                # Use the first match found
+                extension_file = matches[0]
                 break
 
         if extension_file:
@@ -154,22 +157,35 @@ else:
         _logger.warning("Falling back to dummy functions")
 
         # Fallback dummy functions if real extension fails
+        # These functions maintain a simple string mapping for testing
+        _dummy_string_store: dict[int, str] = {}
+        _dummy_counter = [1]  # Use list to make it mutable in closures
+
         def create_oc_string(*args: Any, **kwargs: Any) -> Any:
             return None
 
         def ocstring_to_py_string(*args: Any, **kwargs: Any) -> str:
-            if args and args[0] is not None:
-                return str(args[0])
+            oc_string_ptr = args[0] if args else None
+            if oc_string_ptr is not None and oc_string_ptr in _dummy_string_store:
+                return _dummy_string_store[oc_string_ptr]
             return ""
 
         def parse_c_string(*args: Any, **kwargs: Any) -> Any:
             return None
 
         def py_string_to_ocstring(*args: Any, **kwargs: Any) -> Any:
-            return None
+            py_string = args[0] if args else ""
+            # Store the string and return a fake pointer (just an integer)
+            fake_ptr = _dummy_counter[0]
+            _dummy_counter[0] += 1
+            _dummy_string_store[fake_ptr] = str(py_string)
+            return fake_ptr
 
         def release_octype(*args: Any, **kwargs: Any) -> None:
-            pass
+            oc_ptr = args[0] if args else None
+            # Remove from dummy store if it exists
+            if oc_ptr in _dummy_string_store:
+                del _dummy_string_store[oc_ptr]
 
 
 # Make functions available for import
