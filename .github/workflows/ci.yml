@@ -243,9 +243,13 @@ jobs:
         which python
         python --version
 
-        # Use MSYS2 Python for all operations
+        # Use MSYS2 Python with system package override for CI build
         echo "=== Installing Python build tools via MSYS2 ==="
-        python -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2"
+        # Try to install numpy from MSYS2 package manager first
+        pacman --noconfirm -S --needed mingw-w64-x86_64-python-numpy || echo "Numpy package not available, will use pip"
+
+        # Install remaining tools via pip with system override
+        python -m pip install --break-system-packages --upgrade pip setuptools wheel Cython
 
     - name: Build Cython extension in-place (Windows)
       if: runner.os == 'Windows'
@@ -327,10 +331,13 @@ jobs:
       if: runner.os == 'Windows'
       shell: msys2 {0}
       run: |
-        # Install package in editable mode with test dependencies using MSYS2 Python
-        echo "=== Installing RMNpy package with test dependencies ==="
-        python -m pip install -e .[test]
-        echo "✓ Package installation completed"
+        # Use MSYS2 Python with system package override for our project
+        echo "=== Installing Python dependencies using MSYS2 Python ==="
+        # Install build tools that we need from pip
+        python -m pip install --break-system-packages --upgrade pip setuptools wheel
+        python -m pip install --break-system-packages Cython
+        # Install our project in development mode
+        python -m pip install --break-system-packages -e .[test]
 
     - name: Generate constants (Linux/macOS)
       if: runner.os != 'Windows'
