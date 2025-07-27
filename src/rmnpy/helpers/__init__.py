@@ -103,18 +103,41 @@ def _setup_pytest_interception() -> Optional[types.ModuleType]:
     return octypes_module
 
 
-# Early pytest detection and interception setup - multiple detection methods
-_pytest_detected = (
-    "pytest" in sys.modules
-    or "PYTEST_CURRENT_TEST" in os.environ
-    or any("pytest" in str(arg) for arg in sys.argv)
-    or any("test" in str(arg) for arg in sys.argv)
-    or "runtest" in " ".join(sys.argv)
-)
+# Precise pytest detection - only intercept during collection/discovery phases that cause access violations
+def _is_dangerous_pytest_phase() -> bool:
+    """Detect if we're in a pytest phase that could cause access violations"""
+    if "pytest" not in sys.modules:
+        return False
 
-if _pytest_detected:
+    # Check for pytest collection/discovery phases that cause access violations
+    # These phases scan and import modules without proper DLL loading
+    pytest_args = " ".join(sys.argv)
+    dangerous_phases = [
+        "--collect-only",
+        "--co",
+        "-q -q",  # Very quiet mode often used for collection
+        "--setup-show",
+        "--setup-plan",
+    ]
+
+    # Check if we're in module collection/scanning phase
+    if any(phase in pytest_args for phase in dangerous_phases):
+        return True
+
+    # Check if pytest is in early initialization (before proper DLL setup)
+    if hasattr(sys.modules.get("pytest", None), "_version"):
+        # If pytest is imported but PYTEST_CURRENT_TEST is not set,
+        # we might be in collection phase
+        return "PYTEST_CURRENT_TEST" not in os.environ
+
+    return False
+
+
+_dangerous_pytest_detected = _is_dangerous_pytest_phase()
+
+if _dangerous_pytest_detected:
     _logger.warning(
-        "PYTEST CONTEXT DETECTED - Activating comprehensive import interception"
+        "DANGEROUS PYTEST PHASE DETECTED - Activating import interception for access violation prevention"
     )
     intercepted_module = _setup_pytest_interception()
     if intercepted_module:
@@ -124,22 +147,9 @@ if _pytest_detected:
         py_string_to_ocstring = intercepted_module.py_string_to_ocstring
         release_octype = intercepted_module.release_octype
     _octypes_extension_loaded = True
-    _logger.info("Pytest interception active - all imports will use safe fallbacks")
-else:
-    # Even if not detected, set up interception as a precaution during CI
-    if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
-        _logger.warning(
-            "CI ENVIRONMENT DETECTED - Activating precautionary import interception"
-        )
-        intercepted_module = _setup_pytest_interception()
-        if intercepted_module:
-            create_oc_string = intercepted_module.create_oc_string
-            ocstring_to_py_string = intercepted_module.ocstring_to_py_string
-            parse_c_string = intercepted_module.parse_c_string
-            py_string_to_ocstring = intercepted_module.py_string_to_ocstring
-            release_octype = intercepted_module.release_octype
-        _octypes_extension_loaded = True
-        _logger.info("CI interception active - all imports will use safe fallbacks")
+    _logger.info(
+        "Pytest interception active - using safe fallbacks during dangerous phase"
+    )
 
 # Main import logic with comprehensive pytest protection
 if not _octypes_extension_loaded:
@@ -196,18 +206,29 @@ if not _octypes_extension_loaded:
         try:
             _logger.info("Attempting controlled octypes extension import")
 
-            # Use our intercepted module for imports to avoid DLL conflicts
-            octypes_module_name = "rmnpy.helpers.octypes"
-            if octypes_module_name in sys.modules:
-                _logger.info("Using existing intercepted octypes module")
-                octypes_module = sys.modules[octypes_module_name]
-                create_oc_string = octypes_module.create_oc_string
-                ocstring_to_py_string = octypes_module.ocstring_to_py_string
-                parse_c_string = octypes_module.parse_c_string
-                py_string_to_ocstring = octypes_module.py_string_to_ocstring
-                release_octype = octypes_module.release_octype
+            # During normal test execution (not collection), try to use real extension
+            # Only use intercepted module during dangerous pytest phases
+            if "pytest" in sys.modules and _dangerous_pytest_detected:
+                _logger.warning(
+                    "Using intercepted module due to dangerous pytest phase"
+                )
+                octypes_module_name = "rmnpy.helpers.octypes"
+                if octypes_module_name in sys.modules:
+                    _logger.info("Using existing intercepted octypes module")
+                    octypes_module = sys.modules[octypes_module_name]
+                    create_oc_string = octypes_module.create_oc_string
+                    ocstring_to_py_string = octypes_module.ocstring_to_py_string
+                    parse_c_string = octypes_module.parse_c_string
+                    py_string_to_ocstring = octypes_module.py_string_to_ocstring
+                    release_octype = octypes_module.release_octype
+                else:
+                    # Fallback to dummy functions if no intercepted module
+                    raise ImportError(
+                        "No intercepted module available during dangerous pytest phase"
+                    )
             else:
-                _logger.info("Importing octypes extension directly")
+                # Normal execution or safe pytest phase - use real extension
+                _logger.info("Importing real octypes extension")
                 from .octypes import (
                     create_oc_string as _create_oc_string,
                     ocstring_to_py_string as _ocstring_to_py_string,
@@ -316,10 +337,10 @@ else:
         }
     )
 
-# Critical: Add import interception to prevent direct octypes module access during pytest
-# This prevents tests from bypassing our protection by doing "from rmnpy.helpers.octypes import ..."
-if "pytest" in sys.modules:
-    _logger.info("Setting up import interception for pytest protection")
+# Critical: Only set up import interception during dangerous pytest phases
+# This prevents access violations while allowing normal test execution
+if "pytest" in sys.modules and _dangerous_pytest_detected:
+    _logger.info("Setting up import interception for dangerous pytest phase protection")
 
     # Create a module namespace that redirects octypes imports to our protected interface
     octypes_module = types.ModuleType("rmnpy.helpers.octypes")
@@ -334,8 +355,10 @@ if "pytest" in sys.modules:
     # Register the safe module to intercept direct imports
     sys.modules["rmnpy.helpers.octypes"] = octypes_module
     _logger.info(
-        f"Registered safe octypes module with functions: {[attr for attr in dir(octypes_module) if not attr.startswith('_')]}"
+        f"Registered safe octypes module for dangerous phase with functions: {[attr for attr in dir(octypes_module) if not attr.startswith('_')]}"
     )
+elif "pytest" in sys.modules:
+    _logger.info("Normal pytest execution - no import interception needed")
 
 __all__ = [
     "parse_c_string",
