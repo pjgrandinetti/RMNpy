@@ -106,12 +106,9 @@ def _setup_pytest_interception() -> Optional[types.ModuleType]:
 # Enhanced pytest detection - prevent access violations during Windows CI only
 def _is_dangerous_pytest_phase() -> bool:
     """Detect if we're in a dangerous pytest phase that could cause access violations (Windows CI only)"""
-    if "pytest" not in sys.modules:
-        return False
-
-    # Only activate protection on Windows in CI environments
     import platform
 
+    # Only activate protection on Windows in CI environments
     if platform.system() != "Windows":
         return False
 
@@ -129,42 +126,59 @@ def _is_dangerous_pytest_phase() -> bool:
     if not is_ci:
         return False
 
-    _logger.info("Windows CI environment detected - activating pytest protection")
-
-    # Check for pytest collection/discovery phases that cause access violations
-    pytest_args = " ".join(sys.argv)
-    dangerous_phases = [
-        "--collect-only",
-        "--co",
-        "-q -q",  # Very quiet mode often used for collection
-        "--setup-show",
-        "--setup-plan",
-    ]
-
-    # Always dangerous during collection phases in Windows CI
-    if any(phase in pytest_args for phase in dangerous_phases):
+    # In Windows CI, ANY pytest presence is dangerous for C extension loading
+    if "pytest" in sys.modules:
         _logger.warning(
-            f"Dangerous pytest collection phase detected in Windows CI: {pytest_args}"
+            "Windows CI + pytest detected - activating comprehensive OCTypes protection"
         )
         return True
 
-    # Check if pytest is in early initialization (before proper DLL setup)
-    if hasattr(sys.modules.get("pytest", None), "_version"):
-        # If pytest is imported but PYTEST_CURRENT_TEST is not set,
-        # we might be in collection phase
-        if "PYTEST_CURRENT_TEST" not in os.environ:
-            _logger.warning(
-                "Pytest collection phase detected in Windows CI - no PYTEST_CURRENT_TEST"
-            )
-            return True
+    # Also check for pytest in the command line or process
+    pytest_args = " ".join(sys.argv)
+    dangerous_indicators = [
+        "pytest",
+        "--collect-only",
+        "--co",
+        "-q",
+        "--setup-show",
+        "--setup-plan",
+        "test_",
+        ".py::test",
+    ]
 
-        # Windows CI specific: Check for direct import test scenarios
-        current_test = os.environ.get("PYTEST_CURRENT_TEST", "")
-        if current_test and "test_library_linking" in current_test:
-            _logger.warning(
-                f"Dangerous direct import test detected in Windows CI: {current_test}"
-            )
-            return True
+    if any(indicator in pytest_args for indicator in dangerous_indicators):
+        _logger.warning(f"Windows CI pytest execution detected: {pytest_args}")
+        return True
+
+    # Check for pytest collection environment variables
+    pytest_env_vars = [
+        "PYTEST_CURRENT_TEST",
+        "_PYTEST_RAISE",
+        "PYTEST_PLUGINS",
+    ]
+
+    if any(os.environ.get(var) for var in pytest_env_vars):
+        _logger.warning("Windows CI pytest environment variables detected")
+        return True
+
+    # Check if we're being imported by pytest using stack inspection
+    import inspect
+
+    try:
+        for frame_info in inspect.stack():
+            frame_filename = frame_info.filename.lower()
+            if any(
+                pytest_path in frame_filename
+                for pytest_path in ["pytest", "_pytest", "test_"]
+            ):
+                _logger.warning(
+                    f"Windows CI pytest import stack detected: {frame_filename}"
+                )
+                return True
+    except Exception:
+        # If stack inspection fails, err on the side of caution in Windows CI
+        _logger.warning("Windows CI stack inspection failed - activating protection")
+        return True
 
     return False
 
