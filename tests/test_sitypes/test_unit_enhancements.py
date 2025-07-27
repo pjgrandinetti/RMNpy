@@ -16,8 +16,8 @@ class TestUnitConversions:
 
     def test_conversion_factor_between_units(self):
         """Test getting conversion factors between compatible units."""
-        meter, _ = Unit.parse("m")
-        kilometer, _ = Unit.parse("km")
+        meter = Unit("m")
+        kilometer = Unit("km")
 
         # Should be able to get conversion factor
         # 1 m = 0.001 km, so factor should be 0.001
@@ -31,8 +31,8 @@ class TestUnitConversions:
         """Test conversions between imperial and metric units."""
         try:
             # Test pound (mass) to kilogram conversion (test_unit_13 equivalent)
-            pound_mass, _ = Unit.parse("lb")
-            kilogram, _ = Unit.parse("kg")
+            pound_mass = Unit("lb")
+            kilogram = Unit("kg")
 
             # 1 lb = 0.45359237 kg
             factor = pound_mass.conversion_factor(kilogram)
@@ -40,8 +40,8 @@ class TestUnitConversions:
             assert abs(factor - expected) < 1e-10
 
             # Test pound-force to newton conversion
-            pound_force, _ = Unit.parse("lbf")
-            newton, _ = Unit.parse("N")
+            pound_force = Unit("lbf")
+            newton = Unit("N")
 
             # 1 lbf = 4.4482216152605 N
             lbf_factor = pound_force.conversion_factor(newton)
@@ -55,8 +55,8 @@ class TestUnitConversions:
         """Test pressure unit conversions (PSI to Pascal)."""
         try:
             # Test PSI (lbf/in^2) to Pascal conversion (test_unit_12 equivalent)
-            psi, _ = Unit.parse("lbf/in^2")
-            pascal, _ = Unit.parse("Pa")
+            psi = Unit("lbf/in^2")
+            pascal = Unit("Pa")
 
             # 1 PSI = 6894.757293168361 Pa
             factor = psi.conversion_factor(pascal)
@@ -71,8 +71,8 @@ class TestUnitConversions:
     def test_incompatible_unit_conversion(self):
         """Test that conversion between incompatible units raises error."""
         try:
-            meter, _ = Unit.parse("m")
-            second, _ = Unit.parse("s")
+            meter = Unit("m")
+            second = Unit("s")
 
             # Should raise error for incompatible dimensions
             with pytest.raises((RMNError, ValueError)):
@@ -87,7 +87,7 @@ class TestUnitPrefixIntrospection:
 
     def test_prefix_detection(self):
         """Test detection of SI prefixes in units."""
-        kilometer, _ = Unit.parse("km")
+        kilometer = Unit("km")
 
         # Should detect kilo prefix
         try:
@@ -102,7 +102,7 @@ class TestUnitPrefixIntrospection:
 
     def test_base_unit_no_prefix(self):
         """Test that base units have no prefix."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
 
         try:
             assert not meter.has_prefix()
@@ -115,7 +115,7 @@ class TestUnitPrefixIntrospection:
         """Test units with prefixes in numerator and denominator."""
         try:
             # km/mm should have kilo in numerator, milli in denominator
-            complex_unit, _ = Unit.parse("km/mm")
+            complex_unit = Unit("km/mm")
 
             # Overall scale factor should be 1000 / 0.001 = 1,000,000
             assert abs(complex_unit.scale_factor - 1000000.0) < 1e-6
@@ -126,11 +126,11 @@ class TestUnitPrefixIntrospection:
     def test_prefix_allowance(self):
         """Test which units allow SI prefixes."""
         try:
-            gram, _ = Unit.parse("g")
+            gram = Unit("g")
             assert gram.allows_si_prefix
 
             # Some units might not allow prefixes
-            newton, _ = Unit.parse("N")
+            newton = Unit("N")
             # Newton typically allows prefixes (kN, mN, etc.)
             assert newton.allows_si_prefix
 
@@ -144,12 +144,12 @@ class TestUnitRootProperties:
     def test_root_symbol_extraction(self):
         """Test extraction of root symbols from prefixed units."""
         try:
-            kilometer, _ = Unit.parse("km")
+            kilometer = Unit("km")
 
             # Root symbol should be "m"
             assert kilometer.root_symbol == "m"
 
-            milligram, _ = Unit.parse("mg")
+            milligram = Unit("mg")
             # Root symbol should be "g"
             assert milligram.root_symbol == "g"
 
@@ -159,7 +159,7 @@ class TestUnitRootProperties:
     def test_root_name_properties(self):
         """Test root name properties for prefixed units."""
         try:
-            kilometer, _ = Unit.parse("km")
+            kilometer = Unit("km")
 
             # Root name should be "meter"
             assert kilometer.root_name == "meter"
@@ -171,7 +171,7 @@ class TestUnitRootProperties:
     def test_compound_unit_root_properties(self):
         """Test root properties for compound units."""
         try:
-            velocity, _ = Unit.parse("km/h")
+            velocity = Unit("km/h")
 
             # Compound units might not have simple root properties
             # This tests the behavior when root properties are accessed
@@ -188,8 +188,8 @@ class TestAdvancedUnitConstruction:
     def test_multiply_without_reducing(self):
         """Test multiplication that preserves mathematical structure."""
         try:
-            meter, _ = Unit.parse("m")
-            second, _ = Unit.parse("s")
+            meter = Unit("m")
+            second = Unit("s")
 
             # Multiply without automatic reduction/simplification
             product = meter.multiply_without_reducing(second)
@@ -204,8 +204,8 @@ class TestAdvancedUnitConstruction:
     def test_divide_without_reducing(self):
         """Test division that preserves mathematical structure."""
         try:
-            meter, _ = Unit.parse("m")
-            second, _ = Unit.parse("s")
+            meter = Unit("m")
+            second = Unit("s")
 
             quotient = meter.divide_without_reducing(second)
             regular_quotient = meter / second
@@ -217,7 +217,7 @@ class TestAdvancedUnitConstruction:
     def test_power_without_reducing(self):
         """Test power operations that preserve structure."""
         try:
-            meter, _ = Unit.parse("m")
+            meter = Unit("m")
 
             # Square without automatic reduction
             squared = meter.power_without_reducing(2)
@@ -231,7 +231,7 @@ class TestAdvancedUnitConstruction:
         """Test nth root with advanced options."""
         try:
             # Create m^6 for cube root test
-            meter, _ = Unit.parse("m")
+            meter = Unit("m")
             m6 = meter**6
 
             # Take cube root -> should give m^2
@@ -250,10 +250,10 @@ class TestExtendedUnicodeNormalization:
         """Test Greek mu vs micro sign normalization."""
         try:
             # Greek letter mu (μ, U+03BC)
-            greek_mu, _ = Unit.parse("μm")
+            greek_mu = Unit("μm")
 
             # Micro sign (µ, U+00B5)
-            micro_sign, _ = Unit.parse("µm")
+            micro_sign = Unit("µm")
 
             # Should be normalized to same representation
             assert greek_mu.symbol == micro_sign.symbol
@@ -266,10 +266,10 @@ class TestExtendedUnicodeNormalization:
         """Test multiplication sign normalization."""
         try:
             # Using × (multiplication sign)
-            unit_mult, _ = Unit.parse("m×s")
+            unit_mult = Unit("m×s")
 
             # Using * (asterisk)
-            unit_ast, _ = Unit.parse("m*s")
+            unit_ast = Unit("m*s")
 
             # Should be equivalent
             assert unit_mult.is_dimensionally_equal(unit_ast)
@@ -281,10 +281,10 @@ class TestExtendedUnicodeNormalization:
         """Test division sign normalization."""
         try:
             # Using ÷ (division sign)
-            unit_div, _ = Unit.parse("m÷s")
+            unit_div = Unit("m÷s")
 
             # Using / (slash)
-            unit_slash, _ = Unit.parse("m/s")
+            unit_slash = Unit("m/s")
 
             # Should be equivalent
             assert unit_div.is_dimensionally_equal(unit_slash)
@@ -299,13 +299,13 @@ class TestNonSIUnitSystems:
     def test_imperial_length_units(self):
         """Test imperial length units."""
         try:
-            inch, _ = Unit.parse("in")
-            foot, _ = Unit.parse("ft")
-            yard, _ = Unit.parse("yd")
-            mile, _ = Unit.parse("mi")
+            inch = Unit("in")
+            foot = Unit("ft")
+            yard = Unit("yd")
+            mile = Unit("mi")
 
             # All should be length units
-            meter, _ = Unit.parse("m")
+            meter = Unit("m")
             for unit in [inch, foot, yard, mile]:
                 assert unit.is_dimensionally_equal(meter)
 
@@ -316,11 +316,11 @@ class TestNonSIUnitSystems:
         """Test distinction between imperial mass and force units."""
         try:
             # Pound mass (lb) vs pound force (lbf)
-            pound_mass, _ = Unit.parse("lb")
-            pound_force, _ = Unit.parse("lbf")
+            pound_mass = Unit("lb")
+            pound_force = Unit("lbf")
 
-            kilogram, _ = Unit.parse("kg")
-            newton, _ = Unit.parse("N")
+            kilogram = Unit("kg")
+            newton = Unit("N")
 
             # lb should be dimensionally equal to kg (mass)
             assert pound_mass.is_dimensionally_equal(kilogram)
@@ -337,9 +337,9 @@ class TestNonSIUnitSystems:
     def test_temperature_units(self):
         """Test temperature unit support."""
         try:
-            celsius, _ = Unit.parse("°C")
-            fahrenheit, _ = Unit.parse("°F")
-            kelvin, _ = Unit.parse("K")
+            celsius = Unit("°C")
+            fahrenheit = Unit("°F")
+            kelvin = Unit("K")
 
             # All should be temperature units (same dimensionality)
             for unit in [celsius, fahrenheit]:
@@ -351,8 +351,8 @@ class TestNonSIUnitSystems:
     def test_angle_units(self):
         """Test angle unit support."""
         try:
-            radian, _ = Unit.parse("rad")
-            degree, _ = Unit.parse("°")
+            radian = Unit("rad")
+            degree = Unit("°")
 
             # Both should be dimensionless (angle units)
             assert radian.is_dimensionless
@@ -377,14 +377,14 @@ class TestUnitSerializationRoundtrip:
         complex_expr = "m•kg^2•s^3•A^4•K^5•mol^6•cd^7/(m^2•kg^3•s^4•A^5•K^6•mol^7•cd^8)"
 
         try:
-            original, _ = Unit.parse(complex_expr)
+            original = Unit(complex_expr)
 
             # Get string representation
             symbol = original.symbol
             assert symbol is not None and len(symbol) > 0
 
             # Parse it back
-            reparsed, _ = Unit.parse(symbol)
+            reparsed = Unit(symbol)
 
             # Should be equal to original
             assert reparsed.is_equal(original)
@@ -404,12 +404,12 @@ class TestUnitSerializationRoundtrip:
 
         for expr in constant_units:
             try:
-                unit, _ = Unit.parse(expr)
+                unit = Unit(expr)
                 assert unit is not None
 
                 # Test roundtrip
                 symbol = unit.symbol
-                reparsed, _ = Unit.parse(symbol)
+                reparsed = Unit(symbol)
                 assert reparsed.is_dimensionally_equal(unit)
 
             except RMNError:
@@ -426,7 +426,7 @@ class TestUnitSerializationRoundtrip:
 
         for expr in nested_expressions:
             try:
-                unit, _ = Unit.parse(expr)
+                unit = Unit(expr)
                 assert unit is not None
 
                 # Test that it parses and is dimensionally consistent

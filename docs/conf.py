@@ -42,10 +42,26 @@ nbsphinx_allow_errors = True
 templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files to ignore.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "API_SIMPLIFICATION_REVIEW.md",
+    "sphinx_warning_fixes.ipynb",
+    "development/DEVELOPMENT.md",
+    "development/ENVIRONMENT_SETUP.md",
+    "development/NEW_COMPUTER_SETUP.md",
+    "development/README.md",
+]
 
 # Suppress duplicate C declaration warnings from Breathe
-suppress_warnings = ["duplicate_declaration", "duplicate_declaration.c"]
+suppress_warnings = [
+    "duplicate_declaration",
+    "duplicate_declaration.c",
+    "autosummary.import_cycle",
+    "autodoc.import_object",
+    "ref.python",
+]
 
 # -- Breathe configuration --------------------------------------------------
 

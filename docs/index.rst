@@ -17,8 +17,8 @@ RMNpy provides Python access to two specialized C libraries:
 
 The library uses OCTypes internally for memory management and data structures, but this is transparent to users.
 
-Key Features
-~~~~~~~~~~~~
+Key Features (Planned)
+~~~~~~~~~~~~~~~~~~~~~~
 
 * **Memory Management**: Automatic memory management (transparent to users)
 * **Unit Safety**: Comprehensive unit checking and automatic conversions via SITypes
@@ -41,8 +41,8 @@ RMNpy requires Python 3.8+ and can be installed from source:
    pip install -e .
 
 .. note::
-   RMNpy is currently in development. The Python API is not yet implemented.
-   This documentation describes the planned interface and underlying C libraries.
+   RMNpy is currently in active development.
+   This documentation describes the target interface as development progresses.
 
 User Guide
 ----------
@@ -57,7 +57,7 @@ User Guide
 API Reference
 -------------
 
-The RMNpy API provides Python interfaces for scientific computing with units and datasets.
+The RMNpy API is being developed to provide Python interfaces for scientific computing with units and datasets.
 
 .. toctree::
    :maxdepth: 3
@@ -72,11 +72,14 @@ C Libraries
    Documentation for the underlying C libraries (OCTypes, SITypes, RMNLib) will be
    linked here as the integration is completed.
 
-Development
------------
+Project Information
+-------------------
 
-.. note::
-   Development documentation will be added as the project progresses.
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   CHANGELOG
 
 Indices and tables
 ==================

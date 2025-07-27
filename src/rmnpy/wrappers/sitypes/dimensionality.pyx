@@ -64,9 +64,6 @@ cdef class Dimensionality:
         >>> # Check compatibility
         >>> vel.is_compatible_with(Dimensionality("m/s"))
         True
-        >>>
-        >>> # Legacy parse method still available
-        >>> frequency = Dimensionality.parse("T^-1")
     """
 
     def __cinit__(self):
@@ -109,47 +106,6 @@ cdef class Dimensionality:
 
             # Store the C reference
             self._dim_ref = dim_ref
-
-        finally:
-            OCRelease(expr_str)
-
-    @staticmethod
-    def parse(expression):
-        """
-        Parse a dimensionality expression into a Dimensionality object.
-
-        Args:
-            expression (str): Dimensional expression like "L^2*M/T^2" or "T^-1"
-
-        Returns:
-            Dimensionality: Parsed dimensionality object
-
-        Raises:
-            RMNError: If expression cannot be parsed
-
-        Examples:
-            >>> d = Dimensionality.parse("M*L^2/T^2")  # energy
-            >>> d.symbol
-            'kg*m^2/s^2'
-        """
-        cdef bytes utf8_bytes = expression.encode('utf-8')
-        cdef const char* c_string = utf8_bytes
-        cdef OCStringRef expr_str = OCStringCreateWithCString(c_string)
-        cdef OCStringRef error_str = NULL
-        cdef SIDimensionalityRef dim_ref
-
-        try:
-            dim_ref = SIDimensionalityParseExpression(expr_str, &error_str)
-
-            if error_str != NULL:
-                error_msg = _parse_c_string(<uint64_t>error_str)
-                OCRelease(error_str)
-                raise RMNError(f"Failed to parse dimensionality expression '{expression}': {error_msg}")
-
-            if dim_ref == NULL:
-                raise RMNError(f"Failed to parse dimensionality expression '{expression}': Unknown error")
-
-            return Dimensionality._from_ref(dim_ref)
 
         finally:
             OCRelease(expr_str)

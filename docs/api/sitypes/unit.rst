@@ -7,6 +7,8 @@ Unit
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
+   :exclude-members: __init__, __add__, __sub__, __mul__, __truediv__, __pow__, __repr__, __str__, __eq__, __ne__, __lt__, __le__, __gt__, __ge__, __hash__
 
 Overview
 --------
@@ -36,24 +38,15 @@ Creating Units
    kilometer = Unit("km")               # Kilometer
    microsecond = Unit("μs")             # Microsecond
 
-   # === Traditional Parse Method (Backward Compatible) ===
-   meter_old, mult = Unit.parse("m")           # (Unit('m'), 1.0)
-   velocity_old, mult = Unit.parse("m/s")      # (Unit('m/s'), 1.0)
-   force_old, mult = Unit.parse("kg*m/s^2")   # (Unit('kg*m/s^2'), 1.0)
-
-   # Both approaches create identical units
-   assert meter == meter_old
-   assert velocity_unit == velocity_old
-
 Unit Arithmetic
 ~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
    # Get base units
-   meter, _ = Unit.parse("m")
-   second, _ = Unit.parse("s")
-   kilogram, _ = Unit.parse("kg")
+   meter = Unit("m")
+   second = Unit("s")
+   kilogram = Unit("kg")
 
    # Combine units
    area_unit = meter * meter               # m²
@@ -68,7 +61,7 @@ Unit Properties
 .. code-block:: python
 
    # Check unit properties
-   velocity_unit, _ = Unit.parse("m/s")
+   velocity_unit = Unit("m/s")
 
    print(velocity_unit.symbol)             # "m/s"
    print(velocity_unit.name)               # Human-readable name
@@ -76,7 +69,7 @@ Unit Properties
    print(velocity_unit.is_dimensionless)   # False
 
    # Check SI base units
-   meter, _ = Unit.parse("m")
+   meter = Unit("m")
    print(meter.is_si_base_unit)           # True
 
 Factory Methods
@@ -91,23 +84,15 @@ Factory Methods
    second = Unit.for_quantity("time")     # SI base unit for time
 
 Conversion Operations
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
    # Units support conversion factor calculation
    # (Actual conversion is typically done at the Scalar level)
 
-   meter, _ = Unit.parse("m")
-   kilometer, _ = Unit.parse("km")
+   meter = Unit("m")
+   kilometer = Unit("km")
 
    # Check if units are compatible for conversion
    print(meter.dimensionality.is_compatible_with(kilometer.dimensionality))  # True
-
-Class Reference
----------------
-
-.. autoclass:: Unit
-   :members:
-   :special-members: __init__, __mul__, __truediv__, __pow__, __eq__, __str__
-   :exclude-members: __weakref__

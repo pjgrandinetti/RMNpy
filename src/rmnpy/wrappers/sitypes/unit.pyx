@@ -50,9 +50,6 @@ cdef class Unit:
         >>> # More complex units
         >>> force = Unit("kg*m/s^2")  # newton
         >>> energy = Unit("kg*m^2/s^2")  # joule
-        >>>
-        >>> # Legacy parse method still available
-        >>> km_unit, km_mult = Unit.parse("km")  # returns (unit, 1.0)
     """
 
     def __cinit__(self):
@@ -98,6 +95,13 @@ cdef class Unit:
                 else:
                     raise RMNError(f"Failed to parse unit expression '{expression}': Unknown error")
 
+            # Validate that multiplier is exactly 1.0 - this is a safety check
+            # since we eliminated the parse() method based on this assumption
+            if unit_multiplier != 1.0:
+                # Release the unit before raising error
+                OCRelease(<OCTypeRef>c_unit)
+                raise RMNError(f"Unit expression '{expression}' returned unexpected multiplier {unit_multiplier}, expected 1.0")
+
             # Store the C reference
             self._c_unit = c_unit
 
@@ -116,61 +120,6 @@ cdef class Unit:
         cdef Unit result = Unit()
         result._c_unit = unit_ref
         return result
-
-    @classmethod
-    def parse(cls, expression):
-        """
-        Parse a unit from string expression.
-
-        Args:
-            expression (str): Unit expression (e.g., "m/s", "kg*m/s^2")
-
-        Returns:
-            tuple: (Unit, float) - Parsed unit object and multiplier
-
-        Raises:
-            RMNError: If parsing fails
-
-        Examples:
-            >>> # Standard units return multiplier = 1.0
-            >>> unit, multiplier = Unit.parse("km")  # kilometer
-            >>> unit.symbol  # "km" (actual kilometer unit)
-            >>> multiplier   # 1.0 (no scaling needed)
-            >>>
-            >>> # Most expressions also return multiplier = 1.0
-            >>> unit, multiplier = Unit.parse("m/s")  # meter per second
-            >>> unit.symbol  # "m/s"
-            >>> multiplier   # 1.0 (standard compound unit)
-        """
-        if not isinstance(expression, str):
-            raise TypeError("Expression must be a string")
-
-        # Check for empty string - raise error at Python level
-        if not expression.strip():
-            raise RMNError("Failed to parse unit expression '': Empty unit expression")
-
-        cdef bytes expr_bytes = expression.encode('utf-8')
-        cdef OCStringRef expr_string = OCStringCreateWithCString(expr_bytes)
-        cdef OCStringRef error_string = <OCStringRef>0
-        cdef double unit_multiplier = 1.0
-        cdef SIUnitRef c_unit
-
-        try:
-            c_unit = SIUnitFromExpression(expr_string, &unit_multiplier, &error_string)
-
-            if c_unit == NULL:
-                if error_string != NULL:
-                    error_msg = parse_c_string(<uint64_t>error_string)
-                    raise RMNError(f"Failed to parse unit expression '{expression}': {error_msg}")
-                else:
-                    raise RMNError(f"Failed to parse unit expression '{expression}': Unknown error")
-
-            # Create Python wrapper using _from_ref and return both unit and multiplier
-            return Unit._from_ref(c_unit), unit_multiplier
-        finally:
-            OCRelease(<OCTypeRef>expr_string)
-            if error_string != <OCStringRef>0:
-                OCRelease(<OCTypeRef>error_string)
 
     @classmethod
     def from_name(cls, name):

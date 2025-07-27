@@ -7,6 +7,8 @@ Dimensionality
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
+   :exclude-members: __init__, __add__, __sub__, __mul__, __truediv__, __pow__, __repr__, __str__, __eq__, __ne__, __lt__, __le__, __gt__, __ge__, __hash__
 
 Overview
 --------
@@ -37,19 +39,11 @@ Creating Dimensionalities
 
    from rmnpy.wrappers.sitypes import Dimensionality
 
-   # === Simple String Constructor (Enhanced API) ===
+   # === Create dimensionalities from expressions ===
    length = Dimensionality("L")           # Length dimension
    velocity = Dimensionality("L/T")       # Velocity dimension
    force = Dimensionality("M*L/T^2")      # Force dimension
    energy = Dimensionality("M*L^2/T^2")   # Energy dimension
-
-   # === Traditional Parse Method (Backward Compatible) ===
-   velocity_old = Dimensionality.parse("L/T")        # Same result
-   force_old = Dimensionality.parse("M*L/T^2")       # Same result
-
-   # Both approaches are equivalent
-   assert velocity == velocity_old
-   assert force == force_old
 
 Dimensional Algebra
 ~~~~~~~~~~~~~~~~~~~
@@ -85,7 +79,7 @@ Dimensional Algebra
    print(momentum_dim == impulse_dim)        # True - momentum = impulse!
 
 Practical Dimensional Analysis
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Real-world validation of physical relationships:**
 
@@ -128,11 +122,3 @@ Factory Methods
    length = Dimensionality.for_quantity("length")
    mass = Dimensionality.for_quantity("mass")
    time = Dimensionality.for_quantity("time")
-
-Class Reference
----------------
-
-.. autoclass:: Dimensionality
-   :members:
-   :special-members: __init__, __mul__, __truediv__, __pow__, __eq__, __str__
-   :exclude-members: __weakref__

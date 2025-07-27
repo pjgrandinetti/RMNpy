@@ -37,9 +37,9 @@ Most common operations:
    velocity_kmh = velocity.convert_to("km/h")  # 72.0 km/h
 
    # Work with units when needed
-   meter_unit, _ = Unit.parse("m")
+   meter_unit = Unit("m")
 
    # Advanced dimensional analysis
-   force_dim = Dimensionality.parse("M*L/T^2")  # Force dimension
+   force_dim = Dimensionality("M*L/T^2")  # Force dimension
 
 All exceptions include descriptive error messages to help with debugging.

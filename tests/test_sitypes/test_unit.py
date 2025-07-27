@@ -14,111 +14,77 @@ from rmnpy.wrappers.sitypes import Dimensionality, Unit
 class TestUnitCreation:
     """Test unit creation and factory methods."""
 
-    def test_parse_basic_units(self):
-        """Test parsing basic SI units."""
-        meter, mult = Unit.parse("m")
+    def test_basic_units(self):
+        """Test creating basic SI units."""
+        meter = Unit("m")
         assert meter.symbol == "m"
         assert meter.name == "meter"
         assert meter.plural_name == "meters"
-        assert mult == 1.0  # Standard units should return multiplier of 1.0
 
-        second, mult = Unit.parse("s")
+        second = Unit("s")
         assert second.symbol == "s"
-        assert mult == 1.0
 
-        kilogram, mult = Unit.parse("kg")
+        kilogram = Unit("kg")
         assert kilogram.symbol == "kg"
-        assert mult == 1.0
 
-    def test_parse_derived_units(self):
-        """Test parsing derived units."""
-        velocity, mult = Unit.parse("m/s")
+    def test_derived_units(self):
+        """Test creating derived units."""
+        velocity = Unit("m/s")
         assert "m" in velocity.symbol and "s" in velocity.symbol
-        assert mult == 1.0  # Standard compound units should return 1.0
 
-        acceleration, mult = Unit.parse("m/s^2")
+        acceleration = Unit("m/s^2")
         # Allow for different unicode representations
         assert "m" in acceleration.symbol and "s" in acceleration.symbol
-        assert mult == 1.0
 
-        force, mult = Unit.parse("kg*m/s^2")
+        force = Unit("kg*m/s^2")
         assert "kg" in force.symbol and "m" in force.symbol and "s" in force.symbol
-        assert mult == 1.0
 
         # Test Newton (derived unit symbol)
-        newton, mult = Unit.parse("N")
+        newton = Unit("N")
         assert newton.symbol == "N"
-        assert mult == 1.0
 
-    def test_parse_complex_expressions(self):
-        """Test parsing complex unit expressions."""
+    def test_complex_expressions(self):
+        """Test creating complex unit expressions."""
         # Energy: kg*m^2/s^2
-        energy, mult = Unit.parse("kg*m^2/s^2")
+        energy = Unit("kg*m^2/s^2")
         assert energy is not None
-        assert mult == 1.0
 
         # Power: kg*m^2/s^3
-        power, mult = Unit.parse("kg*m^2/s^3")
+        power = Unit("kg*m^2/s^3")
         assert power is not None
-        assert mult == 1.0
 
         # Pressure: kg/(m*s^2)
-        pressure, mult = Unit.parse("kg/(m*s^2)")
+        pressure = Unit("kg/(m*s^2)")
         assert pressure is not None
-        assert mult == 1.0
 
         # Test dimensional equivalence
-        force_derived, mult1 = Unit.parse("kg*m/s^2")
-        newton, mult2 = Unit.parse("N")
-        assert mult1 == 1.0 and mult2 == 1.0
-        # Note: These may not be exactly equal due to different internal representations
+        force_derived = Unit("kg*m/s^2")
+        newton = Unit("N")
+        assert force_derived.is_dimensionally_equal(newton)
 
-    def test_parse_with_prefixes(self):
-        """Test parsing units with SI prefixes."""
-        kilometer, _ = Unit.parse("km")
+    def test_prefixed_units(self):
+        """Test creating units with SI prefixes."""
+        kilometer = Unit("km")
         assert kilometer.symbol == "km"
 
-        millisecond, _ = Unit.parse("ms")
+        millisecond = Unit("ms")
         assert millisecond.symbol == "ms"
 
-        milligram, _ = Unit.parse("mg")
+        milligram = Unit("mg")
         assert milligram.symbol == "mg"
 
-    def test_parse_invalid_expressions(self):
-        """Test parsing invalid unit expressions."""
+    def test_invalid_expressions(self):
+        """Test handling of invalid unit expressions."""
         with pytest.raises(RMNError):
-            Unit.parse("invalid_unit_xyz")
+            Unit("invalid_unit_xyz")
 
         with pytest.raises(RMNError):
-            Unit.parse("")
+            Unit("")
 
+        # Note: Unit(None) is allowed for internal use (_from_ref pattern)
+        # Only non-string, non-None values should raise TypeError
         with pytest.raises(TypeError):
-            Unit.parse(None)
-
-        with pytest.raises(TypeError):
-            Unit.parse(123)
-
-    def test_parse_returns_tuple_with_multiplier(self):
-        """Test that parse() returns (Unit, float) tuple."""
-        # Standard units should return multiplier = 1.0
-        unit, multiplier = Unit.parse("m")
-        assert isinstance(unit, Unit)
-        assert isinstance(multiplier, float)
-        assert multiplier == 1.0
-        assert unit.symbol == "m"
-
-        # Complex units should also typically return 1.0
-        velocity_unit, velocity_mult = Unit.parse("m/s")
-        assert isinstance(velocity_unit, Unit)
-        assert isinstance(velocity_mult, float)
-        assert velocity_mult == 1.0
-
-        # Prefixed units should return 1.0 (they are standard units)
-        km_unit, km_mult = Unit.parse("km")
-        assert isinstance(km_unit, Unit)
-        assert isinstance(km_mult, float)
-        assert km_mult == 1.0
-        assert km_unit.symbol == "km"
+            Unit(123)
 
     def test_from_name(self):
         """Test finding units by name."""
@@ -139,21 +105,20 @@ class TestUnitCreation:
 
     def test_parse_basic_symbols(self):
         """Test parsing basic unit symbols (equivalent to old from_symbol test)."""
-        meter, mult1 = Unit.parse("m")
+        meter = Unit("m")
         assert meter is not None
         assert meter.name == "meter"
-        assert mult1 == 1.0
 
-        second, mult2 = Unit.parse("s")
+        second = Unit("s")
         assert second is not None
-        assert mult2 == 1.0
 
         # Non-existent symbol should raise RMNError
         with pytest.raises(RMNError):
-            Unit.parse("xyz")
+            Unit("xyz")
 
+        # Non-string, non-None values should raise TypeError
         with pytest.raises(TypeError):
-            Unit.parse(None)
+            Unit(123)
 
     def test_dimensionless(self):
         """Test dimensionless unit creation."""
@@ -167,13 +132,13 @@ class TestUnitCreation:
     def test_for_dimensionality(self):
         """Test finding coherent SI unit for dimensionality."""
         # Length dimensionality should give meter
-        length_dim = Dimensionality.parse("L")
+        length_dim = Dimensionality("L")
         meter = Unit.for_dimensionality(length_dim)
         assert meter is not None
         assert meter.symbol == "m"
 
         # Time dimensionality should give second
-        time_dim = Dimensionality.parse("T")
+        time_dim = Dimensionality("T")
         second = Unit.for_dimensionality(time_dim)
         assert second is not None
         assert second.symbol == "s"
@@ -187,21 +152,21 @@ class TestUnitProperties:
 
     def test_symbol_property(self):
         """Test symbol property."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         assert meter.symbol == "m"
 
-        velocity, _ = Unit.parse("m/s")
+        velocity = Unit("m/s")
         assert "m" in velocity.symbol and "s" in velocity.symbol
 
     def test_name_properties(self):
         """Test name and plural_name properties."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         assert meter.name == "meter"
         assert meter.plural_name == "meters"
 
         # Test gram (not kilogram, based on C tests)
         try:
-            gram, _ = Unit.parse("g")
+            gram = Unit("g")
             assert "gram" in gram.name.lower()
             assert "grams" in gram.plural_name.lower()
         except RMNError:
@@ -210,13 +175,13 @@ class TestUnitProperties:
 
     def test_dimensionality_property(self):
         """Test dimensionality property."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         dim = meter.dimensionality
         assert dim is not None
         assert isinstance(dim, Dimensionality)
         assert dim.symbol == "L"
 
-        velocity, _ = Unit.parse("m/s")
+        velocity = Unit("m/s")
         vel_dim = velocity.dimensionality
         assert (
             vel_dim.symbol == "LT⁻¹" or "L" in vel_dim.symbol and "T" in vel_dim.symbol
@@ -224,13 +189,13 @@ class TestUnitProperties:
 
     def test_scale_factor_property(self):
         """Test scale factor property."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         assert meter.scale_factor == 1.0
 
-        kilometer, _ = Unit.parse("km")
+        kilometer = Unit("km")
         assert kilometer.scale_factor == 1000.0
 
-        millimeter, _ = Unit.parse("mm")
+        millimeter = Unit("mm")
         assert millimeter.scale_factor == 0.001
 
         # Test that parsing returns the expected multiplier
@@ -242,7 +207,7 @@ class TestUnitProperties:
         one = Unit.dimensionless()
         assert one.is_dimensionless
 
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         assert not meter.is_dimensionless
 
         # Ratio of same units should be dimensionless
@@ -252,34 +217,34 @@ class TestUnitProperties:
 
     def test_is_derived(self):
         """Test derived unit check."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         assert not meter.is_derived  # Base unit
 
-        velocity, _ = Unit.parse("m/s")
+        velocity = Unit("m/s")
         assert velocity.is_derived  # Derived unit
 
     def test_is_si_base_unit(self):
         """Test SI base unit check."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         assert meter.is_si_base_unit
 
-        second, _ = Unit.parse("s")
+        second = Unit("s")
         assert second.is_si_base_unit
 
-        velocity, _ = Unit.parse("m/s")
+        velocity = Unit("m/s")
         assert not velocity.is_si_base_unit
 
     def test_is_coherent_si(self):
         """Test coherent SI unit check."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         assert meter.is_coherent_si
 
         # Newton is coherent SI derived unit
-        newton, _ = Unit.parse("N")
+        newton = Unit("N")
         assert newton.is_coherent_si
 
         # km is not coherent SI (has prefix)
-        kilometer, _ = Unit.parse("km")
+        kilometer = Unit("km")
         assert not kilometer.is_coherent_si
 
 
@@ -288,8 +253,8 @@ class TestUnitAlgebra:
 
     def test_multiply(self):
         """Test unit multiplication."""
-        meter, _ = Unit.parse("m")
-        second, _ = Unit.parse("s")
+        meter = Unit("m")
+        second = Unit("s")
 
         # m * s = m*s
         product = meter.multiply(second)
@@ -304,8 +269,8 @@ class TestUnitAlgebra:
 
     def test_divide(self):
         """Test unit division."""
-        meter, _ = Unit.parse("m")
-        second, _ = Unit.parse("s")
+        meter = Unit("m")
+        second = Unit("s")
 
         # m / s = m/s (velocity)
         velocity = meter.divide(second)
@@ -320,7 +285,7 @@ class TestUnitAlgebra:
 
     def test_power(self):
         """Test raising unit to power."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
 
         # m^2
         area = meter.power(2)
@@ -343,7 +308,7 @@ class TestUnitAlgebra:
 
     def test_nth_root(self):
         """Test taking nth root of unit."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         area = meter.power(2)  # m^2
 
         # sqrt(m^2) = m
@@ -367,9 +332,9 @@ class TestUnitAlgebra:
 
     def test_complex_algebra(self):
         """Test complex algebraic operations."""
-        meter, _ = Unit.parse("m")
-        second, _ = Unit.parse("s")
-        kilogram, _ = Unit.parse("kg")
+        meter = Unit("m")
+        second = Unit("s")
+        kilogram = Unit("kg")
 
         # Force: kg*m/s^2
         acceleration = meter / (second * second)
@@ -393,17 +358,17 @@ class TestUnitComparison:
 
     def test_is_equal(self):
         """Test exact equality."""
-        meter1, _ = Unit.parse("m")
-        meter2, _ = Unit.parse("m")
+        meter1 = Unit("m")
+        meter2 = Unit("m")
 
         assert meter1.is_equal(meter2)
 
-        second, _ = Unit.parse("s")
+        second = Unit("s")
         assert not meter1.is_equal(second)
 
         # Different representations of same unit should be equal
-        velocity1, _ = Unit.parse("m/s")
-        velocity2, _ = Unit.parse("m*s^-1")
+        velocity1 = Unit("m/s")
+        velocity2 = Unit("m*s^-1")
         assert velocity1.is_equal(velocity2)
 
         # Non-Unit comparison
@@ -411,23 +376,23 @@ class TestUnitComparison:
 
     def test_is_dimensionally_equal(self):
         """Test dimensional equality."""
-        meter, _ = Unit.parse("m")
-        kilometer, _ = Unit.parse("km")
+        meter = Unit("m")
+        kilometer = Unit("km")
 
         # Same dimensionality but different scale
         assert meter.is_dimensionally_equal(kilometer)
 
-        second, _ = Unit.parse("s")
+        second = Unit("s")
         assert not meter.is_dimensionally_equal(second)
 
         # Different units with same dimensionality
-        velocity1, _ = Unit.parse("m/s")
-        velocity2, _ = Unit.parse("km/h")  # Different scale, same dimensionality
+        velocity1 = Unit("m/s")
+        velocity2 = Unit("km/h")  # Different scale, same dimensionality
         assert velocity1.is_dimensionally_equal(velocity2)
 
         # Test force equivalence (based on C test_unit_8)
-        force_expr, _ = Unit.parse("kg*m/s^2")
-        newton, _ = Unit.parse("N")
+        force_expr = Unit("kg*m/s^2")
+        newton = Unit("N")
         assert force_expr.is_dimensionally_equal(newton)
 
         # Non-Unit comparison
@@ -435,12 +400,12 @@ class TestUnitComparison:
 
     def test_is_compatible_with(self):
         """Test compatibility (alias for dimensional equality)."""
-        meter, _ = Unit.parse("m")
-        kilometer, _ = Unit.parse("km")
+        meter = Unit("m")
+        kilometer = Unit("km")
 
         assert meter.is_compatible_with(kilometer)
 
-        second, _ = Unit.parse("s")
+        second = Unit("s")
         assert not meter.is_compatible_with(second)
 
 
@@ -449,32 +414,32 @@ class TestUnitOperators:
 
     def test_multiplication_operator(self):
         """Test * operator."""
-        meter, _ = Unit.parse("m")
-        second, _ = Unit.parse("s")
+        meter = Unit("m")
+        second = Unit("s")
 
         product = meter * second
         assert product.is_equal(meter.multiply(second))
 
     def test_division_operator(self):
         """Test / operator."""
-        meter, _ = Unit.parse("m")
-        second, _ = Unit.parse("s")
+        meter = Unit("m")
+        second = Unit("s")
 
         quotient = meter / second
         assert quotient.is_equal(meter.divide(second))
 
     def test_power_operator(self):
         """Test ** operator."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
 
         square = meter**2
         assert square.is_equal(meter.power(2))
 
     def test_equality_operators(self):
         """Test == and != operators."""
-        meter1, _ = Unit.parse("m")
-        meter2, _ = Unit.parse("m")
-        second, _ = Unit.parse("s")
+        meter1 = Unit("m")
+        meter2 = Unit("m")
+        second = Unit("s")
 
         assert meter1 == meter2
         assert not (meter1 != meter2)
@@ -483,9 +448,9 @@ class TestUnitOperators:
 
     def test_chained_operations(self):
         """Test chaining multiple operations."""
-        m, _ = Unit.parse("m")
-        s, _ = Unit.parse("s")
-        kg, _ = Unit.parse("kg")
+        m = Unit("m")
+        s = Unit("s")
+        kg = Unit("kg")
 
         # Force: kg*m/s^2
         force = kg * m / (s**2)
@@ -502,23 +467,23 @@ class TestUnitDisplay:
 
     def test_str_representation(self):
         """Test string representation."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         assert str(meter) == "m"
 
-        velocity, _ = Unit.parse("m/s")
+        velocity = Unit("m/s")
         velocity_str = str(velocity)
         assert "m" in velocity_str and "s" in velocity_str
 
     def test_repr_representation(self):
         """Test repr representation."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         repr_str = repr(meter)
         assert "Unit" in repr_str
         assert "m" in repr_str
 
     def test_show_method(self):
         """Test show method (just verify it doesn't crash)."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         meter.show()  # Should not raise exception
 
 
@@ -527,7 +492,7 @@ class TestUnitIntegration:
 
     def test_dimensionality_integration(self):
         """Test integration with Dimensionality class."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         length_dim = meter.dimensionality
 
         # Should be able to find unit for this dimensionality
@@ -537,8 +502,8 @@ class TestUnitIntegration:
 
     def test_unit_algebra_preserves_dimensionality(self):
         """Test that unit algebra preserves dimensional relationships."""
-        m, _ = Unit.parse("m")
-        s, _ = Unit.parse("s")
+        m = Unit("m")
+        s = Unit("s")
 
         # Distance/time = velocity
         velocity = m / s
@@ -556,13 +521,13 @@ class TestUnitEdgeCases:
 
     def test_zero_power(self):
         """Test raising to zero power."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         result = meter**0
         assert result.is_dimensionless
 
     def test_negative_power(self):
         """Test negative powers."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         inverse = meter**-1
 
         # m^-1 * m = 1
@@ -571,7 +536,7 @@ class TestUnitEdgeCases:
 
     def test_fractional_power(self):
         """Test fractional powers."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         area = meter**2
 
         # TODO: Fix fractional power implementation in Python wrapper
@@ -583,7 +548,7 @@ class TestUnitEdgeCases:
     def test_roundtrip_serialization(self):
         """Test that units can be serialized and parsed back (based on test_unit_0)."""
         # Complex expression from C test
-        original, _ = Unit.parse(
+        original = Unit(
             "m*kg^2*s^3*A^4*K^5*mol^6*cd^7/(m^2*kg^3*s^4*A^5*K^6*mol^7*cd^8)"
         )
 
@@ -592,7 +557,7 @@ class TestUnitEdgeCases:
         assert symbol is not None and len(symbol) > 0
 
         # Parse it back
-        reparsed, _ = Unit.parse(symbol)
+        reparsed = Unit(symbol)
 
         # Should be equal to original
         assert reparsed.is_equal(original)
@@ -600,8 +565,8 @@ class TestUnitEdgeCases:
     def test_equivalent_vs_equal_units(self):
         """Test the difference between equivalent and equal units (based on test_unit_8, test_unit_9)."""
         # kg*m/s^2 should be equivalent to N but not equal
-        force_expr, _ = Unit.parse("kg*m/s^2")
-        newton, _ = Unit.parse("N")
+        force_expr = Unit("kg*m/s^2")
+        newton = Unit("N")
 
         # Should be dimensionally equivalent
         assert force_expr.is_dimensionally_equal(newton)
@@ -610,8 +575,8 @@ class TestUnitEdgeCases:
         # This depends on whether the library considers them equal or just equivalent
 
         # kN vs N - same dimensionality but different scale
-        kilo_newton, _ = Unit.parse("kN")
-        base_newton, _ = Unit.parse("N")
+        kilo_newton = Unit("kN")
+        base_newton = Unit("N")
 
         # Should be dimensionally equal
         assert kilo_newton.is_dimensionally_equal(base_newton)
@@ -621,7 +586,7 @@ class TestUnitEdgeCases:
 
     def test_prefix_handling(self):
         """Test SI prefix handling (based on test_unit_4, test_unit_9)."""
-        kilometer, _ = Unit.parse("km")
+        kilometer = Unit("km")
 
         # Should have correct symbol
         assert kilometer.symbol == "km"
@@ -638,16 +603,16 @@ class TestUnitEdgeCases:
     def test_special_units(self):
         """Test special SI units like Pascal, Newton, etc."""
         # Pascal
-        pascal, _ = Unit.parse("Pa")
+        pascal = Unit("Pa")
         assert pascal.symbol == "Pa"
 
         # Newton
-        newton, _ = Unit.parse("N")
+        newton = Unit("N")
         assert newton.symbol == "N"
 
         # Bar (if supported)
         try:
-            bar, _ = Unit.parse("bar")
+            bar = Unit("bar")
             assert bar.symbol == "bar"
         except RMNError:
             pass  # Bar might not be supported
@@ -656,8 +621,8 @@ class TestUnitEdgeCases:
         """Test non-SI units like inches, pounds, etc."""
         # Test inch per second (based on test_unit_11)
         try:
-            inch_per_sec, _ = Unit.parse("in/s")
-            meter_per_sec, _ = Unit.parse("m/s")
+            inch_per_sec = Unit("in/s")
+            meter_per_sec = Unit("m/s")
 
             # Should have same dimensionality
             assert inch_per_sec.is_dimensionally_equal(meter_per_sec)
@@ -672,8 +637,8 @@ class TestUnitEdgeCases:
         """Test Unicode normalization (based on test_unit_unicode_normalization)."""
         try:
             # Test Greek mu vs micro sign
-            micro_meter_greek, _ = Unit.parse("μm")  # Greek mu
-            micro_meter_micro, _ = Unit.parse("µm")  # Micro sign
+            micro_meter_greek = Unit("μm")  # Greek mu
+            micro_meter_micro = Unit("µm")  # Micro sign
 
             # Should be equal after normalization
             assert micro_meter_greek.is_equal(micro_meter_micro)
@@ -688,7 +653,7 @@ class TestUnitEdgeCases:
         # Stefan-Boltzmann constant units: kg/(s^3*K^4)
         complex_expr = "kg/(s^3*K^4)"
         try:
-            unit, _ = Unit.parse(complex_expr)
+            unit = Unit(complex_expr)
             assert unit is not None
         except RMNError:
             # Some expressions might not be supported
@@ -700,7 +665,7 @@ class TestUnitEdgeCases:
         # Create many units to test memory management
         units = []
         for i in range(100):
-            unit, _ = Unit.parse("m")
+            unit = Unit("m")
             units.append(unit)
 
         # All should be valid
@@ -717,13 +682,13 @@ class TestUnitAPIEquivalence:
 
     def test_root_symbol_properties(self):
         """Test root symbol extraction (based on test_unit_3)."""
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
 
         # For simple units, symbol should equal the root symbol
         assert meter.symbol == "m"
 
         # Test with prefixed unit
-        km, _ = Unit.parse("km")
+        km = Unit("km")
         # Root should still be meter-related
         assert "meter" in km.name.lower()
 
@@ -732,47 +697,47 @@ class TestUnitAPIEquivalence:
         # When parsing a unit expression, the scale factor should be incorporated
         # into the unit itself, not returned as a separate multiplier
 
-        km, _ = Unit.parse("km")
+        km = Unit("km")
         assert km.scale_factor == 1000.0
 
-        mm, _ = Unit.parse("mm")
+        mm = Unit("mm")
         assert mm.scale_factor == 0.001
 
     def test_coherent_si_detection(self):
         """Test various coherent SI unit classifications."""
         # Base units
-        meter, _ = Unit.parse("m")
+        meter = Unit("m")
         assert meter.is_si_base_unit
         assert meter.is_coherent_si
 
-        second, _ = Unit.parse("s")
+        second = Unit("s")
         assert second.is_si_base_unit
         assert second.is_coherent_si
 
-        kilogram, _ = Unit.parse("kg")
+        kilogram = Unit("kg")
         assert kilogram.is_si_base_unit  # kg is the base unit, not g
         assert kilogram.is_coherent_si
 
         # Derived units
-        newton, _ = Unit.parse("N")
+        newton = Unit("N")
         assert not newton.is_si_base_unit
         assert newton.is_coherent_si  # Coherent derived unit
 
         # Prefixed units
-        kilometer, _ = Unit.parse("km")
+        kilometer = Unit("km")
         assert not kilometer.is_coherent_si  # Has prefix
 
     def test_dimensionality_consistency(self):
         """Test that dimensionality is consistent across operations."""
-        m, _ = Unit.parse("m")
-        s, _ = Unit.parse("s")
+        m = Unit("m")
+        s = Unit("s")
 
         # Create velocity
         velocity = m / s
         velocity_dim = velocity.dimensionality
 
         # Create velocity directly
-        velocity_direct, _ = Unit.parse("m/s")
+        velocity_direct = Unit("m/s")
         velocity_direct_dim = velocity_direct.dimensionality
 
         # Dimensionalities should be equal

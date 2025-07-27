@@ -12,7 +12,6 @@ This directory contains development-related documentation for the RMNpy project.
 ### For Active Developers
 
 - **[DEVELOPMENT.md](DEVELOPMENT.md)** - Complete development workflow guide
-- **[RMNpy_Implementation_Plan.md](RMNpy_Implementation_Plan.md)** - Master implementation plan and phase tracking
 
 ## 🚀 Quick Start
 
@@ -22,8 +21,6 @@ This directory contains development-related documentation for the RMNpy project.
 
 **Contributing code?** Follow the workflow in [DEVELOPMENT.md](DEVELOPMENT.md).
 
-**Want to understand the architecture?** Read the [RMNpy_Implementation_Plan.md](RMNpy_Implementation_Plan.md).
-
 ## 📁 File Organization
 
 ```text
@@ -31,15 +28,14 @@ docs/development/
 ├── README.md                      # This file - navigation guide
 ├── NEW_COMPUTER_SETUP.md         # Quick setup (copy/paste)
 ├── ENVIRONMENT_SETUP.md          # Detailed setup + troubleshooting
-├── DEVELOPMENT.md                # Development workflow
-└── RMNpy_Implementation_Plan.md  # Master plan & phase tracking
+└── DEVELOPMENT.md                # Development workflow
 ```
 
 ## 🔗 Related Documentation
 
-- **Main README**: [`../../README.md`](../../README.md) - Project overview and basic usage
-- **API Documentation**: [`../index.rst`](../index.rst) - Sphinx-generated API docs
-- **Scripts Documentation**: [`../../scripts/README.md`](../../scripts/README.md) - Development scripts
+- **Main README**: `../../README.md` - Project overview and basic usage
+- **API Documentation**: `../index.rst` - Sphinx-generated API docs
+- **Scripts Documentation**: `../../scripts/README.md` - Development scripts
 
 ---
 

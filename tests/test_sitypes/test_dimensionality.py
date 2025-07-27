@@ -50,7 +50,7 @@ def test_critical_parser_strictness():
 
     for expr in forbidden_expressions:
         try:
-            result = Dimensionality.parse(expr)
+            result = Dimensionality(expr)
             # If we get here, the parser FAILED to reject invalid syntax
             failed_rejections.append(
                 f"'{expr}' -> {result} (SHOULD HAVE BEEN REJECTED)"
@@ -94,9 +94,9 @@ class TestDimensionalityFactoryMethods:
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
         # Test basic dimensions
-        length = Dimensionality.parse("L")
-        mass = Dimensionality.parse("M")
-        time = Dimensionality.parse("T")
+        length = Dimensionality("L")
+        mass = Dimensionality("M")
+        time = Dimensionality("T")
 
         assert str(length) == "L"
         assert str(mass) == "M"
@@ -111,9 +111,9 @@ class TestDimensionalityFactoryMethods:
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
         # Test common derived dimensions - using actual string representation
-        velocity = Dimensionality.parse("L/T")
-        acceleration = Dimensionality.parse("L/T^2")
-        force = Dimensionality.parse("M*L/T^2")
+        velocity = Dimensionality("L/T")
+        acceleration = Dimensionality("L/T^2")
+        force = Dimensionality("M*L/T^2")
 
         # Use actual string representations from the implementation
         assert str(velocity) == "L/T"
@@ -130,7 +130,7 @@ class TestDimensionalityProperties:
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
         dimensionless = Dimensionality.dimensionless()
-        length = Dimensionality.parse("L")
+        length = Dimensionality("L")
 
         assert dimensionless.is_dimensionless
         assert not length.is_dimensionless
@@ -139,16 +139,16 @@ class TestDimensionalityProperties:
         """Test symbol property."""
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-        velocity = Dimensionality.parse("L/T")
+        velocity = Dimensionality("L/T")
 
-        assert Dimensionality.parse("L").symbol == "L"
+        assert Dimensionality("L").symbol == "L"
         assert velocity.symbol == "L/T"  # Using actual representation
 
     def test_is_derived_property(self):
         """Test is_derived property."""
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-        velocity = Dimensionality.parse("L/T")
+        velocity = Dimensionality("L/T")
 
         # Basic dimensions might not be considered "derived"
         # Derived dimensions are combinations of base dimensions
@@ -158,8 +158,8 @@ class TestDimensionalityProperties:
         """Test is_base_dimensionality property."""
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-        length = Dimensionality.parse("L")
-        velocity = Dimensionality.parse("L/T")
+        length = Dimensionality("L")
+        velocity = Dimensionality("L/T")
 
         # L should be a base dimensionality
         assert length.is_base_dimensionality
@@ -173,8 +173,8 @@ class TestDimensionalityAlgebra:
         """Test dimensional multiplication."""
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-        length = Dimensionality.parse("L")
-        time = Dimensionality.parse("T")
+        length = Dimensionality("L")
+        time = Dimensionality("T")
 
         # Test multiplication
         result = length.multiply(time)
@@ -190,8 +190,8 @@ class TestDimensionalityAlgebra:
         """Test dimensional division."""
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-        length = Dimensionality.parse("L")
-        time = Dimensionality.parse("T")
+        length = Dimensionality("L")
+        time = Dimensionality("T")
 
         # Test division
         velocity = length.divide(time)
@@ -205,7 +205,7 @@ class TestDimensionalityAlgebra:
         """Test power and nth_root operations."""
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-        length = Dimensionality.parse("L")
+        length = Dimensionality("L")
 
         # Test power
         area = length.power(2)
@@ -227,10 +227,10 @@ class TestDimensionalityComparisons:
         """Test dimensional equality."""
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-        velocity1 = Dimensionality.parse("L/T")
+        velocity1 = Dimensionality("L/T")
         # Create equivalent velocity by division
-        length = Dimensionality.parse("L")
-        time = Dimensionality.parse("T")
+        length = Dimensionality("L")
+        time = Dimensionality("T")
         velocity2 = length.divide(time)
 
         # Use is_equal method for comparison
@@ -238,7 +238,7 @@ class TestDimensionalityComparisons:
         assert velocity1 == velocity2  # Test __eq__ if implemented
 
         # Test inequality
-        mass = Dimensionality.parse("M")
+        mass = Dimensionality("M")
         assert not velocity1.is_equal(mass)
         assert velocity1 != mass
 
@@ -246,16 +246,16 @@ class TestDimensionalityComparisons:
         """Test dimensional compatibility."""
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-        velocity1 = Dimensionality.parse("L/T")
-        length = Dimensionality.parse("L")
-        time = Dimensionality.parse("T")
+        velocity1 = Dimensionality("L/T")
+        length = Dimensionality("L")
+        time = Dimensionality("T")
         velocity2 = length.divide(time)
 
         # Compatible dimensions
         assert velocity1.is_compatible_with(velocity2)
 
         # Incompatible dimensions
-        mass = Dimensionality.parse("M")
+        mass = Dimensionality("M")
         assert not velocity1.is_compatible_with(mass)
 
 
@@ -275,13 +275,13 @@ class TestErrorHandling:
 
         for expr in definitely_invalid:
             with pytest.raises((RMNError, ValueError, SyntaxError)):
-                Dimensionality.parse(expr)
+                Dimensionality(expr)
 
     def test_division_by_zero_power(self):
         """Test nth_root with zero argument."""
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-        length = Dimensionality.parse("L")
+        length = Dimensionality("L")
 
         with pytest.raises((RMNError, ValueError, ZeroDivisionError)):
             length.nth_root(0)
@@ -297,7 +297,7 @@ class TestMemoryManagement:
         # Create many objects to test memory management
         objects = []
         for i in range(100):
-            obj = Dimensionality.parse("L")
+            obj = Dimensionality("L")
             objects.append(obj)
 
         # All should be equal
@@ -328,7 +328,7 @@ class TestRealWorldExpressions:
         ]
 
         for expr in expressions:
-            result = Dimensionality.parse(expr)
+            result = Dimensionality(expr)
             result_str = str(result)
             # Just verify it parses successfully and contains expected symbols
             assert len(result_str) > 0
@@ -342,7 +342,7 @@ class TestShowMethods:
         """Test show and show_full methods."""
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-        velocity = Dimensionality.parse("L/T")
+        velocity = Dimensionality("L/T")
 
         # Test show method (prints to stdout, returns None)
         show_result = velocity.show()
@@ -446,9 +446,9 @@ def test_python_container_integration():
 
     from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-    velocity = Dimensionality.parse("L/T")
-    force = Dimensionality.parse("M*L/T^2")
-    energy = Dimensionality.parse("M*L^2/T^2")
+    velocity = Dimensionality("L/T")
+    force = Dimensionality("M*L/T^2")
+    energy = Dimensionality("M*L^2/T^2")
 
     # Test lists
     dim_list = [velocity, force, energy]
@@ -474,9 +474,9 @@ def test_python_equality_semantics():
 
     from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-    velocity1 = Dimensionality.parse("L/T")
-    velocity2 = Dimensionality.parse("L/T")
-    force = Dimensionality.parse("M*L/T^2")
+    velocity1 = Dimensionality("L/T")
+    velocity2 = Dimensionality("L/T")
+    force = Dimensionality("M*L/T^2")
 
     # Test that different objects have different identity
     assert velocity1 is not velocity2
@@ -507,9 +507,9 @@ def test_string_roundtrip_persistence():
 
     for original_str in test_cases:
         # Parse -> get symbol -> parse again
-        original = Dimensionality.parse(original_str)
+        original = Dimensionality(original_str)
         symbol = original.symbol
-        recreated = Dimensionality.parse(symbol)
+        recreated = Dimensionality(symbol)
 
         assert original.is_equal(
             recreated
@@ -529,10 +529,10 @@ def test_memory_persistence():
 
     def create_dimensionalities():
         return [
-            Dimensionality.parse("L"),
-            Dimensionality.parse("M"),
-            Dimensionality.parse("T"),
-            Dimensionality.parse("L/T"),
+            Dimensionality("L"),
+            Dimensionality("M"),
+            Dimensionality("T"),
+            Dimensionality("L/T"),
         ]
 
     # Create objects in function scope
@@ -559,7 +559,7 @@ def test_python_integration_limitations():
 
     from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-    velocity = Dimensionality.parse("L/T")
+    velocity = Dimensionality("L/T")
 
     # Test that objects are not hashable (expected limitation)
     try:
