@@ -186,6 +186,7 @@ cdef extern from "SITypes/SIUnit.h":
 
     # Unit reduction and conversion
     SIUnitRef SIUnitByReducing(SIUnitRef theUnit, double *unit_multiplier)
+    SIUnitRef SIUnitByReducingSymbol(SIUnitRef theUnit, OCStringRef *error)
 
     # Display
     void SIUnitShow(SIUnitRef theUnit)
@@ -275,6 +276,10 @@ cdef extern from "SITypes/SIScalar.h":
     SIScalarRef SIScalarCreateByTakingNthRoot(SIScalarRef theScalar, uint8_t root, OCStringRef *error)
     bint SIScalarTakeNthRoot(SIMutableScalarRef theScalar, uint8_t root, OCStringRef *error)
     SIScalarRef SIScalarCreateByTakingComplexPart(SIScalarRef theScalar, complexPart part)
+
+    # Unit reduction
+    SIScalarRef SIScalarCreateByReducingUnit(SIScalarRef theScalar)
+    bint SIScalarReduceUnit(SIMutableScalarRef theScalar)
 
     # String representations
     void SIScalarShow(SIScalarRef theScalar)

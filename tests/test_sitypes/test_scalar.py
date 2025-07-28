@@ -8,6 +8,7 @@ import pytest
 
 from rmnpy.exceptions import RMNError
 from rmnpy.wrappers.sitypes import Scalar
+from rmnpy.wrappers.sitypes.unit import Unit
 
 
 class TestScalarCreation:
@@ -17,7 +18,7 @@ class TestScalarCreation:
         """Test creating scalar from value and unit strings."""
         scalar = Scalar("5.0", "m")
         assert scalar is not None
-        assert scalar.unit.symbol == "m"
+        assert str(scalar.unit) == "m"
         # Value comparison - exact string "5.0" should give exact value
         assert abs(scalar.value - 5.0) < 1e-14
 
@@ -26,44 +27,44 @@ class TestScalarCreation:
         # Integer
         scalar_int = Scalar(42, "kg")
         assert scalar_int.value == 42.0
-        assert scalar_int.unit.symbol == "kg"
+        assert str(scalar_int.unit) == "kg"
 
         # Float
         scalar_float = Scalar(3.14159, "s")
         assert abs(scalar_float.value - 3.14159) < 1e-14
-        assert scalar_float.unit.symbol == "s"
+        assert str(scalar_float.unit) == "s"
 
         # Decimal
         scalar_decimal = Scalar(Decimal("2.5"), "A")
         assert abs(scalar_decimal.value - 2.5) < 1e-14
-        assert scalar_decimal.unit.symbol == "A"
+        assert str(scalar_decimal.unit) == "A"
 
         # Fraction
         scalar_fraction = Scalar(Fraction(3, 4), "mol")
         assert abs(scalar_fraction.value - 0.75) < 1e-14
-        assert scalar_fraction.unit.symbol == "mol"
+        assert str(scalar_fraction.unit) == "mol"
 
     def test_create_from_expression(self):
         """Test creating scalar from complete expression string."""
         scalar = Scalar("9.81 m/s^2")
         assert abs(scalar.value - 9.81) < 1e-14
-        assert scalar.unit.symbol == "m/s^2"
+        assert str(scalar.unit) == "m/s^2"
 
         # Test another expression - C library converts to SI base units automatically
         scalar2 = Scalar("100 km/h")
         # 100 km/h = 27.777... m/s = 0.027777... km/s (converted to SI base)
         assert abs(scalar2.value - 0.027777777777777776) < 1e-14
-        assert scalar2.unit.symbol == "km/s"
+        assert str(scalar2.unit) == "km/s"
 
         # Test scientific notation
         scalar_sci = Scalar("1.5e3 Hz")
         assert scalar_sci.value == 1500.0
-        assert scalar_sci.unit.symbol == "Hz"
+        assert str(scalar_sci.unit) == "Hz"
 
         # Test negative value
         scalar_neg = Scalar("-42.0 Hz")
         assert scalar_neg.value == -42.0
-        assert scalar_neg.unit.symbol == "Hz"
+        assert str(scalar_neg.unit) == "Hz"
 
     def test_create_dimensionless(self):
         """Test creating dimensionless scalars."""
@@ -119,7 +120,7 @@ class TestScalarProperties:
         scalar = Scalar("10.0", "kg*m/s^2")
         unit = scalar.unit
         assert (
-            unit.symbol == "m•kg/s^2"
+            str(unit) == "m•kg/s^2"
         )  # SITypes uses • for multiplication and ^2 for powers
         # Note: unit.name is empty for compound units like kg*m/s^2
 
@@ -130,7 +131,7 @@ class TestScalarProperties:
         # Check that it has the right dimensionality for energy
         assert dim.is_derived  # Energy is a derived dimension
         assert not dim.is_dimensionless  # Energy has dimensions
-        assert dim.symbol == "L^2•M/T^2"  # Energy dimensionality symbol
+        assert str(dim) == "L^2•M/T^2"  # Energy dimensionality symbol
 
 
 class TestScalarCopyOperations:
@@ -161,7 +162,7 @@ class TestScalarCopyOperations:
         # Verify all values
         for i, scalar in enumerate(scalars):
             assert scalar.value == float(i)
-            assert scalar.unit.symbol == "m"
+            assert str(scalar.unit) == "m"
 
         del scalars  # Python GC should handle cleanup
 
@@ -213,7 +214,7 @@ class TestScalarMathematicalFunctions:
         try:
             abs_scalar = abs(negative_scalar)
             assert abs_scalar.value == 5.0
-            assert abs_scalar.unit.symbol == "m"
+            assert str(abs_scalar.unit) == "m"
         except (AttributeError, TypeError):
             # Absolute value may not be implemented - test manually
             assert negative_scalar.value == -5.0
@@ -292,12 +293,11 @@ class TestScalarUnitOperations:
             force_expr = Scalar("10.0 kg*m/s^2")
 
             # Test if the unit is properly recognized/reduced
-            unit_symbol = force_expr.unit.symbol
+            unit_symbol = force_expr.unit
             _ = force_expr.unit.name  # Check that name is accessible
 
             # SITypes might reduce to "N" or keep as "kg⋅m/s²"
-            assert unit_symbol in ["N", "kg•m/s^2", "m•kg/s^2"]
-
+            assert str(unit_symbol) in ["N", "kg•m/s^2", "m•kg/s^2"]
         except (ValueError, AttributeError):
             pytest.skip("Complex unit reduction not supported")
 
@@ -308,7 +308,7 @@ class TestScalarUnitOperations:
         coherent = derived_scalar.to_coherent_si()
 
         assert abs(coherent.value - 1.0) < 1e-14
-        assert coherent.unit.symbol == "kg"
+        assert str(coherent.unit) == "kg"
 
         # Test with compound units
         speed_scalar = Scalar("3.6", "km/h")
@@ -316,7 +316,7 @@ class TestScalarUnitOperations:
 
         # 3.6 km/h = 1.0 m/s
         assert abs(coherent_speed.value - 1.0) < 1e-14
-        assert coherent_speed.unit.symbol == "m/s"
+        assert str(coherent_speed.unit) == "m/s"
 
     def test_scalar_best_unit_conversion(self):
         """Test automatic selection of best units for display."""
@@ -327,7 +327,7 @@ class TestScalarUnitOperations:
         try:
             km_distance = large_distance.convert_to("km")
             assert abs(km_distance.value - 1000.0) < 1e-14
-            assert km_distance.unit.symbol == "km"
+            assert str(km_distance.unit) == "km"
         except (AttributeError, ValueError):
             pytest.skip("Unit conversion not supported")
 
@@ -337,7 +337,7 @@ class TestScalarUnitOperations:
         try:
             mm_distance = small_distance.convert_to("mm")
             assert abs(mm_distance.value - 1.0) < 1e-14
-            assert mm_distance.unit.symbol == "mm"
+            assert str(mm_distance.unit) == "mm"
         except (AttributeError, ValueError):
             pytest.skip("Unit conversion not supported")
 
@@ -351,7 +351,7 @@ class TestScalarArithmetic:
         b = Scalar("3.0", "m")
         result = a + b
         assert abs(result.value - 8.0) < 1e-14
-        assert result.unit.symbol == "m"
+        assert str(result.unit) == "m"
 
     def test_addition_compatible_units(self):
         """Test addition of scalars with compatible units."""
@@ -360,7 +360,7 @@ class TestScalarArithmetic:
         result = a + b
         # Addition preserves first operand's units: 1000 mm + 500 mm = 1500 mm
         assert abs(result.value - 1500.0) < 1e-14
-        assert result.unit.symbol == "mm"
+        assert str(result.unit) == "mm"
 
     def test_subtraction_same_units(self):
         """Test subtraction of scalars with same units."""
@@ -368,7 +368,7 @@ class TestScalarArithmetic:
         b = Scalar("3.0", "kg")
         result = a - b
         assert abs(result.value - 7.0) < 1e-14
-        assert result.unit.symbol == "kg"
+        assert str(result.unit) == "kg"
 
     def test_subtraction_compatible_units(self):
         """Test subtraction of scalars with compatible units."""
@@ -377,7 +377,7 @@ class TestScalarArithmetic:
         result = a - b
         # Subtraction preserves first operand's units: 2000 g - 500 g = 1500 g
         assert abs(result.value - 1500.0) < 1e-14
-        assert result.unit.symbol == "g"
+        assert str(result.unit) == "g"
 
     def test_multiplication(self):
         """Test multiplication of scalars."""
@@ -385,7 +385,7 @@ class TestScalarArithmetic:
         b = Scalar("3.0", "s")
         result = a * b
         assert abs(result.value - 15.0) < 1e-14
-        assert result.unit.symbol == "m•s"  # SITypes uses • for multiplication
+        assert str(result.unit) == "m•s"  # SITypes uses • for multiplication
 
     def test_multiplication_same_units(self):
         """Test multiplication resulting in squared units."""
@@ -393,7 +393,7 @@ class TestScalarArithmetic:
         b = Scalar("2.0", "m")
         result = a * b
         assert abs(result.value - 8.0) < 1e-14
-        assert result.unit.symbol == "m^2"  # SITypes uses ^2 instead of ²
+        assert str(result.unit) == "m^2"  # SITypes uses ^2 instead of ²
 
     def test_division(self):
         """Test division of scalars."""
@@ -401,7 +401,7 @@ class TestScalarArithmetic:
         b = Scalar("3.0", "s")
         result = a / b
         assert abs(result.value - 4.0) < 1e-14
-        assert result.unit.symbol == "m/s"
+        assert str(result.unit) == "m/s"
 
     def test_division_same_units(self):
         """Test division resulting in dimensionless quantity."""
@@ -416,8 +416,8 @@ class TestScalarArithmetic:
         scalar = Scalar("2.0", "m")
         result = scalar**3
         assert abs(result.value - 8.0) < 1e-14
-        assert (
-            result.unit.symbol == "kL"
+        assert result.unit.is_equivalent(
+            Unit("kL")
         )  # SITypes converts m³ to kiloliters (equivalent)
 
     def test_power_negative(self):
@@ -425,9 +425,9 @@ class TestScalarArithmetic:
         scalar = Scalar("4.0", "m")
         result = scalar**-2
         assert abs(result.value - 1.0 / 16.0) < 1e-14
-        assert (
-            result.unit.symbol == "(1/m^2)"
-        )  # SITypes formats negative powers with parentheses
+        assert result.unit == Unit(
+            "1/m^2"
+        )  # Should be identical pointers since strings are identical
 
     def test_power_fractional(self):
         """Test raising scalar to fractional power."""
@@ -436,7 +436,7 @@ class TestScalarArithmetic:
         assert abs(result.value - 3.0) < 1e-14
         # Fractional power implementation is now working correctly
         # (m^2)^0.5 correctly returns m
-        assert result.unit.symbol == "m"  # Fixed! Fractional powers now work correctly
+        assert str(result.unit) == "m"  # Fixed! Fractional powers now work correctly
 
     def test_arithmetic_with_numbers(self):
         """Test arithmetic operations with plain numbers."""
@@ -445,12 +445,12 @@ class TestScalarArithmetic:
         # Multiplication by number
         result1 = scalar * 3.0
         assert abs(result1.value - 15.0) < 1e-14
-        assert result1.unit.symbol == "m"
+        assert str(result1.unit) == "m"
 
         # Division by number
         result2 = scalar / 2.0
         assert abs(result2.value - 2.5) < 1e-14
-        assert result2.unit.symbol == "m"
+        assert str(result2.unit) == "m"
 
     def test_incompatible_addition(self):
         """Test addition of incompatible units should raise error."""
@@ -603,12 +603,12 @@ class TestScalarPythonNumberArithmetic:
         # Test multiplying by integer
         result1 = scalar * 3
         assert abs(result1.value - 12.0) < 1e-14
-        assert result1.unit.symbol == "m"
+        assert str(result1.unit) == "m"
 
         # Test multiplying by float
         result2 = scalar * 2.5
         assert abs(result2.value - 10.0) < 1e-14
-        assert result2.unit.symbol == "m"
+        assert str(result2.unit) == "m"
 
     def test_python_number_multiply_scalar(self):
         """Test multiplying Python numbers by scalars (reverse operation)."""
@@ -617,12 +617,12 @@ class TestScalarPythonNumberArithmetic:
         # Test reverse multiplication with integer
         result1 = 5 * scalar
         assert abs(result1.value - 10.0) < 1e-14
-        assert result1.unit.symbol == "kg"
+        assert str(result1.unit) == "kg"
 
         # Test reverse multiplication with float
         result2 = 3.5 * scalar
         assert abs(result2.value - 7.0) < 1e-14
-        assert result2.unit.symbol == "kg"
+        assert str(result2.unit) == "kg"
 
     def test_scalar_divide_by_python_number(self):
         """Test dividing scalars by Python numbers."""
@@ -631,12 +631,12 @@ class TestScalarPythonNumberArithmetic:
         # Test dividing by integer
         result1 = scalar / 3
         assert abs(result1.value - 4.0) < 1e-14
-        assert result1.unit.symbol == "J"
+        assert str(result1.unit) == "J"
 
         # Test dividing by float
         result2 = scalar / 2.5
         assert abs(result2.value - 4.8) < 1e-14
-        assert result2.unit.symbol == "J"
+        assert str(result2.unit) == "J"
 
     def test_python_number_divide_by_scalar(self):
         """Test dividing Python numbers by scalars (reverse operation)."""
@@ -645,12 +645,12 @@ class TestScalarPythonNumberArithmetic:
         # Test reverse division with integer
         result1 = 20 / scalar
         assert abs(result1.value - 5.0) < 1e-14
-        assert result1.unit.symbol == "(1/m)"
+        assert str(result1.unit) == "(1/m)"
 
         # Test reverse division with float
         result2 = 15.0 / scalar
         assert abs(result2.value - 3.75) < 1e-14
-        assert result2.unit.symbol == "(1/m)"
+        assert str(result2.unit) == "(1/m)"
 
     def test_division_by_zero_protection(self):
         """Test that division by zero is properly caught."""
@@ -687,8 +687,8 @@ class TestScalarPythonNumberArithmetic:
         # Note: SITypes may use different symbols (I for current vs A for ampere)
         expected_symbols = ["A^2•T^4/(L^2•M)", "T^4•I^2/(L^2•M)", "I^2•T^4/(L^2•M)"]
         assert (
-            capacitor_C.dimensionality.symbol in expected_symbols
-        ), f"Got: {capacitor_C.dimensionality.symbol}"
+            str(capacitor_C.dimensionality) in expected_symbols
+        ), f"Got: {str(capacitor_C.dimensionality)}"
 
     def test_mixed_arithmetic_chain(self):
         """Test chained arithmetic operations mixing scalars and numbers."""
@@ -719,7 +719,7 @@ class TestScalarPythonNumberArithmetic:
         # But multiplication should work (scaling a length by a dimensionless number)
         result = length * 2.0  # This should work
         assert abs(result.value - 10.0) < 1e-14
-        assert result.unit.symbol == "m"
+        assert str(result.unit) == "m"
 
         # This demonstrates that the dimensional checking is still working correctly
 
@@ -739,7 +739,7 @@ class TestScalarPythonNumberArithmetic:
         # Test multiplication (should work with dimensional scalars)
         result_mult = dimensional_scalar * 2
         assert abs(result_mult.value - 10.0) < 1e-14
-        assert result_mult.unit.symbol == "kg"
+        assert str(result_mult.unit) == "kg"
 
         # Test that invalid types still raise errors
         with pytest.raises(TypeError):
@@ -811,14 +811,14 @@ class TestScalarConversion:
         scalar = Scalar("1000.0", "mm")
         converted = scalar.convert_to("m")
         assert abs(converted.value - 1.0) < 1e-14
-        assert converted.unit.symbol == "m"
+        assert str(converted.unit) == "m"
 
     def test_convert_to_compound_unit(self):
         """Test converting to compound unit."""
         scalar = Scalar("3.6", "km/h")
         converted = scalar.convert_to("m/s")
         assert abs(converted.value - 1.0) < 1e-14
-        assert converted.unit.symbol == "m/s"
+        assert str(converted.unit) == "m/s"
 
     def test_convert_to_incompatible_unit(self):
         """Test converting to incompatible unit should raise error."""
@@ -831,7 +831,7 @@ class TestScalarConversion:
         scalar = Scalar("1000.0", "mm")
         coherent = scalar.to_coherent_si()
         assert abs(coherent.value - 1.0) < 1e-14
-        assert coherent.unit.symbol == "m"
+        assert str(coherent.unit) == "m"
 
         # Test with compound unit
         scalar2 = Scalar("100.0", "km/h")
@@ -839,7 +839,7 @@ class TestScalarConversion:
         # 100 km/h = 100000 m / 3600 s = 27.777... m/s
         expected = 100000.0 / 3600.0
         assert abs(coherent2.value - expected) < 1e-12
-        assert coherent2.unit.symbol == "m/s"
+        assert str(coherent2.unit) == "m/s"
 
 
 class TestScalarUtilities:
@@ -931,7 +931,7 @@ class TestScalarEdgeCases:
         # Test with very large power - SITypes handles this by returning infinity
         result = scalar**1000
         assert result.value == float("inf")  # SITypes returns infinity for overflow
-        assert result.unit.symbol == "(1/m^24)"  # Units still computed correctly
+        assert str(result.unit) == "(1/m^24)"  # Units still computed correctly
 
 
 class TestScalarPhysicsExamples:
@@ -946,11 +946,8 @@ class TestScalarPhysicsExamples:
         kinetic_energy = 0.5 * mass * (velocity**2)
 
         assert abs(kinetic_energy.value - 100.0) < 1e-14
-        # Note: SITypes has a limitation where (m/s)² gives m/s² instead of m²/s²
-        # This results in kg⋅m/s² (Newton) instead of kg⋅m²/s² (Joule)
-        assert (
-            kinetic_energy.unit.name == "newton"
-        )  # Should be "joule" but SITypes limitation
+        # SITypes correctly calculates (m/s)² as m²/s², giving kg⋅m²/s² (Joule)
+        assert kinetic_energy.unit.name == "joule"  # Correctly gives joule
 
     def test_force_calculation(self):
         """Test force calculation: F = m * a"""
@@ -972,7 +969,7 @@ class TestScalarPhysicsExamples:
 
         assert abs(power.value - 200.0) < 1e-14
         # Unit symbol should be N•m/s (Newton⋅meter/second)
-        assert power.unit.symbol == "N•m/s"
+        assert str(power.unit) == "N•m/s"
         # SITypes doesn't recognize this compound unit as "watt" - unit name is empty
         assert power.unit.name == ""  # Compound units often have empty names in SITypes
 
@@ -1059,17 +1056,17 @@ class TestMathematicalFunctions:
         # Test sqrt
         result = Scalar("sqrt(25) m")
         assert abs(result.value - 5.0) < 1e-14
-        assert result.unit.symbol == "m"
+        assert str(result.unit) == "m"
 
         # Test cube root
         result = Scalar("cbrt(27) m")
         assert abs(result.value - 3.0) < 1e-14
-        assert result.unit.symbol == "m"
+        assert str(result.unit) == "m"
 
         # Test quartic (fourth) root
         result = Scalar("qtrt(16) m")
         assert abs(result.value - 2.0) < 1e-14
-        assert result.unit.symbol == "m"
+        assert str(result.unit) == "m"
 
     def test_hyperbolic_functions(self):
         """Test hyperbolic functions."""
@@ -1113,13 +1110,13 @@ class TestMathematicalFunctions:
         cos30 = math.cos(math.radians(30))
         expected = sin45 * cos30 * 10
         assert abs(result.value - expected) < 1e-14
-        assert result.unit.symbol == "N"
+        assert str(result.unit) == "N"
 
         # Test with π unit (π is a dimensionless unit with value 1 in SITypes)
         result = Scalar("π * (5 m)^2")
         expected = 1 * 25  # π unit has value 1, not math.pi
         assert abs(result.value - expected) < 1e-12
-        assert result.unit.symbol == "π•m^2"  # Units should include π
+        assert str(result.unit) == "π•m^2"  # Units should include π
 
     def test_constants_in_expressions(self):
         """Test π in expressions (π behavior depends on context in SITypes)."""
@@ -1127,7 +1124,7 @@ class TestMathematicalFunctions:
         result = Scalar("2 * π * 5 m")
         expected = 2 * math.pi * 5  # π becomes mathematical constant with units
         assert abs(result.value - expected) < 1e-12
-        assert result.unit.symbol == "m^2/m"  # Units are m^2/m (dimensionally m)
+        assert str(result.unit) == "m^2/m"  # Units are m^2/m (dimensionally m)
 
         # Note: e constant is not available in SITypes
         # Mathematical constants are accessed through function contexts like cos(π/4)
@@ -1172,21 +1169,21 @@ class TestChemicalConstants:
         assert methane_fw is not None
         # Methane formula weight should be around 16.043 g/mol
         assert 16.0 < methane_fw.value < 16.1
-        assert methane_fw.unit.symbol == "g/mol"
+        assert str(methane_fw.unit) == "g/mol"
 
         # Test water formula weight
         water_fw = Scalar("fw[H2O]")
         assert water_fw is not None
         # Water formula weight should be around 18.015 g/mol
         assert 18.0 < water_fw.value < 18.1
-        assert water_fw.unit.symbol == "g/mol"
+        assert str(water_fw.unit) == "g/mol"
 
         # Test carbon dioxide formula weight
         co2_fw = Scalar("fw[CO2]")
         assert co2_fw is not None
         # CO2 formula weight should be around 44.01 g/mol
         assert 44.0 < co2_fw.value < 44.1
-        assert co2_fw.unit.symbol == "g/mol"
+        assert str(co2_fw.unit) == "g/mol"
 
     def test_molar_calculations(self):
         """Test molar quantity calculations using formula weights."""
@@ -1225,7 +1222,7 @@ class TestChemicalConstants:
             assert h_mu is not None
             # Magnetic moment should be positive and around 2.79 nuclear magnetons
             assert 2.7 < h_mu.value < 2.9
-            assert h_mu.unit.symbol == "µ_N"  # nuclear magnetons
+            assert str(h_mu.unit) == "µ_N"  # nuclear magnetons
         except (ValueError, RMNError):
             pytest.skip("μ_I function not available")
 
@@ -1235,7 +1232,7 @@ class TestChemicalConstants:
             assert n_quad is not None
             # Quadrupole moment should be around 0.0193 barns
             assert 0.01 < n_quad.value < 0.03
-            assert n_quad.unit.symbol == "b"  # barns
+            assert str(n_quad.unit) == "b"  # barns
         except (ValueError, RMNError):
             pytest.skip("Q_I function not available")
 
@@ -1259,7 +1256,7 @@ class TestChemicalConstants:
             assert h_half_life is not None
             # Stable isotopes have infinite half-life
             assert math.isinf(h_half_life.value)
-            assert h_half_life.unit.symbol == "s"
+            assert str(h_half_life.unit) == "s"
         except (ValueError, RMNError):
             pytest.skip("t_½ function not available")
 
@@ -1273,13 +1270,13 @@ class TestAdvancedOperations:
         result = Scalar("reduce(kg*m^2*s^-2)")
         assert result is not None
         # This correctly simplifies to joules (kg⋅m²⋅s⁻² = J)
-        assert result.unit.symbol == "J"
+        assert str(result.unit) == "J"
 
         # Test reducing N*m to joules - this does simplify
         result = Scalar("reduce(N*m)")
         assert result is not None
         # Should simplify to joules
-        assert result.unit.name == "joule" and result.unit.symbol == "J"
+        assert result.unit.name == "joule" and result.unit.is_equivalent(Unit("J"))
 
     def test_complex_nmr_calculations(self):
         """Test complex NMR frequency calculations."""
@@ -1302,7 +1299,7 @@ class TestAdvancedOperations:
         # After one half-life (t=10s), should be 50 Bq at t=5s
         expected = 100 * math.exp(-math.log(2) * 0.5)  # t/t_half = 0.5
         assert abs(result.value - expected) < 1e-12
-        assert result.unit.symbol == "Bq"
+        assert str(result.unit) == "Bq"
 
     def test_oscillatory_behavior(self):
         """Test sinusoidal calculations."""
@@ -1313,7 +1310,7 @@ class TestAdvancedOperations:
         angle = 2 * math.pi * 60 * 0.01  # 2πft
         expected = 10 * math.sin(angle)
         assert abs(result.value - expected) < 1e-12
-        assert result.unit.symbol == "V"
+        assert str(result.unit) == "V"
 
 
 if __name__ == "__main__":

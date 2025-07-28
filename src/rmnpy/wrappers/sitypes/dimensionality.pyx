@@ -192,20 +192,6 @@ cdef class Dimensionality:
         return result
 
     @property
-    def symbol(self):
-        """
-        Get the canonical symbol representation of this dimensionality.
-
-        Returns:
-            str: Symbol like "kg*m^2/s^2" or "m/s"
-        """
-        if self._dim_ref == NULL:
-            return ""
-
-        cdef OCStringRef symbol_str = SIDimensionalityGetSymbol(self._dim_ref)
-        return _parse_c_string(<uint64_t>symbol_str)
-
-    @property
     def is_dimensionless(self):
         """
         Check if this dimensionality is physically dimensionless.
@@ -244,24 +230,6 @@ cdef class Dimensionality:
 
         return SIDimensionalityIsBaseDimensionality(self._dim_ref)
 
-    def is_equal(self, other):
-        """
-        Test strict equality with another dimensionality.
-
-        Args:
-            other (Dimensionality): Other dimensionality to compare
-
-        Returns:
-            bool: True if strictly equal (same rational exponents)
-        """
-        if not isinstance(other, Dimensionality):
-            return False
-
-        if self._dim_ref == NULL or (<Dimensionality>other)._dim_ref == NULL:
-            return self._dim_ref == (<Dimensionality>other)._dim_ref
-
-        return SIDimensionalityEqual(self._dim_ref, (<Dimensionality>other)._dim_ref)
-
     def is_compatible_with(self, other):
         """
         Test physical compatibility (same reduced dimensionality).
@@ -279,93 +247,6 @@ cdef class Dimensionality:
             return self._dim_ref == (<Dimensionality>other)._dim_ref
 
         return SIDimensionalityHasSameReducedDimensionality(self._dim_ref, (<Dimensionality>other)._dim_ref)
-
-    def multiply(self, other):
-        """
-        Multiply this dimensionality with another.
-
-        Args:
-            other (Dimensionality): Other dimensionality
-
-        Returns:
-            Dimensionality: Product dimensionality
-
-        Raises:
-            RMNError: If multiplication fails
-        """
-        if not isinstance(other, Dimensionality):
-            raise TypeError("Can only multiply with another Dimensionality")
-
-        if self._dim_ref == NULL or (<Dimensionality>other)._dim_ref == NULL:
-            raise RMNError("Cannot multiply with NULL dimensionality")
-
-        cdef OCStringRef error_str = NULL
-        cdef SIDimensionalityRef result = SIDimensionalityByMultiplying(
-            self._dim_ref, (<Dimensionality>other)._dim_ref, &error_str)
-
-        if error_str != NULL:
-            error_msg = _parse_c_string(<uint64_t>error_str)
-            OCRelease(error_str)
-            raise RMNError(f"Dimensionality multiplication failed: {error_msg}")
-
-        if result == NULL:
-            raise RMNError("Dimensionality multiplication failed")
-
-        return Dimensionality._from_ref(result)
-
-    def divide(self, other):
-        """
-        Divide this dimensionality by another.
-
-        Args:
-            other (Dimensionality): Divisor dimensionality
-
-        Returns:
-            Dimensionality: Quotient dimensionality
-        """
-        if not isinstance(other, Dimensionality):
-            raise TypeError("Can only divide by another Dimensionality")
-
-        if self._dim_ref == NULL or (<Dimensionality>other)._dim_ref == NULL:
-            raise RMNError("Cannot divide with NULL dimensionality")
-
-        cdef SIDimensionalityRef result = SIDimensionalityByDividing(
-            self._dim_ref, (<Dimensionality>other)._dim_ref)
-
-        if result == NULL:
-            raise RMNError("Dimensionality division failed")
-
-        return Dimensionality._from_ref(result)
-
-    def power(self, exponent):
-        """
-        Raise this dimensionality to a power.
-
-        Args:
-            exponent (float): Exponent to raise to
-
-        Returns:
-            Dimensionality: Result of raising to power
-
-        Raises:
-            RMNError: If power operation fails
-        """
-        if self._dim_ref == NULL:
-            raise RMNError("Cannot raise NULL dimensionality to power")
-
-        cdef OCStringRef error_str = NULL
-        cdef SIDimensionalityRef result = SIDimensionalityByRaisingToPower(
-            self._dim_ref, float(exponent), &error_str)
-
-        if error_str != NULL:
-            error_msg = _parse_c_string(<uint64_t>error_str)
-            OCRelease(error_str)
-            raise RMNError(f"Dimensionality power operation failed: {error_msg}")
-
-        if result == NULL:
-            raise RMNError("Dimensionality power operation failed")
-
-        return Dimensionality._from_ref(result)
 
     def nth_root(self, n):
         """
@@ -417,36 +298,95 @@ cdef class Dimensionality:
 
         return Dimensionality._from_ref(result)
 
-    def show(self):
-        """Print concise representation to stdout."""
-        if self._dim_ref != NULL:
-            SIDimensionalityShow(self._dim_ref)
-
-    def show_full(self):
-        """Print detailed, annotated report to stdout."""
-        if self._dim_ref != NULL:
-            SIDimensionalityShowFull(self._dim_ref)
-
     def __str__(self):
-        """String representation using symbol."""
-        return self.symbol
+        """
+        String representation - canonical symbol like "M•L^2•T^-2" or "L•T^-1".
+
+        Returns:
+            str: Canonical symbol representation of this dimensionality
+        """
+        if self._dim_ref == NULL:
+            return ""
+
+        cdef OCStringRef symbol_str = SIDimensionalityGetSymbol(self._dim_ref)
+        return _parse_c_string(<uint64_t>symbol_str)
 
     def __repr__(self):
         """Detailed string representation."""
-        return f"Dimensionality('{self.symbol}')"
+        return f"Dimensionality('{str(self)}')"
 
     def __eq__(self, other):
-        """Equality comparison (strict)."""
-        return self.is_equal(other)
+        """Equality comparison (==) - strict equality with same rational exponents."""
+        if isinstance(other, Dimensionality):
+            if self._dim_ref == NULL or (<Dimensionality>other)._dim_ref == NULL:
+                return self._dim_ref == (<Dimensionality>other)._dim_ref
+            return SIDimensionalityEqual(self._dim_ref, (<Dimensionality>other)._dim_ref)
+        elif isinstance(other, str):
+            # Try to parse string as a dimensionality and compare
+            try:
+                other_dim = Dimensionality(other)
+                if self._dim_ref == NULL or other_dim._dim_ref == NULL:
+                    return self._dim_ref == other_dim._dim_ref
+                return SIDimensionalityEqual(self._dim_ref, other_dim._dim_ref)
+            except (RMNError, TypeError, ValueError):
+                # If parsing fails, dimensionalities are not equal
+                return False
+        else:
+            return False
 
     def __mul__(self, other):
-        """Multiplication operator."""
-        return self.multiply(other)
+        """Multiplication operator (*)."""
+        if not isinstance(other, Dimensionality):
+            raise TypeError("Can only multiply with another Dimensionality")
+
+        if self._dim_ref == NULL or (<Dimensionality>other)._dim_ref == NULL:
+            raise RMNError("Cannot multiply with NULL dimensionality")
+
+        cdef OCStringRef error_str = NULL
+        cdef SIDimensionalityRef result = SIDimensionalityByMultiplying(
+            self._dim_ref, (<Dimensionality>other)._dim_ref, &error_str)
+
+        if error_str != NULL:
+            error_msg = _parse_c_string(<uint64_t>error_str)
+            OCRelease(error_str)
+            raise RMNError(f"Dimensionality multiplication failed: {error_msg}")
+
+        if result == NULL:
+            raise RMNError("Dimensionality multiplication failed")
+
+        return Dimensionality._from_ref(result)
 
     def __truediv__(self, other):
-        """Division operator."""
-        return self.divide(other)
+        """Division operator (/)."""
+        if not isinstance(other, Dimensionality):
+            raise TypeError("Can only divide by another Dimensionality")
+
+        if self._dim_ref == NULL or (<Dimensionality>other)._dim_ref == NULL:
+            raise RMNError("Cannot divide with NULL dimensionality")
+
+        cdef SIDimensionalityRef result = SIDimensionalityByDividing(
+            self._dim_ref, (<Dimensionality>other)._dim_ref)
+
+        if result == NULL:
+            raise RMNError("Dimensionality division failed")
+
+        return Dimensionality._from_ref(result)
 
     def __pow__(self, exponent):
-        """Power operator."""
-        return self.power(exponent)
+        """Power operator (**)."""
+        if self._dim_ref == NULL:
+            raise RMNError("Cannot raise NULL dimensionality to power")
+
+        cdef OCStringRef error_str = NULL
+        cdef SIDimensionalityRef result = SIDimensionalityByRaisingToPower(
+            self._dim_ref, float(exponent), &error_str)
+
+        if error_str != NULL:
+            error_msg = _parse_c_string(<uint64_t>error_str)
+            OCRelease(error_str)
+            raise RMNError(f"Dimensionality power operation failed: {error_msg}")
+
+        if result == NULL:
+            raise RMNError("Dimensionality power operation failed")
+
+        return Dimensionality._from_ref(result)

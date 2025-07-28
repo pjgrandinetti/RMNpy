@@ -394,6 +394,27 @@ cdef class Scalar:
 
         return Scalar._from_ref(result)
 
+    def reduced(self):
+        """
+        Get this scalar with its unit reduced to lowest terms.
+
+        The numerical value is preserved by converting to the reduced unit.
+        For example, Scalar(1.0, "m*s/m") becomes Scalar(1.0, "s").
+
+        Returns:
+            Scalar: Scalar with reduced unit
+
+        Examples:
+            >>> s = Scalar(1.0, "m*s/m")  # Non-reduced unit
+            >>> s_reduced = s.reduced()   # 1.0 s (reduced unit)
+        """
+        cdef SIScalarRef result = SIScalarCreateByReducingUnit(self._c_scalar)
+
+        if result == NULL:
+            raise RMNError("Scalar unit reduction failed")
+
+        return Scalar._from_ref(result)
+
     def nth_root(self, root):
         """
         Take the nth root of this scalar.
@@ -630,20 +651,37 @@ cdef class Scalar:
     def __eq__(self, other):
         """Equality operator (==)."""
         cdef OCComparisonResult result
-        if not isinstance(other, Scalar):
-            return False
-        try:
-            result = SIScalarCompareLoose(self._c_scalar, (<Scalar>other)._c_scalar)
+        if isinstance(other, Scalar):
+            try:
+                result = SIScalarCompareLoose(self._c_scalar, (<Scalar>other)._c_scalar)
 
-            if result == kOCCompareEqualTo:
-                return True
-            elif result in (kOCCompareLessThan, kOCCompareGreaterThan):
+                if result == kOCCompareEqualTo:
+                    return True
+                elif result in (kOCCompareLessThan, kOCCompareGreaterThan):
+                    return False
+                else:
+                    # For equality, dimensional mismatch or other errors means not equal
+                    return False
+            except:
+                # For equality, any exception means not equal
                 return False
-            else:
-                # For equality, dimensional mismatch or other errors means not equal
+        elif isinstance(other, str):
+            # Try to parse string as a scalar and compare
+            try:
+                other_scalar = Scalar(other)
+                result = SIScalarCompareLoose(self._c_scalar, other_scalar._c_scalar)
+
+                if result == kOCCompareEqualTo:
+                    return True
+                elif result in (kOCCompareLessThan, kOCCompareGreaterThan):
+                    return False
+                else:
+                    # For equality, dimensional mismatch or other errors means not equal
+                    return False
+            except (RMNError, TypeError, ValueError):
+                # If parsing fails, scalars are not equal
                 return False
-        except:
-            # For equality, any exception means not equal
+        else:
             return False
 
     def __ne__(self, other):
@@ -766,4 +804,4 @@ cdef class Scalar:
 
     def __repr__(self):
         """Return a detailed string representation."""
-        return f"Scalar(value={self.value!r}, unit='{self.unit.symbol if self.unit else None}')"
+        return f"Scalar('{str(self)}')"

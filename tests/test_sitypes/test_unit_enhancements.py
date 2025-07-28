@@ -85,32 +85,6 @@ class TestUnitConversions:
 class TestUnitPrefixIntrospection:
     """Test unit prefix detection and properties."""
 
-    def test_prefix_detection(self):
-        """Test detection of SI prefixes in units."""
-        kilometer = Unit("km")
-
-        # Should detect kilo prefix
-        try:
-            assert kilometer.has_prefix()
-            # These properties aren't implemented yet, so we'll test what we can
-            prefix_value = kilometer.get_numerator_prefix_at_index(
-                0
-            )  # Length dimension
-            assert prefix_value == 3  # kilo = 10^3
-        except AttributeError:
-            pytest.skip("Prefix introspection not implemented")
-
-    def test_base_unit_no_prefix(self):
-        """Test that base units have no prefix."""
-        meter = Unit("m")
-
-        try:
-            assert not meter.has_prefix()
-            prefix_value = meter.get_numerator_prefix_at_index(0)  # Length dimension
-            assert prefix_value == 0  # No prefix
-        except AttributeError:
-            pytest.skip("Prefix introspection not implemented")
-
     def test_multiple_prefixes(self):
         """Test units with prefixes in numerator and denominator."""
         try:
@@ -182,67 +156,6 @@ class TestUnitRootProperties:
             pytest.skip("Root properties for compound units not implemented")
 
 
-class TestAdvancedUnitConstruction:
-    """Test advanced unit construction methods."""
-
-    def test_multiply_without_reducing(self):
-        """Test multiplication that preserves mathematical structure."""
-        try:
-            meter = Unit("m")
-            second = Unit("s")
-
-            # Multiply without automatic reduction/simplification
-            product = meter.multiply_without_reducing(second)
-
-            # Should be equivalent to m*s but might preserve structure differently
-            regular_product = meter * second
-            assert product.is_dimensionally_equal(regular_product)
-
-        except AttributeError:
-            pytest.skip("multiply_without_reducing not implemented")
-
-    def test_divide_without_reducing(self):
-        """Test division that preserves mathematical structure."""
-        try:
-            meter = Unit("m")
-            second = Unit("s")
-
-            quotient = meter.divide_without_reducing(second)
-            regular_quotient = meter / second
-            assert quotient.is_dimensionally_equal(regular_quotient)
-
-        except AttributeError:
-            pytest.skip("divide_without_reducing not implemented")
-
-    def test_power_without_reducing(self):
-        """Test power operations that preserve structure."""
-        try:
-            meter = Unit("m")
-
-            # Square without automatic reduction
-            squared = meter.power_without_reducing(2)
-            regular_squared = meter**2
-            assert squared.is_dimensionally_equal(regular_squared)
-
-        except AttributeError:
-            pytest.skip("power_without_reducing not implemented")
-
-    def test_nth_root_advanced(self):
-        """Test nth root with advanced options."""
-        try:
-            # Create m^6 for cube root test
-            meter = Unit("m")
-            m6 = meter**6
-
-            # Take cube root -> should give m^2
-            cube_root = m6.nth_root_advanced(3)
-            m2 = meter**2
-            assert cube_root.is_dimensionally_equal(m2)
-
-        except AttributeError:
-            pytest.skip("nth_root_advanced not implemented")
-
-
 class TestExtendedUnicodeNormalization:
     """Test comprehensive Unicode normalization."""
 
@@ -256,8 +169,8 @@ class TestExtendedUnicodeNormalization:
             micro_sign = Unit("µm")
 
             # Should be normalized to same representation
-            assert greek_mu.symbol == micro_sign.symbol
-            assert greek_mu.is_equal(micro_sign)
+            assert str(greek_mu) == str(micro_sign)
+            assert greek_mu == micro_sign
 
         except RMNError:
             pytest.skip("Unicode normalization not supported")
@@ -272,7 +185,7 @@ class TestExtendedUnicodeNormalization:
             unit_ast = Unit("m*s")
 
             # Should be equivalent
-            assert unit_mult.is_dimensionally_equal(unit_ast)
+            assert unit_mult.dimensionality == unit_ast.dimensionality
 
         except RMNError:
             pytest.skip("Multiplication sign normalization not supported")
@@ -287,7 +200,7 @@ class TestExtendedUnicodeNormalization:
             unit_slash = Unit("m/s")
 
             # Should be equivalent
-            assert unit_div.is_dimensionally_equal(unit_slash)
+            assert unit_div.dimensionality == unit_slash.dimensionality
 
         except RMNError:
             pytest.skip("Division sign normalization not supported")
@@ -307,7 +220,7 @@ class TestNonSIUnitSystems:
             # All should be length units
             meter = Unit("m")
             for unit in [inch, foot, yard, mile]:
-                assert unit.is_dimensionally_equal(meter)
+                assert unit.dimensionality == meter.dimensionality
 
         except RMNError:
             pytest.skip("Imperial length units not supported")
@@ -323,13 +236,13 @@ class TestNonSIUnitSystems:
             newton = Unit("N")
 
             # lb should be dimensionally equal to kg (mass)
-            assert pound_mass.is_dimensionally_equal(kilogram)
+            assert pound_mass.dimensionality == kilogram.dimensionality
 
             # lbf should be dimensionally equal to N (force)
-            assert pound_force.is_dimensionally_equal(newton)
+            assert pound_force.dimensionality == newton.dimensionality
 
             # lb and lbf should NOT be dimensionally equal
-            assert not pound_mass.is_dimensionally_equal(pound_force)
+            assert not pound_mass.dimensionality == pound_force.dimensionality
 
         except RMNError:
             pytest.skip("Imperial mass/force distinction not supported")
@@ -343,7 +256,7 @@ class TestNonSIUnitSystems:
 
             # All should be temperature units (same dimensionality)
             for unit in [celsius, fahrenheit]:
-                assert unit.is_dimensionally_equal(kelvin)
+                assert unit.dimensionality == kelvin.dimensionality
 
         except RMNError:
             pytest.skip("Temperature units not supported")
@@ -357,7 +270,7 @@ class TestNonSIUnitSystems:
             # Both should be dimensionless (angle units)
             assert radian.is_dimensionless
             assert degree.is_dimensionless
-            assert radian.is_dimensionally_equal(degree)
+            assert radian.dimensionality == degree.dimensionality
 
             # Test conversion factor (1 radian = 180/π degrees)
             conversion = radian.conversion_factor(degree)
@@ -380,14 +293,14 @@ class TestUnitSerializationRoundtrip:
             original = Unit(complex_expr)
 
             # Get string representation
-            symbol = original.symbol
+            symbol = str(original)
             assert symbol is not None and len(symbol) > 0
 
             # Parse it back
             reparsed = Unit(symbol)
 
             # Should be equal to original
-            assert reparsed.is_equal(original)
+            assert reparsed == original
 
         except RMNError:
             pytest.skip(f"Complex expression '{complex_expr}' not supported")
@@ -408,9 +321,9 @@ class TestUnitSerializationRoundtrip:
                 assert unit is not None
 
                 # Test roundtrip
-                symbol = unit.symbol
+                symbol = str(unit)
                 reparsed = Unit(symbol)
-                assert reparsed.is_dimensionally_equal(unit)
+                assert reparsed.dimensionality == unit.dimensionality
 
             except RMNError:
                 # Some complex expressions might not be supported
@@ -430,7 +343,7 @@ class TestUnitSerializationRoundtrip:
                 assert unit is not None
 
                 # Test that it parses and is dimensionally consistent
-                symbol = unit.symbol
+                symbol = str(unit)
                 assert symbol is not None
 
             except RMNError:
