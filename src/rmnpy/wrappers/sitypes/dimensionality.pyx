@@ -94,7 +94,7 @@ cdef class Dimensionality:
         cdef SIDimensionalityRef dim_ref
 
         try:
-            dim_ref = SIDimensionalityParseExpression(expr_str, &error_str)
+            dim_ref = SIDimensionalityFromExpression(expr_str, &error_str)
 
             if error_str != NULL:
                 error_msg = _parse_c_string(<uint64_t>error_str)
