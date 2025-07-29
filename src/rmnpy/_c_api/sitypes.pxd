@@ -142,21 +142,10 @@ cdef extern from "SITypes/SIUnit.h":
     OCStringRef SIUnitCopySymbol(SIUnitRef theUnit)
     OCStringRef SIUnitCopyName(SIUnitRef theUnit)
     OCStringRef SIUnitCopyPluralName(SIUnitRef theUnit)
-    OCStringRef SIUnitCopyRootName(SIUnitRef theUnit)
-    OCStringRef SIUnitCopyRootPluralName(SIUnitRef theUnit)
-    OCStringRef SIUnitCopyRootSymbol(SIUnitRef theUnit)
-
-    # Properties - Prefix information
-    SIPrefix SIUnitGetNumeratorPrefixAtIndex(SIUnitRef theUnit, uint8_t index)
-    SIPrefix SIUnitGetDenominatorPrefixAtIndex(SIUnitRef theUnit, uint8_t index)
-    bint SIUnitAllowsSIPrefix(SIUnitRef theUnit)
 
     # Type checking
     bint SIUnitIsDimensionless(SIUnitRef theUnit)
-    bint SIUnitIsSIBaseUnit(SIUnitRef theUnit)
-    bint SIUnitIsCoherentSIBaseUnit(SIUnitRef theUnit)
-    bint SIUnitIsCoherentDerivedUnit(SIUnitRef theUnit)
-    bint SIUnitGetIsSpecialSISymbol(SIUnitRef theUnit)
+    bint SIUnitIsCoherentUnit(SIUnitRef theUnit)
 
     # Comparison
     bint SIUnitEqual(SIUnitRef unit1, SIUnitRef unit2)
@@ -167,8 +156,8 @@ cdef extern from "SITypes/SIUnit.h":
 
     # Unit creation and finding
     SIUnitRef SIUnitDimensionlessAndUnderived()
-    SIUnitRef SIUnitFindWithName(OCStringRef input)
-    SIUnitRef SIUnitFindCoherentSIUnitWithDimensionality(SIDimensionalityRef theDimensionality)
+    SIUnitRef SIUnitWithName(OCStringRef input)
+    SIUnitRef SIUnitCoherentUnitFromDimensionality(SIDimensionalityRef theDimensionality)
 
     # Unit conversion
     double SIUnitConversion(SIUnitRef initialUnit, SIUnitRef finalUnit)
@@ -187,9 +176,6 @@ cdef extern from "SITypes/SIUnit.h":
     # Unit reduction and conversion
     SIUnitRef SIUnitByReducing(SIUnitRef theUnit, double *unit_multiplier)
     SIUnitRef SIUnitByReducingSymbol(SIUnitRef theUnit, OCStringRef *error)
-
-    # Display
-    void SIUnitShow(SIUnitRef theUnit)
 
 # ====================================================================================
 # Phase 2C: SIQuantity & SIScalar API (depends on both above)
@@ -285,7 +271,7 @@ cdef extern from "SITypes/SIScalar.h":
     void SIScalarShow(SIScalarRef theScalar)
     OCStringRef SIScalarCreateStringValue(SIScalarRef theScalar)
     OCStringRef SIScalarCreateNumericStringValue(SIScalarRef theScalar)
-    OCStringRef SIScalarCreateUnitString(SIScalarRef theScalar)
+    OCStringRef SIScalarCopyUnitSymbol(SIScalarRef theScalar)
     OCStringRef SIScalarCreateStringValueWithFormat(SIScalarRef theScalar, OCStringRef format)
 
     # Tests

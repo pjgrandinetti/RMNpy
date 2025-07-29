@@ -140,7 +140,7 @@ cdef class Unit:
         cdef SIUnitRef c_unit
 
         try:
-            c_unit = SIUnitFindWithName(name_string)
+            c_unit = SIUnitWithName(name_string)
 
             if c_unit == NULL:
                 return None
@@ -180,7 +180,7 @@ cdef class Unit:
         # Access the _dim_ref attribute using the proper cdef approach
         cdef Dimensionality dim_obj = <Dimensionality>dimensionality
         cdef SIDimensionalityRef dim_ref = dim_obj._dim_ref
-        cdef SIUnitRef c_unit = SIUnitFindCoherentSIUnitWithDimensionality(dim_ref)
+        cdef SIUnitRef c_unit = SIUnitCoherentUnitFromDimensionality(dim_ref)
 
         if c_unit == NULL:
             return None
@@ -194,7 +194,7 @@ cdef class Unit:
         if self._c_unit == NULL:
             return ""
 
-        cdef OCStringRef name_string = SIUnitCopyRootName(self._c_unit)
+        cdef OCStringRef name_string = SIUnitCopyName(self._c_unit)
         if name_string == NULL:
             return ""
 
@@ -209,7 +209,7 @@ cdef class Unit:
         if self._c_unit == NULL:
             return ""
 
-        cdef OCStringRef plural_string = SIUnitCopyRootPluralName(self._c_unit)
+        cdef OCStringRef plural_string = SIUnitCopyPluralName(self._c_unit)
         if plural_string == NULL:
             return ""
 
@@ -219,49 +219,19 @@ cdef class Unit:
             OCRelease(<OCTypeRef>plural_string)
 
     @property
-    def root_name(self):
-        """Get the root name (without prefix) of this unit."""
-        if self._c_unit == NULL:
-            return ""
-
-        cdef OCStringRef root_string = SIUnitCopyRootName(self._c_unit)
-        if root_string == NULL:
-            return ""
-
-        try:
-            return parse_c_string(<uint64_t>root_string)
-        finally:
-            OCRelease(<OCTypeRef>root_string)
-
-    @property
-    def root_plural_name(self):
-        """Get the root plural name (without prefix) of this unit."""
-        if self._c_unit == NULL:
-            return ""
-
-        cdef OCStringRef root_plural_string = SIUnitCopyRootPluralName(self._c_unit)
-        if root_plural_string == NULL:
-            return ""
-
-        try:
-            return parse_c_string(<uint64_t>root_plural_string)
-        finally:
-            OCRelease(<OCTypeRef>root_plural_string)
-
-    @property
-    def root_symbol(self):
+    def symbol(self):
         """Get the root symbol (without prefix) of this unit."""
         if self._c_unit == NULL:
             return ""
 
-        cdef OCStringRef root_symbol_string = SIUnitCopyRootSymbol(self._c_unit)
+        cdef OCStringRef root_symbol_string = SIUnitCopySymbol(self._c_unit)
         if root_symbol_string == NULL:
             return ""
 
         try:
-            return parse_c_string(<uint64_t>root_symbol_string)
+            return parse_c_string(<uint64_t>symbol_string)
         finally:
-            OCRelease(<OCTypeRef>root_symbol_string)
+            OCRelease(<OCTypeRef>symbol_string)
 
     @property
     def allows_si_prefix(self):
@@ -310,27 +280,6 @@ cdef class Unit:
         # A unit is derived if its dimensionality is derived
         return self.dimensionality.is_derived
 
-    @property
-    def is_si_base_unit(self):
-        """Check if this unit is an SI base unit."""
-        if self._c_unit == <SIUnitRef>0:
-            return False
-
-        return SIUnitIsSIBaseUnit(self._c_unit)
-
-    @property
-    def is_coherent_si(self):
-        """Check if this is a coherent SI unit."""
-        if self._c_unit == NULL:
-            return False
-
-        # A unit is coherent SI if it's:
-        # 1. A coherent SI base unit (m, kg, s, A, K, mol, cd), OR
-        # 2. A coherent derived unit (constructed from base symbols), OR
-        # 3. A special SI symbol (N, J, W, Pa, etc.) that is coherent
-        return (SIUnitIsCoherentSIBaseUnit(self._c_unit) or
-                SIUnitIsCoherentDerivedUnit(self._c_unit) or
-                (SIUnitGetIsSpecialSISymbol(self._c_unit) and self.scale_factor == 1.0))
 
     @property
     def is_reduced(self):
@@ -481,7 +430,7 @@ cdef class Unit:
 
         cdef Dimensionality dim_obj = <Dimensionality>dim
         cdef SIDimensionalityRef dim_ref = dim_obj._dim_ref
-        cdef SIUnitRef result = SIUnitFindCoherentSIUnitWithDimensionality(dim_ref)
+        cdef SIUnitRef result = SIUnitCoherentUnitFromDimensionality(dim_ref)
 
         if result == NULL:
             raise RMNError("Conversion to coherent SI unit failed")
