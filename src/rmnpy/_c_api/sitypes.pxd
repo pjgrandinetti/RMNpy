@@ -47,7 +47,7 @@ ctypedef enum SIBaseDimensionIndex:
 cdef extern from "SITypes/SIDimensionality.h":
 
     # Parsing
-    SIDimensionalityRef SIDimensionalityParseExpression(OCStringRef expression, OCStringRef *error)
+    SIDimensionalityRef SIDimensionalityFromExpression(OCStringRef expression, OCStringRef *error)
 
     # Type system
     OCTypeID SIDimensionalityGetTypeID()
