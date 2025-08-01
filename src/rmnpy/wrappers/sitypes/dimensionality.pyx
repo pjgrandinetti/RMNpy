@@ -308,7 +308,7 @@ cdef class Dimensionality:
         if self._dim_ref == NULL:
             return ""
 
-        cdef OCStringRef symbol_str = SIDimensionalityGetSymbol(self._dim_ref)
+        cdef OCStringRef symbol_str = SIDimensionalityCopySymbol(self._dim_ref)
         return _parse_c_string(<uint64_t>symbol_str)
 
     def __repr__(self):
