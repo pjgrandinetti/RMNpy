@@ -132,7 +132,7 @@ cdef extern from "SITypes/SIUnit.h":
         kSIPrefixYotta = 24
 
     # Parsing
-    SIUnitRef SIUnitFromExpression(OCStringRef expression, SIDimensionalityRef dimensionality, OCStringRef *error)
+    SIUnitRef SIUnitFromExpression(OCStringRef expression, double *unit_multiplier, OCStringRef *error)
 
     # Memory management
     SIUnitRef SIUnitCopy(SIUnitRef theUnit)
@@ -142,6 +142,7 @@ cdef extern from "SITypes/SIUnit.h":
     OCStringRef SIUnitCopySymbol(SIUnitRef theUnit)
     OCStringRef SIUnitCopyName(SIUnitRef theUnit)
     OCStringRef SIUnitCopyPluralName(SIUnitRef theUnit)
+    bint SIUnitAllowsSIPrefix(SIUnitRef theUnit)
 
     # Type checking
     bint SIUnitIsDimensionless(SIUnitRef theUnit)

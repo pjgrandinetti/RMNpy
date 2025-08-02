@@ -229,9 +229,9 @@ cdef class Unit:
             return ""
 
         try:
-            return parse_c_string(<uint64_t>symbol_string)
+            return parse_c_string(<uint64_t>root_symbol_string)
         finally:
-            OCRelease(<OCTypeRef>symbol_string)
+            OCRelease(<OCTypeRef>root_symbol_string)
 
     @property
     def allows_si_prefix(self):
