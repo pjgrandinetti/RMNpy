@@ -298,6 +298,7 @@ cdef class Unit:
         try:
             return SIUnitEqual(self._c_unit, reduced)
         finally:
+            # Always release the temporary reduced unit
             OCRelease(<OCTypeRef>reduced)
 
     # Unit conversion methods
@@ -355,8 +356,10 @@ cdef class Unit:
         if result == NULL:
             error_msg = "Unknown error"
             if error_string != NULL:
-                error_msg = parse_c_string(<uint64_t>error_string)
-                OCRelease(<OCTypeRef>error_string)
+                try:
+                    error_msg = parse_c_string(<uint64_t>error_string)
+                finally:
+                    OCRelease(<OCTypeRef>error_string)
             raise RMNError(f"Unit root operation failed: {error_msg}")
 
         return Unit._from_ref(result)
@@ -386,8 +389,10 @@ cdef class Unit:
         if result == NULL:
             error_msg = "Unknown error"
             if error_string != NULL:
-                error_msg = parse_c_string(<uint64_t>error_string)
-                OCRelease(<OCTypeRef>error_string)
+                try:
+                    error_msg = parse_c_string(<uint64_t>error_string)
+                finally:
+                    OCRelease(<OCTypeRef>error_string)
             raise RMNError(f"Advanced unit root operation failed: {error_msg}")
 
         return Unit._from_ref(result)
@@ -502,8 +507,10 @@ cdef class Unit:
         if result == NULL:
             error_msg = "Unknown error"
             if error_string != NULL:
-                error_msg = parse_c_string(<uint64_t>error_string)
-                OCRelease(<OCTypeRef>error_string)
+                try:
+                    error_msg = parse_c_string(<uint64_t>error_string)
+                finally:
+                    OCRelease(<OCTypeRef>error_string)
             raise RMNError(f"Unit multiplication failed: {error_msg}")
 
         return Unit._from_ref(result)
@@ -531,7 +538,7 @@ cdef class Unit:
         cdef double power = float(exponent)
         cdef double unit_multiplier = 1.0
         cdef OCStringRef error_string = NULL
-        cdef SIUnitRef result
+        cdef SIUnitRef result = NULL
         cdef uint8_t c_root
         cdef double root_candidate
 
@@ -547,8 +554,10 @@ cdef class Unit:
             if result == NULL:
                 error_msg = "Unknown error"
                 if error_string != NULL:
-                    error_msg = parse_c_string(<uint64_t>error_string)
-                    OCRelease(<OCTypeRef>error_string)
+                    try:
+                        error_msg = parse_c_string(<uint64_t>error_string)
+                    finally:
+                        OCRelease(<OCTypeRef>error_string)
                 raise RMNError(f"Unit power operation failed: {error_msg}")
 
             return Unit._from_ref(result)
@@ -570,8 +579,10 @@ cdef class Unit:
                     if result == NULL:
                         error_msg = "Unknown error"
                         if error_string != NULL:
-                            error_msg = parse_c_string(<uint64_t>error_string)
-                            OCRelease(<OCTypeRef>error_string)
+                            try:
+                                error_msg = parse_c_string(<uint64_t>error_string)
+                            finally:
+                                OCRelease(<OCTypeRef>error_string)
                         raise RMNError(f"Unit root operation failed: {error_msg}")
 
                     return Unit._from_ref(result)
