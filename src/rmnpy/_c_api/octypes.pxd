@@ -29,7 +29,7 @@ cdef extern from "complex.h":
         pass
 
 # Forward declarations of opaque structs
-cdef extern from "OCTypes/OCLibrary.h":
+cdef extern from "OCTypes/OCTypes.h":
     # Forward declarations for all opaque struct types
     ctypedef struct impl_OCType
     ctypedef struct impl_OCString

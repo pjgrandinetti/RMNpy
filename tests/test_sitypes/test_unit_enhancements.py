@@ -97,64 +97,6 @@ class TestUnitPrefixIntrospection:
         except (RMNError, AttributeError):
             pytest.skip("Complex prefix units or introspection not supported")
 
-    def test_prefix_allowance(self):
-        """Test which units allow SI prefixes."""
-        try:
-            gram = Unit("g")
-            assert gram.allows_si_prefix
-
-            # Some units might not allow prefixes
-            newton = Unit("N")
-            # Newton typically allows prefixes (kN, mN, etc.)
-            assert newton.allows_si_prefix
-
-        except (RMNError, AttributeError):
-            pytest.skip("Prefix allowance checking not implemented")
-
-
-class TestUnitRootProperties:
-    """Test unit root symbol and name properties."""
-
-    def test_root_symbol_extraction(self):
-        """Test extraction of root symbols from prefixed units."""
-        try:
-            kilometer = Unit("km")
-
-            # Root symbol should be "m"
-            assert kilometer.root_symbol == "m"
-
-            milligram = Unit("mg")
-            # Root symbol should be "g"
-            assert milligram.root_symbol == "g"
-
-        except AttributeError:
-            pytest.skip("root_symbol property not implemented")
-
-    def test_root_name_properties(self):
-        """Test root name properties for prefixed units."""
-        try:
-            kilometer = Unit("km")
-
-            # Root name should be "meter"
-            assert kilometer.root_name == "meter"
-            assert kilometer.root_plural_name == "meters"
-
-        except AttributeError:
-            pytest.skip("root_name properties not implemented")
-
-    def test_compound_unit_root_properties(self):
-        """Test root properties for compound units."""
-        try:
-            velocity = Unit("km/h")
-
-            # Compound units might not have simple root properties
-            # This tests the behavior when root properties are accessed
-            getattr(velocity, "root_symbol", None)
-            # Behavior is implementation-dependent
-
-        except AttributeError:
-            pytest.skip("Root properties for compound units not implemented")
-
 
 class TestExtendedUnicodeNormalization:
     """Test comprehensive Unicode normalization."""

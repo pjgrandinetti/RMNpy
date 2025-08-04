@@ -18,7 +18,7 @@ touch lib/libSITypes.a
 touch lib/libRMNLib.a
 
 # Create minimal stub headers for OCTypes
-cat > include/OCTypes/OCLibrary.h << 'EOF'
+cat > include/OCTypes/OCTypes.h << 'EOF'
 #ifndef OC_LIBRARY_H
 #define OC_LIBRARY_H
 
@@ -34,7 +34,7 @@ typedef struct OCDictionary OCDictionary;
 EOF
 
 # Create minimal stub headers for SITypes
-cat > include/SITypes/SILibrary.h << 'EOF'
+cat > include/SITypes/SITypes.h << 'EOF'
 #ifndef SI_LIBRARY_H
 #define SI_LIBRARY_H
 

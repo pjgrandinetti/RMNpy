@@ -50,7 +50,7 @@ def test_import_octypes_api():
         content = f.read()
 
     # Check for key OCTypes declarations
-    assert 'cdef extern from "OCTypes/OCLibrary.h":' in content
+    assert 'cdef extern from "OCTypes/OCTypes.h":' in content
     assert "OCTypeID" in content
     assert "OCIndex" in content
     assert "OCArrayRef" in content

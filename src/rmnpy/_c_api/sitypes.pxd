@@ -19,10 +19,10 @@ from libc.stdint cimport int8_t, uint8_t
 from rmnpy._c_api.octypes cimport *
 
 # ====================================================================================
-# SITypes Core Types and Constants (from SILibrary.h)
+# SITypes Core Types and Constants (from SITypes.h)
 # ====================================================================================
 
-# Forward declarations from SILibrary.h
+# Forward declarations from SITypes.h
 ctypedef void* SIDimensionalityRef
 ctypedef void* SIUnitRef
 ctypedef void* SIQuantityRef
@@ -36,8 +36,8 @@ ctypedef void* SIMutableScalarRef
 
 # Base dimension indices (from SIDimensionality.h)
 ctypedef enum SIBaseDimensionIndex:
-    kSILengthIndex = 0
-    kSIMassIndex = 1
+    kSIMassIndex = 0
+    kSILengthIndex = 1
     kSITimeIndex = 2
     kSICurrentIndex = 3
     kSITemperatureIndex = 4
@@ -146,6 +146,12 @@ cdef extern from "SITypes/SIUnit.h":
     # Type checking
     bint SIUnitIsDimensionless(SIUnitRef theUnit)
     bint SIUnitIsCoherentUnit(SIUnitRef theUnit)
+    bint SIUnitIsSIUnit(SIUnitRef theUnit)
+    bint SIUnitIsCGSUnit(SIUnitRef theUnit)
+    bint SIUnitIsImperialUnit(SIUnitRef theUnit)
+    bint SIUnitIsAtomicUnit(SIUnitRef theUnit)
+    bint SIUnitIsPlanckUnit(SIUnitRef theUnit)
+    bint SIUnitIsConstant(SIUnitRef theUnit)
 
     # Comparison
     bint SIUnitEqual(SIUnitRef unit1, SIUnitRef unit2)
@@ -156,7 +162,8 @@ cdef extern from "SITypes/SIUnit.h":
 
     # Unit creation and finding
     SIUnitRef SIUnitDimensionlessAndUnderived()
-    SIUnitRef SIUnitWithName(OCStringRef input)
+    SIUnitRef SIUnitFindWithName(OCStringRef input)
+    SIUnitRef SIUnitWithSymbol(OCStringRef symbol)
     SIUnitRef SIUnitCoherentUnitFromDimensionality(SIDimensionalityRef theDimensionality)
 
     # Unit conversion
@@ -170,12 +177,11 @@ cdef extern from "SITypes/SIUnit.h":
 
     # Unit arithmetic - Advanced (non-reducing)
     SIUnitRef SIUnitByMultiplyingWithoutReducing(SIUnitRef theUnit1, SIUnitRef theUnit2, double *unit_multiplier, OCStringRef *error)
-    SIUnitRef SIUnitByDividingWithoutReducing(SIUnitRef theUnit1, SIUnitRef theUnit2, double *unit_multiplier)
+    SIUnitRef SIUnitByDividingWithoutReducing(SIUnitRef theUnit1, SIUnitRef theUnit2, double *unit_multiplier, OCStringRef *error)
     SIUnitRef SIUnitByRaisingToPowerWithoutReducing(SIUnitRef input, double power, double *unit_multiplier, OCStringRef *error)
 
     # Unit reduction and conversion
     SIUnitRef SIUnitByReducing(SIUnitRef theUnit, double *unit_multiplier)
-    SIUnitRef SIUnitByReducingSymbol(SIUnitRef theUnit, OCStringRef *error)
 
 # ====================================================================================
 # Phase 2C: SIQuantity & SIScalar API (depends on both above)

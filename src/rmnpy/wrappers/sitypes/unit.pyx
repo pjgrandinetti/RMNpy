@@ -111,8 +111,9 @@ cdef class Unit:
                 OCRelease(<OCTypeRef>error_string)
 
     def __dealloc__(self):
-        if self._c_unit != NULL:
-            OCRelease(<OCTypeRef>self._c_unit)
+        # Units are static instances managed by SITypes library
+        # No need to release them
+        pass
 
     @staticmethod
     cdef Unit _from_ref(SIUnitRef unit_ref):
@@ -140,7 +141,7 @@ cdef class Unit:
         cdef SIUnitRef c_unit
 
         try:
-            c_unit = SIUnitWithName(name_string)
+            c_unit = SIUnitFindWithName(name_string)
 
             if c_unit == NULL:
                 return None
@@ -187,6 +188,35 @@ cdef class Unit:
 
         return Unit._from_ref(c_unit)
 
+    @classmethod
+    def from_name(cls, name):
+        """
+        Find a unit by its name.
+
+        Args:
+            name (str): Unit name to search for
+
+        Returns:
+            Unit or None: Found unit, or None if not found
+        """
+        if not isinstance(name, str):
+            raise TypeError("Name must be a string")
+
+        cdef OCStringRef name_string = OCStringCreateWithCString(name.encode('utf-8'))
+        if name_string == NULL:
+            raise MemoryError("Failed to create name string")
+
+        cdef SIUnitRef c_unit
+        try:
+            c_unit = SIUnitFindWithName(name_string)
+        finally:
+            OCRelease(<OCTypeRef>name_string)
+
+        if c_unit == NULL:
+            return None
+
+        return Unit._from_ref(c_unit)
+
     # Properties
     @property
     def name(self):
@@ -220,12 +250,12 @@ cdef class Unit:
 
     @property
     def symbol(self):
-        """Get the root symbol (without prefix) of this unit."""
+        """Get the symbol of this unit."""
         if self._c_unit == NULL:
             return ""
 
-        cdef OCStringRef root_symbol_string = SIUnitCopySymbol(self._c_unit)
-        if root_symbol_string == NULL:
+        cdef OCStringRef symbol_string = SIUnitCopySymbol(self._c_unit)
+        if symbol_string == NULL:
             return ""
 
         try:
@@ -234,12 +264,31 @@ cdef class Unit:
             OCRelease(<OCTypeRef>symbol_string)
 
     @property
-    def allows_si_prefix(self):
-        """Check if this unit allows SI prefixes."""
+    def is_si_unit(self):
+        """Check if this is an SI unit."""
         if self._c_unit == NULL:
             return False
 
-        return SIUnitAllowsSIPrefix(self._c_unit)
+        return SIUnitIsSIUnit(self._c_unit)
+
+    @property
+    def is_coherent_si(self):
+        """Check if this is a coherent SI unit."""
+        if self._c_unit == NULL:
+            return False
+
+        return SIUnitIsCoherentUnit(self._c_unit)
+
+    @property
+    def is_si_base_unit(self):
+        """Check if this is an SI base unit (approximation)."""
+        if self._c_unit == NULL:
+            return False
+
+        # Heuristic: SI base units are SI units with scale factor 1.0 and simple dimensionality
+        return (self.is_si_unit and
+                abs(self.scale_factor - 1.0) < 1e-15 and
+                self.dimensionality.is_base_dimensionality)
 
     @property
     def dimensionality(self):
@@ -400,16 +449,9 @@ cdef class Unit:
         Returns:
             Unit: Unit in lowest terms
         """
-        cdef OCStringRef error_string = NULL
+        cdef double unit_multiplier = 1.0
 
-        cdef SIUnitRef result = SIUnitByReducingSymbol(self._c_unit, &error_string)
-
-        if error_string != NULL:
-            try:
-                error_message = parse_c_string(<uint64_t>error_string)
-                raise RMNError(f"Unit reduction failed: {error_message}")
-            finally:
-                OCRelease(<OCTypeRef>error_string)
+        cdef SIUnitRef result = SIUnitByReducing(self._c_unit, &unit_multiplier)
 
         if result == NULL:
             raise RMNError("Unit reduction failed")
@@ -514,9 +556,17 @@ cdef class Unit:
             raise TypeError("Can only divide by another Unit")
 
         cdef double unit_multiplier = 1.0
+        cdef OCStringRef error_string = NULL
 
         cdef SIUnitRef result = SIUnitByDividingWithoutReducing(self._c_unit, (<Unit>other)._c_unit,
-                                                               &unit_multiplier)
+                                                               &unit_multiplier, &error_string)
+
+        if error_string != NULL:
+            try:
+                error_msg = parse_c_string(<uint64_t>error_string)
+            finally:
+                OCRelease(<OCTypeRef>error_string)
+            raise RMNError(f"Unit division failed: {error_msg}")
 
         if result == NULL:
             raise RMNError("Unit division failed")
