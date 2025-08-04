@@ -188,35 +188,6 @@ cdef class Unit:
 
         return Unit._from_ref(c_unit)
 
-    @classmethod
-    def from_name(cls, name):
-        """
-        Find a unit by its name.
-
-        Args:
-            name (str): Unit name to search for
-
-        Returns:
-            Unit or None: Found unit, or None if not found
-        """
-        if not isinstance(name, str):
-            raise TypeError("Name must be a string")
-
-        cdef OCStringRef name_string = OCStringCreateWithCString(name.encode('utf-8'))
-        if name_string == NULL:
-            raise MemoryError("Failed to create name string")
-
-        cdef SIUnitRef c_unit
-        try:
-            c_unit = SIUnitFindWithName(name_string)
-        finally:
-            OCRelease(<OCTypeRef>name_string)
-
-        if c_unit == NULL:
-            return None
-
-        return Unit._from_ref(c_unit)
-
     # Properties
     @property
     def name(self):
@@ -272,23 +243,57 @@ cdef class Unit:
         return SIUnitIsSIUnit(self._c_unit)
 
     @property
-    def is_coherent_si(self):
-        """Check if this is a coherent SI unit."""
+    def is_coherent_unit(self):
+        """Check if this is a coherent unit."""
         if self._c_unit == NULL:
             return False
 
         return SIUnitIsCoherentUnit(self._c_unit)
 
     @property
-    def is_si_base_unit(self):
-        """Check if this is an SI base unit (approximation)."""
+    def is_coherent_si(self):
+        """Check if this is a coherent SI unit (alias for is_coherent_unit)."""
+        return self.is_coherent_unit
+
+    @property
+    def is_cgs_unit(self):
+        """Check if this is a CGS unit."""
         if self._c_unit == NULL:
             return False
 
-        # Heuristic: SI base units are SI units with scale factor 1.0 and simple dimensionality
-        return (self.is_si_unit and
-                abs(self.scale_factor - 1.0) < 1e-15 and
-                self.dimensionality.is_base_dimensionality)
+        return SIUnitIsCGSUnit(self._c_unit)
+
+    @property
+    def is_imperial_unit(self):
+        """Check if this is an Imperial unit."""
+        if self._c_unit == NULL:
+            return False
+
+        return SIUnitIsImperialUnit(self._c_unit)
+
+    @property
+    def is_atomic_unit(self):
+        """Check if this is an atomic unit."""
+        if self._c_unit == NULL:
+            return False
+
+        return SIUnitIsAtomicUnit(self._c_unit)
+
+    @property
+    def is_planck_unit(self):
+        """Check if this is a Planck unit."""
+        if self._c_unit == NULL:
+            return False
+
+        return SIUnitIsPlanckUnit(self._c_unit)
+
+    @property
+    def is_constant(self):
+        """Check if this unit represents a physical constant."""
+        if self._c_unit == NULL:
+            return False
+
+        return SIUnitIsConstant(self._c_unit)
 
     @property
     def dimensionality(self):
@@ -407,37 +412,6 @@ cdef class Unit:
                 error_msg = parse_c_string(<uint64_t>error_string)
                 OCRelease(<OCTypeRef>error_string)
             raise RMNError(f"Unit root operation failed: {error_msg}")
-
-        return Unit._from_ref(result)
-
-    def nth_root_advanced(self, root):
-        """
-        Take the nth root of this unit with advanced options.
-
-        Args:
-            root (int): Root to take (e.g., 2 for square root)
-
-        Returns:
-            Unit: nth root of the unit
-        """
-        if not isinstance(root, int):
-            raise TypeError("Root must be an integer")
-        if root <= 0:
-            raise ValueError("Root must be a positive integer")
-
-        cdef uint8_t c_root = <uint8_t>root
-        cdef double unit_multiplier = 1.0
-        cdef OCStringRef error_string = NULL
-
-        cdef SIUnitRef result = SIUnitByTakingNthRoot(self._c_unit, c_root,
-                                                     &unit_multiplier, &error_string)
-
-        if result == NULL:
-            error_msg = "Unknown error"
-            if error_string != NULL:
-                error_msg = parse_c_string(<uint64_t>error_string)
-                OCRelease(<OCTypeRef>error_string)
-            raise RMNError(f"Advanced unit root operation failed: {error_msg}")
 
         return Unit._from_ref(result)
 

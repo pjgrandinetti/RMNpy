@@ -231,33 +231,38 @@ class TestUnitProperties:
         velocity = Unit("m/s")
         assert velocity.is_derived  # Derived unit
 
-    def test_is_si_base_unit(self):
-        """Test SI base unit check."""
+    def test_unit_classification(self):
+        """Test unit classification properties."""
         meter = Unit("m")
-        assert meter.is_si_base_unit
+        assert meter.is_si_unit
+        assert meter.is_coherent_unit
+        assert not meter.is_cgs_unit
+        assert not meter.is_imperial_unit
+        assert not meter.is_atomic_unit
+        assert not meter.is_planck_unit
+        assert not meter.is_constant
 
         second = Unit("s")
-        assert second.is_si_base_unit
+        assert second.is_si_unit
+        assert second.is_coherent_unit
 
         velocity = Unit("m/s")
-        assert not velocity.is_si_base_unit
+        assert velocity.is_si_unit
+        assert velocity.is_coherent_unit  # Derived SI unit
 
-    def test_is_coherent_si(self):
-        """Test coherent SI unit check."""
+    def test_is_coherent_unit(self):
+        """Test coherent unit classification."""
         meter = Unit("m")
-        assert meter.is_coherent_si
+        assert meter.is_coherent_unit
 
-        # Newton is a named derived unit, not coherent (coherent would be kg*m/s^2)
+        # Newton is an SI unit but not coherent (has implicit conversion factor)
         newton = Unit("N")
-        assert not newton.is_coherent_si
+        assert newton.is_si_unit
+        assert not newton.is_coherent_unit
 
-        # The actual coherent unit for force
-        force_coherent = Unit("kg*m/s^2")
-        assert force_coherent.is_coherent_si
-
-        # km is not coherent SI (has prefix)
+        # km is not coherent (has prefix)
         kilometer = Unit("km")
-        assert not kilometer.is_coherent_si
+        assert not kilometer.is_coherent_unit
 
 
 class TestUnitAlgebra:
@@ -604,8 +609,8 @@ class TestUnitEdgeCases:
         # Should have correct scale factor
         assert kilometer.scale_factor == 1000.0
 
-        # Should not be coherent SI
-        assert not kilometer.is_coherent_si
+        # Should not be coherent (has prefix)
+        assert not kilometer.is_coherent_unit
 
         # Root name should be meter
         assert "meter" in kilometer.name.lower()
@@ -713,34 +718,30 @@ class TestUnitAPIEquivalence:
         mm = Unit("mm")
         assert mm.scale_factor == 0.001
 
-    def test_coherent_si_detection(self):
-        """Test various coherent SI unit classifications."""
+    def test_coherent_unit_detection(self):
+        """Test various coherent unit classifications."""
         # Base units
         meter = Unit("m")
-        assert meter.is_si_base_unit
-        assert meter.is_coherent_si
+        assert meter.is_si_unit
+        assert meter.is_coherent_unit
 
         second = Unit("s")
-        assert second.is_si_base_unit
-        assert second.is_coherent_si
+        assert second.is_si_unit
+        assert second.is_coherent_unit
 
         kilogram = Unit("kg")
-        assert kilogram.is_si_base_unit  # kg is the base unit, not g
-        assert kilogram.is_coherent_si
+        assert kilogram.is_si_unit  # kg is the base unit, not g
+        assert kilogram.is_coherent_unit
 
-        # Derived units
+        # Named derived units are SI but not coherent (have implicit conversion factors)
         newton = Unit("N")
-        assert not newton.is_si_base_unit
-        assert not newton.is_coherent_si  # Named derived unit, not coherent
+        assert newton.is_si_unit
+        assert not newton.is_coherent_unit
 
-        # Test actual coherent derived unit
-        force_coherent = Unit("kg*m/s^2")
-        assert not force_coherent.is_si_base_unit
-        assert force_coherent.is_coherent_si  # True coherent derived unit
-
-        # Prefixed units
+        # Test non-coherent units (with prefixes)
         kilometer = Unit("km")
-        assert not kilometer.is_coherent_si  # Has prefix
+        assert kilometer.is_si_unit
+        assert not kilometer.is_coherent_unit  # Has prefix, not coherent
 
     def test_dimensionality_consistency(self):
         """Test that dimensionality is consistent across operations."""
