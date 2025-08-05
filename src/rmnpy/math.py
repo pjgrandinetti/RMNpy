@@ -230,7 +230,7 @@ def atan2(y_scalar: Scalar, x_scalar: Scalar) -> Scalar:
     if not y_scalar.can_convert_to(x_scalar.unit):
         raise ValueError("atan2 requires compatible units for y and x coordinates")
 
-    y_converted = y_scalar.convert_to(x_scalar.unit)
+    y_converted = y_scalar.to(x_scalar.unit)
     y_value = y_converted.value
     x_value = x_scalar.value
 
