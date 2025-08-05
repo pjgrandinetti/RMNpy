@@ -141,7 +141,10 @@ RMNpy/                                    # 📁 Root project directory
 │           │
 │           └── rmnlib/                  # 📁 RMNLib wrappers (high-level analysis)
 │               ├── __init__.py          # 🔮 RMNLib package initialization - FUTURE
-│               └── core.pyx             # 🔮 Core RMN functionality - FUTURE
+│               ├── dependent_variable.pyx # 🔮 DependentVariable wrapper - FUTURE
+│               ├── dimension.pyx        # 🔮 Dimension wrapper - FUTURE
+│               ├── dataset.pyx          # 🔮 Dataset wrapper - FUTURE
+│               └── sparse_sampling.pyx  # 🔮 SparseSampling wrapper - FUTURE
 │
 ├── tests/                               # 📁 Comprehensive test suite (161 tests, 100% passing)
 │   ├── __init__.py                      # ✅ Test package initialization
@@ -163,7 +166,10 @@ RMNpy/                                    # 📁 Root project directory
 │   │
 │   └── test_rmnlib/                     # 📁 RMNLib wrapper tests
 │       ├── __init__.py                  # 🔮 RMNLib tests initialization - FUTURE
-│       └── test_core.py                 # 🔮 Core RMN functionality tests - FUTURE
+│       ├── test_dependent_variable.py   # 🔮 DependentVariable tests - FUTURE
+│       ├── test_dimension.py            # 🔮 Dimension tests - FUTURE
+│       ├── test_dataset.py              # 🔮 Dataset tests - FUTURE
+│       └── test_sparse_sampling.py      # 🔮 SparseSampling tests - FUTURE
 │
 ├── docs/                                # 📁 Documentation (Sphinx + Read the Docs)
 │   ├── conf.py                          # ✅ Sphinx configuration
@@ -679,6 +685,14 @@ RMNpy/                                    # 📁 Root project directory
 
 ## Phase 3: RMNLib Integration
 
+**Strategy**: Implement RMNLib wrappers with a modular approach, focusing on three core components that map directly to the primary C source files in RMNLib. This approach provides clean separation of concerns and allows for focused testing of each component.
+
+**Core Components**:
+- **DependentVariable**: Core data structure for NMR measurements, signal processing, and spectral analysis
+- **Dimension**: Dimensional analysis, coordinate systems, and spatial/frequency domain management
+- **Dataset**: High-level data container, workflow orchestration, and batch processing capabilities
+- **SparseSampling**: Sparse sampling data structures for efficient storage and processing of non-uniform sampling schemes
+
 ### 3.1 RMNLib C API Declaration
 **Goal**: Define the C interface for RMNLib
 
@@ -686,27 +700,38 @@ RMNpy/                                    # 📁 Root project directory
 - `src/rmnpy/_c_api/rmnlib.pxd`
 
 **Key components**:
-- High-level RMN functions
-- Data processing algorithms
-- Analysis tools
-- Dependencies on OCTypes and SITypes
+- DependentVariable C API: Core data structures and signal processing functions
+- Dimension C API: Coordinate system and dimensional analysis functions
+- Dataset C API: High-level data management and workflow functions
+- SparseSampling C API: Sparse sampling data structures and optimization functions
+- Dependencies on OCTypes and SITypes for type conversions and dimensional analysis
 
 ### 3.2 RMNLib Core Implementation
-**Goal**: Implement main RMNLib functionality
+**Goal**: Implement main RMNLib functionality with modular components
 
 **Files to create**:
-- `src/rmnpy/wrappers/rmnlib/core.pyx`
+- `src/rmnpy/wrappers/rmnlib/dependent_variable.pyx` (wrapping DependentVariable.c)
+- `src/rmnpy/wrappers/rmnlib/dimension.pyx` (wrapping Dimensions.c)
+- `src/rmnpy/wrappers/rmnlib/dataset.pyx` (wrapping Dataset.c)
+- `src/rmnpy/wrappers/rmnlib/sparse_sampling.pyx` (wrapping SparseSampling.c)
 
 **Implementation approach**:
-- Focus on most commonly used functions first
+- **DependentVariable**: Core data structure for NMR measurements and calculations
+- **Dimension**: Dimensional analysis and coordinate system management
+- **Dataset**: High-level data container and processing workflows
+- **SparseSampling**: Efficient sparse sampling data structures with encoding/decoding capabilities
 - Leverage existing OCTypes and SITypes infrastructure
 - Implement high-level Python-friendly interfaces
+- Focus on most commonly used functions first
 
 ### 3.3 RMNLib Testing
-**Goal**: Test complete RMNLib functionality
+**Goal**: Test complete RMNLib functionality with modular test structure
 
 **Files to create**:
-- `tests/test_rmnlib/test_core.py`
+- `tests/test_rmnlib/test_dependent_variable.py`
+- `tests/test_rmnlib/test_dimension.py`
+- `tests/test_rmnlib/test_dataset.py`
+- `tests/test_rmnlib/test_sparse_sampling.py`
 
 **Testing strategy**:
 - End-to-end workflow testing
