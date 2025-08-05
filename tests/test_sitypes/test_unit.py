@@ -21,17 +21,17 @@ class TestUnitCreation:
         assert str(meter) == "m"
         # Base SI units now have proper names after SITypes fix
         assert meter.name == "meter"
-        assert meter.plural_name == "meters"
+        assert meter.plural == "meters"
 
         second = Unit("s")
         assert str(second) == "s"
         assert second.name == "second"
-        assert second.plural_name == "seconds"
+        assert second.plural == "seconds"
 
         kilogram = Unit("kg")
         assert str(kilogram) == "kg"
         assert kilogram.name == "kilogram"
-        assert kilogram.plural_name == "kilograms"
+        assert kilogram.plural == "kilograms"
 
     def test_derived_units(self) -> None:
         """Test creating derived units."""
@@ -170,16 +170,16 @@ class TestUnitProperties:
         assert "m" in str(velocity) and "s" in str(velocity)
 
     def test_name_properties(self) -> None:
-        """Test name and plural_name properties."""
+        """Test name and plural properties."""
         meter = Unit("m")
         assert meter.name == "meter"
-        assert meter.plural_name == "meters"
+        assert meter.plural == "meters"
 
         # Test gram (not kilogram, based on C tests)
         try:
             gram = Unit("g")
             assert "gram" in gram.name.lower()
-            assert "grams" in gram.plural_name.lower()
+            assert "grams" in gram.plural.lower()
         except RMNError:
             # If gram parsing fails, skip this part of the test
             pass
