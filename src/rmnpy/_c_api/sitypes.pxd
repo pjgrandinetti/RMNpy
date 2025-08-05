@@ -134,8 +134,7 @@ cdef extern from "SITypes/SIUnit.h":
     # Parsing
     SIUnitRef SIUnitFromExpression(OCStringRef expression, double *unit_multiplier, OCStringRef *error)
 
-    # Memory management
-    SIUnitRef SIUnitCopy(SIUnitRef theUnit)
+    # Memory management - Note: SIUnitRef are immutable references managed by the library
 
     # Properties - Basic
     SIDimensionalityRef SIUnitGetDimensionality(SIUnitRef theUnit)
@@ -183,6 +182,13 @@ cdef extern from "SITypes/SIUnit.h":
 
     # Unit reduction and conversion
     SIUnitRef SIUnitByReducing(SIUnitRef theUnit, double *unit_multiplier)
+
+    # Unit analysis and discovery
+    OCArrayRef SIUnitCreateArrayOfUnitsForQuantity(OCStringRef quantity)
+    OCArrayRef SIUnitCreateArrayOfUnitsForDimensionality(SIDimensionalityRef theDim)
+    OCArrayRef SIUnitCreateArrayOfUnitsForSameReducedDimensionality(SIDimensionalityRef theDim)
+    OCArrayRef SIUnitCreateArrayOfConversionUnits(SIUnitRef theUnit)
+    OCArrayRef SIUnitCreateArrayOfEquivalentUnits(SIUnitRef theUnit)
 
 # ====================================================================================
 # Phase 2C: SIQuantity & SIScalar API (depends on both above)

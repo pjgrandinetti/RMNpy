@@ -23,7 +23,7 @@
 
 #### **Phase 2B: SIUnit** ✅ **COMPLETE**
 - ✅ Complete SITypes C API parity (1,222 test lines implementeœd)
-- ✅ Advanced functionality: conversion factors, prefix introspection, root properties
+- ✅ Advanced functionality: conversion factor
 - ✅ Non-reducing algebraic operations for complex expressions
 - ✅ Unicode normalization and angle unit support
 - ✅ Test coverage (76 tests, 100% passing)

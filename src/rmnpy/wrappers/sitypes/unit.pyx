@@ -7,6 +7,9 @@ This implementation builds on the SIDimensionality foundation from Phase 2A.
 """
 
 from rmnpy._c_api.octypes cimport (
+    OCArrayGetCount,
+    OCArrayGetValueAtIndex,
+    OCArrayRef,
     OCRelease,
     OCStringCreateWithCString,
     OCStringGetCString,
@@ -205,7 +208,7 @@ cdef class Unit:
             OCRelease(<OCTypeRef>name_string)
 
     @property
-    def plural_name(self):
+    def plural(self):
         """Get the plural unit name (e.g., 'meters per second')."""
         if self._c_unit == NULL:
             return ""
@@ -310,8 +313,8 @@ cdef class Unit:
         return Dimensionality._from_ref(c_dim)
 
     @property
-    def scale_factor(self):
-        """Get the scale factor relative to the SI base unit."""
+    def scale_to_coherent_si(self):
+        """Get the scale factor to convert to the coherent SI unit."""
         if self._c_unit == NULL:
             return 1.0
 
@@ -355,24 +358,24 @@ cdef class Unit:
             OCRelease(<OCTypeRef>reduced)
 
     # Unit conversion methods
-    def conversion_factor(self, other):
+    def scale_to(self, other):
         """
-        Get the conversion factor from this unit to another compatible unit.
+        Get the scale factor to convert from this unit to another compatible unit.
 
         Args:
             other (Unit): Target unit to convert to
 
         Returns:
-            float: Conversion factor (multiply by this to convert from self to other)
+            float: Scale factor (multiply by this to convert from self to other)
 
-        Example:
-            >>> meter, _ = Unit.parse("m")
-            >>> kilometer, _ = Unit.parse("km")
-            >>> factor = meter.conversion_factor(kilometer)
-            >>> # factor should be 1000.0 (1 km = 1000 m)
+        Examples:
+            >>> meter = Unit("m")
+            >>> kilometer = Unit("km")
+            >>> factor = meter.scale_to(kilometer)
+            >>> # factor should be 0.001 (1 m = 0.001 km)
         """
         if not isinstance(other, Unit):
-            raise TypeError("Can only get conversion factor with another Unit")
+            raise TypeError("Can only get scale factor with another Unit")
 
         # Check dimensional compatibility first
         if not self.is_compatible_with(other):
@@ -622,6 +625,150 @@ cdef class Unit:
     def __ne__(self, other):
         """Inequality operator (!=)."""
         return not self.__eq__(other)
+
+    # ================================================================================
+    # Unit Analysis and Discovery Methods
+    # ================================================================================
+
+    def find_equivalent_units(self):
+        """
+        Find units that are equivalent (no conversion needed).
+
+        Returns:
+            list[Unit]: List of equivalent units
+        """
+        if self._c_unit == NULL:
+            return []
+
+        cdef OCArrayRef array_ref = SIUnitCreateArrayOfEquivalentUnits(self._c_unit)
+        if array_ref == NULL:
+            return []
+
+        try:
+            return self._array_ref_to_unit_list(array_ref)
+        finally:
+            OCRelease(<OCTypeRef>array_ref)
+
+    def find_convertible_units(self):
+        """
+        Find all units this unit can be converted to.
+
+        Returns:
+            list[Unit]: List of convertible units
+        """
+        if self._c_unit == NULL:
+            return []
+
+        cdef OCArrayRef array_ref = SIUnitCreateArrayOfConversionUnits(self._c_unit)
+        if array_ref == NULL:
+            return []
+
+        try:
+            return self._array_ref_to_unit_list(array_ref)
+        finally:
+            OCRelease(<OCTypeRef>array_ref)
+
+    def find_same_dimensionality(self):
+        """
+        Find units with identical dimensionality.
+
+        Returns:
+            list[Unit]: List of units with same dimensionality
+        """
+        if self._c_unit == NULL:
+            return []
+
+        cdef SIDimensionalityRef dim_ref = SIUnitGetDimensionality(self._c_unit)
+        if dim_ref == NULL:
+            return []
+
+        cdef OCArrayRef array_ref = SIUnitCreateArrayOfUnitsForDimensionality(dim_ref)
+        if array_ref == NULL:
+            return []
+
+        try:
+            return self._array_ref_to_unit_list(array_ref)
+        finally:
+            OCRelease(<OCTypeRef>array_ref)
+
+    def find_same_reduced_dimensionality(self):
+        """
+        Find units with same reduced dimensionality.
+
+        Returns:
+            list[Unit]: List of units with same reduced dimensionality
+        """
+        if self._c_unit == NULL:
+            return []
+
+        cdef SIDimensionalityRef dim_ref = SIUnitGetDimensionality(self._c_unit)
+        if dim_ref == NULL:
+            return []
+
+        cdef OCArrayRef array_ref = SIUnitCreateArrayOfUnitsForSameReducedDimensionality(dim_ref)
+        if array_ref == NULL:
+            return []
+
+        try:
+            return self._array_ref_to_unit_list(array_ref)
+        finally:
+            OCRelease(<OCTypeRef>array_ref)
+
+    @classmethod
+    def find_units_for_quantity(cls, quantity_name):
+        """
+        Find all units for a given physical quantity.
+
+        Args:
+            quantity_name (str): Name of the physical quantity
+
+        Returns:
+            list[Unit]: List of units for the quantity
+        """
+        if not isinstance(quantity_name, str):
+            raise TypeError("quantity_name must be a string")
+
+        cdef OCStringRef quantity_string = OCStringCreateWithCString(quantity_name.encode('utf-8'))
+        if quantity_string == NULL:
+            return []
+
+        cdef OCArrayRef array_ref = SIUnitCreateArrayOfUnitsForQuantity(quantity_string)
+        cdef list result = []
+
+        try:
+            if array_ref != NULL:
+                result = Unit._array_ref_to_unit_list_static(array_ref)
+        finally:
+            OCRelease(<OCTypeRef>quantity_string)
+            if array_ref != NULL:
+                OCRelease(<OCTypeRef>array_ref)
+
+        return result
+
+    cdef list _array_ref_to_unit_list(self, OCArrayRef array_ref):
+        """Convert OCArrayRef of units to Python list."""
+        return Unit._array_ref_to_unit_list_static(array_ref)
+
+    @staticmethod
+    cdef list _array_ref_to_unit_list_static(OCArrayRef array_ref):
+        """Convert OCArrayRef of units to Python list (static version)."""
+        if array_ref == NULL:
+            return []
+
+        cdef uint64_t count = OCArrayGetCount(array_ref)
+        cdef list result = []
+        cdef SIUnitRef unit_ref
+        cdef Unit unit_obj
+
+        for i in range(count):
+            unit_ref = <SIUnitRef>OCArrayGetValueAtIndex(array_ref, i)
+            if unit_ref != NULL:
+                # Create a new Unit object wrapping this SIUnitRef
+                unit_obj = Unit.__new__(Unit)
+                unit_obj._c_unit = unit_ref  # Direct assignment - SIUnitRef is immutable
+                result.append(unit_obj)
+
+        return result
 
     # String representation
     def __str__(self):

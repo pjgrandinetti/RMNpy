@@ -1,12 +1,12 @@
 # cython: language_level=3
 """
-RMNpy SIScalar Wrapper - Phase 2C Implementation
+RMNpy SIScalar Wrapper
 
-Complete wrapper for SIScalar providing comprehensive scalar physical quantity capabilities.
-This implementation builds on the SIDimensionality and SIUnit foundations from Phases 2A and 2B.
+Python wrapper for SIScalar representing physical quantities with units.
 
-SIScalar represents a physical quantity with a numerical value, unit, and associated dimensionality.
-It supports comprehensive arithmetic operations with automatic unit handling and dimensional validation.
+SIScalar combines a numerical value with a unit, enabling type-safe scientific computing
+with automatic dimensional analysis and unit conversion capabilities. It supports
+comprehensive arithmetic operations with automatic unit handling and dimensional validation.
 """
 
 from rmnpy._c_api.octypes cimport (
@@ -317,7 +317,7 @@ cdef class Scalar:
         return Scalar._from_ref(result)
 
     # Unit conversion methods
-    def convert_to(self, new_unit):
+    def to(self, new_unit):
         """
         Convert to a different unit of the same dimensionality.
 
@@ -329,7 +329,9 @@ cdef class Scalar:
 
         Examples:
             >>> distance = Scalar(1000, "m")
-            >>> distance_km = distance.convert_to("km")  # 1.0 km
+            >>> distance_km = distance.to("km")  # 1.0 km
+            >>> speed = Scalar(60, "mph")
+            >>> speed_mps = speed.to("m/s")  # 26.8224 m/s
         """
         if self._c_scalar == NULL:
             raise ValueError("Cannot convert NULL scalar")
@@ -369,6 +371,28 @@ cdef class Scalar:
             raise ValueError("Unit conversion failed")
 
         return Scalar._from_ref(result)
+
+    def can_convert_to(self, new_unit):
+        """
+        Check if this scalar can be converted to the specified unit.
+
+        Args:
+            new_unit (str or Unit): Target unit to check compatibility with
+
+        Returns:
+            bool: True if conversion is possible, False otherwise
+
+        Examples:
+            >>> distance = Scalar(1000, "m")
+            >>> distance.can_convert_to("km")  # True - same dimensionality
+            >>> distance.can_convert_to("s")   # False - different dimensionality
+        """
+        try:
+            # Attempt conversion to check compatibility
+            self.to(new_unit)
+            return True
+        except (ValueError, RMNError, TypeError):
+            return False
 
     def to_coherent_si(self):
         """
@@ -537,7 +561,17 @@ cdef class Scalar:
                 raise RMNError("Failed to multiply by dimensionless complex constant")
             return Scalar._from_ref(result)
         else:
-            return NotImplemented
+            # Try to handle other numeric types (Decimal, Fraction)
+            try:
+                # Convert to float and multiply
+                float_value = float(other)
+                result = SIScalarCreateByMultiplyingByDimensionlessRealConstant(
+                    self._c_scalar, float_value)
+                if result == NULL:
+                    raise RMNError("Failed to multiply by dimensionless constant")
+                return Scalar._from_ref(result)
+            except (TypeError, ValueError):
+                return NotImplemented
 
     def __rmul__(self, other):
         """Reverse multiplication operator (*)."""
@@ -653,7 +687,7 @@ cdef class Scalar:
         cdef OCComparisonResult result
         if isinstance(other, Scalar):
             try:
-                result = SIScalarCompareLoose(self._c_scalar, (<Scalar>other)._c_scalar)
+                result = SIScalarCompare(self._c_scalar, (<Scalar>other)._c_scalar)
 
                 if result == kOCCompareEqualTo:
                     return True
@@ -669,7 +703,7 @@ cdef class Scalar:
             # Try to parse string as a scalar and compare
             try:
                 other_scalar = Scalar(other)
-                result = SIScalarCompareLoose(self._c_scalar, other_scalar._c_scalar)
+                result = SIScalarCompare(self._c_scalar, other_scalar._c_scalar)
 
                 if result == kOCCompareEqualTo:
                     return True
@@ -690,7 +724,7 @@ cdef class Scalar:
         if not isinstance(other, Scalar):
             return True
         try:
-            result = SIScalarCompareLoose(self._c_scalar, (<Scalar>other)._c_scalar)
+            result = SIScalarCompare(self._c_scalar, (<Scalar>other)._c_scalar)
 
             if result == kOCCompareEqualTo:
                 return False
@@ -713,7 +747,7 @@ cdef class Scalar:
         if not isinstance(other, Scalar):
             return NotImplemented
         try:
-            result = SIScalarCompareLoose(self._c_scalar, (<Scalar>other)._c_scalar)
+            result = SIScalarCompare(self._c_scalar, (<Scalar>other)._c_scalar)
             if result == kOCCompareLessThan:
                 return True
             elif result in (kOCCompareEqualTo, kOCCompareGreaterThan):
@@ -733,7 +767,7 @@ cdef class Scalar:
         if not isinstance(other, Scalar):
             return NotImplemented
         try:
-            result = SIScalarCompareLoose(self._c_scalar, (<Scalar>other)._c_scalar)
+            result = SIScalarCompare(self._c_scalar, (<Scalar>other)._c_scalar)
             if result in (kOCCompareLessThan, kOCCompareEqualTo):
                 return True
             elif result == kOCCompareGreaterThan:
@@ -753,7 +787,7 @@ cdef class Scalar:
         if not isinstance(other, Scalar):
             return NotImplemented
         try:
-            result = SIScalarCompareLoose(self._c_scalar, (<Scalar>other)._c_scalar)
+            result = SIScalarCompare(self._c_scalar, (<Scalar>other)._c_scalar)
             if result == kOCCompareGreaterThan:
                 return True
             elif result in (kOCCompareEqualTo, kOCCompareLessThan):
@@ -773,7 +807,7 @@ cdef class Scalar:
         if not isinstance(other, Scalar):
             return NotImplemented
         try:
-            result = SIScalarCompareLoose(self._c_scalar, (<Scalar>other)._c_scalar)
+            result = SIScalarCompare(self._c_scalar, (<Scalar>other)._c_scalar)
             if result in (kOCCompareGreaterThan, kOCCompareEqualTo):
                 return True
             elif result == kOCCompareLessThan:
@@ -786,6 +820,43 @@ cdef class Scalar:
             if isinstance(e, TypeError):
                 raise
             return NotImplemented
+
+    def __hash__(self):
+        """
+        Hash the scalar based on its value and unit for use in sets and as dict keys.
+
+        Note: Only real scalars with finite values can be hashed.
+        Complex, infinite, or NaN scalars will raise TypeError.
+
+        Returns:
+            int: Hash value based on the scalar's normalized value and unit
+
+        Raises:
+            TypeError: If scalar is complex, infinite, or NaN
+        """
+        if self._c_scalar == NULL:
+            return hash(0)
+
+        if self.is_complex:
+            raise TypeError("Complex scalars are not hashable")
+
+        if self.is_infinite:
+            raise TypeError("Infinite scalars are not hashable")
+
+        value = self.value
+        if isinstance(value, float) and (value != value):  # Check for NaN
+            raise TypeError("NaN scalars are not hashable")
+
+        # Convert to coherent SI units for consistent hashing
+        try:
+            coherent = self.to_coherent_si()
+            # Hash based on coherent SI value and unit string
+            unit_str = str(coherent.unit)
+            return hash((coherent.value, unit_str))
+        except:
+            # Fallback to current value and unit
+            unit_str = str(self.unit)
+            return hash((value, unit_str))
 
     # String representation
     def __str__(self):
