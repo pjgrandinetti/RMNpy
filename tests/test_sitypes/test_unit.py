@@ -277,10 +277,10 @@ class TestUnitConversions:
         # Should be able to get conversion factor
         # 1 m = 0.001 km, so factor should be 0.001
         try:
-            factor = meter.conversion_factor(kilometer)
+            factor = meter.scale_to(kilometer)
             assert abs(factor - 0.001) < 1e-12
         except AttributeError:
-            pytest.skip("conversion_factor method not implemented")
+            pytest.skip("scale_to method not implemented")
 
     def test_imperial_to_metric_conversions(self) -> None:
         """Test conversions between imperial and metric units."""
@@ -290,7 +290,7 @@ class TestUnitConversions:
             kilogram = Unit("kg")
 
             # 1 lb = 0.45359237 kg
-            factor = pound_mass.conversion_factor(kilogram)
+            factor = pound_mass.scale_to(kilogram)
             expected = 0.45359237
             assert abs(factor - expected) < 1e-10
 
@@ -299,12 +299,12 @@ class TestUnitConversions:
             newton = Unit("N")
 
             # 1 lbf = 4.4482216152605 N
-            lbf_factor = pound_force.conversion_factor(newton)
+            lbf_factor = pound_force.scale_to(newton)
             expected_lbf = 4.4482216152605
             assert abs(lbf_factor - expected_lbf) < 1e-10
 
         except (RMNError, AttributeError):
-            pytest.skip("Imperial units or conversion_factor not supported")
+            pytest.skip("Imperial units or scale_to not supported")
 
     def test_pressure_unit_conversions(self) -> None:
         """Test pressure unit conversions (PSI to Pascal)."""
@@ -314,14 +314,14 @@ class TestUnitConversions:
             pascal = Unit("Pa")
 
             # 1 PSI = 6894.757293168361 Pa
-            factor = psi.conversion_factor(pascal)
+            factor = psi.scale_to(pascal)
             expected = 6894.757293168361
             assert (
                 abs(factor - expected) < 1e-5
             )  # Relaxed tolerance for floating point precision
 
         except (RMNError, AttributeError):
-            pytest.skip("PSI units or conversion_factor not supported")
+            pytest.skip("PSI units or scale_to not supported")
 
     def test_incompatible_unit_conversion(self) -> None:
         """Test that conversion between incompatible units raises error."""
@@ -331,10 +331,10 @@ class TestUnitConversions:
 
             # Should raise error for incompatible dimensions
             with pytest.raises((RMNError, ValueError)):
-                meter.conversion_factor(second)
+                meter.scale_to(second)
 
         except AttributeError:
-            pytest.skip("conversion_factor method not implemented")
+            pytest.skip("scale_to method not implemented")
 
 
 class TestUnitAlgebra:
@@ -737,7 +737,7 @@ class TestNonSIUnitSystems:
             assert radian.dimensionality == degree.dimensionality
 
             # Test conversion factor (1 radian = 180/π degrees)
-            conversion = radian.conversion_factor(degree)
+            conversion = radian.scale_to(degree)
             expected = 180.0 / 3.141592653589793  # 180/π
             assert abs(conversion - expected) < 1e-10
 
