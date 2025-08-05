@@ -138,7 +138,7 @@ class TestUnitCreation:
         # Symbol might be "1" or empty string
         symbol = str(one)
         assert symbol == "1" or symbol == "" or len(symbol) == 0
-        assert one.scale_factor == 1.0
+        assert one.scale_to_coherent_si == 1.0
 
     def test_for_dimensionality(self) -> None:
         """Test finding coherent SI unit for dimensionality."""
@@ -199,13 +199,13 @@ class TestUnitProperties:
     def test_scale_factor_property(self) -> None:
         """Test scale factor property."""
         meter = Unit("m")
-        assert meter.scale_factor == 1.0
+        assert meter.scale_to_coherent_si == 1.0
 
         kilometer = Unit("km")
-        assert kilometer.scale_factor == 1000.0
+        assert kilometer.scale_to_coherent_si == 1000.0
 
         millimeter = Unit("mm")
-        assert millimeter.scale_factor == 0.001
+        assert millimeter.scale_to_coherent_si == 0.001
 
         # Test that parsing returns the expected multiplier
         # When parsing expressions, the multiplier should be 1.0
@@ -614,7 +614,7 @@ class TestUnitPrefixIntrospection:
             complex_unit = Unit("km/mm")
 
             # Overall scale factor should be 1000 / 0.001 = 1,000,000
-            assert abs(complex_unit.scale_factor - 1000000.0) < 1e-6
+            assert abs(complex_unit.scale_to_coherent_si - 1000000.0) < 1e-6
 
         except (RMNError, AttributeError):
             pytest.skip("Complex prefix units or introspection not supported")
@@ -890,7 +890,7 @@ class TestUnitEdgeCases:
         assert str(kilometer) == "km"
 
         # Should have correct scale factor
-        assert kilometer.scale_factor == 1000.0
+        assert kilometer.scale_to_coherent_si == 1000.0
 
         # Should not be coherent (has prefix)
         assert not kilometer.is_coherent_unit
@@ -926,7 +926,9 @@ class TestUnitEdgeCases:
             assert inch_per_sec.dimensionality == meter_per_sec.dimensionality
 
             # But different scale factors
-            assert inch_per_sec.scale_factor != meter_per_sec.scale_factor
+            assert (
+                inch_per_sec.scale_to_coherent_si != meter_per_sec.scale_to_coherent_si
+            )
         except RMNError:
             # Might not support non-SI units
             pytest.skip("Non-SI units not supported")
@@ -996,10 +998,10 @@ class TestUnitAPIEquivalence:
         # into the unit itself, not returned as a separate multiplier
 
         km = Unit("km")
-        assert km.scale_factor == 1000.0
+        assert km.scale_to_coherent_si == 1000.0
 
         mm = Unit("mm")
-        assert mm.scale_factor == 0.001
+        assert mm.scale_to_coherent_si == 0.001
 
     def test_coherent_unit_detection(self) -> None:
         """Test various coherent unit classifications."""
