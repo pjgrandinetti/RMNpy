@@ -48,6 +48,11 @@ cdef extern from "OCTypes/OCTypes.h":
     ctypedef signed long OCIndex
     ctypedef unsigned long OCOptionFlags
 
+    # Range structure
+    ctypedef struct OCRange:
+        OCIndex location
+        OCIndex length
+
     # Ref typedefs (const pointers)
     ctypedef const impl_OCType *OCTypeRef
     ctypedef const impl_OCString *OCStringRef

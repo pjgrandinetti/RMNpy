@@ -41,11 +41,6 @@ ctypedef enum dimensionScaling:
     kDimensionScalingNone
     kDimensionScalingNMR
 
-# Range structure (from OCTypes, declared here since not in octypes.pxd)
-ctypedef struct OCRange:
-    OCIndex location
-    OCIndex length
-
 cdef extern from "RMNLibrary.h":
     # cJSON forward declaration (from included cJSON.h)
     ctypedef struct cJSON
