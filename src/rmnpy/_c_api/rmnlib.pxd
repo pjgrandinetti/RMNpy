@@ -2,13 +2,18 @@
 """
 RMNLib C API declarations for Cython
 
-This file declares the C interfaces for RMNLib components:
-- DependentVariable: Core data structures for measurements and analysis
-- SparseSampling: Sparse sampling data structures
-- Related types and enums
+This file declares the C interfaces for RMNLib components in dependency order:
+- Phase 3A: Dimension (coordinate systems and axes)
+- Phase 3B: SparseSampling (sparse sampling schemes)
+- Phase 3C: DependentVariable (core data structures)
+- Phase 3D: Dataset (high-level containers)
+- Utility functions and metadata handling
+
+Following the proven pattern from sitypes.pxd for comprehensive API coverage.
 """
 
 from libc.complex cimport double_complex, float_complex
+from libc.stdbool cimport bool
 from libc.stdint cimport int64_t
 
 # Import OCTypes and SITypes C APIs
@@ -16,36 +21,137 @@ from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.sitypes cimport *
 
 # ====================================================================================
-# RMNLib Core Types and Constants (from RMNLibrary.h)
+# RMNLib Core Types and Forward Declarations (from RMNLibrary.h)
 # ====================================================================================
 
 # Forward declarations from RMNLibrary.h
-ctypedef void *GeographicCoordinateRef;
-ctypedef void *DatumRef;
-ctypedef void *SparseSamplingRef;
-ctypedef void *DependentVariableRef;
-ctypedef void *DimensionRef;
-ctypedef void *LabeledDimensionRef;
-ctypedef void *SIDimensionRef;
-ctypedef void *SIMonotonicDimensionRef;
-ctypedef void *SILinearDimensionRef;
-ctypedef void *DatasetRef;
+ctypedef void *GeographicCoordinateRef
+ctypedef void *DatumRef
+ctypedef void *SparseSamplingRef
+ctypedef void *DependentVariableRef
+ctypedef void *DimensionRef
+ctypedef void *LabeledDimensionRef
+ctypedef void *SIDimensionRef
+ctypedef void *SIMonotonicDimensionRef
+ctypedef void *SILinearDimensionRef
+ctypedef void *DatasetRef
+
+# Enumerations
+ctypedef enum dimensionScaling:
+    kDimensionScalingNone
+    kDimensionScalingNMR
+
+# Range structure (from OCTypes, declared here since not in octypes.pxd)
+ctypedef struct OCRange:
+    OCIndex location
+    OCIndex length
 
 cdef extern from "RMNLibrary.h":
     # cJSON forward declaration (from included cJSON.h)
     ctypedef struct cJSON
 
-    # OCRange structure
-    ctypedef struct OCRange:
-        OCIndex location
-        OCIndex length
+    # ====================================================================================
+    # Phase 3A: Dimension API (Foundation Component)
+    # ====================================================================================
 
-    # Forward declarations
-    ctypedef struct impl_DependentVariable
-    ctypedef impl_DependentVariable* DependentVariableRef
+    # Dimension (Abstract Base) - Core coordinate system functionality
+    OCTypeID DimensionGetTypeID()
+    OCStringRef DimensionGetLabel(DimensionRef dim)
+    bool DimensionSetLabel(DimensionRef dim, OCStringRef label, OCStringRef *outError)
+    OCStringRef DimensionGetDescription(DimensionRef dim)
+    bool DimensionSetDescription(DimensionRef dim, OCStringRef desc, OCStringRef *outError)
+    OCMutableDictionaryRef DimensionGetMetadata(DimensionRef dim)
+    bool DimensionSetMetadata(DimensionRef dim, OCDictionaryRef dict, OCStringRef *outError)
 
-    ctypedef struct impl_SparseSampling
-    ctypedef impl_SparseSampling* SparseSamplingRef
+    # LabeledDimension - Discrete labeled coordinate systems
+    OCTypeID LabeledDimensionGetTypeID()
+    LabeledDimensionRef LabeledDimensionCreate(OCStringRef label, OCStringRef description,
+                                               OCArrayRef labels, OCStringRef *outError)
+    LabeledDimensionRef LabeledDimensionCreateFromJSON(cJSON *json, OCStringRef *outError)
+    OCArrayRef LabeledDimensionGetLabels(LabeledDimensionRef dim)
+    bool LabeledDimensionSetLabels(LabeledDimensionRef dim, OCArrayRef labels, OCStringRef *outError)
+    OCIndex LabeledDimensionGetCount(LabeledDimensionRef dim)
+    OCStringRef LabeledDimensionGetLabelAtIndex(LabeledDimensionRef dim, OCIndex index)
+
+    # SIDimension - SI unit-based coordinate systems
+    OCTypeID SIDimensionGetTypeID()
+    SIDimensionRef SIDimensionCreate(OCStringRef label, OCStringRef description,
+                                     SIUnitRef unit, OCArrayRef coordinates,
+                                     OCStringRef *outError)
+    SIDimensionRef SIDimensionCreateFromJSON(cJSON *json, OCStringRef *outError)
+    SIUnitRef SIDimensionGetUnit(SIDimensionRef dim)
+    bool SIDimensionSetUnit(SIDimensionRef dim, SIUnitRef unit, OCStringRef *outError)
+    OCArrayRef SIDimensionGetCoordinates(SIDimensionRef dim)
+    bool SIDimensionSetCoordinates(SIDimensionRef dim, OCArrayRef coords, OCStringRef *outError)
+    OCIndex SIDimensionGetCount(SIDimensionRef dim)
+    SIScalarRef SIDimensionGetCoordinateAtIndex(SIDimensionRef dim, OCIndex index)
+
+    # SIMonotonicDimension - Monotonic coordinate systems
+    OCTypeID SIMonotonicDimensionGetTypeID()
+    SIMonotonicDimensionRef SIMonotonicDimensionCreate(OCStringRef label, OCStringRef description,
+                                                       SIUnitRef unit, OCArrayRef coordinates,
+                                                       OCStringRef *outError)
+    SIMonotonicDimensionRef SIMonotonicDimensionCreateFromJSON(cJSON *json, OCStringRef *outError)
+    bool SIMonotonicDimensionIsMonotonic(SIMonotonicDimensionRef dim)
+    bool SIMonotonicDimensionIsIncreasing(SIMonotonicDimensionRef dim)
+    SIScalarRef SIMonotonicDimensionGetMinimum(SIMonotonicDimensionRef dim)
+    SIScalarRef SIMonotonicDimensionGetMaximum(SIMonotonicDimensionRef dim)
+
+    # SILinearDimension - Linearly spaced coordinate systems
+    OCTypeID SILinearDimensionGetTypeID()
+    SILinearDimensionRef SILinearDimensionCreate(OCStringRef label, OCStringRef description,
+                                                 SIScalarRef start, SIScalarRef increment,
+                                                 OCIndex count, OCStringRef *outError)
+    SILinearDimensionRef SILinearDimensionCreateFromJSON(cJSON *json, OCStringRef *outError)
+    SIScalarRef SILinearDimensionGetStart(SILinearDimensionRef dim)
+    bool SILinearDimensionSetStart(SILinearDimensionRef dim, SIScalarRef start, OCStringRef *outError)
+    SIScalarRef SILinearDimensionGetIncrement(SILinearDimensionRef dim)
+    bool SILinearDimensionSetIncrement(SILinearDimensionRef dim, SIScalarRef increment, OCStringRef *outError)
+    OCIndex SILinearDimensionGetCount(SILinearDimensionRef dim)
+    bool SILinearDimensionSetCount(SILinearDimensionRef dim, OCIndex count, OCStringRef *outError)
+    SIScalarRef SILinearDimensionGetCoordinateAtIndex(SILinearDimensionRef dim, OCIndex index)
+
+    # ====================================================================================
+    # Phase 3B: SparseSampling API (Depends on Dimension)
+    # ====================================================================================
+
+    # SparseSampling - Sparse sampling pattern definitions
+    OCTypeID SparseSamplingGetTypeID()
+    bool validateSparseSampling(SparseSamplingRef ss, OCStringRef *outError)
+    SparseSamplingRef SparseSamplingCreate(OCIndexSetRef dimensionIndexes,
+                                           OCArrayRef sparseGridVertexes,
+                                           OCNumberType unsignedIntegerType,
+                                           OCStringRef encoding,
+                                           OCStringRef description,
+                                           OCDictionaryRef metadata,
+                                           OCStringRef *outError)
+    SparseSamplingRef SparseSamplingCreateFromJSON(cJSON *json, OCStringRef *outError)
+
+    # SparseSampling accessors
+    OCIndexSetRef SparseSamplingGetDimensionIndexes(SparseSamplingRef ss)
+    bool SparseSamplingSetDimensionIndexes(SparseSamplingRef ss, OCIndexSetRef indexes, OCStringRef *outError)
+    OCArrayRef SparseSamplingGetSparseGridVertexes(SparseSamplingRef ss)
+    bool SparseSamplingSetSparseGridVertexes(SparseSamplingRef ss, OCArrayRef vertexes, OCStringRef *outError)
+    OCNumberType SparseSamplingGetUnsignedIntegerType(SparseSamplingRef ss)
+    bool SparseSamplingSetUnsignedIntegerType(SparseSamplingRef ss, OCNumberType type, OCStringRef *outError)
+    OCStringRef SparseSamplingGetEncoding(SparseSamplingRef ss)
+    bool SparseSamplingSetEncoding(SparseSamplingRef ss, OCStringRef encoding, OCStringRef *outError)
+    OCStringRef SparseSamplingGetDescription(SparseSamplingRef ss)
+    bool SparseSamplingSetDescription(SparseSamplingRef ss, OCStringRef description, OCStringRef *outError)
+    OCDictionaryRef SparseSamplingGetMetadata(SparseSamplingRef ss)
+    bool SparseSamplingSetMetadata(SparseSamplingRef ss, OCDictionaryRef metadata, OCStringRef *outError)
+
+    # SparseSampling utility functions
+    OCIndex SparseSamplingGetVertexCount(SparseSamplingRef ss)
+    OCIndexPairSetRef SparseSamplingGetVertexAtIndex(SparseSamplingRef ss, OCIndex index)
+    bool SparseSamplingContainsVertex(SparseSamplingRef ss, OCIndexPairSetRef vertex)
+
+    # ====================================================================================
+    # Phase 3C: DependentVariable API (Depends on Dimension + SparseSampling)
+    # ====================================================================================
+    # ====================================================================================
+    # Phase 3C: DependentVariable API (Depends on Dimension + SparseSampling)
+    # ====================================================================================
 
     # DependentVariable type and copying
     OCTypeID DependentVariableGetTypeID()
@@ -125,7 +231,7 @@ cdef extern from "RMNLibrary.h":
         OCStringRef *outError)
 
     # DependentVariable mutation
-    bint DependentVariableAppend(
+    bool DependentVariableAppend(
         DependentVariableRef dv,
         DependentVariableRef appendedDV,
         OCStringRef *outError)
@@ -139,54 +245,54 @@ cdef extern from "RMNLibrary.h":
     OCDataRef DependentVariableCreateCSDMComponentsData(DependentVariableRef dv, OCArrayRef dimensions)
 
     # DependentVariable type checking
-    bint DependentVariableIsScalarType(DependentVariableRef dv)
-    bint DependentVariableIsVectorType(DependentVariableRef dv, OCIndex *outCount)
-    bint DependentVariableIsPixelType(DependentVariableRef dv, OCIndex *outCount)
-    bint DependentVariableIsMatrixType(DependentVariableRef dv, OCIndex *outRows, OCIndex *outCols)
-    bint DependentVariableIsSymmetricMatrixType(DependentVariableRef dv, OCIndex *outN)
+    bool DependentVariableIsScalarType(DependentVariableRef dv)
+    bool DependentVariableIsVectorType(DependentVariableRef dv, OCIndex *outCount)
+    bool DependentVariableIsPixelType(DependentVariableRef dv, OCIndex *outCount)
+    bool DependentVariableIsMatrixType(DependentVariableRef dv, OCIndex *outRows, OCIndex *outCols)
+    bool DependentVariableIsSymmetricMatrixType(DependentVariableRef dv, OCIndex *outN)
     OCIndex DependentVariableComponentsCountFromQuantityType(OCStringRef quantityType)
 
     # DependentVariable basic accessors
     OCStringRef DependentVariableGetType(DependentVariableRef dv)
-    bint DependentVariableSetType(DependentVariableRef dv, OCStringRef newType)
+    bool DependentVariableSetType(DependentVariableRef dv, OCStringRef newType)
     OCStringRef DependentVariableGetEncoding(DependentVariableRef dv)
-    bint DependentVariableSetEncoding(DependentVariableRef dv, OCStringRef newEnc)
+    bool DependentVariableSetEncoding(DependentVariableRef dv, OCStringRef newEnc)
     OCStringRef DependentVariableGetComponentsURL(DependentVariableRef dv)
-    bint DependentVariableSetComponentsURL(DependentVariableRef dv, OCStringRef url)
+    bool DependentVariableSetComponentsURL(DependentVariableRef dv, OCStringRef url)
     OCStringRef DependentVariableGetName(DependentVariableRef dv)
-    bint DependentVariableSetName(DependentVariableRef dv, OCStringRef newName)
+    bool DependentVariableSetName(DependentVariableRef dv, OCStringRef newName)
     OCStringRef DependentVariableGetDescription(DependentVariableRef dv)
-    bint DependentVariableSetDescription(DependentVariableRef dv, OCStringRef newDesc)
+    bool DependentVariableSetDescription(DependentVariableRef dv, OCStringRef newDesc)
     OCStringRef DependentVariableGetQuantityName(DependentVariableRef dv)
-    bint DependentVariableSetQuantityName(DependentVariableRef dv, OCStringRef quantityName)
+    bool DependentVariableSetQuantityName(DependentVariableRef dv, OCStringRef quantityName)
     OCStringRef DependentVariableGetQuantityType(DependentVariableRef dv)
-    bint DependentVariableSetQuantityType(DependentVariableRef dv, OCStringRef quantityType)
+    bool DependentVariableSetQuantityType(DependentVariableRef dv, OCStringRef quantityType)
     OCNumberType DependentVariableGetNumericType(DependentVariableRef dv)
-    bint DependentVariableSetNumericType(DependentVariableRef dv, OCNumberType newType)
+    bool DependentVariableSetNumericType(DependentVariableRef dv, OCNumberType newType)
 
     # DependentVariable sparse sampling
     SparseSamplingRef DependentVariableGetSparseSampling(DependentVariableRef dv)
-    bint DependentVariableSetSparseSampling(DependentVariableRef dv, SparseSamplingRef ss)
+    bool DependentVariableSetSparseSampling(DependentVariableRef dv, SparseSamplingRef ss)
 
     # DependentVariable metadata and ownership
     OCDictionaryRef DependentVariableGetMetaData(DependentVariableRef dv)
-    bint DependentVariableSetMetaData(DependentVariableRef dv, OCDictionaryRef dict)
+    bool DependentVariableSetMetaData(DependentVariableRef dv, OCDictionaryRef dict)
     OCTypeRef DependentVariableGetOwner(DependentVariableRef dv)
-    bint DependentVariableSetOwner(DependentVariableRef dv, OCTypeRef owner)
+    bool DependentVariableSetOwner(DependentVariableRef dv, OCTypeRef owner)
 
     # DependentVariable component array accessors
     OCIndex DependentVariableGetComponentCount(DependentVariableRef dv)
     OCMutableArrayRef DependentVariableGetComponents(DependentVariableRef dv)
-    bint DependentVariableSetComponents(DependentVariableRef dv, OCArrayRef newComponents)
+    bool DependentVariableSetComponents(DependentVariableRef dv, OCArrayRef newComponents)
     OCMutableArrayRef DependentVariableCopyComponents(DependentVariableRef dv)
 
     # DependentVariable size and element type
     OCIndex DependentVariableGetSize(DependentVariableRef dv)
-    bint DependentVariableSetSize(DependentVariableRef dv, OCIndex newSize)
+    bool DependentVariableSetSize(DependentVariableRef dv, OCIndex newSize)
 
     # DependentVariable component labels
     OCArrayRef DependentVariableGetComponentLabels(DependentVariableRef dv)
-    bint DependentVariableSetComponentLabels(DependentVariableRef dv, OCArrayRef labels)
+    bool DependentVariableSetComponentLabels(DependentVariableRef dv, OCArrayRef labels)
 
     # DependentVariable low-level value accessors
     float DependentVariableGetFloatValueAtMemOffset(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset)
@@ -196,26 +302,72 @@ cdef extern from "RMNLibrary.h":
     double DependentVariableGetDoubleValueAtMemOffsetForPart(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset, complexPart part)
     float DependentVariableGetFloatValueAtMemOffsetForPart(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset, complexPart part)
     SIScalarRef DependentVariableCreateValueFromMemOffset(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset)
-    bint DependentVariableSetValueAtMemOffset(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset, SIScalarRef value, OCStringRef *error)
+    bool DependentVariableSetValueAtMemOffset(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset, SIScalarRef value, OCStringRef *error)
 
     # DependentVariable unit conversion and data manipulation
-    bint DependentVariableConvertToUnit(DependentVariableRef dv, SIUnitRef unit, OCStringRef *error)
-    bint DependentVariableSetValuesToZero(DependentVariableRef dv, int64_t componentIndex)
-    bint DependentVariableZeroPartInRange(DependentVariableRef dv, OCIndex componentIndex, OCRange range, complexPart part)
-    bint DependentVariableTakeAbsoluteValue(DependentVariableRef dv, int64_t componentIndex)
-    bint DependentVariableMultiplyValuesByDimensionlessComplexConstant(DependentVariableRef dv, int64_t componentIndex, double_complex constant)
-    bint DependentVariableTakeComplexPart(DependentVariableRef dv, OCIndex componentIndex, complexPart part)
-    bint DependentVariableConjugate(DependentVariableRef dv, OCIndex componentIndex)
-    bint DependentVariableMultiplyValuesByDimensionlessRealConstant(DependentVariableRef dv, OCIndex componentIndex, double constant)
+    bool DependentVariableConvertToUnit(DependentVariableRef dv, SIUnitRef unit, OCStringRef *error)
+    bool DependentVariableSetValuesToZero(DependentVariableRef dv, int64_t componentIndex)
+    bool DependentVariableZeroPartInRange(DependentVariableRef dv, OCIndex componentIndex, OCRange range, complexPart part)
+    bool DependentVariableTakeAbsoluteValue(DependentVariableRef dv, int64_t componentIndex)
+    bool DependentVariableMultiplyValuesByDimensionlessComplexConstant(DependentVariableRef dv, int64_t componentIndex, double_complex constant)
+    bool DependentVariableTakeComplexPart(DependentVariableRef dv, OCIndex componentIndex, complexPart part)
+    bool DependentVariableConjugate(DependentVariableRef dv, OCIndex componentIndex)
+    bool DependentVariableMultiplyValuesByDimensionlessRealConstant(DependentVariableRef dv, OCIndex componentIndex, double constant)
 
     # DependentVariable arithmetic operations
-    bint DependentVariableAdd(DependentVariableRef dv1, DependentVariableRef dv2)
-    bint DependentVariableSubtract(DependentVariableRef dv1, DependentVariableRef dv2)
-    bint DependentVariableMultiply(DependentVariableRef dv1, DependentVariableRef dv2)
-    bint DependentVariableDivide(DependentVariableRef dv1, DependentVariableRef dv2)
+    bool DependentVariableAdd(DependentVariableRef dv1, DependentVariableRef dv2)
+    bool DependentVariableSubtract(DependentVariableRef dv1, DependentVariableRef dv2)
+    bool DependentVariableMultiply(DependentVariableRef dv1, DependentVariableRef dv2)
+    bool DependentVariableDivide(DependentVariableRef dv1, DependentVariableRef dv2)
 
-    # SparseSampling forward declaration (detailed API would be in separate section)
-    OCTypeID SparseSamplingGetTypeID()
+    # ====================================================================================
+    # Phase 3D: Dataset API (Depends on all previous components)
+    # ====================================================================================
+
+    # Dataset - High-level data container and workflow orchestration
+    OCTypeID DatasetGetTypeID()
+    DatasetRef DatasetCreate(OCStringRef name, OCStringRef description, OCStringRef *outError)
+    DatasetRef DatasetCreateFromJSON(cJSON *json, OCStringRef *outError)
+    DatasetRef DatasetCreateFromDictionary(OCDictionaryRef dict, OCStringRef *outError)
+
+    # Dataset basic accessors
+    OCStringRef DatasetGetName(DatasetRef dataset)
+    bool DatasetSetName(DatasetRef dataset, OCStringRef name, OCStringRef *outError)
+    OCStringRef DatasetGetDescription(DatasetRef dataset)
+    bool DatasetSetDescription(DatasetRef dataset, OCStringRef description, OCStringRef *outError)
+
+    # Dataset dimensions management
+    OCArrayRef DatasetGetDimensions(DatasetRef dataset)
+    bool DatasetSetDimensions(DatasetRef dataset, OCArrayRef dimensions, OCStringRef *outError)
+    bool DatasetAddDimension(DatasetRef dataset, DimensionRef dimension, OCStringRef *outError)
+    OCIndex DatasetGetDimensionCount(DatasetRef dataset)
+    DimensionRef DatasetGetDimensionAtIndex(DatasetRef dataset, OCIndex index)
+
+    # Dataset dependent variables management
+    OCArrayRef DatasetGetDependentVariables(DatasetRef dataset)
+    bool DatasetSetDependentVariables(DatasetRef dataset, OCArrayRef variables, OCStringRef *outError)
+    bool DatasetAddDependentVariable(DatasetRef dataset, DependentVariableRef variable, OCStringRef *outError)
+    OCIndex DatasetGetDependentVariableCount(DatasetRef dataset)
+    DependentVariableRef DatasetGetDependentVariableAtIndex(DatasetRef dataset, OCIndex index)
+
+    # Dataset metadata
+    OCDictionaryRef DatasetGetMetadata(DatasetRef dataset)
+    bool DatasetSetMetadata(DatasetRef dataset, OCDictionaryRef metadata, OCStringRef *outError)
+
+    # Dataset serialization
+    OCDictionaryRef DatasetCopyAsDictionary(DatasetRef dataset)
+    cJSON* DatasetCopyAsJSON(DatasetRef dataset)
+
+    # ====================================================================================
+    # Utility Functions and Metadata Handling
+    # ====================================================================================
+
+    # JSON metadata conversion (from RMNLibrary.h)
+    cJSON* OCMetadataCopyJSON(OCDictionaryRef dict)
+    OCDictionaryRef OCMetadataCreateFromJSON(cJSON *json, OCStringRef *outError)
+
+    # Library management
+    void RMNLibTypesShutdown()
 
     # Note: DependentVariable inherits from SIQuantity, so all SIQuantity functions
     # (declared in sitypes.pxd) can be used with DependentVariableRef cast to SIQuantityRef
