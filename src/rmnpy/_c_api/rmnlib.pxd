@@ -15,17 +15,25 @@ from libc.stdint cimport int64_t
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.sitypes cimport *
 
+# ====================================================================================
+# RMNLib Core Types and Constants (from RMNLibrary.h)
+# ====================================================================================
+
+# Forward declarations from RMNLibrary.h
+ctypedef void *GeographicCoordinateRef;
+ctypedef void *DatumRef;
+ctypedef void *SparseSamplingRef;
+ctypedef void *DependentVariableRef;
+ctypedef void *DimensionRef;
+ctypedef void *LabeledDimensionRef;
+ctypedef void *SIDimensionRef;
+ctypedef void *SIMonotonicDimensionRef;
+ctypedef void *SILinearDimensionRef;
+ctypedef void *DatasetRef;
 
 cdef extern from "RMNLibrary.h":
     # cJSON forward declaration (from included cJSON.h)
     ctypedef struct cJSON
-
-    # Complex part enumeration (from SITypes)
-    ctypedef enum complexPart:
-        kSIRealPart
-        kSIImaginaryPart
-        kSIMagnitudePart
-        kSIArgumentPart
 
     # OCRange structure
     ctypedef struct OCRange:
@@ -141,7 +149,6 @@ cdef extern from "RMNLibrary.h":
     # DependentVariable basic accessors
     OCStringRef DependentVariableGetType(DependentVariableRef dv)
     bint DependentVariableSetType(DependentVariableRef dv, OCStringRef newType)
-    bint DependentVariableShouldSerializeExternally(DependentVariableRef dv)
     OCStringRef DependentVariableGetEncoding(DependentVariableRef dv)
     bint DependentVariableSetEncoding(DependentVariableRef dv, OCStringRef newEnc)
     OCStringRef DependentVariableGetComponentsURL(DependentVariableRef dv)
@@ -154,7 +161,6 @@ cdef extern from "RMNLibrary.h":
     bint DependentVariableSetQuantityName(DependentVariableRef dv, OCStringRef quantityName)
     OCStringRef DependentVariableGetQuantityType(DependentVariableRef dv)
     bint DependentVariableSetQuantityType(DependentVariableRef dv, OCStringRef quantityType)
-    OCStringRef DependentVariableGetUnitSymbol(DependentVariableRef dv)
     OCNumberType DependentVariableGetNumericType(DependentVariableRef dv)
     bint DependentVariableSetNumericType(DependentVariableRef dv, OCNumberType newType)
 
@@ -173,10 +179,6 @@ cdef extern from "RMNLibrary.h":
     OCMutableArrayRef DependentVariableGetComponents(DependentVariableRef dv)
     bint DependentVariableSetComponents(DependentVariableRef dv, OCArrayRef newComponents)
     OCMutableArrayRef DependentVariableCopyComponents(DependentVariableRef dv)
-    OCDataRef DependentVariableGetComponentAtIndex(DependentVariableRef dv, OCIndex idx)
-    bint DependentVariableSetComponentAtIndex(DependentVariableRef dv, OCDataRef newBuf, OCIndex idx)
-    bint DependentVariableInsertComponentAtIndex(DependentVariableRef dv, OCDataRef component, OCIndex idx)
-    bint DependentVariableRemoveComponentAtIndex(DependentVariableRef dv, OCIndex idx)
 
     # DependentVariable size and element type
     OCIndex DependentVariableGetSize(DependentVariableRef dv)
@@ -185,9 +187,6 @@ cdef extern from "RMNLibrary.h":
     # DependentVariable component labels
     OCArrayRef DependentVariableGetComponentLabels(DependentVariableRef dv)
     bint DependentVariableSetComponentLabels(DependentVariableRef dv, OCArrayRef labels)
-    OCStringRef DependentVariableCreateComponentLabelForIndex(DependentVariableRef dv, OCIndex idx)
-    OCStringRef DependentVariableGetComponentLabelAtIndex(DependentVariableRef dv, OCIndex idx)
-    bint DependentVariableSetComponentLabelAtIndex(DependentVariableRef dv, OCStringRef newLabel, OCIndex idx)
 
     # DependentVariable low-level value accessors
     float DependentVariableGetFloatValueAtMemOffset(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset)

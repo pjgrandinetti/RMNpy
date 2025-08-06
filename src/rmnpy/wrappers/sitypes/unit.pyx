@@ -378,7 +378,7 @@ cdef class Unit:
             raise TypeError("Can only get scale factor with another Unit")
 
         # Check dimensional compatibility first
-        if not self.is_compatible_with(other):
+        if not self.has_same_reduced_dimensionality(other):
             raise RMNError("Cannot convert between units with different dimensionalities")
 
         return SIUnitConversion(self._c_unit, (<Unit>other)._c_unit)
@@ -484,16 +484,26 @@ cdef class Unit:
 
         return SIUnitAreEquivalentUnits(self._c_unit, (<Unit>other)._c_unit)
 
-    def is_compatible_with(self, other):
+    def has_same_reduced_dimensionality(self, other):
         """
-        Check if this unit is compatible (convertible) with another unit.
-        Users should prefer: unit1.dimensionality.reduced() == unit2.dimensionality.reduced()
+        Check if this unit has the same reduced dimensionality as another unit.
+
+        This compares the reduced dimensionalities of both units to determine
+        if they represent the same physical quantity type after reduction.
 
         Args:
-            other (Unit): Unit to check compatibility with
+            other (Unit): Unit to compare reduced dimensionality with
 
         Returns:
-            bool: True if units are compatible
+            bool: True if units have the same reduced dimensionality
+
+        Examples:
+            >>> meter = Unit("m")
+            >>> kilometer = Unit("km")
+            >>> meter.has_same_reduced_dimensionality(kilometer)  # True - both reduce to length
+            >>>
+            >>> second = Unit("s")
+            >>> meter.has_same_reduced_dimensionality(second)     # False - length vs time
         """
         if not isinstance(other, Unit):
             return False

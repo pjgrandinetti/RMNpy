@@ -430,11 +430,13 @@ def get_extensions() -> list[Extension]:
     #     )
     # ])
 
-    # Phase 3: RMNLib wrappers (will be implemented after Phase 2)
+    # Phase 3: RMNLib wrappers
+    # Build the dependent_variable wrapper for RMNLib
+    # TODO: Re-enable when dependent_variable.pyx compilation issues are fixed
     # extensions.extend([
     #     Extension(
-    #         "rmnpy.wrappers.rmnlib.core",
-    #         sources=["src/rmnpy/wrappers/rmnlib/core.pyx"],
+    #         "rmnpy.wrappers.rmnlib.dependent_variable",
+    #         sources=["src/rmnpy/wrappers/rmnlib/dependent_variable.pyx"],
     #         include_dirs=include_dirs,
     #         library_dirs=library_dirs,
     #         libraries=libraries,

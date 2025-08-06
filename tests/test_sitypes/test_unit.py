@@ -489,15 +489,15 @@ class TestUnitComparison:
         # Non-Unit comparison
         assert not meter.dimensionality == "not_a_unit"
 
-    def test_is_compatible_with(self) -> None:
-        """Test compatibility (alias for dimensional equality)."""
+    def test_has_same_reduced_dimensionality(self) -> None:
+        """Test reduced dimensionality compatibility check."""
         meter = Unit("m")
         kilometer = Unit("km")
 
-        assert meter.is_compatible_with(kilometer)
+        assert meter.has_same_reduced_dimensionality(kilometer)
 
         second = Unit("s")
-        assert not meter.is_compatible_with(second)
+        assert not meter.has_same_reduced_dimensionality(second)
 
 
 class TestUnitOperators:

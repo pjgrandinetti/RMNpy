@@ -31,7 +31,7 @@ ctypedef void* SIScalarRef
 ctypedef void* SIMutableScalarRef
 
 # ====================================================================================
-# Phase 2A: SIDimensionality API (Foundation Component)
+# SIDimensionality API (Foundation Component)
 # ====================================================================================
 
 # Base dimension indices (from SIDimensionality.h)
@@ -102,7 +102,7 @@ cdef extern from "SITypes/SIDimensionality.h":
     void SIDimensionalityShowFull(SIDimensionalityRef theDim)
 
 # ====================================================================================
-# Phase 2B: SIUnit API (Depends on SIDimensionality)
+# SIUnit API (Depends on SIDimensionality)
 # ====================================================================================
 
 cdef extern from "SITypes/SIUnit.h":
@@ -191,7 +191,7 @@ cdef extern from "SITypes/SIUnit.h":
     OCArrayRef SIUnitCreateArrayOfEquivalentUnits(SIUnitRef theUnit)
 
 # ====================================================================================
-# Phase 2C: SIQuantity & SIScalar API (depends on both above)
+#  SIQuantity & SIScalar API (depends on both above)
 # ====================================================================================
 
 # SINumber types and structures

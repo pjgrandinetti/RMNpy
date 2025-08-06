@@ -678,6 +678,7 @@ cdef class DependentVariable:
             raise ValueError(f"Components array must be 1D or 2D, got {value.ndim}D")
 
         # Convert numpy arrays to OCData and create OCArray
+        cdef OCArrayRef c_components
         c_data_list = []
         try:
             for component_array in component_arrays:
@@ -685,7 +686,8 @@ cdef class DependentVariable:
                 c_data_list.append(c_data)
 
             # Create OCArray from the list of OCData
-            cdef OCArrayRef c_components = py_list_to_ocarray([<uint64_t>data for data in c_data_list])
+            # Use cast instead of cdef inside function body
+            c_components = <OCArrayRef>py_list_to_ocarray([<uint64_t>data for data in c_data_list])
 
             # Set the components using C API
             success = DependentVariableSetComponents(self._c_dependent_variable, c_components)
@@ -756,21 +758,24 @@ cdef class DependentVariable:
             return "{}"
 
         # Use C API to create dictionary representation
-        cdef OCDictionaryRef c_dict = DependentVariableCopyAsDictionary(self._c_dependent_variable)
+        cdef OCDictionaryRef c_dict
+        cdef void* json_obj
+        cdef char* json_string
+        c_dict = DependentVariableCopyAsDictionary(self._c_dependent_variable)
         if c_dict == NULL:
             return "{}"
 
         try:
             # Convert OCDictionary to JSON using C API
             from rmnpy._c_api.rmnlib cimport OCMetadataCopyJSON
-            cdef void* json_obj = OCMetadataCopyJSON(c_dict)
+            json_obj = OCMetadataCopyJSON(c_dict)
             if json_obj == NULL:
                 return "{}"
 
             try:
                 # Convert cJSON to string using cJSON C library
                 from rmnpy._c_api.rmnlib cimport cJSON_Delete, cJSON_Print
-                cdef char* json_string = cJSON_Print(<void*>json_obj)
+                json_string = cJSON_Print(<void*>json_obj)
                 if json_string == NULL:
                     return "{}"
 
@@ -785,7 +790,6 @@ cdef class DependentVariable:
             finally:
                 # Free the JSON object
                 cJSON_Delete(<void*>json_obj)
-
         finally:
             # Release the dictionary
             octype_release(<OCTypeRef>c_dict)
@@ -1345,6 +1349,9 @@ cdef class DependentVariable:
         return DependentVariableConjugate(self._c_dependent_variable, component_index)
 
     def multiply_by_constant(self, constant: Union[float, complex], component_index: int = -1) -> bool:
+        # Prepare C variables for constant conversion
+        cdef double_complex c_constant_cpx
+        cdef double c_constant
         """
         Multiply all values by a dimensionless constant.
 
@@ -1359,11 +1366,11 @@ cdef class DependentVariable:
             return False
 
         if isinstance(constant, complex):
-            cdef double_complex c_constant = constant.real + 1j * constant.imag
+            c_constant_cpx = constant.real + 1j * constant.imag
             return DependentVariableMultiplyValuesByDimensionlessComplexConstant(
-                self._c_dependent_variable, component_index, c_constant)
+                self._c_dependent_variable, component_index, c_constant_cpx)
         else:
-            cdef double c_constant = float(constant)
+            c_constant = float(constant)
             return DependentVariableMultiplyValuesByDimensionlessRealConstant(
                 self._c_dependent_variable, component_index, c_constant)
 

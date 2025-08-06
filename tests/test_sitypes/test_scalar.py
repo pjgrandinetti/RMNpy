@@ -340,22 +340,39 @@ class TestScalarUnitOperations:
             pytest.skip("Unit conversion method 'to' not implemented")
 
     def test_unit_compatibility_check(self) -> None:
-        """Test checking unit compatibility."""
+        """Test checking unit reduced dimensionality compatibility."""
         meter_scalar = Scalar("5.0", "m")
         km_scalar = Scalar("2.0", "km")
         second_scalar = Scalar("10.0", "s")
 
-        # Same dimensionality should be compatible
-        try:
-            compatible = meter_scalar.is_compatible_with(km_scalar)
-            assert compatible is True
+        # Same reduced dimensionality should be compatible (both are length units)
+        compatible = meter_scalar.unit.has_same_reduced_dimensionality(km_scalar.unit)
+        assert compatible is True
 
-            incompatible = meter_scalar.is_compatible_with(second_scalar)
-            assert incompatible is False
+        # Different reduced dimensionality should not be compatible (length vs time)
+        incompatible = meter_scalar.unit.has_same_reduced_dimensionality(
+            second_scalar.unit
+        )
+        assert incompatible is False
 
-        except AttributeError:
-            # Compatibility check may not be implemented
-            pytest.skip("Unit compatibility check method not implemented")
+        # Test with more complex units that reduce to same dimensionality
+        velocity1 = Scalar("10.0", "m/s")
+        velocity2 = Scalar("5.0", "km/h")  # Different velocity units
+        force_per_area = Scalar(
+            "1.0", "N/m^2"
+        )  # This is pressure, different dimensionality
+
+        # Both velocity units should have same reduced dimensionality
+        velocity_compatible = velocity1.unit.has_same_reduced_dimensionality(
+            velocity2.unit
+        )
+        assert velocity_compatible is True
+
+        # Velocity and pressure should have different reduced dimensionality
+        velocity_pressure_incompatible = velocity1.unit.has_same_reduced_dimensionality(
+            force_per_area.unit
+        )
+        assert velocity_pressure_incompatible is False
 
     def test_unit_simplification(self) -> None:
         """Test unit simplification in operations."""
