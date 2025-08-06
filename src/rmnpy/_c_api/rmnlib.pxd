@@ -155,8 +155,8 @@ cdef extern from "RMNLibrary.h":
     OCStringRef DependentVariableGetQuantityType(DependentVariableRef dv)
     bint DependentVariableSetQuantityType(DependentVariableRef dv, OCStringRef quantityType)
     OCStringRef DependentVariableGetUnitSymbol(DependentVariableRef dv)
-    OCNumberType DependentVariableGetElementType(DependentVariableRef dv)
-    bint DependentVariableSetElementType(DependentVariableRef dv, OCNumberType newType)
+    OCNumberType DependentVariableGetNumericType(DependentVariableRef dv)
+    bint DependentVariableSetNumericType(DependentVariableRef dv, OCNumberType newType)
 
     # DependentVariable sparse sampling
     SparseSamplingRef DependentVariableGetSparseSampling(DependentVariableRef dv)
@@ -208,6 +208,12 @@ cdef extern from "RMNLibrary.h":
     bint DependentVariableTakeComplexPart(DependentVariableRef dv, OCIndex componentIndex, complexPart part)
     bint DependentVariableConjugate(DependentVariableRef dv, OCIndex componentIndex)
     bint DependentVariableMultiplyValuesByDimensionlessRealConstant(DependentVariableRef dv, OCIndex componentIndex, double constant)
+
+    # DependentVariable arithmetic operations
+    bint DependentVariableAdd(DependentVariableRef dv1, DependentVariableRef dv2)
+    bint DependentVariableSubtract(DependentVariableRef dv1, DependentVariableRef dv2)
+    bint DependentVariableMultiply(DependentVariableRef dv1, DependentVariableRef dv2)
+    bint DependentVariableDivide(DependentVariableRef dv1, DependentVariableRef dv2)
 
     # SparseSampling forward declaration (detailed API would be in separate section)
     OCTypeID SparseSamplingGetTypeID()
