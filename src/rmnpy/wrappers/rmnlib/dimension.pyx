@@ -9,7 +9,7 @@ This module provides Python wrappers that mirror the C inheritance:
   - SILinearDimension (for linear coordinates with constant increment)
   - SIMonotonicDimension (for monotonic coordinates with arbitrary spacing)
 
-Factory function Dimension() provides csdmpy-compatible interface.
+Use the specific dimension classes directly for explicit dimension creation.
 """
 
 from typing import Any, Dict, List, Optional, Union
@@ -40,98 +40,6 @@ from rmnpy.helpers.octypes import (
     py_string_to_ocstring,
 )
 
-
-# Factory function for creating appropriate dimension type (csdmpy compatibility)
-def Dimension(*args, **kwargs):
-    """
-    Factory function to create the appropriate dimension type.
-
-    Args:
-        *args: Positional arguments (dict or direct arguments)
-        **kwargs: Keyword arguments
-
-    Returns:
-        Appropriate dimension subclass instance
-
-    Examples:
-        >>> dim = Dimension(type='linear', count=5)
-        >>> type(dim)
-        <class 'SILinearDimension'>
-
-        >>> dim = Dimension(type='labeled', labels=['A', 'B', 'C'])
-        >>> type(dim)
-        <class 'LabeledDimension'>
-
-        # Dictionary-based (csdmpy compatibility)
-        >>> dim = Dimension({'type': 'labeled', 'labels': ['X', 'Y', 'Z']})
-        >>> type(dim)
-        <class 'LabeledDimension'>
-    """
-    params = {}
-
-    # Handle first argument as dict (csdmpy compatibility)
-    if args and isinstance(args[0], dict):
-        params.update(args[0])
-    elif args:
-        # If first arg is not dict, assume it's a direct argument
-        # This would need more logic based on dimension type
-        raise ValueError("Direct positional arguments not yet supported. Use type= keyword argument.")
-
-    # Add kwargs
-    params.update(kwargs)
-
-    # Get dimension type
-    dim_type = params.get('type', 'linear')
-
-    if dim_type == 'labeled':
-        # Extract labels for new API
-        labels = params.get('labels', [])
-        if not labels:
-            raise ValueError("Labeled dimension requires 'labels' parameter")
-        return LabeledDimension(
-            labels=labels,
-            label=params.get('label', ''),
-            description=params.get('description', ''),
-            application=params.get('application')
-        )
-    elif dim_type == 'si' or dim_type == 'SIDimension':
-        return SIDimension(
-            label=params.get('label', ''),
-            description=params.get('description', ''),
-            application=params.get('application'),
-            coordinates_offset=params.get('coordinates_offset', '0'),
-            origin_offset=params.get('origin_offset', '0'),
-            period=params.get('period'),
-            complex_fft=params.get('complex_fft', False)
-        )
-    elif dim_type == 'monotonic':
-        coordinates = params.get('coordinates', [])
-        if not coordinates:
-            raise ValueError("Monotonic dimension requires 'coordinates' parameter")
-        return SIMonotonicDimension(
-            coordinates=coordinates,
-            label=params.get('label', ''),
-            description=params.get('description', ''),
-            application=params.get('application'),
-            coordinates_offset=params.get('coordinates_offset', '0'),
-            origin_offset=params.get('origin_offset', '0'),
-            period=params.get('period'),
-            complex_fft=params.get('complex_fft', False)
-        )
-    elif dim_type == 'linear':
-        return SILinearDimension(
-            count=params.get('count', 10),
-            increment=params.get('increment', '1.0'),
-            label=params.get('label', ''),
-            description=params.get('description', ''),
-            application=params.get('application'),
-            coordinates_offset=params.get('coordinates_offset', '0'),
-            origin_offset=params.get('origin_offset', '0'),
-            period=params.get('period'),
-            complex_fft=params.get('complex_fft', False)
-        )
-    else:
-        raise ValueError(f"Unknown dimension type: {dim_type}")
 
 cdef class BaseDimension:
     """
@@ -257,12 +165,11 @@ cdef class BaseDimension:
 
         if self._c_dimension != NULL:
             # Get metadata dictionary from C API
-            metadata_ref = DimensionGetMetadata(self._c_dimension)
+            metadata_ref = DimensionGetApplicationMetaData(self._c_dimension)
             if metadata_ref != NULL:
                 return ocdictionary_to_py_dict(<uint64_t>metadata_ref)
             return {}
         return self._application or {}
-        return self._application
 
     @application.setter
     def application(self, value):
@@ -279,7 +186,7 @@ cdef class BaseDimension:
         if self._c_dimension != NULL:
             if value is None or len(value) == 0:
                 # Set empty metadata (NULL)
-                if not DimensionSetMetadata(self._c_dimension, NULL, &error):
+                if not DimensionSetApplicationMetaData(self._c_dimension, NULL, &error):
                     if error != NULL:
                         error_msg = parse_c_string(<uint64_t>error)
                         OCRelease(<OCTypeRef>error)
@@ -290,7 +197,7 @@ cdef class BaseDimension:
                 # Convert Python dict to OCDictionary and set
                 dict_ptr = py_dict_to_ocdictionary(value)
                 try:
-                    if not DimensionSetMetadata(self._c_dimension, <OCDictionaryRef>dict_ptr, &error):
+                    if not DimensionSetApplicationMetaData(self._c_dimension, <OCDictionaryRef>dict_ptr, &error):
                         if error != NULL:
                             error_msg = parse_c_string(<uint64_t>error)
                             OCRelease(<OCTypeRef>error)
@@ -463,18 +370,10 @@ cdef class LabeledDimension(BaseDimension):
         if self._c_dimension != NULL:
             labels_ref = LabeledDimensionGetCoordinateLabels(self._labeled_dimension)
             if labels_ref != NULL:
-                count = OCArrayGetCount(labels_ref)
-                if count > 0:
-                    # Convert C array of OCStringRef to Python list
-                    labels_list = []
-                    for i in range(count):
-                        # Get individual label at index
-                        label_at_index = LabeledDimensionGetCoordinateLabelAtIndex(self._labeled_dimension, i)
-                        if label_at_index != NULL:
-                            label_str = OCStringGetCString(label_at_index).decode('utf-8')
-                            labels_list.append(label_str)
-                    if labels_list:
-                        return np.array(labels_list)
+                # Use helper function to convert OCArray to Python list
+                labels_list = ocarray_to_py_list(<uint64_t>labels_ref)
+                if labels_list:
+                    return np.array(labels_list)
 
         # Fallback: return the input labels
         return np.array(self._input_labels)

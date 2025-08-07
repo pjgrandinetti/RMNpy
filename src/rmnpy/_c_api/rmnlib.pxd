@@ -50,8 +50,8 @@ cdef extern from "RMNLibrary.h":
     bint DimensionSetLabel(DimensionRef dim, OCStringRef label, OCStringRef *outError)
     OCStringRef DimensionGetDescription(DimensionRef dim)
     bint DimensionSetDescription(DimensionRef dim, OCStringRef desc, OCStringRef *outError)
-    OCMutableDictionaryRef DimensionGetMetadata(DimensionRef dim)
-    bint DimensionSetMetadata(DimensionRef dim, OCDictionaryRef dict, OCStringRef *outError)
+    OCMutableDictionaryRef DimensionGetApplicationMetaData(DimensionRef dim)
+    bint DimensionSetApplicationMetaData(DimensionRef dim, OCDictionaryRef dict, OCStringRef *outError)
 
     # LabeledDimension - Discrete labeled coordinate systems
     OCTypeID LabeledDimensionGetTypeID()
@@ -139,8 +139,8 @@ cdef extern from "RMNLibrary.h":
     bint SparseSamplingSetEncoding(SparseSamplingRef ss, OCStringRef encoding, OCStringRef *outError)
     OCStringRef SparseSamplingGetDescription(SparseSamplingRef ss)
     bint SparseSamplingSetDescription(SparseSamplingRef ss, OCStringRef description, OCStringRef *outError)
-    OCDictionaryRef SparseSamplingGetMetadata(SparseSamplingRef ss)
-    bint SparseSamplingSetMetadata(SparseSamplingRef ss, OCDictionaryRef metadata, OCStringRef *outError)
+    OCDictionaryRef SparseSamplingGetApplicationMetaData(SparseSamplingRef ss)
+    bint SparseSamplingSetApplicationMetaData(SparseSamplingRef ss, OCDictionaryRef metadata, OCStringRef *outError)
 
     # SparseSampling utility functions
     OCIndex SparseSamplingGetVertexCount(SparseSamplingRef ss)
@@ -271,8 +271,8 @@ cdef extern from "RMNLibrary.h":
     bint DependentVariableSetSparseSampling(DependentVariableRef dv, SparseSamplingRef ss)
 
     # DependentVariable metadata and ownership
-    OCDictionaryRef DependentVariableGetMetaData(DependentVariableRef dv)
-    bint DependentVariableSetMetaData(DependentVariableRef dv, OCDictionaryRef dict)
+    OCDictionaryRef DependentVariableGetApplicationMetaData(DependentVariableRef dv)
+    bint DependentVariableSetApplicationMetaData(DependentVariableRef dv, OCDictionaryRef dict)
     OCTypeRef DependentVariableGetOwner(DependentVariableRef dv)
     bint DependentVariableSetOwner(DependentVariableRef dv, OCTypeRef owner)
 
@@ -346,8 +346,8 @@ cdef extern from "RMNLibrary.h":
     bint DatasetAddDependentVariable(DatasetRef dataset, DependentVariableRef variable, OCStringRef *outError)
 
     # Dataset metadata
-    OCDictionaryRef DatasetGetMetadata(DatasetRef dataset)
-    bint DatasetSetMetadata(DatasetRef dataset, OCDictionaryRef metadata, OCStringRef *outError)
+    OCDictionaryRef DatasetGetApplicationMetaData(DatasetRef dataset)
+    bint DatasetSetApplicationMetaData(DatasetRef dataset, OCDictionaryRef metadata, OCStringRef *outError)
 
     # ====================================================================================
     # Utility Functions and Metadata Handling
