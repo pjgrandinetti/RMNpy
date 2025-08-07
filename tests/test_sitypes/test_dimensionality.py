@@ -580,8 +580,24 @@ def test_python_integration_limitations():
     print("✅ Integration limitations verified")
 
 
-if __name__ == "__main__":
-    run_comprehensive_test_suite()
+def test_for_quantity_with_constants():
+    """
+    Test Dimensionality.for_quantity with SI quantity constants and error on string input.
+    """
+    from rmnpy.constants import kSIQuantityDimensionless, kSIQuantityLength
+    from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
+
+    # Should work with OCStringRef constants
+    length_dim = Dimensionality.for_quantity(kSIQuantityLength)
+    assert str(length_dim) == "L"
+    dimless_dim = Dimensionality.for_quantity(kSIQuantityDimensionless)
+    assert dimless_dim.is_dimensionless
+
+    # Should raise TypeError if given a string
+    import pytest
+
+    with pytest.raises(TypeError):
+        Dimensionality.for_quantity("length")
 
 
 # Also define the test function properly for pytest discovery

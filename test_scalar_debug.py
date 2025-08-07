@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Debug script to test Scalar C reference passing
+Test script for the original failing dimension creation case
 """
 
 import sys
@@ -8,36 +8,55 @@ import sys
 # Import must come after path modification
 sys.path.insert(0, ".")
 
+from rmnpy.wrappers.rmnlib.dimension import SILinearDimension
+
 # flake8: noqa: E402
 from rmnpy.wrappers.sitypes.scalar import Scalar
 
-
-def debug_scalar(s: "Scalar") -> None:
-    """Debug a scalar object"""
-    print(f"Scalar: {s}")
-    print(f"Type: {type(s)}")
-    print(f"Value: {s.value}")
-    print(f"Is real: {s.is_real}")
-    print(f"Is complex: {s.is_complex}")
-    print(f"Isinstance Scalar: {isinstance(s, Scalar)}")
-
-    # Try to access what would be the Cython attribute
-    try:
-        # This will fail but shows the structure
-        print(f"Has _c_scalar: {hasattr(s, '_c_scalar')}")
-    except Exception as e:
-        print(f"Exception checking _c_scalar: {e}")
-
-
 if __name__ == "__main__":
-    s1 = Scalar("10.0")
-    print("=== String scalar ===")
-    debug_scalar(s1)
+    print("=== Testing original failing case ===")
 
-    s2 = Scalar(10.0)
-    print("\n=== Numeric scalar ===")
-    debug_scalar(s2)
+    try:
+        # Create a 1-meter increment scalar
+        increment = Scalar(1.0, "m")
+        print(f"Created increment: {increment}")
 
-    s3 = Scalar(10.0, "1")  # Dimensionless
-    print("\n=== Dimensionless scalar ===")
-    debug_scalar(s3)
+        # Create a linear dimension (this was failing before)
+        dim = SILinearDimension(
+            count=100,
+            increment=increment,
+            label="distance",
+            description="Linear distance dimension",
+        )
+
+        print(f"SUCCESS! Created dimension: {dim}")
+        print(f"Dimension count: {dim.count}")
+        print(f"Dimension increment: {dim.increment}")
+
+    except Exception as e:
+        print(f"FAILED: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+    print("\n=== Testing string increment ===")
+    try:
+        # Test with string increment
+        dim2 = SILinearDimension(
+            count=50,
+            increment="0.5 m",  # String increment
+            label="half_meter",
+            description="Half meter increment",
+        )
+        print(f"SUCCESS! Created dimension with string increment: {dim2}")
+
+    except Exception as e:
+        print(f"FAILED with string increment: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+    print("\n=== All tests passed! ===")
+    print("The cross-module Cython cdef attribute access issue has been resolved.")

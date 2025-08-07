@@ -15,3 +15,6 @@ cdef class Scalar:
 
     @staticmethod
     cdef Scalar _from_ref(SIScalarRef scalar_ref)
+
+    # Method-based approach to avoid cross-module attribute access issues
+    cdef SIScalarRef get_c_scalar(self)
