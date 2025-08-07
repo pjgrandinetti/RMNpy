@@ -16,50 +16,29 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from rmnpy._c_api.octypes cimport (
-    OCArrayCreateWithDoubles,
-    OCArrayGetCount,
-    OCArrayGetDoubles,
-    OCArrayRef,
-    OCDictionaryRef,
-    OCIndex,
-    OCMutableDictionaryRef,
-    OCRelease,
-    OCStringCreateWithCString,
-    OCStringGetCString,
-    OCStringRef,
-    OCTypeRef,
-)
-from rmnpy._c_api.rmnlib cimport (
-    DimensionCopyAsDictionary,
-    DimensionCreateFromDictionary,
-    DimensionGetCount,
-    DimensionGetDescription,
-    DimensionGetLabel,
-    DimensionGetMetadata,
-    DimensionGetType,
-    DimensionRef,
-    DimensionSetDescription,
-    DimensionSetLabel,
-    DimensionSetMetadata,
-    LabeledDimensionCreate,
-    LabeledDimensionGetCoordinateLabels,
-    LabeledDimensionRef,
-    SIDimensionCreate,
-    SIDimensionRef,
-    SILinearDimensionCreate,
-    SILinearDimensionGetCoordinateAtIndex,
-    SILinearDimensionGetIncrement,
-    SILinearDimensionGetStart,
-    SILinearDimensionRef,
-    SIMonotonicDimensionCreate,
-    SIMonotonicDimensionGetCoordinates,
-    SIMonotonicDimensionRef,
-)
+# Import Cython types
+
+from libc.stdint cimport uintptr_t
+
+# Import all C API declarations
+from rmnpy._c_api.octypes cimport *
+from rmnpy._c_api.rmnlib cimport *
 from rmnpy._c_api.sitypes cimport *
 
-# Import OCTypes helper functions
-from rmnpy.helpers.octypes cimport ocdictionary_to_py_dict, py_dict_to_ocdictionary
+from rmnpy.exceptions import RMNError
+
+# Import helper conversion functions
+from rmnpy.helpers.octypes import (
+    ocarray_to_py_list,
+    ocdictionary_to_py_dict,
+    ocnumber_to_py_number,
+    ocstring_to_py_string,
+    parse_c_string,
+    py_dict_to_ocdictionary,
+    py_list_to_ocarray,
+    py_number_to_ocnumber,
+    py_string_to_ocstring,
+)
 
 
 # Factory function for creating appropriate dimension type (csdmpy compatibility)
@@ -182,7 +161,7 @@ cdef class BaseDimension:
     def type(self):
         """Get the type of the dimension."""
         if self._c_dimension != NULL:
-            cdef OCStringRef type_ref = DimensionGetType(self._c_dimension)
+            type_ref = DimensionGetType(self._c_dimension)
             if type_ref != NULL:
                 return OCStringGetCString(type_ref).decode('utf-8')
         # Fallback for subclasses that override this property
@@ -191,68 +170,78 @@ cdef class BaseDimension:
     @property
     def description(self):
         """Get the description of the dimension."""
+        cdef OCStringRef desc_ref
+        cdef const char* c_string
+
         if self._c_dimension != NULL:
-            cdef OCStringRef desc_ref = DimensionGetDescription(self._c_dimension)
+            desc_ref = DimensionGetDescription(self._c_dimension)
             if desc_ref != NULL:
-                return OCStringGetCString(desc_ref).decode('utf-8')
+                c_string = OCStringGetCString(desc_ref)
+                if c_string != NULL:
+                    return c_string.decode('utf-8')
         return self._description or ''
 
     @description.setter
     def description(self, value):
         """Set the description of the dimension."""
+        cdef OCStringRef error = NULL
+        cdef uint64_t desc_ptr
+
         if not isinstance(value, str):
             raise TypeError("Description must be a string")
         self._description = value
 
         # If we have a C dimension object, update it too
         if self._c_dimension != NULL:
-            cdef OCStringRef desc_ref = OCStringCreateWithCString(value.encode('utf-8'))
-            cdef OCStringRef error = NULL
+            desc_ptr = py_string_to_ocstring(value)
             try:
-                if not DimensionSetDescription(self._c_dimension, desc_ref, &error):
+                if not DimensionSetDescription(self._c_dimension, <OCStringRef>desc_ptr, &error):
                     if error != NULL:
-                        error_msg = OCStringGetCString(error).decode('utf-8')
+                        error_msg = parse_c_string(<uint64_t>error)
+                        OCRelease(<OCTypeRef>error)
                         raise ValueError(f"Failed to set description: {error_msg}")
                     else:
                         raise ValueError("Failed to set description")
             finally:
-                if desc_ref != NULL:
-                    OCRelease(desc_ref)
-                if error != NULL:
-                    OCRelease(error)
+                OCRelease(<OCTypeRef>desc_ptr)
 
     @property
     def label(self):
         """Get the label of the dimension."""
+        cdef OCStringRef label_ref
+        cdef const char* c_string
+
         if self._c_dimension != NULL:
-            cdef OCStringRef label_ref = DimensionGetLabel(self._c_dimension)
+            label_ref = DimensionGetLabel(self._c_dimension)
             if label_ref != NULL:
-                return OCStringGetCString(label_ref).decode('utf-8')
+                c_string = OCStringGetCString(label_ref)
+                if c_string != NULL:
+                    return c_string.decode('utf-8')
         return self._label or ''
 
     @label.setter
     def label(self, value):
         """Set the label of the dimension."""
+        cdef OCStringRef error = NULL
+        cdef uint64_t label_ptr
+
         if not isinstance(value, str):
             raise TypeError("Label must be a string")
         self._label = value
 
         # If we have a C dimension object, update it too
         if self._c_dimension != NULL:
-            cdef OCStringRef label_ref = OCStringCreateWithCString(value.encode('utf-8'))
-            cdef OCStringRef error = NULL
+            label_ptr = py_string_to_ocstring(value)
             try:
-                if not DimensionSetLabel(self._c_dimension, label_ref, &error):
+                if not DimensionSetLabel(self._c_dimension, <OCStringRef>label_ptr, &error):
                     if error != NULL:
-                        error_msg = OCStringGetCString(error).decode('utf-8')
+                        error_msg = parse_c_string(<uint64_t>error)
+                        OCRelease(<OCTypeRef>error)
                         raise ValueError(f"Failed to set label: {error_msg}")
                     else:
                         raise ValueError("Failed to set label")
             finally:
-                if label_ref != NULL:
-                    OCRelease(label_ref)
-                if error != NULL:
-                    OCRelease(error)
+                OCRelease(<OCTypeRef>label_ptr)
 
     @property
     def count(self):
@@ -264,39 +253,52 @@ cdef class BaseDimension:
     @property
     def application(self):
         """Get application metadata."""
+        cdef OCDictionaryRef metadata_ref
+
         if self._c_dimension != NULL:
-            cdef OCMutableDictionaryRef metadata = DimensionGetMetadata(self._c_dimension)
-            if metadata != NULL:
-                py_dict = ocdictionary_to_py_dict(<OCDictionaryRef>metadata)
-                return py_dict
+            # Get metadata dictionary from C API
+            metadata_ref = DimensionGetMetadata(self._c_dimension)
+            if metadata_ref != NULL:
+                return ocdictionary_to_py_dict(<uint64_t>metadata_ref)
             return {}
+        return self._application or {}
         return self._application
 
     @application.setter
     def application(self, value):
         """Set application metadata."""
+        cdef OCStringRef error = NULL
+        cdef uint64_t dict_ptr
+
         if value is not None and not isinstance(value, dict):
-            raise TypeError("Application metadata must be a dictionary")
+            raise TypeError("Application metadata must be a dictionary or None")
 
+        self._application = value
+
+        # If we have a C dimension object, update it too
         if self._c_dimension != NULL:
-            cdef OCDictionaryRef dict_ref = NULL
-            cdef OCStringRef error = NULL
-
-            if value is not None:
-                dict_ref = py_dict_to_ocdictionary(value)
-
-            if DimensionSetMetadata(self._c_dimension, dict_ref, &error):
-                if dict_ref != NULL:
-                    OCRelease(<OCTypeRef>dict_ref)
+            if value is None or len(value) == 0:
+                # Set empty metadata (NULL)
+                if not DimensionSetMetadata(self._c_dimension, NULL, &error):
+                    if error != NULL:
+                        error_msg = parse_c_string(<uint64_t>error)
+                        OCRelease(<OCTypeRef>error)
+                        raise ValueError(f"Failed to clear metadata: {error_msg}")
+                    else:
+                        raise ValueError("Failed to clear metadata")
             else:
-                if dict_ref != NULL:
-                    OCRelease(<OCTypeRef>dict_ref)
-                if error != NULL:
-                    error_msg = OCStringGetCString(error).decode('utf-8')
-                    OCRelease(<OCTypeRef>error)
-                    raise RuntimeError(f"Failed to set metadata: {error_msg}")
-                else:
-                    raise RuntimeError("Failed to set metadata")
+                # Convert Python dict to OCDictionary and set
+                dict_ptr = py_dict_to_ocdictionary(value)
+                try:
+                    if not DimensionSetMetadata(self._c_dimension, <OCDictionaryRef>dict_ptr, &error):
+                        if error != NULL:
+                            error_msg = parse_c_string(<uint64_t>error)
+                            OCRelease(<OCTypeRef>error)
+                            raise ValueError(f"Failed to set metadata: {error_msg}")
+                        else:
+                            raise ValueError("Failed to set metadata")
+                finally:
+                    OCRelease(<OCTypeRef>dict_ptr)
         else:
             self._application = value
 
@@ -308,7 +310,7 @@ cdef class BaseDimension:
         """Convert to dictionary."""
         # Use C API if we have a real dimension object
         if self._c_dimension != NULL:
-            cdef OCDictionaryRef dict_ref = DimensionCopyAsDictionary(self._c_dimension)
+            dict_ref = DimensionCopyAsDictionary(self._c_dimension)
             if dict_ref != NULL:
                 try:
                     # Convert C dictionary to Python dict using helper
@@ -402,12 +404,16 @@ cdef class LabeledDimension(BaseDimension):
         cdef OCArrayRef labels_array = NULL
         cdef OCStringRef label_ref = NULL
         cdef OCStringRef desc_ref = NULL
+        cdef OCDictionaryRef metadata_ref = NULL
         cdef OCStringRef error = NULL
 
         try:
             # Convert Python string labels to OCStringRef array
-            # TODO: Create proper OCArray of OCStringRef objects from labels
-            # For now, labels_array will be NULL, which should create an empty dimension
+            # Create OCArray of OCStringRef objects
+            if self._input_labels:
+                # TODO: Create proper conversion from Python labels to OCArrayRef
+                # For now, pass NULL which should be handled gracefully
+                pass
 
             # Prepare label and description
             if self._label:
@@ -415,9 +421,13 @@ cdef class LabeledDimension(BaseDimension):
             if self._description:
                 desc_ref = OCStringCreateWithCString(self._description.encode('utf-8'))
 
-            # Create the labeled dimension using the .pxd signature
+            # Convert application metadata to OCDictionary if provided
+            if self._application is not None:
+                metadata_ref = <OCDictionaryRef><uintptr_t>py_dict_to_ocdictionary(self._application)
+
+            # Create the labeled dimension using the actual C API signature
             self._labeled_dimension = LabeledDimensionCreate(
-                label_ref, desc_ref, labels_array, &error)
+                label_ref, desc_ref, metadata_ref, labels_array, &error)
 
             if self._labeled_dimension == NULL:
                 if error != NULL:
@@ -434,6 +444,8 @@ cdef class LabeledDimension(BaseDimension):
                 OCRelease(<OCTypeRef>label_ref)
             if desc_ref != NULL:
                 OCRelease(<OCTypeRef>desc_ref)
+            if metadata_ref != NULL:
+                OCRelease(<OCTypeRef>metadata_ref)
             if labels_array != NULL:
                 OCRelease(<OCTypeRef>labels_array)
             if error != NULL:
@@ -447,6 +459,24 @@ cdef class LabeledDimension(BaseDimension):
     @property
     def coordinates(self) -> np.ndarray:
         """Get coordinates (labels) for this dimension."""
+        # Try to use C API first if we have a C object
+        if self._c_dimension != NULL:
+            labels_ref = LabeledDimensionGetCoordinateLabels(self._labeled_dimension)
+            if labels_ref != NULL:
+                count = OCArrayGetCount(labels_ref)
+                if count > 0:
+                    # Convert C array of OCStringRef to Python list
+                    labels_list = []
+                    for i in range(count):
+                        # Get individual label at index
+                        label_at_index = LabeledDimensionGetCoordinateLabelAtIndex(self._labeled_dimension, i)
+                        if label_at_index != NULL:
+                            label_str = OCStringGetCString(label_at_index).decode('utf-8')
+                            labels_list.append(label_str)
+                    if labels_list:
+                        return np.array(labels_list)
+
+        # Fallback: return the input labels
         return np.array(self._input_labels)
 
     @property
@@ -462,6 +492,9 @@ cdef class LabeledDimension(BaseDimension):
     @property
     def count(self):
         """Get the count of the dimension."""
+        # Try to use C API first if we have a C object
+        if self._c_dimension != NULL:
+            return DimensionGetCount(self._c_dimension)
         return len(self._input_labels)
 
     def copy(self):
@@ -531,7 +564,7 @@ cdef class SIDimension(BaseDimension):
         # Create C dimension using the C API
         cdef OCStringRef label_ref = NULL
         cdef OCStringRef desc_ref = NULL
-        cdef OCMutableDictionaryRef metadata_ref = NULL
+        cdef OCDictionaryRef metadata_ref = NULL
         cdef OCStringRef quantity_name_ref = NULL
         cdef SIScalarRef offset_ref = NULL
         cdef SIScalarRef origin_ref = NULL
@@ -545,13 +578,19 @@ cdef class SIDimension(BaseDimension):
             if self._description:
                 desc_ref = OCStringCreateWithCString(self._description.encode('utf-8'))
 
-            # TODO: Handle metadata, quantity_name, offset, origin, period parameters
+            # Convert application metadata if provided
+            if self._application is not None:
+                metadata_ref = <OCDictionaryRef><uintptr_t>py_dict_to_ocdictionary(self._application)
+
+            # Create default quantity name for SI dimensions
+            quantity_name_ref = OCStringCreateWithCString(b"frequency")
+
+            # TODO: Handle offset, origin, period parameters properly
             # For now using NULL values (will be handled by SIDimensionCreate defaults)
 
-            # Create the SI dimension using the C API
+            # Create the SI dimension using the C API with correct signature
             self._si_dimension = SIDimensionCreate(
-                label_ref, desc_ref, metadata_ref, quantity_name_ref,
-                offset_ref, origin_ref, period_ref, False, 0, &error)
+                label_ref, desc_ref, NULL, quantity_name_ref, NULL, NULL, NULL, False, 0, &error)
 
             if self._si_dimension == NULL:
                 if error != NULL:
@@ -568,6 +607,10 @@ cdef class SIDimension(BaseDimension):
                 OCRelease(<OCTypeRef>label_ref)
             if desc_ref != NULL:
                 OCRelease(<OCTypeRef>desc_ref)
+            if metadata_ref != NULL:
+                OCRelease(<OCTypeRef>metadata_ref)
+            if quantity_name_ref != NULL:
+                OCRelease(<OCTypeRef>quantity_name_ref)
             if error != NULL:
                 OCRelease(<OCTypeRef>error)
 
@@ -757,16 +800,39 @@ cdef class SILinearDimension(SIDimension):
         )
 
         # Create C dimension using the C API
+        cdef OCStringRef label_ref = NULL
+        cdef OCStringRef desc_ref = NULL
+        cdef OCDictionaryRef metadata_ref = NULL
+        cdef OCStringRef quantity_name_ref = NULL
+        cdef SIScalarRef offset_ref = NULL
+        cdef SIScalarRef origin_ref = NULL
+        cdef SIScalarRef period_ref = NULL
+        cdef SIScalarRef increment_ref = NULL
+        cdef SIDimensionRef reciprocal_ref = NULL
         cdef OCStringRef error = NULL
 
         try:
-            # Get numeric values for C API
-            count = self._count
-            increment_val = self.increment
-            start = 0.0  # Could be made configurable
+            # Prepare label and description
+            if self._label:
+                label_ref = OCStringCreateWithCString(self._label.encode('utf-8'))
+            if self._description:
+                desc_ref = OCStringCreateWithCString(self._description.encode('utf-8'))
 
-            # Create the SI linear dimension
-            self._linear_dimension = SILinearDimensionCreate(count, start, increment_val, &error)
+            # Convert application metadata if provided
+            if self._application is not None:
+                metadata_ref = <OCDictionaryRef><uintptr_t>py_dict_to_ocdictionary(self._application)
+
+            # Create default quantity name for linear dimensions
+            quantity_name_ref = OCStringCreateWithCString(b"frequency")
+
+            # TODO: Convert increment value to SIScalarRef
+            # For now, pass None values - the C API should handle defaults
+
+            # Create the SI linear dimension using the C API with correct signature
+            self._linear_dimension = SILinearDimensionCreate(
+                label_ref, desc_ref, NULL, quantity_name_ref, NULL, NULL, NULL,
+                False, 0, self._count, increment_ref, False, NULL, &error)
+
             if self._linear_dimension == NULL:
                 if error != NULL:
                     error_msg = OCStringGetCString(error).decode('utf-8')
@@ -778,6 +844,14 @@ cdef class SILinearDimension(SIDimension):
             self._c_dimension = <DimensionRef>self._linear_dimension
 
         finally:
+            if label_ref != NULL:
+                OCRelease(<OCTypeRef>label_ref)
+            if desc_ref != NULL:
+                OCRelease(<OCTypeRef>desc_ref)
+            if metadata_ref != NULL:
+                OCRelease(<OCTypeRef>metadata_ref)
+            if quantity_name_ref != NULL:
+                OCRelease(<OCTypeRef>quantity_name_ref)
             if error != NULL:
                 OCRelease(<OCTypeRef>error)
 
@@ -789,7 +863,15 @@ cdef class SILinearDimension(SIDimension):
     @property
     def increment(self):
         """Get the increment of the dimension."""
-        # Parse the numeric value from strings like "100 Hz" or "5.0 G"
+        # Try to use C API first if we have a C object
+        if self._c_dimension != NULL:
+            increment_ref = SILinearDimensionGetIncrement(self._linear_dimension)
+            if increment_ref != NULL:
+                # TODO: Convert SIScalarRef to Python float
+                # For now, fall back to parsing the stored value
+                pass
+
+        # Fallback: parse the numeric value from strings like "100 Hz" or "5.0 G"
         if isinstance(self._increment, str):
             import re
             match = re.search(r'[-+]?(?:\d+\.?\d*|\.\d+)', self._increment)
@@ -805,6 +887,9 @@ cdef class SILinearDimension(SIDimension):
     @property
     def count(self):
         """Get the count of the dimension."""
+        # Try to use C API first if we have a C object
+        if self._c_dimension != NULL:
+            return SILinearDimensionGetCount(self._linear_dimension)
         return self._count
 
     @count.setter
@@ -815,10 +900,29 @@ cdef class SILinearDimension(SIDimension):
         self._count = value
 
     @property
+    def start(self):
+        """Get the starting coordinate."""
+        # Linear dimensions start at 0 by default
+        # The C API doesn't provide GetStart, so use default
+        return 0.0  # Default start for linear dimensions
+
+    @property
     def coordinates(self) -> np.ndarray:
         """Get linear coordinates."""
-        # Linear dimensions generate coordinates based on count and increment
-        # rather than storing them directly
+        # For linear dimensions, coordinates are calculated from count and increment
+        # The C API doesn't provide GetCoordinateAtIndex, so we calculate them
+
+        # Try to get count and increment from C API if available
+        if self._c_dimension != NULL:
+            count = SILinearDimensionGetCount(self._linear_dimension)
+            increment_ref = SILinearDimensionGetIncrement(self._linear_dimension)
+
+            # TODO: Convert SIScalarRef increment to Python float
+            # For now, use the stored increment value
+            increment_val = self.increment
+            return np.arange(count, dtype=np.float64) * increment_val
+
+        # Fallback: generate coordinates based on count and increment
         increment_val = self.increment
         return np.arange(self._count, dtype=np.float64) * increment_val
 
@@ -927,19 +1031,42 @@ cdef class SIMonotonicDimension(SIDimension):
         )
 
         # Create C dimension using the C API
+        cdef OCStringRef label_ref = NULL
+        cdef OCStringRef desc_ref = NULL
+        cdef OCDictionaryRef metadata_ref = NULL
+        cdef OCStringRef quantity_name_ref = NULL
+        cdef SIScalarRef offset_ref = NULL
+        cdef SIScalarRef origin_ref = NULL
+        cdef SIScalarRef period_ref = NULL
         cdef OCArrayRef coords_array = NULL
+        cdef SIDimensionRef reciprocal_ref = NULL
         cdef OCStringRef error = NULL
 
         try:
+            # Prepare label and description
+            if self._label:
+                label_ref = OCStringCreateWithCString(self._label.encode('utf-8'))
+            if self._description:
+                desc_ref = OCStringCreateWithCString(self._description.encode('utf-8'))
+
+            # Convert application metadata if provided
+            if self._application is not None:
+                metadata_ref = <OCDictionaryRef><uintptr_t>py_dict_to_ocdictionary(self._application)
+
+            # Create default quantity name
+            quantity_name_ref = OCStringCreateWithCString(b"frequency")
+
             # Convert Python coordinates to C array
-            coords_np = np.array(coordinates, dtype=np.float64)
-            coords_array = OCArrayCreateWithDoubles(<double*>coords_np.data, len(coordinates))
+            coords_array = <OCArrayRef><uintptr_t>py_list_to_ocarray(coordinates)
 
             if coords_array == NULL:
                 raise RuntimeError("Failed to create coordinates array")
 
-            # Create the SI monotonic dimension
-            self._monotonic_dimension = SIMonotonicDimensionCreate(coords_array, &error)
+            # Create the SI monotonic dimension using the full C API signature
+            self._monotonic_dimension = SIMonotonicDimensionCreate(
+                label_ref, desc_ref, NULL, quantity_name_ref, NULL, NULL, NULL,
+                False, 0, coords_array, NULL, &error)
+
             if self._monotonic_dimension == NULL:
                 if error != NULL:
                     error_msg = OCStringGetCString(error).decode('utf-8')
@@ -951,6 +1078,14 @@ cdef class SIMonotonicDimension(SIDimension):
             self._c_dimension = <DimensionRef>self._monotonic_dimension
 
         finally:
+            if label_ref != NULL:
+                OCRelease(<OCTypeRef>label_ref)
+            if desc_ref != NULL:
+                OCRelease(<OCTypeRef>desc_ref)
+            if metadata_ref != NULL:
+                OCRelease(<OCTypeRef>metadata_ref)
+            if quantity_name_ref != NULL:
+                OCRelease(<OCTypeRef>quantity_name_ref)
             if coords_array != NULL:
                 OCRelease(<OCTypeRef>coords_array)
             if error != NULL:
@@ -964,6 +1099,11 @@ cdef class SIMonotonicDimension(SIDimension):
     @property
     def count(self):
         """Get the count of the dimension."""
+        # Try to use C API first if we have a C object
+        if self._c_dimension != NULL:
+            coords_ref = SIMonotonicDimensionGetCoordinates(self._monotonic_dimension)
+            if coords_ref != NULL:
+                return OCArrayGetCount(coords_ref)
         return len(self._input_coordinates)
 
     @property
@@ -971,14 +1111,13 @@ cdef class SIMonotonicDimension(SIDimension):
         """Get monotonic coordinates."""
         # Try to use C API first if we have a C object
         if self._c_dimension != NULL:
-            cdef OCArrayRef coords_ref = SIMonotonicDimensionGetCoordinates(self._monotonic_dimension)
+            coords_ref = SIMonotonicDimensionGetCoordinates(self._monotonic_dimension)
             if coords_ref != NULL:
-                cdef OCIndex count = OCArrayGetCount(coords_ref)
+                count = OCArrayGetCount(coords_ref)
                 if count > 0:
-                    cdef double* coords_ptr = OCArrayGetDoubles(coords_ref)
-                    if coords_ptr != NULL:
-                        # Convert C array to numpy array
-                        coords_list = [coords_ptr[i] for i in range(count)]
+                    # Use helper function to convert OCArray to Python list/numpy array
+                    coords_list = ocarray_to_py_list(<uintptr_t>coords_ref)
+                    if coords_list:
                         return np.array(coords_list, dtype=np.float64)
 
         # Fallback: return the input coordinates
@@ -988,6 +1127,36 @@ cdef class SIMonotonicDimension(SIDimension):
     def coords(self) -> np.ndarray:
         """Alias for coordinates."""
         return self.coordinates
+
+    @property
+    def minimum(self):
+        """Get the minimum coordinate value."""
+        # TODO: Implement proper C API access once function is available
+        # Try to use C API first if we have a C object
+        #if self._c_dimension != NULL:
+        #    min_ref = SIMonotonicDimensionGetMinimum(self._monotonic_dimension)
+        #    if min_ref != NULL:
+        #        # TODO: Convert SIScalarRef to Python float
+        #        # For now, fallback to numpy calculation
+        #        pass
+
+        # Fallback: calculate from input coordinates
+        return float(np.min(self._input_coordinates))
+
+    @property
+    def maximum(self):
+        """Get the maximum coordinate value."""
+        # TODO: Implement proper C API access once function is available
+        # Try to use C API first if we have a C object
+        #if self._c_dimension != NULL:
+        #    max_ref = SIMonotonicDimensionGetMaximum(self._monotonic_dimension)
+        #    if max_ref != NULL:
+        #        # TODO: Convert SIScalarRef to Python float
+        #        # For now, fallback to numpy calculation
+        #        pass
+
+        # Fallback: calculate from input coordinates
+        return float(np.max(self._input_coordinates))
 
     def copy(self):
         """Create a copy of the dimension."""

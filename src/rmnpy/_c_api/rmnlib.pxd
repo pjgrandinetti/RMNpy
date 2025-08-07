@@ -56,37 +56,48 @@ cdef extern from "RMNLibrary.h":
     # LabeledDimension - Discrete labeled coordinate systems
     OCTypeID LabeledDimensionGetTypeID()
     LabeledDimensionRef LabeledDimensionCreate(OCStringRef label, OCStringRef description,
-                                               OCArrayRef labels, OCStringRef *outError)
-    OCArrayRef LabeledDimensionGetLabels(LabeledDimensionRef dim)
-    bint LabeledDimensionSetLabels(LabeledDimensionRef dim, OCArrayRef labels, OCStringRef *outError)
-    OCStringRef LabeledDimensionGetLabelAtIndex(LabeledDimensionRef dim, OCIndex index)
+                                               OCDictionaryRef metadata, OCArrayRef coordinateLabels,
+                                               OCStringRef *outError)
+    LabeledDimensionRef LabeledDimensionCreateWithCoordinateLabels(OCArrayRef labels)
+    OCArrayRef LabeledDimensionGetCoordinateLabels(LabeledDimensionRef dim)
+    bint LabeledDimensionSetCoordinateLabels(LabeledDimensionRef dim, OCArrayRef labels, OCStringRef *outError)
+    OCStringRef LabeledDimensionGetCoordinateLabelAtIndex(LabeledDimensionRef dim, OCIndex index)
 
     # SIDimension - SI unit-based coordinate systems
     OCTypeID SIDimensionGetTypeID()
     SIDimensionRef SIDimensionCreate(OCStringRef label, OCStringRef description,
-                                     SIUnitRef unit, OCArrayRef coordinates,
-                                     OCStringRef *outError)
-    SIUnitRef SIDimensionGetUnit(SIDimensionRef dim)
-    bint SIDimensionSetUnit(SIDimensionRef dim, SIUnitRef unit, OCStringRef *outError)
-    OCArrayRef SIDimensionGetCoordinates(SIDimensionRef dim)
-    bint SIDimensionSetCoordinates(SIDimensionRef dim, OCArrayRef coords, OCStringRef *outError)
-    SIScalarRef SIDimensionGetCoordinateAtIndex(SIDimensionRef dim, OCIndex index)
+                                     OCDictionaryRef metadata, OCStringRef quantityName,
+                                     SIScalarRef offset, SIScalarRef origin, SIScalarRef period,
+                                     bint periodic, int scaling, OCStringRef *outError)
+    SIDimensionRef SIDimensionCreateWithQuantity(OCStringRef quantityName, OCStringRef *outError)
+    OCStringRef SIDimensionGetQuantityName(SIDimensionRef dim)
+    bint SIDimensionSetQuantityName(SIDimensionRef dim, OCStringRef name, OCStringRef *outError)
+    SIScalarRef SIDimensionGetCoordinatesOffset(SIDimensionRef dim)
 
     # SIMonotonicDimension - Monotonic coordinate systems
     OCTypeID SIMonotonicDimensionGetTypeID()
     SIMonotonicDimensionRef SIMonotonicDimensionCreate(OCStringRef label, OCStringRef description,
-                                                       SIUnitRef unit, OCArrayRef coordinates,
-                                                       OCStringRef *outError)
-    bint SIMonotonicDimensionIsMonotonic(SIMonotonicDimensionRef dim)
-    bint SIMonotonicDimensionIsIncreasing(SIMonotonicDimensionRef dim)
-    SIScalarRef SIMonotonicDimensionGetMinimum(SIMonotonicDimensionRef dim)
-    SIScalarRef SIMonotonicDimensionGetMaximum(SIMonotonicDimensionRef dim)
+                                                       OCDictionaryRef metadata, OCStringRef quantityName,
+                                                       SIScalarRef offset, SIScalarRef origin, SIScalarRef period,
+                                                       bint periodic, int scaling, OCArrayRef coordinates,
+                                                       SIDimensionRef reciprocal, OCStringRef *outError)
+    SIMonotonicDimensionRef SIMonotonicDimensionCreateMinimal(OCStringRef quantityName,
+                                                              OCArrayRef coordinates,
+                                                              SIDimensionRef reciprocal,
+                                                              OCStringRef *outError)
+    OCArrayRef SIMonotonicDimensionGetCoordinates(SIMonotonicDimensionRef dim)
+    bint SIMonotonicDimensionSetCoordinates(SIMonotonicDimensionRef dim, OCArrayRef coords)
+    SIDimensionRef SIMonotonicDimensionGetReciprocal(SIMonotonicDimensionRef dim)
+    bint SIMonotonicDimensionSetReciprocal(SIMonotonicDimensionRef dim, SIDimensionRef rec, OCStringRef *outError)
 
     # SILinearDimension - Linearly spaced coordinate systems
     OCTypeID SILinearDimensionGetTypeID()
     SILinearDimensionRef SILinearDimensionCreate(OCStringRef label, OCStringRef description,
-                                                 SIScalarRef start, SIScalarRef increment,
-                                                 OCIndex count, OCStringRef *outError)
+                                                 OCDictionaryRef metadata, OCStringRef quantityName,
+                                                 SIScalarRef offset, SIScalarRef origin, SIScalarRef period,
+                                                 bint periodic, int scaling, OCIndex count,
+                                                 SIScalarRef increment, bint fft, SIDimensionRef reciprocal,
+                                                 OCStringRef *outError)
     SIScalarRef SILinearDimensionGetStart(SILinearDimensionRef dim)
     bint SILinearDimensionSetStart(SILinearDimensionRef dim, SIScalarRef start, OCStringRef *outError)
     SIScalarRef SILinearDimensionGetIncrement(SILinearDimensionRef dim)
