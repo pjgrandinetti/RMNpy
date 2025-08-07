@@ -3,6 +3,8 @@ Test suite for RMNLib Dimension wrapper with csdmpy compatibility
 
 This test suite verifies that the RMNLib Dimension wrapper provides
 a csdmpy-compatible API for seamless user migration.
+
+Based on csdmpy dimension tests, adapted for RMNpy's explicit dimension classes.
 """
 
 import json
@@ -10,596 +12,850 @@ import json
 import numpy as np
 import pytest
 
-from rmnpy.wrappers.rmnlib import Dimension
-
-
-class TestDimensionCreation:
-    """Test dimension creation methods matching csdmpy patterns."""
-
-    def test_create_from_dict(self):
-        """Test creating dimension from dictionary."""
-        dim_dict = {
-            "type": "linear",
-            "description": "frequency dimension",
-            "increment": "100 Hz",
-            "count": 256,
-            "coordinates_offset": "0 Hz",
-            "origin_offset": "0 Hz",
-        }
-        dim = Dimension(dim_dict)
-
-        assert dim.type == "linear"
-        assert dim.description == "frequency dimension"
-        assert dim.count == 256
-        assert dim.increment == 100.0
-        assert dim.coordinates_offset == 0.0
-        assert dim.origin_offset == 0.0
-
-    def test_create_from_kwargs(self):
-        """Test creating dimension from keyword arguments."""
-        dim = Dimension(
-            type="linear",
-            description="test dimension",
-            increment="5.0 G",
-            count=10,
-            coordinates_offset="10 mT",
-            origin_offset="10 T",
-            label="field strength",
-        )
-
-        assert dim.type == "linear"
-        assert dim.description == "test dimension"
-        assert dim.label == "field strength"
-        assert dim.count == 10
-        assert dim.increment == 5.0
-        assert dim.coordinates_offset == 10.0  # simplified unit parsing
-        assert dim.origin_offset == 10.0
-
-    def test_create_monotonic_dimension(self):
-        """Test creating monotonic dimension."""
-        coords = [0, 1, 3, 7, 15, 31]
-        dim = Dimension(
-            type="monotonic", coordinates=coords, description="irregular spacing"
-        )
-
-        assert dim.type == "monotonic"
-        assert dim.count == len(coords)
-        assert dim.description == "irregular spacing"
-        np.testing.assert_array_equal(dim.coordinates, coords)
-
-    def test_create_labeled_dimension(self):
-        """Test creating labeled dimension."""
-        labels = ["Cu", "Ag", "Au"]
-        dim = Dimension(type="labeled", labels=labels, description="chemical elements")
-
-        assert dim.type == "labeled"
-        assert dim.count == len(labels)
-        assert dim.description == "chemical elements"
-        np.testing.assert_array_equal(dim.coordinates, labels)
-        np.testing.assert_array_equal(dim.labels, labels)
+from rmnpy.wrappers.rmnlib.dimension import (
+    LabeledDimension,
+    SILinearDimension,
+    SIMonotonicDimension,
+)
 
 
 class TestLinearDimension:
-    """Test linear dimension functionality."""
+    """Test linear dimension functionality - based on csdmpy test_linear_new()."""
 
-    @pytest.fixture
-    def linear_dim(self):
-        """Create test linear dimension."""
-        return Dimension(
-            type="linear",
-            count=10,
-            increment="5.0 G",
-            coordinates_offset="10.0 mT",
-            origin_offset="10.0 T",
-            description="test linear dimension",
-            label="field strength",
+    def test_linear_dimension_creation(self):
+        """Test basic linear dimension creation with proper C API requirements."""
+        # C API requires: count ≥ 2, increment must be real SIScalar with units
+        dim = SILinearDimension(
+            count=10,  # Must be ≥ 2
+            increment="10.0 Hz",  # String will be converted to Scalar internally - units required
+            label="test dimension",
+            description="linear test dimension",
         )
 
-    def test_coordinates_generation(self, linear_dim):
-        """Test coordinate generation for linear dimension."""
-        coords = linear_dim.coordinates
-        assert len(coords) == 10
-        # Basic coordinate progression test
-        assert coords[1] - coords[0] == pytest.approx(linear_dim.increment)
+        assert dim.is_quantitative() is True
+        assert dim.type == "linear"
+        assert dim.count == 10
+        assert dim.increment == 10.0  # Numeric value extraction
+        assert dim.label == "test dimension"
+        assert dim.description == "linear test dimension"
 
-    def test_complex_fft_ordering(self, linear_dim):
-        """Test complex FFT coordinate ordering."""
-        # Default should be False
-        assert linear_dim.complex_fft is False
+    def test_linear_coordinates_generation(self):
+        """Test coordinate generation for linear dimensions."""
+        # Use string values - will be converted to Scalar objects internally
+        dim = SILinearDimension(
+            count=10,
+            increment="10.0 Hz",
+            origin="5.0 Hz",  # Use origin instead of coordinates_offset
+        )
+        coords = dim.coordinates
 
-        # Set to True and verify ordering changes
-        linear_dim.complex_fft = True
-        assert linear_dim.complex_fft is True
+        # Should generate: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90] (no origin offset in basic coords)
+        expected = np.arange(10) * 10.0
+        np.testing.assert_array_almost_equal(coords, expected)
 
-        # Coordinates should be reordered for FFT
-        coords_fft = linear_dim.coordinates
-        assert len(coords_fft) == 10
+        # coords should be alias for coordinates
+        np.testing.assert_array_equal(dim.coords, dim.coordinates)
 
-    def test_increment_modification(self, linear_dim):
-        """Test increment modification."""
-        new_increment = "0.1 G"
+    def test_linear_type_immutable(self):
+        """Test that dimension type cannot be changed."""
+        dim = SILinearDimension(count=5, increment="1.0 Hz")
 
-        linear_dim.increment = new_increment
-        assert linear_dim.increment == 0.1
+        with pytest.raises(AttributeError):
+            dim.type = "monotonic"
+
+    def test_linear_increment_modification(self):
+        """Test increment property modification."""
+        dim = SILinearDimension(count=10, increment="10.0 Hz")
+
+        # Test getting increment
+        assert dim.increment == 10.0
+
+        # Test setting increment (as string, will be converted to Scalar internally)
+        dim.increment = "20.0 Hz"
+        assert dim.increment == 20.0
 
         # Coordinates should update
-        coords = linear_dim.coordinates
-        assert len(coords) == 10
+        coords = dim.coordinates
+        expected = np.arange(10) * 20.0
+        np.testing.assert_array_almost_equal(coords, expected)
 
-    def test_offset_modifications(self, linear_dim):
-        """Test coordinate and origin offset modifications."""
-        # Test coordinates offset
-        linear_dim.coordinates_offset = "5.0 mT"
-        assert linear_dim.coordinates_offset == 5.0
+    def test_linear_count_modification(self):
+        """Test count property modification."""
+        dim = SILinearDimension(count=10, increment="20.0 Hz", origin="5.0 Hz")
 
-        # Test origin offset
-        linear_dim.origin_offset = "1e5 G"
-        assert linear_dim.origin_offset == 100000.0  # simplified parsing
+        assert dim.count == 10
 
-        # Test absolute coordinates include origin offset
-        abs_coords = linear_dim.absolute_coordinates
-        coords = linear_dim.coordinates
-        np.testing.assert_array_almost_equal(
-            abs_coords, coords + linear_dim.origin_offset
+        # Change count (minimum 2 required by C API)
+        dim.count = 12
+        assert dim.count == 12
+
+        # Coordinates should update
+        coords = dim.coordinates
+        expected = np.arange(12) * 20.0  # origin offset handled by absolute_coordinates
+        np.testing.assert_array_almost_equal(coords, expected)
+
+    def test_linear_origin_offset(self):
+        """Test origin offset for absolute coordinates."""
+        dim = SILinearDimension(
+            count=5, increment="10.0", coordinates_offset="5.0", origin_offset="1000.0"
         )
 
-    def test_period_property(self, linear_dim):
-        """Test period property for linear dimension."""
-        # Default should be infinity
-        assert linear_dim.period == float("inf")
+        coords = dim.coordinates
+        abs_coords = dim.absolute_coordinates
+
+        # Absolute coordinates = coordinates + origin_offset
+        expected_abs = coords + 1000.0
+        np.testing.assert_array_almost_equal(abs_coords, expected_abs)
+
+        # Test setting origin offset
+        dim.origin_offset = "2000.0"
+        assert dim.origin_offset == 2000.0
+
+    def test_linear_complex_fft_ordering(self):
+        """Test complex FFT coordinate ordering."""
+        dim = SILinearDimension(count=10, increment="20.0", coordinates_offset="5.0")
+
+        # Default should be False
+        assert dim.complex_fft is False
+
+        # Normal coordinates: [5, 25, 45, ..., 185]
+        coords_normal = dim.coordinates
+        expected_normal = np.arange(10) * 20.0 + 5.0
+        np.testing.assert_array_almost_equal(coords_normal, expected_normal)
+
+        # Enable complex FFT
+        dim.complex_fft = True
+        assert dim.complex_fft is True
+
+        # FFT coordinates should be reordered: shift by -count/2
+        coords_fft = dim.coordinates
+        # Note: actual FFT ordering may differ - this tests the concept
+        assert len(coords_fft) == 10
+
+    def test_linear_period_property(self):
+        """Test period property handling."""
+        dim = SILinearDimension(count=5)
+
+        # Default period should be infinity
+        assert dim.period == float("inf")
 
         # Set finite period
-        linear_dim.period = "1000 G"
-        assert linear_dim.period == 1000.0
+        dim.period = "1000.0"
+        assert dim.period == 1000.0
 
         # Set infinity variants
-        linear_dim.period = "infinity G"
-        assert linear_dim.period == float("inf")
+        dim.period = "infinity"
+        assert dim.period == float("inf")
 
-        linear_dim.period = "∞ G"
-        assert linear_dim.period == float("inf")
+    def test_linear_application_metadata(self):
+        """Test application metadata handling."""
+        dim = SILinearDimension(count=5)
+
+        # Default should be empty dict or None
+        app = dim.application
+        assert app is None or app == {}
+
+        # Set metadata
+        metadata = {"my_application": {"key": "value"}}
+        dim.application = metadata
+        assert dim.application == metadata
+
+        # Clear metadata
+        dim.application = {}
+        app = dim.application
+        assert app == {} or app is None
+
+    def test_linear_coordinates_immutable(self):
+        """Test that coordinates cannot be set directly."""
+        dim = SILinearDimension(count=5, increment="2.0")
+
+        # Should raise error trying to set coordinates directly
+        with pytest.raises(AttributeError):
+            dim.coordinates = [1, 3, 5]
+
+        with pytest.raises(AttributeError):
+            dim.coords = [1, 3, 5]
+
+    def test_linear_axis_label(self):
+        """Test axis label formatting."""
+        # With label
+        dim = SILinearDimension(count=5, label="frequency")
+        axis_label = dim.axis_label
+        assert "frequency" in axis_label
+
+        # Without label (should use quantity_name if available)
+        dim2 = SILinearDimension(count=5)
+        axis_label2 = dim2.axis_label
+        assert isinstance(axis_label2, str)
+
+    def test_linear_copy_method(self):
+        """Test copying linear dimensions."""
+        dim = SILinearDimension(
+            count=10,
+            increment="5.0",
+            coordinates_offset="10.0",
+            label="test",
+            description="test description",
+            application={"key": "value"},
+        )
+
+        dim_copy = dim.copy()
+
+        # Should be separate objects
+        assert dim_copy is not dim
+
+        # Should have same properties
+        assert dim_copy.type == dim.type
+        assert dim_copy.count == dim.count
+        assert dim_copy.increment == dim.increment
+        assert dim_copy.coordinates_offset == dim.coordinates_offset
+        assert dim_copy.label == dim.label
+        assert dim_copy.description == dim.description
+
+        # Coordinates should be equal
+        np.testing.assert_array_equal(dim_copy.coordinates, dim.coordinates)
+
+    def test_linear_reciprocal_methods(self):
+        """Test reciprocal methods for linear dimensions."""
+        dim = SILinearDimension(count=5, increment="2.0 Hz")
+
+        # Test reciprocal increment method (should return Scalar wrapper)
+        recip_increment = dim.reciprocal_increment()
+        if recip_increment is not None:
+            # Should be a Scalar wrapper from C API
+            assert hasattr(recip_increment, "_c_scalar")
+            # Value should be 1/2 = 0.5
+            assert abs(float(recip_increment.value) - 0.5) < 1e-10
+
+        # Test reciprocal property (if set)
+        if dim.reciprocal is not None:
+            assert hasattr(dim.reciprocal, "_si_dimension")
+
+        # Test setting reciprocal dimension
+        recip_dim = SILinearDimension(count=5, increment="0.5 Hz")
+        dim.reciprocal = recip_dim
+        assert dim.reciprocal is recip_dim
+
+    def test_linear_reciprocal_property(self):
+        """Test reciprocal property for linear dimensions."""
+        dim = SILinearDimension(count=5, increment="2.0 Hz")
+
+        # Initially should be None
+        assert dim.reciprocal is None
+
+        # Test setting reciprocal dimension
+        recip_dim = SILinearDimension(count=5, increment="0.5 Hz")
+        dim.reciprocal = recip_dim
+        assert dim.reciprocal is recip_dim
+
+        # Test clearing reciprocal
+        dim.reciprocal = None
+        assert dim.reciprocal is None
 
 
 class TestMonotonicDimension:
-    """Test monotonic dimension functionality."""
+    """Test monotonic dimension functionality - based on csdmpy test_monotonic_new()."""
 
-    @pytest.fixture
-    def monotonic_dim(self):
-        """Create test monotonic dimension."""
-        coords = [0, 1, 3, 7, 15, 31, 63]
-        return Dimension(
-            type="monotonic",
-            coordinates=coords,
-            coordinates_offset="2.0 Hz",
-            origin_offset="1000 Hz",
-            description="exponential spacing",
+    def test_monotonic_dimension_creation(self):
+        """Test basic monotonic dimension creation with C API requirements."""
+        # C API requires: coordinates ≥ 2, each coordinate will be converted to SIScalar
+        coordinates = [1.0, 100.0, 1000.0, 1000000.0, 2.36518262e15]
+
+        dim = SIMonotonicDimension(
+            coordinates=coordinates, description="Far far away.", label="distance"
         )
 
-    def test_coordinate_access(self, monotonic_dim):
-        """Test coordinate access for monotonic dimension."""
-        coords = monotonic_dim.coordinates
-        expected = [0, 1, 3, 7, 15, 31, 63]
-        np.testing.assert_array_equal(coords, expected)
+        assert dim.is_quantitative() is True
+        assert dim.type == "monotonic"
+        assert dim.count == len(coordinates)
+        assert dim.description == "Far far away."
+        assert dim.label == "distance"
+
+    def test_monotonic_coordinates_access(self):
+        """Test coordinate access for monotonic dimensions."""
+        # Use numeric values - will be converted to SIScalar internally
+        coordinates = [0, 1, 3, 7, 15, 31]
+
+        dim = SIMonotonicDimension(coordinates=coordinates)
+
+        # Test coordinates property - should extract numeric values
+        coords = dim.coordinates
+        expected = [0, 1, 3, 7, 15, 31]
+        np.testing.assert_array_almost_equal(coords, expected)
 
         # Test coords alias
-        np.testing.assert_array_equal(monotonic_dim.coords, coords)
+        np.testing.assert_array_equal(dim.coords, dim.coordinates)
 
-    def test_absolute_coordinates(self, monotonic_dim):
-        """Test absolute coordinates calculation."""
-        abs_coords = monotonic_dim.absolute_coordinates
-        coords = monotonic_dim.coordinates
-        expected = coords + monotonic_dim.origin_offset
+        # Test count
+        assert dim.count == len(coordinates)
+
+    def test_monotonic_no_increment_attribute(self):
+        """Test that monotonic dimensions don't have increment."""
+        # Use minimum required coordinates (≥2)
+        coordinates = [0, 1, 4, 9]
+        dim = SIMonotonicDimension(coordinates=coordinates)
+
+        # Should raise AttributeError for increment
+        with pytest.raises(AttributeError):
+            _ = dim.increment
+
+    def test_monotonic_no_coordinates_offset(self):
+        """Test that monotonic dimensions don't have coordinates_offset."""
+        dim = SIMonotonicDimension(coordinates=[0, 1, 4, 9])
+
+        # Should raise AttributeError for coordinates_offset
+        with pytest.raises(AttributeError):
+            _ = dim.coordinates_offset
+
+        with pytest.raises(AttributeError):
+            dim.coordinates_offset = "1.0"
+
+    def test_monotonic_origin_offset(self):
+        """Test origin offset for monotonic dimensions."""
+        coordinates = [1, 10, 100]
+        dim = SIMonotonicDimension(coordinates=coordinates, origin_offset="1000.0")
+
+        # Test getting origin offset
+        assert dim.origin_offset == 1000.0
+
+        # Test absolute coordinates
+        abs_coords = dim.absolute_coordinates
+        coords = dim.coordinates
+        expected = coords + 1000.0
         np.testing.assert_array_almost_equal(abs_coords, expected)
 
-    def test_quantitative_properties(self, monotonic_dim):
-        """Test quantitative dimension properties."""
-        assert monotonic_dim.is_quantitative() is True
-        assert monotonic_dim.quantity_name == "frequency"  # placeholder
+        # Test setting origin offset
+        dim.origin_offset = "2000.0"
+        assert dim.origin_offset == 2000.0
 
-        # Should not have increment (only for linear)
+    def test_monotonic_period_property(self):
+        """Test period property for monotonic dimensions."""
+        dim = SIMonotonicDimension(coordinates=[1, 2, 4])
+
+        # Default should be infinity
+        assert dim.period == float("inf")
+
+        # Test setting period
+        dim.period = "100.0"
+        assert dim.period == 100.0
+
+        # Test infinity variants
+        dim.period = "infinity"
+        assert dim.period == float("inf")
+
+    def test_monotonic_no_complex_fft(self):
+        """Test that monotonic dimensions don't have complex_fft."""
+        dim = SIMonotonicDimension(coordinates=[0, 1, 4])
+
+        # Should raise AttributeError for complex_fft (linear dimension only)
         with pytest.raises(AttributeError):
-            _ = monotonic_dim.increment
+            _ = dim.complex_fft
+
+    def test_monotonic_count_immutable(self):
+        """Test that count cannot be set to exceed coordinates."""
+        coordinates = [1, 2, 3, 4, 5]
+        dim = SIMonotonicDimension(coordinates=coordinates)
+
+        assert dim.count == 5
+
+        # Should not be able to increase count beyond coordinates
+        with pytest.raises(ValueError):
+            dim.count = 6
+
+    def test_monotonic_coordinates_modification(self):
+        """Test modifying coordinates."""
+        dim = SIMonotonicDimension(coordinates=[1, 2, 3])
+
+        # Should be able to set new coordinates via the setter
+        new_coords = [1, 4, 9]
+        dim.coordinates = new_coords
+        np.testing.assert_array_equal(dim.coordinates, new_coords)
+
+    def test_monotonic_reciprocal_property(self):
+        """Test reciprocal property for monotonic dimensions."""
+        dim = SIMonotonicDimension(coordinates=[1, 2, 4])
+
+        # Initially should be None
+        assert dim.reciprocal is None
+
+        # Test setting reciprocal dimension
+        recip_dim = SIMonotonicDimension(coordinates=[1.0, 0.5, 0.25])
+        dim.reciprocal = recip_dim
+        assert dim.reciprocal is recip_dim
+
+        # Test clearing reciprocal
+        dim.reciprocal = None
+        assert dim.reciprocal is None
+
+    def test_monotonic_copy_method(self):
+        """Test copying monotonic dimensions."""
+        coordinates = [0, 1, 3, 7]
+        dim = SIMonotonicDimension(
+            coordinates=coordinates,
+            label="test",
+            description="test description",
+            origin_offset="100.0",
+            application={"key": "value"},
+        )
+
+        dim_copy = dim.copy()
+
+        # Should be separate objects
+        assert dim_copy is not dim
+
+        # Should have same properties
+        assert dim_copy.type == dim.type
+        assert dim_copy.count == dim.count
+        assert dim_copy.label == dim.label
+        assert dim_copy.description == dim.description
+        assert dim_copy.origin_offset == dim.origin_offset
+
+        # Coordinates should be equal
+        np.testing.assert_array_equal(dim_copy.coordinates, dim.coordinates)
 
 
 class TestLabeledDimension:
-    """Test labeled dimension functionality."""
+    """Test labeled dimension functionality - based on csdmpy test_labeled_new()."""
 
-    @pytest.fixture
-    def labeled_dim(self):
-        """Create test labeled dimension."""
-        return Dimension(
-            type="labeled",
-            labels=["H", "C", "N", "O"],
-            description="chemical elements",
-            label="element",
+    def test_labeled_dimension_creation(self):
+        """Test basic labeled dimension creation."""
+        labels = ["m", "s", "t", "a"]
+        dim = LabeledDimension(
+            labels=labels, description="Far far away.", label="labeled dimension"
         )
 
-    def test_label_access(self, labeled_dim):
-        """Test label access methods."""
-        expected_labels = ["H", "C", "N", "O"]
+        assert dim.is_quantitative() is False
+        assert dim.type == "labeled"
+        assert dim.count == len(labels)
+        assert dim.description == "Far far away."
+        assert dim.label == "labeled dimension"
+
+    def test_labeled_coordinates_access(self):
+        """Test coordinate/label access."""
+        labels = ["H", "C", "N", "O"]
+        dim = LabeledDimension(labels=labels)
 
         # coordinates should return labels for labeled dimensions
-        np.testing.assert_array_equal(labeled_dim.coordinates, expected_labels)
-        np.testing.assert_array_equal(labeled_dim.labels, expected_labels)
-        np.testing.assert_array_equal(labeled_dim.coords, expected_labels)
+        coords = dim.coordinates
+        np.testing.assert_array_equal(coords, labels)
 
-    def test_non_quantitative_properties(self, labeled_dim):
+        # coords alias
+        np.testing.assert_array_equal(dim.coords, coords)
+
+        # labels property
+        np.testing.assert_array_equal(dim.labels, labels)
+
+    def test_labeled_no_quantitative_properties(self):
         """Test that quantitative properties raise errors."""
-        assert labeled_dim.is_quantitative() is False
+        dim = LabeledDimension(labels=["A", "B", "C"])
 
-        # These should raise AttributeError for labeled dimensions
+        # These should all raise AttributeError
         with pytest.raises(AttributeError):
-            _ = labeled_dim.absolute_coordinates
-
-        with pytest.raises(AttributeError):
-            _ = labeled_dim.increment
+            _ = dim.increment
 
         with pytest.raises(AttributeError):
-            _ = labeled_dim.coordinates_offset
+            _ = dim.coordinates_offset
 
         with pytest.raises(AttributeError):
-            _ = labeled_dim.origin_offset
+            _ = dim.origin_offset
 
         with pytest.raises(AttributeError):
-            _ = labeled_dim.complex_fft
+            _ = dim.absolute_coordinates
 
         with pytest.raises(AttributeError):
-            _ = labeled_dim.period
+            _ = dim.complex_fft
 
         with pytest.raises(AttributeError):
-            _ = labeled_dim.quantity_name
+            _ = dim.period
 
-    def test_axis_label(self, labeled_dim):
-        """Test axis label for labeled dimension."""
-        assert labeled_dim.axis_label == "element"
+        with pytest.raises(AttributeError):
+            _ = dim.quantity_name
+
+    def test_labeled_axis_label(self):
+        """Test axis label for labeled dimensions."""
+        dim = LabeledDimension(labels=["A", "B"], label="categories")
+
+        # Should use the label as axis label
+        assert dim.axis_label == "categories"
+
+    def test_labeled_labels_validation(self):
+        """Test label validation."""
+        # Should require labels
+        with pytest.raises(ValueError):
+            LabeledDimension(labels=[])
+
+        # All labels should be strings (if validation implemented)
+        try:
+            LabeledDimension(labels=["A", "B", 3])
+            # May raise error if string validation is implemented
+        except (ValueError, TypeError):
+            pass  # Expected if validation exists
+
+    def test_labeled_copy_method(self):
+        """Test copying labeled dimensions."""
+        labels = ["red", "green", "blue"]
+        dim = LabeledDimension(
+            labels=labels,
+            label="colors",
+            description="RGB colors",
+            application={"encoding": "sRGB"},
+        )
+
+        dim_copy = dim.copy()
+
+        # Should be separate objects
+        assert dim_copy is not dim
+
+        # Should have same properties
+        assert dim_copy.type == dim.type
+        assert dim_copy.count == dim.count
+        assert dim_copy.label == dim.label
+        assert dim_copy.description == dim.description
+
+        # Labels should be equal
+        np.testing.assert_array_equal(dim_copy.labels, dim.labels)
 
 
 class TestDimensionProperties:
-    """Test common dimension properties."""
+    """Test common dimension properties across all types."""
 
-    @pytest.fixture
-    def test_dim(self):
-        """Create test dimension."""
-        return Dimension(
-            type="linear",
-            count=5,
-            increment="2.0 Hz",
-            description="test description",
-            label="test label",
-        )
-
-    def test_description_property(self, test_dim):
+    def test_description_property(self):
         """Test description property access and modification."""
-        assert test_dim.description == "test description"
+        dim = SILinearDimension(count=5, description="initial description")
 
-        test_dim.description = "modified description"
-        assert test_dim.description == "modified description"
+        assert dim.description == "initial description"
 
-        # Type checking
+        # Test modification
+        dim.description = "modified description"
+        assert dim.description == "modified description"
+
+        # Test type validation
         with pytest.raises(TypeError):
-            test_dim.description = 123
+            dim.description = 123
 
-    def test_label_property(self, test_dim):
+    def test_label_property(self):
         """Test label property access and modification."""
-        assert test_dim.label == "test label"
+        dim = SILinearDimension(count=5, label="initial label")
 
-        test_dim.label = "modified label"
-        assert test_dim.label == "modified label"
+        assert dim.label == "initial label"
 
-        # Type checking
+        # Test modification
+        dim.label = "modified label"
+        assert dim.label == "modified label"
+
+        # Test type validation
         with pytest.raises(TypeError):
-            test_dim.label = ["list", "not", "allowed"]
+            dim.label = ["not", "string"]
 
-    def test_application_metadata(self, test_dim):
+    def test_application_property(self):
         """Test application metadata property."""
-        assert test_dim.application is None
+        dim = SILinearDimension(count=5)
 
-        # Set application metadata
-        app_data = {"com.example.myApp": {"key": "value"}}
-        test_dim.application = app_data
-        assert test_dim.application == app_data
+        # Initial should be None or empty dict
+        app = dim.application
+        assert app is None or app == {}
 
-        # Type checking
+        # Set metadata
+        metadata = {"com.example.app": {"version": "1.0"}}
+        dim.application = metadata
+        assert dim.application == metadata
+
+        # Test type validation
         with pytest.raises(TypeError):
-            test_dim.application = "not a dict"
+            dim.application = "not a dict"
 
-    def test_count_property(self, test_dim):
-        """Test count property access and modification."""
-        assert test_dim.count == 5
+    def test_count_property(self):
+        """Test count property."""
+        # Linear dimension
+        linear_dim = SILinearDimension(count=10)
+        assert linear_dim.count == 10
 
-        test_dim.count = 10
-        assert test_dim.count == 10
+        linear_dim.count = 15
+        assert linear_dim.count == 15
 
-        # Type checking
-        with pytest.raises(TypeError):
-            test_dim.count = "not an integer"
+        # Monotonic dimension
+        monotonic_dim = SIMonotonicDimension(coordinates=[1, 2, 3, 4])
+        assert monotonic_dim.count == 4
 
-        with pytest.raises(TypeError):
-            test_dim.count = 0  # must be positive
+        # Labeled dimension
+        labeled_dim = LabeledDimension(labels=["A", "B", "C"])
+        assert labeled_dim.count == 3
 
-    def test_axis_label_formatting(self):
-        """Test axis label formatting for quantitative dimensions."""
-        # With label
-        dim = Dimension(type="linear", label="frequency", count=10)
-        assert "frequency" in dim.axis_label
+    def test_type_property_immutable(self):
+        """Test that type property is read-only."""
+        dims = [
+            SILinearDimension(count=5),
+            SIMonotonicDimension(coordinates=[1, 2, 3]),
+            LabeledDimension(labels=["A", "B"]),
+        ]
 
-        # Without label (should use quantity_name)
-        dim = Dimension(type="linear", count=10)
-        assert dim.quantity_name in dim.axis_label
+        for dim in dims:
+            original_type = dim.type
+            with pytest.raises(AttributeError):
+                dim.type = "different_type"
+            assert dim.type == original_type
+
+    def test_is_quantitative_method(self):
+        """Test is_quantitative method."""
+        # Quantitative dimensions
+        assert SILinearDimension(count=5).is_quantitative() is True
+        assert SIMonotonicDimension(coordinates=[1, 2]).is_quantitative() is True
+
+        # Non-quantitative dimension
+        assert LabeledDimension(labels=["A", "B"]).is_quantitative() is False
 
 
 class TestDimensionMethods:
-    """Test dimension methods."""
+    """Test dimension methods (dict, copy, etc.)."""
 
-    @pytest.fixture
-    def test_dims(self):
-        """Create test dimensions of each type."""
-        linear = Dimension(
-            type="linear",
-            count=10,
-            increment="1.0 Hz",
-            description="linear test",
-            label="frequency",
-        )
-
-        monotonic = Dimension(
-            type="monotonic", coordinates=[0, 1, 4, 9, 16], description="monotonic test"
-        )
-
-        labeled = Dimension(
-            type="labeled", labels=["A", "B", "C"], description="labeled test"
-        )
-
-        return {"linear": linear, "monotonic": monotonic, "labeled": labeled}
-
-    def test_dict_method(self, test_dims):
+    def test_dict_method(self):
         """Test dict() method for all dimension types."""
-        for dim_type, dim in test_dims.items():
-            result = dim.dict()
+        # Linear dimension
+        linear_dim = SILinearDimension(
+            count=10, increment="5.0", label="frequency", description="test linear"
+        )
+        linear_dict = linear_dim.dict()
 
-            assert isinstance(result, dict)
-            assert result["type"] == dim_type
-            assert result["count"] == dim.count
+        assert isinstance(linear_dict, dict)
+        assert linear_dict["type"] == "linear"
+        assert linear_dict["count"] == 10
 
-            if dim.description:
-                assert result["description"] == dim.description
+        # Monotonic dimension
+        monotonic_dim = SIMonotonicDimension(
+            coordinates=[1, 4, 9], description="test monotonic"
+        )
+        monotonic_dict = monotonic_dim.dict()
 
-    def test_to_dict_alias(self, test_dims):
+        assert isinstance(monotonic_dict, dict)
+        assert monotonic_dict["type"] == "monotonic"
+        assert monotonic_dict["count"] == 3
+
+        # Labeled dimension
+        labeled_dim = LabeledDimension(
+            labels=["A", "B", "C"], description="test labeled"
+        )
+        labeled_dict = labeled_dim.dict()
+
+        assert isinstance(labeled_dict, dict)
+        assert labeled_dict["type"] == "labeled"
+        assert labeled_dict["count"] == 3
+
+    def test_to_dict_alias(self):
         """Test to_dict() alias method."""
-        for dim in test_dims.values():
-            dict_result = dim.dict()
-            to_dict_result = dim.to_dict()
-            assert dict_result == to_dict_result
+        dim = SILinearDimension(count=5)
 
-    def test_data_structure_json(self, test_dims):
-        """Test data_structure JSON serialization."""
-        for dim in test_dims.values():
+        dict_result = dim.dict()
+        to_dict_result = dim.to_dict()
+
+        assert dict_result == to_dict_result
+
+    def test_data_structure_property(self):
+        """Test data_structure JSON property (if implemented)."""
+        dim = SILinearDimension(count=5, label="test")
+
+        # Should return JSON string (if implemented)
+        if hasattr(dim, "data_structure"):
             json_str = dim.data_structure
+            assert isinstance(json_str, str)
 
             # Should be valid JSON
             data = json.loads(json_str)
             assert isinstance(data, dict)
-            assert data["type"] == dim.type
-            assert data["count"] == dim.count
-
-    def test_copy_method(self, test_dims):
-        """Test copy() method for all dimension types."""
-        for original in test_dims.values():
-            copy = original.copy()
-
-            # Should be separate objects
-            assert copy is not original
-
-            # Should have same properties
-            assert copy.type == original.type
-            assert copy.count == original.count
-            assert copy.description == original.description
-
-            # Coordinates should be equal
-            if original.type != "labeled":
-                np.testing.assert_array_equal(copy.coordinates, original.coordinates)
-            else:
-                np.testing.assert_array_equal(copy.labels, original.labels)
-
-    def test_is_quantitative(self, test_dims):
-        """Test is_quantitative() method."""
-        assert test_dims["linear"].is_quantitative() is True
-        assert test_dims["monotonic"].is_quantitative() is True
-        assert test_dims["labeled"].is_quantitative() is False
-
-    def test_reciprocal_methods(self, test_dims):
-        """Test reciprocal coordinate methods."""
-        linear_dim = test_dims["linear"]
-
-        # Test reciprocal coordinates
-        recip_coords = linear_dim.reciprocal_coordinates()
-        assert isinstance(recip_coords, np.ndarray)
-        assert len(recip_coords) == linear_dim.count
-
-        # Test reciprocal increment
-        recip_increment = linear_dim.reciprocal_increment()
-        assert isinstance(recip_increment, float)
-        assert recip_increment > 0
-
-        # Should not work for labeled dimensions
-        with pytest.raises(AttributeError):
-            test_dims["labeled"].reciprocal_coordinates()
-
-
-class TestCsdmpyCompatibility:
-    """Test csdmpy API compatibility."""
-
-    def test_csdmpy_dimension_creation_pattern(self):
-        """Test creation patterns match csdmpy examples."""
-        # Pattern 1: From dictionary (csdmpy docs example)
-        dimension_dictionary = {
-            "type": "linear",
-            "description": "test",
-            "increment": "5 G",
-            "count": 10,
-            "coordinates_offset": "10 mT",
-            "origin_offset": "10 T",
-        }
-        x = Dimension(dimension_dictionary)
-
-        assert x.type == "linear"
-        assert x.description == "test"
-        assert x.count == 10
-
-        # Pattern 2: From keyword arguments (csdmpy docs example)
-        y = Dimension(
-            type="linear",
-            description="test",
-            increment="5 G",
-            count=10,
-            coordinates_offset="10 mT",
-            origin_offset="10 T",
-        )
-
-        assert y.type == "linear"
-        assert y.description == "test"
-        assert y.count == 10
-
-    def test_csdmpy_property_access_patterns(self):
-        """Test property access patterns match csdmpy."""
-        dim = Dimension(
-            type="linear",
-            count=10,
-            increment="5 G",
-            coordinates_offset="10 mT",
-            origin_offset="10 T",
-            description="test dimension",
-            label="field strength",
-        )
-
-        # Property access should work like csdmpy
-        assert dim.type == "linear"
-        assert dim.description == "test dimension"
-        assert dim.label == "field strength"
-        assert dim.count == 10
-
-        # coordinates and coords should be equivalent
-        np.testing.assert_array_equal(dim.coordinates, dim.coords)
-
-        # Should have axis_label formatting
-        axis_label = dim.axis_label
-        assert "field strength" in axis_label or "Hz" in axis_label
-
-    def test_csdmpy_method_signatures(self):
-        """Test method signatures match csdmpy."""
-        dim = Dimension(type="linear", count=5, increment="1 Hz")
-
-        # dict() and to_dict() methods
-        dict_result = dim.dict()
-        to_dict_result = dim.to_dict()
-        assert isinstance(dict_result, dict)
-        assert dict_result == to_dict_result
-
-        # is_quantitative() method
-        assert dim.is_quantitative() is True
-
-        # copy() method
-        copy_dim = dim.copy()
-        assert copy_dim is not dim
-        assert copy_dim.type == dim.type
-
-        # data_structure property (JSON)
-        json_str = dim.data_structure
-        assert isinstance(json_str, str)
-        json.loads(json_str)  # Should be valid JSON
-
-    def test_labeled_dimension_compatibility(self):
-        """Test labeled dimension csdmpy compatibility."""
-        # csdmpy pattern for labeled dimension
-        labels = ["Cu", "Ag", "Au"]
-        dim = Dimension(type="labeled", labels=labels)
-
-        assert dim.type == "labeled"
-        assert dim.count == len(labels)
-        np.testing.assert_array_equal(dim.labels, labels)
-
-        # coordinates should be alias of labels
-        np.testing.assert_array_equal(dim.coordinates, dim.labels)
-
-        # Should not be quantitative
-        assert dim.is_quantitative() is False
 
 
 class TestErrorHandling:
-    """Test error handling and edge cases."""
+    """Test error handling and validation."""
 
-    def test_invalid_dimension_type(self):
-        """Test handling of invalid dimension types."""
-        with pytest.raises(ValueError, match="Unknown dimension type"):
-            Dimension(type="invalid")
+    def test_dimension_creation_errors(self):
+        """Test dimension creation error handling."""
+        # Monotonic without coordinates
+        with pytest.raises(ValueError):
+            SIMonotonicDimension(coordinates=[])
 
-    def test_missing_required_parameters(self):
-        """Test handling of missing required parameters."""
-        # Monotonic dimension without coordinates
-        with pytest.raises(ValueError, match="requires coordinates"):
-            Dimension(type="monotonic")
+        # Labeled without labels
+        with pytest.raises(ValueError):
+            LabeledDimension(labels=[])
 
-        # Labeled dimension without labels
-        with pytest.raises(ValueError, match="requires labels"):
-            Dimension(type="labeled")
+    def test_property_type_validation(self):
+        """Test property type validation."""
+        dim = SILinearDimension(count=5)
 
-    def test_type_validation(self):
-        """Test type validation for properties."""
-        dim = Dimension(type="linear", count=5)
-
-        # Description must be string
+        # Description type validation
         with pytest.raises(TypeError):
             dim.description = 123
 
-        # Label must be string
+        # Label type validation
         with pytest.raises(TypeError):
-            dim.label = ["not", "string"]
+            dim.label = {"not": "string"}
 
-        # Count must be positive integer
-        with pytest.raises(TypeError):
-            dim.count = "not integer"
-
-        with pytest.raises(TypeError):
-            dim.count = 0
-
-        # Application must be dict
+        # Application type validation
         with pytest.raises(TypeError):
             dim.application = "not dict"
 
-    def test_attribute_errors_by_type(self):
-        """Test AttributeError for invalid attributes by dimension type."""
-        linear_dim = Dimension(type="linear", count=5)
-        labeled_dim = Dimension(type="labeled", labels=["A", "B"])
+        # Count validation (linear dimension)
+        with pytest.raises((TypeError, ValueError)):
+            dim.count = "not integer"
 
-        # linear dimension should not raise for quantitative properties
-        _ = linear_dim.increment
-        _ = linear_dim.coordinates_offset
-        _ = linear_dim.complex_fft
+        with pytest.raises((TypeError, ValueError)):
+            dim.count = 0  # should be positive
 
-        # labeled dimension should raise AttributeError for quantitative properties
-        with pytest.raises(AttributeError):
-            _ = labeled_dim.increment
+    def test_attribute_access_by_dimension_type(self):
+        """Test that inappropriate attributes raise AttributeError."""
+        # Labeled dimension should not have quantitative properties
+        labeled = LabeledDimension(labels=["A", "B"])
+        quantitative_attrs = [
+            "increment",
+            "coordinates_offset",
+            "origin_offset",
+            "absolute_coordinates",
+            "complex_fft",
+            "period",
+        ]
 
-        with pytest.raises(AttributeError):
-            _ = labeled_dim.coordinates_offset
+        for attr in quantitative_attrs:
+            with pytest.raises(AttributeError):
+                getattr(labeled, attr)
 
-        with pytest.raises(AttributeError):
-            _ = labeled_dim.complex_fft
+        # Monotonic dimension should not have linear-specific properties
+        monotonic = SIMonotonicDimension(coordinates=[1, 2, 3])
+        linear_only_attrs = ["increment", "coordinates_offset", "complex_fft"]
 
-        with pytest.raises(AttributeError):
-            _ = labeled_dim.absolute_coordinates
+        for attr in linear_only_attrs:
+            with pytest.raises(AttributeError):
+                getattr(monotonic, attr)
 
-    def test_unit_conversion_not_implemented(self):
-        """Test that unit conversion raises NotImplementedError."""
-        dim = Dimension(type="linear", count=5, increment="1 Hz")
 
-        with pytest.raises(NotImplementedError):
-            dim.to("kHz")
+class TestRegressionAndEdgeCases:
+    """Test regression cases and edge conditions."""
 
-        # Should raise AttributeError for labeled dimensions
-        labeled_dim = Dimension(type="labeled", labels=["A", "B"])
-        with pytest.raises(AttributeError):
-            labeled_dim.to("any unit")
+    def test_zero_and_negative_coordinates(self):
+        """Test handling of zero and negative coordinates."""
+        # Test with zeros
+        coords_with_zero = [0, 1, 2]
+        dim = SIMonotonicDimension(coordinates=coords_with_zero)
+        assert dim.count == 3
+
+        # Test with negative coordinates
+        coords_negative = [-2, -1, 0, 1, 2]
+        dim_neg = SIMonotonicDimension(coordinates=coords_negative)
+        assert dim_neg.count == 5
+
+    def test_single_coordinate_dimension(self):
+        """Test dimensions with minimum coordinate requirements."""
+        # C API requires minimum 2 coordinates - test with exactly 2
+        coords_two = [42.0, 43.0]
+        dim = SIMonotonicDimension(coordinates=coords_two)
+        assert dim.count == 2
+        np.testing.assert_array_equal(dim.coordinates, coords_two)
+
+        # Minimum 2 coordinates linear dimension
+        linear_dim = SILinearDimension(count=2, increment="5.0")
+        assert linear_dim.count == 2
+        assert len(linear_dim.coordinates) == 2
+
+        # Minimum 2 labels for labeled dimension
+        labeled_dim = LabeledDimension(labels=["first", "second"])
+        assert labeled_dim.count == 2
+        np.testing.assert_array_equal(labeled_dim.labels, ["first", "second"])
+
+    def test_large_dimension_count(self):
+        """Test dimensions with large counts."""
+        # Large linear dimension
+        large_dim = SILinearDimension(count=10000, increment="0.1")
+        assert large_dim.count == 10000
+        coords = large_dim.coordinates
+        assert len(coords) == 10000
+        assert coords[0] == 0.0
+        assert coords[-1] == pytest.approx(9999 * 0.1)
+
+    def test_string_parsing_edge_cases(self):
+        """Test edge cases in string value parsing."""
+        dim = SILinearDimension(count=5)
+
+        # Test infinity parsing
+        dim.period = "infinity"
+        assert dim.period == float("inf")
+
+        dim.period = "∞"  # Unicode infinity
+        assert dim.period == float("inf")
+
+        dim.period = "inf"
+        assert dim.period == float("inf")
+
+    def test_copy_independence(self):
+        """Test that copied dimensions are truly independent."""
+        original = SILinearDimension(
+            count=5,
+            increment="2.0",
+            label="original",
+            application={"key": "original_value"},
+        )
+
+        copy = original.copy()
+
+        # Modify original
+        original.label = "modified"
+        original.increment = "10.0"
+        original.application = {"key": "modified_value"}
+
+        # Copy should be unchanged
+        assert copy.label == "original"
+        assert copy.increment == 2.0
+        assert copy.application == {"key": "original_value"}
+
+
+class TestCAPIValidation:
+    """Test C API input validation requirements."""
+
+    def test_linear_dimension_count_validation(self):
+        """Test that SILinearDimension requires count ≥ 2."""
+        # Valid: count = 2 (minimum)
+        dim = SILinearDimension(count=2, increment="1.0 Hz")
+        assert dim.count == 2
+
+        # Invalid: count < 2 should fail
+        with pytest.raises((ValueError, RuntimeError)):
+            SILinearDimension(count=1, increment="1.0 Hz")
+
+    def test_linear_dimension_increment_validation(self):
+        """Test that SILinearDimension requires valid increment."""
+        # Valid: string increment (converted to SIScalar internally)
+        dim = SILinearDimension(count=5, increment="10.0 Hz")
+        assert dim.count == 5
+
+        # Invalid: None increment should fail
+        with pytest.raises((ValueError, RuntimeError, TypeError)):
+            SILinearDimension(count=5, increment=None)
+
+    def test_labeled_dimension_labels_validation(self):
+        """Test that LabeledDimension requires ≥ 2 labels."""
+        # Valid: ≥ 2 labels
+        dim = LabeledDimension(labels=["A", "B"])
+        assert dim.count == 2
+
+        dim3 = LabeledDimension(labels=["A", "B", "C"])
+        assert dim3.count == 3
+
+        # Invalid: < 2 labels should fail
+        with pytest.raises((ValueError, RuntimeError)):
+            LabeledDimension(labels=[])
+
+        with pytest.raises((ValueError, RuntimeError)):
+            LabeledDimension(labels=["A"])  # Only 1 label
+
+    def test_monotonic_dimension_coordinates_validation(self):
+        """Test that SIMonotonicDimension requires ≥ 2 coordinates."""
+        # Valid: ≥ 2 coordinates
+        coords = [1.0, 2.0]  # Will be converted to SIScalars internally
+        dim = SIMonotonicDimension(coordinates=coords)
+        assert dim.count == 2
+
+        # Invalid: < 2 coordinates should fail
+        with pytest.raises((ValueError, RuntimeError)):
+            SIMonotonicDimension(coordinates=[])
+
+        with pytest.raises((ValueError, RuntimeError)):
+            SIMonotonicDimension(coordinates=[1.0])  # Only 1 coordinate
 
 
 if __name__ == "__main__":

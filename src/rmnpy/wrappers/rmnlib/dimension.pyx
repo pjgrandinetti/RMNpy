@@ -27,6 +27,9 @@ from rmnpy._c_api.sitypes cimport *
 
 from rmnpy.exceptions import RMNError
 
+# Import Cython class interfaces
+from rmnpy.wrappers.sitypes.scalar cimport Scalar
+
 # Import helper conversion functions
 from rmnpy.helpers.octypes import (
     ocarray_to_py_list,
@@ -39,6 +42,9 @@ from rmnpy.helpers.octypes import (
     py_number_to_ocnumber,
     py_string_to_ocstring,
 )
+
+# Import Scalar for unit handling
+from rmnpy.wrappers.sitypes.scalar import Scalar
 
 
 cdef class BaseDimension:
@@ -71,7 +77,7 @@ cdef class BaseDimension:
         if self._c_dimension != NULL:
             type_ref = DimensionGetType(self._c_dimension)
             if type_ref != NULL:
-                return OCStringGetCString(type_ref).decode('utf-8')
+                return parse_c_string(<uint64_t>type_ref)
         # Fallback for subclasses that override this property
         raise NotImplementedError("Subclasses must implement type property")
 
@@ -107,9 +113,9 @@ cdef class BaseDimension:
                     if error != NULL:
                         error_msg = parse_c_string(<uint64_t>error)
                         OCRelease(<OCTypeRef>error)
-                        raise ValueError(f"Failed to set description: {error_msg}")
+                        raise RMNError(f"Failed to set description: {error_msg}")
                     else:
-                        raise ValueError("Failed to set description")
+                        raise RMNError("Failed to set description")
             finally:
                 OCRelease(<OCTypeRef>desc_ptr)
 
@@ -145,9 +151,9 @@ cdef class BaseDimension:
                     if error != NULL:
                         error_msg = parse_c_string(<uint64_t>error)
                         OCRelease(<OCTypeRef>error)
-                        raise ValueError(f"Failed to set label: {error_msg}")
+                        raise RMNError(f"Failed to set label: {error_msg}")
                     else:
-                        raise ValueError("Failed to set label")
+                        raise RMNError("Failed to set label")
             finally:
                 OCRelease(<OCTypeRef>label_ptr)
 
@@ -190,9 +196,9 @@ cdef class BaseDimension:
                     if error != NULL:
                         error_msg = parse_c_string(<uint64_t>error)
                         OCRelease(<OCTypeRef>error)
-                        raise ValueError(f"Failed to clear metadata: {error_msg}")
+                        raise RMNError(f"Failed to clear metadata: {error_msg}")
                     else:
-                        raise ValueError("Failed to clear metadata")
+                        raise RMNError("Failed to clear metadata")
             else:
                 # Convert Python dict to OCDictionary and set
                 dict_ptr = py_dict_to_ocdictionary(value)
@@ -201,9 +207,9 @@ cdef class BaseDimension:
                         if error != NULL:
                             error_msg = parse_c_string(<uint64_t>error)
                             OCRelease(<OCTypeRef>error)
-                            raise ValueError(f"Failed to set metadata: {error_msg}")
+                            raise RMNError(f"Failed to set metadata: {error_msg}")
                         else:
-                            raise ValueError("Failed to set metadata")
+                            raise RMNError("Failed to set metadata")
                 finally:
                     OCRelease(<OCTypeRef>dict_ptr)
         else:
@@ -263,19 +269,27 @@ cdef class LabeledDimension(BaseDimension):
     cdef LabeledDimensionRef _labeled_dimension
     cdef object _input_labels
 
-    def __init__(self, labels, label="", description="", application=None, **kwargs):
+    def __init__(self, labels, label=None, description=None, application=None, **kwargs):
         """
         Initialize labeled dimension.
 
+        C API Requirements (LabeledDimensionCreate):
+        - coordinateLabels: REQUIRED ≥2 string labels (fails with "need ≥2 coordinate labels")
+        - All other parameters: OPTIONAL (can be NULL)
+
         Args:
-            labels (list): List of string labels for coordinates
+            labels (list, REQUIRED): List of string labels for coordinates (≥2 elements required)
             label (str, optional): Short label for the dimension
             description (str, optional): Description of the dimension
             application (dict, optional): Application metadata
             **kwargs: Additional keyword arguments (for compatibility)
 
+        Raises:
+            RMNError: If labels array has <2 elements or conversion fails
+            RMNError: If labels is empty or None
+
         Examples:
-            # Basic labeled dimension
+            # Basic labeled dimension (minimum 2 labels required)
             >>> dim = LabeledDimension(['A', 'B', 'C'])
             >>> dim.coordinates
             array(['A', 'B', 'C'], dtype='<U1')
@@ -297,7 +311,7 @@ cdef class LabeledDimension(BaseDimension):
         """
         # Validate labels
         if not labels:
-            raise ValueError("Labeled dimension requires labels")
+            raise RMNError("Labeled dimension requires labels")
 
         self._input_labels = labels
         self._description = description
@@ -316,17 +330,16 @@ cdef class LabeledDimension(BaseDimension):
 
         try:
             # Convert Python string labels to OCStringRef array
-            # Create OCArray of OCStringRef objects
             if self._input_labels:
-                # TODO: Create proper conversion from Python labels to OCArrayRef
-                # For now, pass NULL which should be handled gracefully
-                pass
+                labels_array = <OCArrayRef><uintptr_t>py_list_to_ocarray(self._input_labels)
+                if labels_array == NULL:
+                    raise RMNError("Failed to create labels array")
 
-            # Prepare label and description
-            if self._label:
-                label_ref = OCStringCreateWithCString(self._label.encode('utf-8'))
-            if self._description:
-                desc_ref = OCStringCreateWithCString(self._description.encode('utf-8'))
+            # Prepare label and description - only if provided (not None and not empty)
+            if label is not None and label != "":
+                label_ref = OCStringCreateWithCString(label.encode('utf-8'))
+            if description is not None and description != "":
+                desc_ref = OCStringCreateWithCString(description.encode('utf-8'))
 
             # Convert application metadata to OCDictionary if provided
             if self._application is not None:
@@ -338,10 +351,10 @@ cdef class LabeledDimension(BaseDimension):
 
             if self._labeled_dimension == NULL:
                 if error != NULL:
-                    error_msg = OCStringGetCString(error).decode('utf-8')
-                    raise RuntimeError(f"Failed to create labeled dimension: {error_msg}")
+                    error_msg = parse_c_string(<uint64_t>error)
+                    raise RMNError(f"Failed to create labeled dimension: {error_msg}")
                 else:
-                    raise RuntimeError("Failed to create labeled dimension")
+                    raise RMNError("Failed to create labeled dimension")
 
             # Cast to base dimension reference
             self._c_dimension = <DimensionRef>self._labeled_dimension
@@ -361,7 +374,11 @@ cdef class LabeledDimension(BaseDimension):
     @property
     def type(self):
         """Get the type of the dimension."""
-        return 'labeled'
+        if self._c_dimension != NULL:
+            type_ref = DimensionGetType(self._c_dimension)
+            if type_ref != NULL:
+                return parse_c_string(<uint64_t>type_ref)
+        return 'labeled'  # Fallback
 
     @property
     def coordinates(self) -> np.ndarray:
@@ -388,6 +405,65 @@ cdef class LabeledDimension(BaseDimension):
         """Get labels for labeled dimensions."""
         return self.coordinates
 
+    @labels.setter
+    def labels(self, value):
+        """Set labels for labeled dimensions (alias for coordinate_labels)."""
+        self.coordinate_labels = value
+
+    @property
+    def coordinate_labels(self):
+        """Get coordinate labels."""
+        return self.coordinates
+
+    @coordinate_labels.setter
+    def coordinate_labels(self, value):
+        """Set coordinate labels."""
+        cdef OCStringRef error = NULL
+        cdef OCArrayRef labels_array = NULL
+
+        # Update internal value
+        self._input_labels = value
+
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            try:
+                # Convert Python string labels to OCStringRef array
+                labels_array = <OCArrayRef><uintptr_t>py_list_to_ocarray(value)
+                if labels_array == NULL:
+                    raise RMNError("Failed to create labels array")
+
+                if not LabeledDimensionSetCoordinateLabels(self._labeled_dimension, labels_array, &error):
+                    if error != NULL:
+                        error_msg = parse_c_string(<uint64_t>error)
+                        OCRelease(<OCTypeRef>error)
+                        raise RMNError(f"Failed to set coordinate labels: {error_msg}")
+                    else:
+                        raise RMNError("Failed to set coordinate labels")
+            finally:
+                if labels_array != NULL:
+                    OCRelease(<OCTypeRef>labels_array)
+
+    def set_coordinate_label_at_index(self, index, label):
+        """Set coordinate label at specific index."""
+        cdef OCStringRef error = NULL
+        cdef OCStringRef label_ref = NULL
+
+        # Update internal value
+        if 0 <= index < len(self._input_labels):
+            self._input_labels[index] = label
+        else:
+            raise IndexError(f"Label index {index} out of range")
+
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            try:
+                label_ref = OCStringCreateWithCString(str(label).encode('utf-8'))
+                if not LabeledDimensionSetCoordinateLabelAtIndex(self._labeled_dimension, index, label_ref):
+                    raise RMNError(f"Failed to set coordinate label at index {index}")
+            finally:
+                if label_ref != NULL:
+                    OCRelease(<OCTypeRef>label_ref)
+
     @property
     def count(self):
         """Get the count of the dimension."""
@@ -405,20 +481,6 @@ cdef class LabeledDimension(BaseDimension):
             application=self.application
         )
 
-    def copy_metadata(self, obj):
-        """
-        Copy LabeledDimension metadata.
-
-        Args:
-            obj: Object to copy metadata from
-        """
-        if hasattr(obj, 'label'):
-            self.label = obj.label
-        if hasattr(obj, 'description'):
-            self.description = obj.description
-        if hasattr(obj, 'application'):
-            self.application = obj.application
-
 cdef class SIDimension(BaseDimension):
     """
     Base class for quantitative dimensions with SI units.
@@ -432,21 +494,40 @@ cdef class SIDimension(BaseDimension):
     cdef object _period
     cdef object _complex_fft
 
-    def __init__(self, label="", description="", application=None,
-                 coordinates_offset='0', origin_offset='0', period=None,
+    def __init__(self, label=None, description=None, application=None,
+                 quantity_name=None, offset=None, origin=None, period=None,
+                 periodic=False, scaling=0, coordinates_offset=None, origin_offset=None,
                  complex_fft=False, **kwargs):
         """
         Initialize SI dimension.
+
+        C API Requirements (SIDimensionCreate):
+        - ALL parameters are OPTIONAL (function provides intelligent defaults)
+        - Derives units from first non-NULL scalar (priority: offset → origin → period → quantityName → dimensionless)
+        - Creates zero scalars in appropriate units for NULL parameters
 
         Args:
             label (str, optional): Short label for the dimension
             description (str, optional): Description of the dimension
             application (dict, optional): Application metadata
-            coordinates_offset (str, optional): Coordinates offset value
-            origin_offset (str, optional): Origin offset value
-            period (str, optional): Period value for periodic dimensions
-            complex_fft (bool, optional): Complex FFT flag
+            quantity_name (str, optional): Physical quantity name (e.g., "frequency", "time")
+                If None, derived from first available scalar's dimensionality
+            offset (str or Scalar, optional): SIScalar offset value
+                Defaults to zero in derived base unit
+            origin (str or Scalar, optional): SIScalar origin value
+                Defaults to zero in derived base unit
+            period (str or Scalar, optional): SIScalar period value for periodic dimensions
+                Defaults to zero in derived base unit
+            periodic (bool, optional): True if dimension wraps around
+            scaling (int, optional): Dimension scaling type (0 = kDimensionScalingNone)
+            coordinates_offset (str, optional): Coordinates offset value (legacy, use origin instead)
+            origin_offset (str, optional): Origin offset value (legacy, use origin instead)
+            complex_fft (bool, optional): Complex FFT flag (legacy)
             **kwargs: Additional keyword arguments (for compatibility)
+
+        Note:
+            SIDimension is abstract - use SILinearDimension or SIMonotonicDimension instead.
+            This class provides common SI dimension functionality and default parameter handling.
         """
         # Set quantitative properties
         self._coordinates_offset = coordinates_offset
@@ -469,34 +550,65 @@ cdef class SIDimension(BaseDimension):
         cdef SIScalarRef origin_ref = NULL
         cdef SIScalarRef period_ref = NULL
         cdef OCStringRef error = NULL
+        cdef object offset_scalar = None
+        cdef object origin_scalar = None
+        cdef object period_scalar = None
 
         try:
-            # Prepare label and description
-            if self._label:
-                label_ref = OCStringCreateWithCString(self._label.encode('utf-8'))
-            if self._description:
-                desc_ref = OCStringCreateWithCString(self._description.encode('utf-8'))
+            # Prepare label and description - only if provided (not None and not empty)
+            if label is not None and label != "":
+                label_ref = OCStringCreateWithCString(label.encode('utf-8'))
+            if description is not None and description != "":
+                desc_ref = OCStringCreateWithCString(description.encode('utf-8'))
 
             # Convert application metadata if provided
             if self._application is not None:
                 metadata_ref = <OCDictionaryRef><uintptr_t>py_dict_to_ocdictionary(self._application)
 
-            # Create default quantity name for SI dimensions
-            quantity_name_ref = OCStringCreateWithCString(b"frequency")
+            # Handle quantity name - only if provided
+            if quantity_name is not None:
+                quantity_name_ref = OCStringCreateWithCString(quantity_name.encode('utf-8'))
 
-            # TODO: Handle offset, origin, period parameters properly
-            # For now using NULL values (will be handled by SIDimensionCreate defaults)
+            # Convert offset, origin, period to SIScalars if provided
+
+            if offset is not None:
+                if isinstance(offset, str):
+                    offset_scalar = Scalar(offset)
+                elif isinstance(offset, Scalar):
+                    offset_scalar = offset
+                else:
+                    offset_scalar = Scalar(str(offset))
+                offset_ref = (<Scalar>offset_scalar)._c_scalar
+
+            if origin is not None:
+                if isinstance(origin, str):
+                    origin_scalar = Scalar(origin)
+                elif isinstance(origin, Scalar):
+                    origin_scalar = origin
+                else:
+                    origin_scalar = Scalar(str(origin))
+                origin_ref = (<Scalar>origin_scalar)._c_scalar
+
+            if period is not None:
+                if isinstance(period, str):
+                    period_scalar = Scalar(period)
+                elif isinstance(period, Scalar):
+                    period_scalar = period
+                else:
+                    period_scalar = Scalar(str(period))
+                period_ref = (<Scalar>period_scalar)._c_scalar
 
             # Create the SI dimension using the C API with correct signature
             self._si_dimension = SIDimensionCreate(
-                label_ref, desc_ref, NULL, quantity_name_ref, NULL, NULL, NULL, False, 0, &error)
+                label_ref, desc_ref, metadata_ref, quantity_name_ref,
+                offset_ref, origin_ref, period_ref, periodic, scaling, &error)
 
             if self._si_dimension == NULL:
                 if error != NULL:
-                    error_msg = OCStringGetCString(error).decode('utf-8')
-                    raise RuntimeError(f"Failed to create SI dimension: {error_msg}")
+                    error_msg = parse_c_string(<uint64_t>error)
+                    raise RMNError(f"Failed to create SI dimension: {error_msg}")
                 else:
-                    raise RuntimeError("Failed to create SI dimension")
+                    raise RMNError("Failed to create SI dimension")
 
             # Cast to base dimension reference
             self._c_dimension = <DimensionRef>self._si_dimension
@@ -516,7 +628,11 @@ cdef class SIDimension(BaseDimension):
     @property
     def type(self):
         """Get the type of the dimension."""
-        return 'si'
+        if self._c_dimension != NULL:
+            type_ref = DimensionGetType(self._c_dimension)
+            if type_ref != NULL:
+                return parse_c_string(<uint64_t>type_ref)
+        return 'si'  # Fallback
 
     @property
     def count(self):
@@ -536,28 +652,6 @@ cdef class SIDimension(BaseDimension):
             complex_fft=self._complex_fft
         )
 
-    def copy_metadata(self, obj):
-        """
-        Copy SIDimension metadata.
-
-        Args:
-            obj: Object to copy metadata from
-        """
-        if hasattr(obj, 'label'):
-            self.label = obj.label
-        if hasattr(obj, 'description'):
-            self.description = obj.description
-        if hasattr(obj, 'application'):
-            self.application = obj.application
-        if hasattr(obj, 'coordinates_offset'):
-            self.coordinates_offset = obj.coordinates_offset
-        if hasattr(obj, 'origin_offset'):
-            self.origin_offset = obj.origin_offset
-        if hasattr(obj, 'period'):
-            self.period = obj.period
-        if hasattr(obj, 'complex_fft'):
-            self.complex_fft = obj.complex_fft
-
     cdef object _parse_numeric_value(self, value):
         """Parse numeric value from string like '100 Hz' or return float."""
         if value is None:
@@ -566,11 +660,17 @@ cdef class SIDimension(BaseDimension):
             # Check for infinity variants
             if "infinity" in value.lower() or "inf" in value.lower() or "∞" in value:
                 return float('inf')
-            import re
-            match = re.search(r'[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?', value)
-            if match:
-                return float(match.group())
-            return 0.0
+            # Use Scalar to parse value with units
+            try:
+                scalar = Scalar(value)
+                return scalar.value
+            except:
+                # Fallback to regex parsing if Scalar fails
+                import re
+                match = re.search(r'[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?', value)
+                if match:
+                    return float(match.group())
+                return 0.0
         return float(value)
 
     @property
@@ -581,7 +681,22 @@ cdef class SIDimension(BaseDimension):
     @coordinates_offset.setter
     def coordinates_offset(self, value):
         """Set coordinates offset."""
+        cdef OCStringRef error = NULL
+
+        # Update internal value
         self._coordinates_offset = value
+
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            # Convert value to SIScalarRef
+            offset_scalar = Scalar(str(value))
+            if not SIDimensionSetCoordinatesOffset(self._si_dimension, (<Scalar>offset_scalar)._c_scalar, &error):
+                if error != NULL:
+                    error_msg = parse_c_string(<uint64_t>error)
+                    OCRelease(<OCTypeRef>error)
+                    raise RMNError(f"Failed to set coordinates offset: {error_msg}")
+                else:
+                    raise RMNError("Failed to set coordinates offset")
 
     @property
     def origin_offset(self):
@@ -591,7 +706,22 @@ cdef class SIDimension(BaseDimension):
     @origin_offset.setter
     def origin_offset(self, value):
         """Set origin offset."""
+        cdef OCStringRef error = NULL
+
+        # Update internal value
         self._origin_offset = value
+
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            # Convert value to SIScalarRef
+            origin_scalar = Scalar(str(value))
+            if not SIDimensionSetOriginOffset(self._si_dimension, (<Scalar>origin_scalar)._c_scalar, &error):
+                if error != NULL:
+                    error_msg = parse_c_string(<uint64_t>error)
+                    OCRelease(<OCTypeRef>error)
+                    raise RMNError(f"Failed to set origin offset: {error_msg}")
+                else:
+                    raise RMNError("Failed to set origin offset")
 
     @property
     def period(self):
@@ -603,17 +733,32 @@ cdef class SIDimension(BaseDimension):
     @period.setter
     def period(self, value):
         """Set the period."""
+        cdef OCStringRef error = NULL
+
+        # Update internal value
         self._period = value
 
-    @property
-    def complex_fft(self):
-        """Get complex FFT flag."""
-        return self._complex_fft
-
-    @complex_fft.setter
-    def complex_fft(self, value):
-        """Set complex FFT flag."""
-        self._complex_fft = bool(value)
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            if value is not None:
+                # Convert value to SIScalarRef
+                period_scalar = Scalar(str(value))
+                if not SIDimensionSetPeriod(self._si_dimension, (<Scalar>period_scalar)._c_scalar, &error):
+                    if error != NULL:
+                        error_msg = parse_c_string(<uint64_t>error)
+                        OCRelease(<OCTypeRef>error)
+                        raise RMNError(f"Failed to set period: {error_msg}")
+                    else:
+                        raise RMNError("Failed to set period")
+            else:
+                # Set NULL period for infinite period
+                if not SIDimensionSetPeriod(self._si_dimension, NULL, &error):
+                    if error != NULL:
+                        error_msg = parse_c_string(<uint64_t>error)
+                        OCRelease(<OCTypeRef>error)
+                        raise RMNError(f"Failed to clear period: {error_msg}")
+                    else:
+                        raise RMNError("Failed to clear period")
 
     @property
     def absolute_coordinates(self) -> np.ndarray:
@@ -636,15 +781,73 @@ cdef class SIDimension(BaseDimension):
         """Get quantity name for physical quantities."""
         return "frequency"  # Default placeholder
 
-    def reciprocal_coordinates(self):
-        """Get reciprocal coordinates."""
-        coords = self.coordinates
-        if len(coords) == 0:
-            return np.array([])
-        # Handle zero coordinates to avoid division by zero warning
-        with np.errstate(divide='ignore', invalid='ignore'):
-            result = 1.0 / coords
-        return result
+    @quantity_name.setter
+    def quantity_name(self, value):
+        """Set quantity name for physical quantities."""
+        cdef OCStringRef error = NULL
+        cdef OCStringRef quantity_name_ref = NULL
+
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            if value is not None and value != "":
+                quantity_name_ref = OCStringCreateWithCString(str(value).encode('utf-8'))
+                try:
+                    if not SIDimensionSetQuantityName(self._si_dimension, quantity_name_ref, &error):
+                        if error != NULL:
+                            error_msg = parse_c_string(<uint64_t>error)
+                            OCRelease(<OCTypeRef>error)
+                            raise RMNError(f"Failed to set quantity name: {error_msg}")
+                        else:
+                            raise RMNError("Failed to set quantity name")
+                finally:
+                    if quantity_name_ref != NULL:
+                        OCRelease(<OCTypeRef>quantity_name_ref)
+            else:
+                # Set NULL for no quantity name
+                if not SIDimensionSetQuantityName(self._si_dimension, NULL, &error):
+                    if error != NULL:
+                        error_msg = parse_c_string(<uint64_t>error)
+                        OCRelease(<OCTypeRef>error)
+                        raise RMNError(f"Failed to clear quantity name: {error_msg}")
+                    else:
+                        raise RMNError("Failed to clear quantity name")
+
+    @property
+    def periodic(self):
+        """Get periodic flag."""
+        # TODO: Add C API getter once available
+        return False  # Default placeholder
+
+    @periodic.setter
+    def periodic(self, value):
+        """Set periodic flag."""
+        cdef OCStringRef error = NULL
+
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            if not SIDimensionSetPeriodic(self._si_dimension, bool(value), &error):
+                if error != NULL:
+                    error_msg = parse_c_string(<uint64_t>error)
+                    OCRelease(<OCTypeRef>error)
+                    raise RMNError(f"Failed to set periodic flag: {error_msg}")
+                else:
+                    raise RMNError("Failed to set periodic flag")
+
+    @property
+    def scaling(self):
+        """Get scaling type."""
+        # TODO: Add C API getter once available
+        return 0  # Default placeholder (kDimensionScalingNone)
+
+    @scaling.setter
+    def scaling(self, value):
+        """Set scaling type."""
+        cdef OCStringRef error = NULL
+
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            if not SIDimensionSetScaling(self._si_dimension, int(value)):
+                raise RMNError("Failed to set scaling")
 
 cdef class SILinearDimension(SIDimension):
     """
@@ -663,81 +866,175 @@ cdef class SILinearDimension(SIDimension):
     cdef SILinearDimensionRef _linear_dimension
     cdef object _increment
     cdef object _count
+    cdef object _increment_scalar  # Keep reference to prevent GC
+    cdef object _reciprocal
 
-    def __init__(self, count=10, increment='1.0', label="", description="",
-                 application=None, coordinates_offset='0', origin_offset='0',
-                 period=None, complex_fft=False, **kwargs):
+    def __init__(self, count, increment, label=None, description=None,
+                 application=None, quantity_name=None, offset=None, origin=None,
+                 period=None, periodic=False, scaling=0, fft=False, reciprocal=None,
+                 coordinates_offset=None, origin_offset=None, complex_fft=False, **kwargs):
         """
         Initialize linear dimension.
 
+        C API Requirements (SILinearDimensionCreate):
+        - count: REQUIRED ≥2 (fails with "need ≥2 points")
+        - increment: REQUIRED real SIScalar (fails with "increment must be a real SIScalar")
+        - All other parameters: OPTIONAL (function provides defaults)
+
         Args:
-            count (int, optional): Number of coordinates
-            increment (str or float, optional): Increment between coordinates
-            label (str, optional): Short label for the dimension
-            description (str, optional): Description of the dimension
-            application (dict, optional): Application metadata
-            coordinates_offset (str, optional): Coordinates offset value
-            origin_offset (str, optional): Origin offset value
-            period (str, optional): Period value for periodic dimensions
-            complex_fft (bool, optional): Complex FFT flag
+            count (int, REQUIRED): Number of coordinates, must be ≥2
+            increment (str or Scalar, REQUIRED): Increment between coordinates,
+                converted to real-valued SIScalar (use Scalar('10.0 Hz') for units)
+            label (str, optional): Short label for the dimension (default: None = NULL)
+            description (str, optional): Description of the dimension (default: None = NULL)
+            application (dict, optional): Application metadata (default: None = NULL)
+            quantity_name (str, optional): Physical quantity name (default: None = NULL, C API derives from increment)
+            offset (str or Scalar, optional): SIScalar offset value (default: None = NULL, C API uses zero)
+            origin (str or Scalar, optional): SIScalar origin value (default: None = NULL, C API uses zero)
+            period (str or Scalar, optional): SIScalar period value for periodic dimensions (default: None = NULL)
+            periodic (bool, optional): True if dimension wraps around
+            scaling (int, optional): Dimension scaling type (0 = kDimensionScalingNone)
+            fft (bool, optional): True if used for FFT
+            reciprocal (SIDimension, optional): Reciprocal dimension (default: None = NULL)
+            coordinates_offset (str, optional): Coordinates offset value (legacy, use origin instead, default: None = NULL)
+            origin_offset (str, optional): Origin offset value (legacy, use origin instead, default: None = NULL)
+            complex_fft (bool, optional): Complex FFT flag (legacy, use fft instead)
             **kwargs: Additional keyword arguments (for compatibility)
+
+        Raises:
+            RMNError: If count < 2 or increment is not a real SIScalar
+            RMNError: If increment cannot be converted to Scalar
+            TypeError: If count or increment are not provided (required parameters)
+
+        Examples:
+            # Basic linear dimension (count and increment required)
+            >>> dim = SILinearDimension(count=10, increment='1.0 Hz')
+
+            # With units and metadata
+            >>> dim = SILinearDimension(
+            ...     count=100,
+            ...     increment='10.0 kHz',
+            ...     label='frequency',
+            ...     quantity_name='frequency'
+            ... )
         """
-        # Set linear-specific properties
+        # Store parameters (let C API handle validation)
         self._increment = increment
         self._count = count
+        self._description = description
+        self._label = label
+        self._coordinates_offset = coordinates_offset
+        self._origin_offset = origin_offset
+        self._period = period
+        self._complex_fft = complex_fft
+        self._reciprocal = reciprocal
 
-        # Call parent init with SI dimension properties
-        super().__init__(
-            label=label,
-            description=description,
-            application=application,
-            coordinates_offset=coordinates_offset,
-            origin_offset=origin_offset,
-            period=period,
-            complex_fft=complex_fft,
-            **kwargs
-        )
+        # Set application metadata if provided
+        if application is not None:
+            self._application = application
 
         # Create C dimension using the C API
+        cdef OCStringRef error = NULL
         cdef OCStringRef label_ref = NULL
         cdef OCStringRef desc_ref = NULL
-        cdef OCDictionaryRef metadata_ref = NULL
         cdef OCStringRef quantity_name_ref = NULL
+        cdef OCDictionaryRef metadata_ref = NULL
+        cdef SIScalarRef increment_ref = NULL
         cdef SIScalarRef offset_ref = NULL
         cdef SIScalarRef origin_ref = NULL
         cdef SIScalarRef period_ref = NULL
-        cdef SIScalarRef increment_ref = NULL
         cdef SIDimensionRef reciprocal_ref = NULL
-        cdef OCStringRef error = NULL
+        cdef object offset_scalar = None
+        cdef object origin_scalar = None
+        cdef object period_scalar = None
 
         try:
-            # Prepare label and description
-            if self._label:
-                label_ref = OCStringCreateWithCString(self._label.encode('utf-8'))
-            if self._description:
-                desc_ref = OCStringCreateWithCString(self._description.encode('utf-8'))
+            # Convert increment to SIScalarRef (required parameter)
+            if self._increment is not None:
+                if isinstance(self._increment, str):
+                    self._increment_scalar = Scalar(self._increment)
+                elif isinstance(self._increment, Scalar):
+                    self._increment_scalar = self._increment
+                else:
+                    self._increment_scalar = Scalar(str(self._increment))
+                increment_ref = (<Scalar>self._increment_scalar)._c_scalar
+            else:
+                raise RMNError("increment parameter is required")
 
-            # Convert application metadata if provided
-            if self._application is not None:
-                metadata_ref = <OCDictionaryRef><uintptr_t>py_dict_to_ocdictionary(self._application)
+            # Convert optional string parameters - only if provided (not None and not empty)
+            if label is not None and label != "":
+                label_ref = OCStringCreateWithCString(label.encode('utf-8'))
+            if description is not None and description != "":
+                desc_ref = OCStringCreateWithCString(description.encode('utf-8'))
 
-            # Create default quantity name for linear dimensions
-            quantity_name_ref = OCStringCreateWithCString(b"frequency")
+            # Handle quantity name - only if provided
+            if quantity_name is not None:
+                quantity_name_ref = OCStringCreateWithCString(quantity_name.encode('utf-8'))
 
-            # TODO: Convert increment value to SIScalarRef
-            # For now, pass None values - the C API should handle defaults
+            # Convert application metadata - only if provided
+            if application is not None:
+                metadata_ref = <OCDictionaryRef><uintptr_t>py_dict_to_ocdictionary(application)
 
-            # Create the SI linear dimension using the C API with correct signature
+            # Convert offset, origin, period to SIScalars if provided
+
+            if offset is not None:
+                if isinstance(offset, str):
+                    offset_scalar = Scalar(offset)
+                elif isinstance(offset, Scalar):
+                    offset_scalar = offset
+                else:
+                    offset_scalar = Scalar(str(offset))
+                offset_ref = (<Scalar>offset_scalar)._c_scalar
+
+            if origin is not None:
+                if isinstance(origin, str):
+                    origin_scalar = Scalar(origin)
+                elif isinstance(origin, Scalar):
+                    origin_scalar = origin
+                else:
+                    origin_scalar = Scalar(str(origin))
+                origin_ref = (<Scalar>origin_scalar)._c_scalar
+
+            if period is not None:
+                if isinstance(period, str):
+                    period_scalar = Scalar(period)
+                elif isinstance(period, Scalar):
+                    period_scalar = period
+                else:
+                    period_scalar = Scalar(str(period))
+                period_ref = (<Scalar>period_scalar)._c_scalar
+
+            # Handle reciprocal dimension - only if provided
+            if reciprocal is not None:
+                if hasattr(reciprocal, '_si_dimension'):
+                    reciprocal_ref = (<SIDimension>reciprocal)._si_dimension
+                else:
+                    reciprocal_ref = NULL
+
+            # Let C API handle validation and error reporting
             self._linear_dimension = SILinearDimensionCreate(
-                label_ref, desc_ref, NULL, quantity_name_ref, NULL, NULL, NULL,
-                False, 0, self._count, increment_ref, False, NULL, &error)
+                label_ref,              # label
+                desc_ref,               # description
+                metadata_ref,           # metadata
+                quantity_name_ref,      # quantityName
+                offset_ref,             # offset
+                origin_ref,             # origin
+                period_ref,             # period
+                periodic,               # periodic
+                scaling,                # scaling
+                self._count,            # count
+                increment_ref,          # increment (required)
+                fft or self._complex_fft,  # fft
+                reciprocal_ref,         # reciprocal
+                &error                  # error
+            )
 
             if self._linear_dimension == NULL:
                 if error != NULL:
-                    error_msg = OCStringGetCString(error).decode('utf-8')
-                    raise RuntimeError(f"Failed to create linear dimension: {error_msg}")
+                    error_msg = parse_c_string(<uint64_t>error)
+                    raise RMNError(f"Failed to create linear dimension: {error_msg}")
                 else:
-                    raise RuntimeError("Failed to create linear dimension")
+                    raise RMNError("Failed to create linear dimension")
 
             # Cast to base dimension reference
             self._c_dimension = <DimensionRef>self._linear_dimension
@@ -747,17 +1044,21 @@ cdef class SILinearDimension(SIDimension):
                 OCRelease(<OCTypeRef>label_ref)
             if desc_ref != NULL:
                 OCRelease(<OCTypeRef>desc_ref)
-            if metadata_ref != NULL:
-                OCRelease(<OCTypeRef>metadata_ref)
             if quantity_name_ref != NULL:
                 OCRelease(<OCTypeRef>quantity_name_ref)
+            if metadata_ref != NULL:
+                OCRelease(<OCTypeRef>metadata_ref)
             if error != NULL:
                 OCRelease(<OCTypeRef>error)
 
     @property
     def type(self):
         """Get the type of the dimension."""
-        return 'linear'
+        if self._c_dimension != NULL:
+            type_ref = DimensionGetType(self._c_dimension)
+            if type_ref != NULL:
+                return parse_c_string(<uint64_t>type_ref)
+        return 'linear'  # Fallback
 
     @property
     def increment(self):
@@ -781,7 +1082,17 @@ cdef class SILinearDimension(SIDimension):
     @increment.setter
     def increment(self, value):
         """Set the increment of the dimension."""
+        cdef OCStringRef error = NULL
+
+        # Update internal value
         self._increment = value
+
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            # Convert value to SIScalarRef
+            increment_scalar = Scalar(str(value))
+            if not SILinearDimensionSetIncrement(self._linear_dimension, (<Scalar>increment_scalar)._c_scalar):
+                raise RMNError("Failed to set increment")
 
     @property
     def count(self):
@@ -794,16 +1105,18 @@ cdef class SILinearDimension(SIDimension):
     @count.setter
     def count(self, value):
         """Set the count of the dimension."""
+        cdef OCStringRef error = NULL
+
         if not isinstance(value, int) or value <= 0:
             raise TypeError("Count must be a positive integer")
+
+        # Update internal value
         self._count = value
 
-    @property
-    def start(self):
-        """Get the starting coordinate."""
-        # Linear dimensions start at 0 by default
-        # The C API doesn't provide GetStart, so use default
-        return 0.0  # Default start for linear dimensions
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            if not SILinearDimensionSetCount(self._linear_dimension, value):
+                raise RMNError("Failed to set count")
 
     @property
     def coordinates(self) -> np.ndarray:
@@ -830,12 +1143,109 @@ cdef class SILinearDimension(SIDimension):
         """Alias for coordinates."""
         return self.coordinates
 
+    @property
+    def complex_fft(self):
+        """Get complex FFT flag."""
+        return self._complex_fft
+
+    @complex_fft.setter
+    def complex_fft(self, value):
+        """Set complex FFT flag."""
+        # Update internal value
+        self._complex_fft = bool(value)
+
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            if not SILinearDimensionSetComplexFFT(self._linear_dimension, bool(value)):
+                raise RMNError("Failed to set complex FFT flag")
+
+    cdef object _create_dimension_wrapper_from_ref(self, SIDimensionRef dim_ref):
+        """Create a Python dimension wrapper from a C SIDimensionRef."""
+        if dim_ref == NULL:
+            return None
+
+        # Get the type of the dimension to determine which wrapper to create
+        cdef OCStringRef type_ref = DimensionGetType(<DimensionRef>dim_ref)
+        if type_ref == NULL:
+            return None
+
+        type_str = parse_c_string(<uint64_t>type_ref)
+
+        if type_str == "linear":
+            # Create SILinearDimension wrapper
+            wrapper = SILinearDimension.__new__(SILinearDimension)
+            (<SILinearDimension>wrapper)._linear_dimension = <SILinearDimensionRef>dim_ref
+            (<SILinearDimension>wrapper)._si_dimension = dim_ref
+            (<SILinearDimension>wrapper)._c_dimension = <DimensionRef>dim_ref
+            OCRetain(<OCTypeRef>dim_ref)  # Retain the reference
+            return wrapper
+        elif type_str == "monotonic":
+            # Create SIMonotonicDimension wrapper
+            wrapper = SIMonotonicDimension.__new__(SIMonotonicDimension)
+            (<SIMonotonicDimension>wrapper)._monotonic_dimension = <SIMonotonicDimensionRef>dim_ref
+            (<SIMonotonicDimension>wrapper)._si_dimension = dim_ref
+            (<SIMonotonicDimension>wrapper)._c_dimension = <DimensionRef>dim_ref
+            OCRetain(<OCTypeRef>dim_ref)  # Retain the reference
+            return wrapper
+        else:
+            # Generic SIDimension wrapper for unknown types
+            wrapper = SIDimension.__new__(SIDimension)
+            (<SIDimension>wrapper)._si_dimension = dim_ref
+            (<SIDimension>wrapper)._c_dimension = <DimensionRef>dim_ref
+            OCRetain(<OCTypeRef>dim_ref)  # Retain the reference
+            return wrapper
+
+    @property
+    def reciprocal(self):
+        """Get reciprocal dimension."""
+        if self._reciprocal is not None:
+            return self._reciprocal
+
+        # Try to get from C API if we don't have a cached value
+        if self._c_dimension != NULL:
+            reciprocal_ref = SILinearDimensionGetReciprocal(self._linear_dimension)
+            if reciprocal_ref != NULL:
+                # Create and cache the wrapper
+                self._reciprocal = self._create_dimension_wrapper_from_ref(reciprocal_ref)
+                return self._reciprocal
+        return None
+
+    @reciprocal.setter
+    def reciprocal(self, value):
+        """Set reciprocal dimension."""
+        cdef OCStringRef error = NULL
+        cdef SIDimensionRef reciprocal_ref = NULL
+
+        # Update the instance variable
+        self._reciprocal = value
+
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            if value is not None:
+                if hasattr(value, '_si_dimension'):
+                    reciprocal_ref = (<SIDimension>value)._si_dimension
+                else:
+                    reciprocal_ref = NULL
+
+            if not SILinearDimensionSetReciprocal(self._linear_dimension, reciprocal_ref, &error):
+                if error != NULL:
+                    error_msg = parse_c_string(<uint64_t>error)
+                    OCRelease(<OCTypeRef>error)
+                    raise RMNError(f"Failed to set reciprocal dimension: {error_msg}")
+                else:
+                    raise RMNError("Failed to set reciprocal dimension")
+
     def reciprocal_increment(self):
         """Get reciprocal increment."""
-        inc = self.increment
-        if inc == 0.0:
-            return float('inf')
-        return 1.0 / inc
+        if self._c_dimension != NULL:
+            reciprocal_increment_ref = SILinearDimensionGetReciprocalIncrement(self._linear_dimension)
+            if reciprocal_increment_ref != NULL:
+                # Create Scalar wrapper from the C SIScalarRef
+                scalar_wrapper = Scalar.__new__(Scalar)
+                (<Scalar>scalar_wrapper)._c_scalar = reciprocal_increment_ref
+                OCRetain(<OCTypeRef>reciprocal_increment_ref)  # Retain the reference
+                return scalar_wrapper
+        return None
 
     def copy(self):
         """Create a copy of the dimension."""
@@ -850,32 +1260,6 @@ cdef class SILinearDimension(SIDimension):
             period=self._period,
             complex_fft=self._complex_fft
         )
-
-    def copy_metadata(self, obj):
-        """
-        Copy SILinearDimension metadata.
-
-        Args:
-            obj: Object to copy metadata from
-        """
-        if hasattr(obj, 'label'):
-            self.label = obj.label
-        if hasattr(obj, 'description'):
-            self.description = obj.description
-        if hasattr(obj, 'application'):
-            self.application = obj.application
-        if hasattr(obj, 'coordinates_offset'):
-            self.coordinates_offset = obj.coordinates_offset
-        if hasattr(obj, 'origin_offset'):
-            self.origin_offset = obj.origin_offset
-        if hasattr(obj, 'period'):
-            self.period = obj.period
-        if hasattr(obj, 'complex_fft'):
-            self.complex_fft = obj.complex_fft
-        if hasattr(obj, 'increment'):
-            self.increment = obj.increment
-        if hasattr(obj, 'count'):
-            self.count = obj.count
 
 cdef class SIMonotonicDimension(SIDimension):
     """
@@ -893,41 +1277,72 @@ cdef class SIMonotonicDimension(SIDimension):
     """
     cdef SIMonotonicDimensionRef _monotonic_dimension
     cdef object _input_coordinates
+    cdef object _reciprocal
 
-    def __init__(self, coordinates, label="", description="", application=None,
-                 coordinates_offset='0', origin_offset='0', period=None,
-                 complex_fft=False, **kwargs):
+    def __init__(self, coordinates, label=None, description=None, application=None,
+                 quantity_name=None, offset=None, origin=None, period=None,
+                 periodic=False, scaling=0, reciprocal=None, coordinates_offset=None,
+                 origin_offset=None, complex_fft=False, **kwargs):
         """
         Initialize monotonic dimension.
 
+        C API Requirements (SIMonotonicDimensionCreate):
+        - coordinates: REQUIRED ≥2 SIScalars (fails with "need ≥2 coordinates")
+        - Units derived from first coordinate in array
+        - All other parameters: OPTIONAL (function provides defaults)
+
         Args:
-            coordinates (list): List of coordinate values
+            coordinates (list, REQUIRED): List of coordinate values (≥2 elements),
+                each converted to SIScalar (use [Scalar('1.0 Hz'), Scalar('2.0 Hz')] for units)
             label (str, optional): Short label for the dimension
             description (str, optional): Description of the dimension
             application (dict, optional): Application metadata
-            coordinates_offset (str, optional): Coordinates offset value
-            origin_offset (str, optional): Origin offset value
-            period (str, optional): Period value for periodic dimensions
-            complex_fft (bool, optional): Complex FFT flag
+            quantity_name (str, optional): Physical quantity name (derived from coordinates if None)
+            offset (str or Scalar, optional): SIScalar offset value (defaults to zero in coordinates' units)
+            origin (str or Scalar, optional): SIScalar origin value (defaults to zero in coordinates' units)
+            period (str or Scalar, optional): SIScalar period value for periodic dimensions
+            periodic (bool, optional): True if dimension wraps around
+            scaling (int, optional): Dimension scaling type (0 = kDimensionScalingNone)
+            reciprocal (SIDimension, optional): Reciprocal dimension
+            coordinates_offset (str, optional): Coordinates offset value (legacy, use origin instead)
+            origin_offset (str, optional): Origin offset value (legacy, use origin instead)
+            complex_fft (bool, optional): Complex FFT flag (legacy)
             **kwargs: Additional keyword arguments (for compatibility)
+
+        Raises:
+            RMNError: If coordinates array has <2 elements
+            RMNError: If coordinates is empty or None
+
+        Examples:
+            # Basic monotonic dimension with Scalar objects
+            >>> coords = [Scalar('1.0 Hz'), Scalar('2.5 Hz'), Scalar('4.0 Hz')]
+            >>> dim = SIMonotonicDimension(coordinates=coords)
+
+            # With metadata
+            >>> dim = SIMonotonicDimension(
+            ...     coordinates=[Scalar('0.1 T'), Scalar('1.0 T'), Scalar('10.0 T')],
+            ...     label='magnetic field',
+            ...     description='Variable field strength'
+            ... )
         """
         # Validate coordinates
         if not coordinates:
-            raise ValueError("Monotonic dimension requires coordinates")
+            raise RMNError("Monotonic dimension requires coordinates")
 
         self._input_coordinates = coordinates
 
-        # Call parent init with SI dimension properties
-        super().__init__(
-            label=label,
-            description=description,
-            application=application,
-            coordinates_offset=coordinates_offset,
-            origin_offset=origin_offset,
-            period=period,
-            complex_fft=complex_fft,
-            **kwargs
-        )
+        # Store SI dimension properties
+        self._coordinates_offset = coordinates_offset
+        self._origin_offset = origin_offset
+        self._period = period
+        self._complex_fft = complex_fft
+        self._description = description
+        self._label = label
+        self._reciprocal = reciprocal
+
+        # Set application metadata if provided
+        if application is not None:
+            self._application = application
 
         # Create C dimension using the C API
         cdef OCStringRef label_ref = NULL
@@ -940,38 +1355,64 @@ cdef class SIMonotonicDimension(SIDimension):
         cdef OCArrayRef coords_array = NULL
         cdef SIDimensionRef reciprocal_ref = NULL
         cdef OCStringRef error = NULL
+        cdef object offset_scalar = None
+        cdef object origin_scalar = None
+        cdef object period_scalar = None
 
         try:
-            # Prepare label and description
-            if self._label:
-                label_ref = OCStringCreateWithCString(self._label.encode('utf-8'))
-            if self._description:
-                desc_ref = OCStringCreateWithCString(self._description.encode('utf-8'))
+            # Prepare label and description - only if provided (not None and not empty)
+            if label is not None and label != "":
+                label_ref = OCStringCreateWithCString(label.encode('utf-8'))
+            if description is not None and description != "":
+                desc_ref = OCStringCreateWithCString(description.encode('utf-8'))
 
             # Convert application metadata if provided
             if self._application is not None:
                 metadata_ref = <OCDictionaryRef><uintptr_t>py_dict_to_ocdictionary(self._application)
 
-            # Create default quantity name
-            quantity_name_ref = OCStringCreateWithCString(b"frequency")
+            # Handle quantity name - only if provided
+            if quantity_name is not None:
+                quantity_name_ref = OCStringCreateWithCString(quantity_name.encode('utf-8'))
+
+            # Convert offset, origin, period to SIScalars if provided
+
+            if offset is not None:
+                offset_scalar = Scalar(str(offset))
+                offset_ref = (<Scalar>offset_scalar)._c_scalar
+
+            if origin is not None:
+                origin_scalar = Scalar(str(origin))
+                origin_ref = (<Scalar>origin_scalar)._c_scalar
+
+            if period is not None:
+                period_scalar = Scalar(str(period))
+                period_ref = (<Scalar>period_scalar)._c_scalar
+
+            # Handle reciprocal dimension
+            if reciprocal is not None:
+                if hasattr(reciprocal, '_si_dimension'):
+                    reciprocal_ref = (<SIDimension>reciprocal)._si_dimension
+                else:
+                    reciprocal_ref = NULL
 
             # Convert Python coordinates to C array
             coords_array = <OCArrayRef><uintptr_t>py_list_to_ocarray(coordinates)
 
             if coords_array == NULL:
-                raise RuntimeError("Failed to create coordinates array")
+                raise RMNError("Failed to create coordinates array")
 
             # Create the SI monotonic dimension using the full C API signature
             self._monotonic_dimension = SIMonotonicDimensionCreate(
-                label_ref, desc_ref, NULL, quantity_name_ref, NULL, NULL, NULL,
-                False, 0, coords_array, NULL, &error)
+                label_ref, desc_ref, metadata_ref, quantity_name_ref,
+                offset_ref, origin_ref, period_ref, periodic, scaling,
+                coords_array, reciprocal_ref, &error)
 
             if self._monotonic_dimension == NULL:
                 if error != NULL:
-                    error_msg = OCStringGetCString(error).decode('utf-8')
-                    raise RuntimeError(f"Failed to create monotonic dimension: {error_msg}")
+                    error_msg = parse_c_string(<uint64_t>error)
+                    raise RMNError(f"Failed to create monotonic dimension: {error_msg}")
                 else:
-                    raise RuntimeError("Failed to create monotonic dimension")
+                    raise RMNError("Failed to create monotonic dimension")
 
             # Cast to base dimension reference
             self._c_dimension = <DimensionRef>self._monotonic_dimension
@@ -993,7 +1434,11 @@ cdef class SIMonotonicDimension(SIDimension):
     @property
     def type(self):
         """Get the type of the dimension."""
-        return 'monotonic'
+        if self._c_dimension != NULL:
+            type_ref = DimensionGetType(self._c_dimension)
+            if type_ref != NULL:
+                return parse_c_string(<uint64_t>type_ref)
+        return 'monotonic'  # Fallback
 
     @property
     def count(self):
@@ -1027,35 +1472,104 @@ cdef class SIMonotonicDimension(SIDimension):
         """Alias for coordinates."""
         return self.coordinates
 
+    @coordinates.setter
+    def coordinates(self, value):
+        """Set monotonic coordinates."""
+        cdef OCStringRef error = NULL
+        cdef OCArrayRef coords_array = NULL
+
+        # Update internal value
+        self._input_coordinates = value
+
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            try:
+                # Convert Python coordinates to C array
+                coords_array = <OCArrayRef><uintptr_t>py_list_to_ocarray(value)
+                if coords_array == NULL:
+                    raise RMNError("Failed to create coordinates array")
+
+                if not SIMonotonicDimensionSetCoordinates(self._monotonic_dimension, coords_array):
+                    raise RMNError("Failed to set coordinates")
+            finally:
+                if coords_array != NULL:
+                    OCRelease(<OCTypeRef>coords_array)
+
+    cdef object _create_dimension_wrapper_from_ref(self, SIDimensionRef dim_ref):
+        """Create a Python dimension wrapper from a C SIDimensionRef."""
+        if dim_ref == NULL:
+            return None
+
+        # Get the type of the dimension to determine which wrapper to create
+        cdef OCStringRef type_ref = DimensionGetType(<DimensionRef>dim_ref)
+        if type_ref == NULL:
+            return None
+
+        type_str = parse_c_string(<uint64_t>type_ref)
+
+        if type_str == "linear":
+            # Create SILinearDimension wrapper
+            wrapper = SILinearDimension.__new__(SILinearDimension)
+            (<SILinearDimension>wrapper)._linear_dimension = <SILinearDimensionRef>dim_ref
+            (<SILinearDimension>wrapper)._si_dimension = dim_ref
+            (<SILinearDimension>wrapper)._c_dimension = <DimensionRef>dim_ref
+            OCRetain(<OCTypeRef>dim_ref)  # Retain the reference
+            return wrapper
+        elif type_str == "monotonic":
+            # Create SIMonotonicDimension wrapper
+            wrapper = SIMonotonicDimension.__new__(SIMonotonicDimension)
+            (<SIMonotonicDimension>wrapper)._monotonic_dimension = <SIMonotonicDimensionRef>dim_ref
+            (<SIMonotonicDimension>wrapper)._si_dimension = dim_ref
+            (<SIMonotonicDimension>wrapper)._c_dimension = <DimensionRef>dim_ref
+            OCRetain(<OCTypeRef>dim_ref)  # Retain the reference
+            return wrapper
+        else:
+            # Generic SIDimension wrapper for unknown types
+            wrapper = SIDimension.__new__(SIDimension)
+            (<SIDimension>wrapper)._si_dimension = dim_ref
+            (<SIDimension>wrapper)._c_dimension = <DimensionRef>dim_ref
+            OCRetain(<OCTypeRef>dim_ref)  # Retain the reference
+            return wrapper
+
     @property
-    def minimum(self):
-        """Get the minimum coordinate value."""
-        # TODO: Implement proper C API access once function is available
-        # Try to use C API first if we have a C object
-        #if self._c_dimension != NULL:
-        #    min_ref = SIMonotonicDimensionGetMinimum(self._monotonic_dimension)
-        #    if min_ref != NULL:
-        #        # TODO: Convert SIScalarRef to Python float
-        #        # For now, fallback to numpy calculation
-        #        pass
+    def reciprocal(self):
+        """Get reciprocal dimension."""
+        if self._reciprocal is not None:
+            return self._reciprocal
 
-        # Fallback: calculate from input coordinates
-        return float(np.min(self._input_coordinates))
+        # Try to get from C API if we don't have a cached value
+        if self._c_dimension != NULL:
+            reciprocal_ref = SIMonotonicDimensionGetReciprocal(self._monotonic_dimension)
+            if reciprocal_ref != NULL:
+                # Create and cache the wrapper
+                self._reciprocal = self._create_dimension_wrapper_from_ref(reciprocal_ref)
+                return self._reciprocal
+        return None
 
-    @property
-    def maximum(self):
-        """Get the maximum coordinate value."""
-        # TODO: Implement proper C API access once function is available
-        # Try to use C API first if we have a C object
-        #if self._c_dimension != NULL:
-        #    max_ref = SIMonotonicDimensionGetMaximum(self._monotonic_dimension)
-        #    if max_ref != NULL:
-        #        # TODO: Convert SIScalarRef to Python float
-        #        # For now, fallback to numpy calculation
-        #        pass
+    @reciprocal.setter
+    def reciprocal(self, value):
+        """Set reciprocal dimension."""
+        cdef OCStringRef error = NULL
+        cdef SIDimensionRef reciprocal_ref = NULL
 
-        # Fallback: calculate from input coordinates
-        return float(np.max(self._input_coordinates))
+        # Update the instance variable
+        self._reciprocal = value
+
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            if value is not None:
+                if hasattr(value, '_si_dimension'):
+                    reciprocal_ref = (<SIDimension>value)._si_dimension
+                else:
+                    reciprocal_ref = NULL
+
+            if not SIMonotonicDimensionSetReciprocal(self._monotonic_dimension, reciprocal_ref, &error):
+                if error != NULL:
+                    error_msg = parse_c_string(<uint64_t>error)
+                    OCRelease(<OCTypeRef>error)
+                    raise RMNError(f"Failed to set reciprocal dimension: {error_msg}")
+                else:
+                    raise RMNError("Failed to set reciprocal dimension")
 
     def copy(self):
         """Create a copy of the dimension."""
@@ -1075,31 +1589,3 @@ cdef class SIMonotonicDimension(SIDimension):
         result = super().to_dict()
         result['coordinates'] = list(self._input_coordinates)
         return result
-
-    def copy_metadata(self, obj):
-        """
-        Copy SIMonotonicDimension metadata.
-
-        Args:
-            obj: Object to copy metadata from
-        """
-        if hasattr(obj, 'label'):
-            self.label = obj.label
-        if hasattr(obj, 'description'):
-            self.description = obj.description
-        if hasattr(obj, 'application'):
-            self.application = obj.application
-        if hasattr(obj, 'coordinates_offset'):
-            self.coordinates_offset = obj.coordinates_offset
-        if hasattr(obj, 'origin_offset'):
-            self.origin_offset = obj.origin_offset
-        if hasattr(obj, 'period'):
-            self.period = obj.period
-        if hasattr(obj, 'complex_fft'):
-            self.complex_fft = obj.complex_fft
-        if hasattr(obj, 'coordinates'):
-            # For monotonic, copy the coordinates array
-            if hasattr(obj.coordinates, 'tolist'):
-                self._input_coordinates = obj.coordinates.tolist()
-            else:
-                self._input_coordinates = list(obj.coordinates)

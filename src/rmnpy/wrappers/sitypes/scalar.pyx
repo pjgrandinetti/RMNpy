@@ -66,8 +66,6 @@ cdef class Scalar:
     physics calculation errors through automatic dimensional validation.
     """
 
-    cdef SIScalarRef _c_scalar
-
     def __cinit__(self):
         self._c_scalar = NULL
 
