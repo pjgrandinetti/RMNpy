@@ -1,639 +1,1037 @@
 # cython: language_level=3
 """
-RMNLib Dimension wrapper providing csdmpy-compatible API
+RMNLib Dimension wrapper with proper inheritance hierarchy
 
-This module provides Python wrappers for RMNLib's RMNDimension class
-with an API designed to be compatible with csdmpy.Dimension.
+This module provides Python wrappers that mirror the C inheritance:
+- BaseDimension (abstract base for common functionality)
+- LabeledDimension (for discrete labeled coordinates)
+- SIDimension (base for quantitative coordinates with SI units)
+  - SILinearDimension (for linear coordinates with constant increment)
+  - SIMonotonicDimension (for monotonic coordinates with arbitrary spacing)
+
+Factory function Dimension() provides csdmpy-compatible interface.
 """
 
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from ..._c_api cimport rmnlib
+from rmnpy._c_api.octypes cimport (
+    OCArrayCreateWithDoubles,
+    OCArrayGetCount,
+    OCArrayGetDoubles,
+    OCArrayRef,
+    OCDictionaryRef,
+    OCIndex,
+    OCMutableDictionaryRef,
+    OCRelease,
+    OCStringCreateWithCString,
+    OCStringGetCString,
+    OCStringRef,
+    OCTypeRef,
+)
+from rmnpy._c_api.rmnlib cimport (
+    DimensionCopyAsDictionary,
+    DimensionCreateFromDictionary,
+    DimensionGetCount,
+    DimensionGetDescription,
+    DimensionGetLabel,
+    DimensionGetMetadata,
+    DimensionGetType,
+    DimensionRef,
+    DimensionSetDescription,
+    DimensionSetLabel,
+    DimensionSetMetadata,
+    LabeledDimensionCreate,
+    LabeledDimensionGetCoordinateLabels,
+    LabeledDimensionRef,
+    SIDimensionCreate,
+    SIDimensionRef,
+    SILinearDimensionCreate,
+    SILinearDimensionGetCoordinateAtIndex,
+    SILinearDimensionGetIncrement,
+    SILinearDimensionGetStart,
+    SILinearDimensionRef,
+    SIMonotonicDimensionCreate,
+    SIMonotonicDimensionGetCoordinates,
+    SIMonotonicDimensionRef,
+)
+from rmnpy._c_api.sitypes cimport *
+
+# Import OCTypes helper functions
+from rmnpy.helpers.octypes cimport ocdictionary_to_py_dict, py_dict_to_ocdictionary
 
 
-cdef class Dimension:
+# Factory function for creating appropriate dimension type (csdmpy compatibility)
+def Dimension(*args, **kwargs):
     """
-    RMNLib Dimension wrapper with csdmpy-compatible API
+    Factory function to create the appropriate dimension type.
 
-    This class wraps RMNLib's RMNDimension to provide a Python interface
-    compatible with csdmpy.Dimension for seamless user migration.
+    Args:
+        *args: Positional arguments (dict or direct arguments)
+        **kwargs: Keyword arguments
 
-    Attributes:
-        type: The dimension subtype ('linear', 'monotonic', 'labeled')
-        description: Brief description of the dimension
-        application: Application metadata dictionary
-        coordinates: Coordinates along the dimension
-        coords: Alias for coordinates attribute
-        absolute_coordinates: Absolute coordinates along the dimension
-        count: Number of coordinates along the dimension
-        increment: Increment along linear dimensions
-        coordinates_offset: Offset for zero of indexes array
-        origin_offset: Origin offset along the dimension
-        complex_fft: True if coordinates ordered as complex FFT output
-        quantity_name: Quantity name for physical quantities
-        label: Label associated with the dimension
-        labels: List of labels for labeled dimensions
-        period: Period of the dimension
-        axis_label: Formatted string for axis display
-        data_structure: JSON serialized dimension description
+    Returns:
+        Appropriate dimension subclass instance
+
+    Examples:
+        >>> dim = Dimension(type='linear', count=5)
+        >>> type(dim)
+        <class 'SILinearDimension'>
+
+        >>> dim = Dimension(type='labeled', labels=['A', 'B', 'C'])
+        >>> type(dim)
+        <class 'LabeledDimension'>
+
+        # Dictionary-based (csdmpy compatibility)
+        >>> dim = Dimension({'type': 'labeled', 'labels': ['X', 'Y', 'Z']})
+        >>> type(dim)
+        <class 'LabeledDimension'>
     """
+    params = {}
 
-    cdef rmnlib.RMNDimension* _c_dimension
-    cdef dict _application
-    cdef str _description
-    cdef str _label
-    cdef bint _owns_memory
+    # Handle first argument as dict (csdmpy compatibility)
+    if args and isinstance(args[0], dict):
+        params.update(args[0])
+    elif args:
+        # If first arg is not dict, assume it's a direct argument
+        # This would need more logic based on dimension type
+        raise ValueError("Direct positional arguments not yet supported. Use type= keyword argument.")
 
-    def __init__(self, *args, **kwargs):
-        """
-        Create a new Dimension instance.
+    # Add kwargs
+    params.update(kwargs)
 
-        Parameters:
-            *args: Positional arguments (dimension dictionary if provided)
-            **kwargs: Keyword arguments for dimension properties
+    # Get dimension type
+    dim_type = params.get('type', 'linear')
 
-        Example:
-            >>> # From dictionary
-            >>> dim_dict = {
-            ...     "type": "linear",
-            ...     "description": "frequency dimension",
-            ...     "increment": "100 Hz",
-            ...     "count": 256,
-            ...     "coordinates_offset": "0 Hz",
-            ...     "origin_offset": "0 Hz"
-            ... }
-            >>> dim = Dimension(dim_dict)
+    if dim_type == 'labeled':
+        # Extract labels for new API
+        labels = params.get('labels', [])
+        if not labels:
+            raise ValueError("Labeled dimension requires 'labels' parameter")
+        return LabeledDimension(
+            labels=labels,
+            label=params.get('label', ''),
+            description=params.get('description', ''),
+            application=params.get('application')
+        )
+    elif dim_type == 'si' or dim_type == 'SIDimension':
+        return SIDimension(
+            label=params.get('label', ''),
+            description=params.get('description', ''),
+            application=params.get('application'),
+            coordinates_offset=params.get('coordinates_offset', '0'),
+            origin_offset=params.get('origin_offset', '0'),
+            period=params.get('period'),
+            complex_fft=params.get('complex_fft', False)
+        )
+    elif dim_type == 'monotonic':
+        coordinates = params.get('coordinates', [])
+        if not coordinates:
+            raise ValueError("Monotonic dimension requires 'coordinates' parameter")
+        return SIMonotonicDimension(
+            coordinates=coordinates,
+            label=params.get('label', ''),
+            description=params.get('description', ''),
+            application=params.get('application'),
+            coordinates_offset=params.get('coordinates_offset', '0'),
+            origin_offset=params.get('origin_offset', '0'),
+            period=params.get('period'),
+            complex_fft=params.get('complex_fft', False)
+        )
+    elif dim_type == 'linear':
+        return SILinearDimension(
+            count=params.get('count', 10),
+            increment=params.get('increment', '1.0'),
+            label=params.get('label', ''),
+            description=params.get('description', ''),
+            application=params.get('application'),
+            coordinates_offset=params.get('coordinates_offset', '0'),
+            origin_offset=params.get('origin_offset', '0'),
+            period=params.get('period'),
+            complex_fft=params.get('complex_fft', False)
+        )
+    else:
+        raise ValueError(f"Unknown dimension type: {dim_type}")
 
-            >>> # From keyword arguments
-            >>> dim = Dimension(
-            ...     type="linear",
-            ...     description="frequency dimension",
-            ...     increment="100 Hz",
-            ...     count=256
-            ... )
-        """
+cdef class BaseDimension:
+    """
+    Abstract base class for all dimensions.
+
+    Provides common functionality shared across all dimension types:
+    - Memory management for C dimension objects
+    - Common properties: type, description, label, count, application
+    - Utility methods: to_dict(), dict(), is_quantitative(), __repr__()
+    """
+    cdef DimensionRef _c_dimension
+    cdef object _description
+    cdef object _label
+    cdef object _application
+
+    def __cinit__(self):
+        """Initialize C-level attributes."""
         self._c_dimension = NULL
-        self._application = {}
-        self._description = ""
-        self._label = ""
-        self._owns_memory = True
-
-        # Parse input arguments
-        params = {}
-        if args:
-            if len(args) == 1 and isinstance(args[0], dict):
-                params.update(args[0])
-            else:
-                raise ValueError("Single positional argument must be a dictionary")
-        params.update(kwargs)
-
-        # Create dimension based on type
-        dim_type = params.get('type', 'linear').lower()
-        if dim_type == 'linear':
-            self._create_linear_dimension(params)
-        elif dim_type == 'monotonic':
-            self._create_monotonic_dimension(params)
-        elif dim_type == 'labeled':
-            self._create_labeled_dimension(params)
-        else:
-            raise ValueError(f"Unknown dimension type: {dim_type}")
-
-        # Set additional properties
-        self._description = params.get('description', '')
-        self._label = params.get('label', '')
-        if 'application' in params:
-            self._application = dict(params['application'])
+        self._application = None
 
     def __dealloc__(self):
         """Clean up C resources."""
-        if self._c_dimension != NULL and self._owns_memory:
-            rmnlib.RMNDimension_destroy(self._c_dimension)
-
-    @staticmethod
-    cdef Dimension _from_c_dimension(rmnlib.RMNDimension* c_dim, bint owns_memory=False):
-        """Create Python wrapper from existing C dimension."""
-        cdef Dimension dim = Dimension.__new__(Dimension)
-        dim._c_dimension = c_dim
-        dim._owns_memory = owns_memory
-        dim._application = {}
-        dim._description = ""
-        dim._label = ""
-        return dim
-
-    cdef void _create_linear_dimension(self, dict params):
-        """Create linear dimension from parameters."""
-        cdef int count = params.get('count', 1)
-        cdef double increment_val = 1.0
-        cdef double offset_val = 0.0
-        cdef double origin_val = 0.0
-
-        # Parse increment (simplified - would need full unit parsing)
-        increment_str = params.get('increment', '1.0')
-        if isinstance(increment_str, str):
-            # Extract numeric part (simplified parsing)
-            import re
-            match = re.match(r'([0-9.-]+)', increment_str)
-            if match:
-                increment_val = float(match.group(1))
-
-        # Parse offsets similarly
-        offset_str = params.get('coordinates_offset', '0.0')
-        if isinstance(offset_str, str):
-            match = re.match(r'([0-9.-]+)', offset_str)
-            if match:
-                offset_val = float(match.group(1))
-
-        origin_str = params.get('origin_offset', '0.0')
-        if isinstance(origin_str, str):
-            match = re.match(r'([0-9.-]+)', origin_str)
-            if match:
-                origin_val = float(match.group(1))
-
-        # Create C dimension
-        self._c_dimension = rmnlib.RMNDimension_createLinear(
-            count, increment_val, offset_val, origin_val
-        )
-
-        # Set complex_fft if specified
-        if params.get('complex_fft', False):
-            rmnlib.RMNDimension_setComplexFFT(self._c_dimension, True)
-
-    cdef void _create_monotonic_dimension(self, dict params):
-        """Create monotonic dimension from parameters."""
-        coordinates = params.get('coordinates', [])
-        if not coordinates:
-            raise ValueError("Monotonic dimension requires coordinates")
-
-        # Convert coordinates to numpy array
-        coords_array = np.asarray(coordinates, dtype=np.float64)
-        cdef int count = len(coords_array)
-        cdef double[:] coords_view = coords_array
-
-        self._c_dimension = rmnlib.RMNDimension_createMonotonic(
-            count, &coords_view[0]
-        )
-
-    cdef void _create_labeled_dimension(self, dict params):
-        """Create labeled dimension from parameters."""
-        labels = params.get('labels', [])
-        if not labels:
-            raise ValueError("Labeled dimension requires labels")
-
-        cdef int count = len(labels)
-        # Convert labels to C strings (simplified)
-        label_strings = [str(label).encode('utf-8') for label in labels]
-
-        # Create C dimension with labels
-        self._c_dimension = rmnlib.RMNDimension_createLabeled(count)
-        for i, label_bytes in enumerate(label_strings):
-            rmnlib.RMNDimension_setLabel(self._c_dimension, i, label_bytes)
+        if self._c_dimension != NULL:
+            OCRelease(self._c_dimension)
 
     @property
-    def type(self) -> str:
-        """The dimension subtype ('linear', 'monotonic', 'labeled')."""
-        if self._c_dimension == NULL:
-            return "linear"
-
-        cdef int dim_type = rmnlib.RMNDimension_getType(self._c_dimension)
-        if dim_type == 0:  # LINEAR
-            return "linear"
-        elif dim_type == 1:  # MONOTONIC
-            return "monotonic"
-        elif dim_type == 2:  # LABELED
-            return "labeled"
-        else:
-            return "unknown"
+    def type(self):
+        """Get the type of the dimension."""
+        if self._c_dimension != NULL:
+            cdef OCStringRef type_ref = DimensionGetType(self._c_dimension)
+            if type_ref != NULL:
+                return OCStringGetCString(type_ref).decode('utf-8')
+        # Fallback for subclasses that override this property
+        raise NotImplementedError("Subclasses must implement type property")
 
     @property
-    def description(self) -> str:
-        """Brief description of the dimension object."""
-        return self._description
+    def description(self):
+        """Get the description of the dimension."""
+        if self._c_dimension != NULL:
+            cdef OCStringRef desc_ref = DimensionGetDescription(self._c_dimension)
+            if desc_ref != NULL:
+                return OCStringGetCString(desc_ref).decode('utf-8')
+        return self._description or ''
 
     @description.setter
-    def description(self, value: str):
-        """Set dimension description."""
+    def description(self, value):
+        """Set the description of the dimension."""
         if not isinstance(value, str):
             raise TypeError("Description must be a string")
         self._description = value
 
-    @property
-    def application(self) -> Optional[Dict[str, Any]]:
-        """Application metadata dictionary of the dimension object."""
-        return self._application if self._application else None
-
-    @application.setter
-    def application(self, value: Dict[str, Any]):
-        """Set application metadata dictionary."""
-        if not isinstance(value, dict):
-            raise TypeError("Application must be a dictionary")
-        self._application = dict(value)
-
-    @property
-    def coordinates(self) -> np.ndarray:
-        """Coordinates along the dimension."""
-        if self._c_dimension == NULL:
-            return np.array([])
-
-        cdef int count = rmnlib.RMNDimension_getCount(self._c_dimension)
-        if self.type == "labeled":
-            # Return labels as string array
-            labels = []
-            for i in range(count):
-                label_ptr = rmnlib.RMNDimension_getLabel(self._c_dimension, i)
-                if label_ptr != NULL:
-                    labels.append(label_ptr.decode('utf-8'))
-                else:
-                    labels.append("")
-            return np.array(labels)
-        else:
-            # Return numeric coordinates
-            coords = np.zeros(count, dtype=np.float64)
-            cdef double[:] coords_view = coords
-            rmnlib.RMNDimension_getCoordinates(self._c_dimension, &coords_view[0])
-
-            # Handle complex FFT ordering if needed
-            if (self.type == "linear" and
-                rmnlib.RMNDimension_isComplexFFT(self._c_dimension)):
-                # Reorder for complex FFT
-                coords = np.fft.fftshift(coords)
-
-            return coords
-
-    @property
-    def coords(self) -> np.ndarray:
-        """Alias for the coordinates attribute."""
-        return self.coordinates
-
-    @property
-    def absolute_coordinates(self) -> np.ndarray:
-        """Absolute coordinates along the dimension."""
-        if self.type == "labeled":
-            raise AttributeError("absolute_coordinates not valid for labeled dimensions")
-
-        coords = self.coordinates
-        origin = self.origin_offset
-        if origin != 0.0:
-            coords = coords + origin
-        return coords
-
-    @property
-    def count(self) -> int:
-        """Number of coordinates along the dimension."""
-        if self._c_dimension == NULL:
-            return 0
-        return rmnlib.RMNDimension_getCount(self._c_dimension)
-
-    @count.setter
-    def count(self, value: int):
-        """Set number of coordinates."""
-        if not isinstance(value, int) or value < 1:
-            raise TypeError("Count must be a positive integer")
-
+        # If we have a C dimension object, update it too
         if self._c_dimension != NULL:
-            rmnlib.RMNDimension_setCount(self._c_dimension, value)
+            cdef OCStringRef desc_ref = OCStringCreateWithCString(value.encode('utf-8'))
+            cdef OCStringRef error = NULL
+            try:
+                if not DimensionSetDescription(self._c_dimension, desc_ref, &error):
+                    if error != NULL:
+                        error_msg = OCStringGetCString(error).decode('utf-8')
+                        raise ValueError(f"Failed to set description: {error_msg}")
+                    else:
+                        raise ValueError("Failed to set description")
+            finally:
+                if desc_ref != NULL:
+                    OCRelease(desc_ref)
+                if error != NULL:
+                    OCRelease(error)
 
     @property
-    def increment(self) -> float:
-        """Increment along a linear dimension."""
-        if self.type != "linear":
-            raise AttributeError("increment only valid for linear dimensions")
-
-        if self._c_dimension == NULL:
-            return 1.0
-        return rmnlib.RMNDimension_getIncrement(self._c_dimension)
-
-    @increment.setter
-    def increment(self, value: Union[str, float]):
-        """Set increment for linear dimension."""
-        if self.type != "linear":
-            raise AttributeError("increment only valid for linear dimensions")
-
-        # Parse numeric value from string if needed
-        if isinstance(value, str):
-            import re
-            match = re.match(r'([0-9.-]+)', value)
-            if match:
-                numeric_value = float(match.group(1))
-            else:
-                raise ValueError(f"Cannot parse increment from: {value}")
-        else:
-            numeric_value = float(value)
-
+    def label(self):
+        """Get the label of the dimension."""
         if self._c_dimension != NULL:
-            rmnlib.RMNDimension_setIncrement(self._c_dimension, numeric_value)
-
-    @property
-    def coordinates_offset(self) -> float:
-        """Offset corresponding to zero of indexes array."""
-        if self.type == "labeled":
-            raise AttributeError("coordinates_offset not valid for labeled dimensions")
-
-        if self._c_dimension == NULL:
-            return 0.0
-        return rmnlib.RMNDimension_getCoordinatesOffset(self._c_dimension)
-
-    @coordinates_offset.setter
-    def coordinates_offset(self, value: Union[str, float]):
-        """Set coordinates offset."""
-        if self.type == "labeled":
-            raise AttributeError("coordinates_offset not valid for labeled dimensions")
-
-        # Parse numeric value from string if needed
-        if isinstance(value, str):
-            import re
-            match = re.match(r'([0-9.-]+)', value)
-            if match:
-                numeric_value = float(match.group(1))
-            else:
-                raise ValueError(f"Cannot parse offset from: {value}")
-        else:
-            numeric_value = float(value)
-
-        if self._c_dimension != NULL:
-            rmnlib.RMNDimension_setCoordinatesOffset(self._c_dimension, numeric_value)
-
-    @property
-    def origin_offset(self) -> float:
-        """Origin offset along the dimension."""
-        if self.type == "labeled":
-            raise AttributeError("origin_offset not valid for labeled dimensions")
-
-        if self._c_dimension == NULL:
-            return 0.0
-        return rmnlib.RMNDimension_getOriginOffset(self._c_dimension)
-
-    @origin_offset.setter
-    def origin_offset(self, value: Union[str, float]):
-        """Set origin offset."""
-        if self.type == "labeled":
-            raise AttributeError("origin_offset not valid for labeled dimensions")
-
-        # Parse numeric value from string if needed
-        if isinstance(value, str):
-            import re
-            match = re.match(r'([0-9.-]+)', value)
-            if match:
-                numeric_value = float(match.group(1))
-            else:
-                raise ValueError(f"Cannot parse offset from: {value}")
-        else:
-            numeric_value = float(value)
-
-        if self._c_dimension != NULL:
-            rmnlib.RMNDimension_setOriginOffset(self._c_dimension, numeric_value)
-
-    @property
-    def complex_fft(self) -> bool:
-        """True if coordinates ordered as complex FFT output."""
-        if self.type != "linear":
-            raise AttributeError("complex_fft only valid for linear dimensions")
-
-        if self._c_dimension == NULL:
-            return False
-        return rmnlib.RMNDimension_isComplexFFT(self._c_dimension)
-
-    @complex_fft.setter
-    def complex_fft(self, value: bool):
-        """Set complex FFT ordering flag."""
-        if self.type != "linear":
-            raise AttributeError("complex_fft only valid for linear dimensions")
-
-        if not isinstance(value, bool):
-            raise TypeError("complex_fft must be a boolean")
-
-        if self._c_dimension != NULL:
-            rmnlib.RMNDimension_setComplexFFT(self._c_dimension, value)
-
-    @property
-    def quantity_name(self) -> str:
-        """Quantity name for physical quantities specifying dimension."""
-        if self.type == "labeled":
-            raise AttributeError("quantity_name not valid for labeled dimensions")
-
-        # This would typically come from unit analysis
-        # For now return a placeholder
-        return "frequency"  # or appropriate quantity based on units
-
-    @property
-    def label(self) -> str:
-        """Label associated with the dimension."""
-        return self._label
+            cdef OCStringRef label_ref = DimensionGetLabel(self._c_dimension)
+            if label_ref != NULL:
+                return OCStringGetCString(label_ref).decode('utf-8')
+        return self._label or ''
 
     @label.setter
-    def label(self, value: str):
-        """Set dimension label."""
+    def label(self, value):
+        """Set the label of the dimension."""
         if not isinstance(value, str):
             raise TypeError("Label must be a string")
         self._label = value
 
-    @property
-    def labels(self) -> np.ndarray:
-        """Ordered list of labels along labeled dimension."""
-        if self.type != "labeled":
-            raise AttributeError("labels only valid for labeled dimensions")
-        return self.coordinates  # coordinates returns labels for labeled dims
+        # If we have a C dimension object, update it too
+        if self._c_dimension != NULL:
+            cdef OCStringRef label_ref = OCStringCreateWithCString(value.encode('utf-8'))
+            cdef OCStringRef error = NULL
+            try:
+                if not DimensionSetLabel(self._c_dimension, label_ref, &error):
+                    if error != NULL:
+                        error_msg = OCStringGetCString(error).decode('utf-8')
+                        raise ValueError(f"Failed to set label: {error_msg}")
+                    else:
+                        raise ValueError("Failed to set label")
+            finally:
+                if label_ref != NULL:
+                    OCRelease(label_ref)
+                if error != NULL:
+                    OCRelease(error)
 
     @property
-    def period(self) -> float:
-        """Period of the dimension."""
-        if self.type == "labeled":
-            raise AttributeError("period not valid for labeled dimensions")
+    def count(self):
+        """Get the count of the dimension."""
+        if self._c_dimension != NULL:
+            return DimensionGetCount(self._c_dimension)
+        return 0
 
-        if self._c_dimension == NULL:
-            return float('inf')
+    @property
+    def application(self):
+        """Get application metadata."""
+        if self._c_dimension != NULL:
+            cdef OCMutableDictionaryRef metadata = DimensionGetMetadata(self._c_dimension)
+            if metadata != NULL:
+                py_dict = ocdictionary_to_py_dict(<OCDictionaryRef>metadata)
+                return py_dict
+            return {}
+        return self._application
 
-        period_val = rmnlib.RMNDimension_getPeriod(self._c_dimension)
-        return period_val if period_val > 0 else float('inf')
-
-    @period.setter
-    def period(self, value: Union[str, float]):
-        """Set dimension period."""
-        if self.type == "labeled":
-            raise AttributeError("period not valid for labeled dimensions")
-
-        # Handle special infinity cases
-        if isinstance(value, str):
-            value_lower = value.lower()
-            if any(inf_str in value_lower for inf_str in ['inf', '∞', '1/0']):
-                numeric_value = float('inf')
-            else:
-                # Parse numeric value
-                import re
-                match = re.match(r'([0-9.-]+)', value)
-                if match:
-                    numeric_value = float(match.group(1))
-                else:
-                    raise ValueError(f"Cannot parse period from: {value}")
-        else:
-            numeric_value = float(value)
+    @application.setter
+    def application(self, value):
+        """Set application metadata."""
+        if value is not None and not isinstance(value, dict):
+            raise TypeError("Application metadata must be a dictionary")
 
         if self._c_dimension != NULL:
-            # Use -1 to represent infinity in C
-            c_period = -1.0 if numeric_value == float('inf') else numeric_value
-            rmnlib.RMNDimension_setPeriod(self._c_dimension, c_period)
+            cdef OCDictionaryRef dict_ref = NULL
+            cdef OCStringRef error = NULL
 
-    @property
-    def axis_label(self) -> str:
-        """Formatted string for displaying label along dimension axis."""
-        if self.type == "labeled":
-            return self.label if self.label else "unlabeled"
+            if value is not None:
+                dict_ref = py_dict_to_ocdictionary(value)
 
-        # For quantitative dimensions, return "label / (unit)" format
-        label_part = self.label if self.label else self.quantity_name
-        # Would need proper unit formatting here
-        return f"{label_part} / (Hz)"  # placeholder unit
+            if DimensionSetMetadata(self._c_dimension, dict_ref, &error):
+                if dict_ref != NULL:
+                    OCRelease(<OCTypeRef>dict_ref)
+            else:
+                if dict_ref != NULL:
+                    OCRelease(<OCTypeRef>dict_ref)
+                if error != NULL:
+                    error_msg = OCStringGetCString(error).decode('utf-8')
+                    OCRelease(<OCTypeRef>error)
+                    raise RuntimeError(f"Failed to set metadata: {error_msg}")
+                else:
+                    raise RuntimeError("Failed to set metadata")
+        else:
+            self._application = value
 
-    @property
-    def data_structure(self) -> str:
-        """JSON serialized string describing the Dimension instance."""
-        import json
+    def is_quantitative(self):
+        """Check if dimension is quantitative (not labeled)."""
+        return self.type != "labeled"
 
-        data = {
-            "type": self.type,
-            "count": self.count
-        }
+    def to_dict(self):
+        """Convert to dictionary."""
+        # Use C API if we have a real dimension object
+        if self._c_dimension != NULL:
+            cdef OCDictionaryRef dict_ref = DimensionCopyAsDictionary(self._c_dimension)
+            if dict_ref != NULL:
+                try:
+                    # Convert C dictionary to Python dict using helper
+                    return ocdictionary_to_py_dict(<uint64_t>dict_ref)
+                finally:
+                    OCRelease(dict_ref)
 
-        if self.description:
-            data["description"] = self.description
-        if self.label:
-            data["label"] = self.label
-        if self._application:
-            data["application"] = self._application
-
-        if self.type == "linear":
-            data["increment"] = f"{self.increment} Hz"  # would format with actual units
-            data["coordinates_offset"] = f"{self.coordinates_offset} Hz"
-            data["origin_offset"] = f"{self.origin_offset} Hz"
-            data["complex_fft"] = self.complex_fft
-            data["period"] = "∞ Hz" if self.period == float('inf') else f"{self.period} Hz"
-        elif self.type == "monotonic":
-            data["coordinates_offset"] = f"{self.coordinates_offset} Hz"
-            data["origin_offset"] = f"{self.origin_offset} Hz"
-        elif self.type == "labeled":
-            data["labels"] = self.labels.tolist()
-
-        return json.dumps(data, indent=2)
-
-    def to(self, unit: str = '', equivalencies=None, update_attrs: bool = False):
-        """
-        Convert coordinates to specified unit.
-
-        Parameters:
-            unit: Target unit string
-            equivalencies: Unit equivalencies (not implemented)
-            update_attrs: Update attribute units if equivalencies is None
-
-        Raises:
-            AttributeError: For labeled dimensions
-            NotImplementedError: Unit conversion not yet implemented
-        """
-        if self.type == "labeled":
-            raise AttributeError("Unit conversion not valid for labeled dimensions")
-
-        # Unit conversion would be implemented here using SITypes
-        raise NotImplementedError("Unit conversion not yet implemented")
-
-    def dict(self) -> Dict[str, Any]:
-        """Return Dimension object as a python dictionary."""
+        # Fallback: manual dictionary creation (for placeholder phase)
         result = {
-            "type": self.type,
-            "count": self.count
+            'type': self.type,
+            'count': self.count,
         }
-
         if self.description:
-            result["description"] = self.description
+            result['description'] = self.description
         if self.label:
-            result["label"] = self.label
-        if self._application:
-            result["application"] = self._application
-
-        if self.type == "linear":
-            result["increment"] = f"{self.increment} Hz"  # would use actual units
-            result["coordinates_offset"] = f"{self.coordinates_offset} Hz"
-            result["origin_offset"] = f"{self.origin_offset} Hz"
-            if self.complex_fft:
-                result["complex_fft"] = True
-            if self.period != float('inf'):
-                result["period"] = f"{self.period} Hz"
-        elif self.type == "monotonic":
-            result["coordinates_offset"] = f"{self.coordinates_offset} Hz"
-            result["origin_offset"] = f"{self.origin_offset} Hz"
-            if self.period != float('inf'):
-                result["period"] = f"{self.period} Hz"
-        elif self.type == "labeled":
-            result["labels"] = self.labels.tolist()
-
+            result['label'] = self.label
         return result
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Alias to the dict() method."""
-        return self.dict()
+    def dict(self):
+        """Alias for to_dict() method (csdmpy compatibility)."""
+        return self.to_dict()
 
-    def is_quantitative(self) -> bool:
-        """Return True if the dimension is quantitative (linear or monotonic)."""
-        return self.type in ("linear", "monotonic")
+    def __repr__(self):
+        """String representation."""
+        return f"{self.__class__.__name__}(type='{self.type}', count={self.count})"
+
+cdef class LabeledDimension(BaseDimension):
+    """
+    Dimension with discrete labels (non-quantitative).
+
+    Used for dimensions that represent discrete categories or labels
+    rather than continuous physical quantities.
+
+    Examples:
+        >>> dim = LabeledDimension(['A', 'B', 'C'])
+        >>> dim.coordinates
+        array(['A', 'B', 'C'], dtype='<U1')
+        >>> dim.is_quantitative()
+        False
+        >>> dim.count
+        3
+    """
+    cdef LabeledDimensionRef _labeled_dimension
+    cdef object _input_labels
+
+    def __init__(self, labels, label="", description="", application=None, **kwargs):
+        """
+        Initialize labeled dimension.
+
+        Args:
+            labels (list): List of string labels for coordinates
+            label (str, optional): Short label for the dimension
+            description (str, optional): Description of the dimension
+            application (dict, optional): Application metadata
+            **kwargs: Additional keyword arguments (for compatibility)
+
+        Examples:
+            # Basic labeled dimension
+            >>> dim = LabeledDimension(['A', 'B', 'C'])
+            >>> dim.coordinates
+            array(['A', 'B', 'C'], dtype='<U1')
+
+            # With metadata
+            >>> dim = LabeledDimension(
+            ...     ['low', 'medium', 'high'],
+            ...     label='intensity',
+            ...     description='Intensity levels'
+            ... )
+
+            # With application metadata
+            >>> dim = LabeledDimension(
+            ...     ['red', 'green', 'blue'],
+            ...     label='color',
+            ...     description='RGB color channels',
+            ...     application={'encoding': 'sRGB'}
+            ... )
+        """
+        # Validate labels
+        if not labels:
+            raise ValueError("Labeled dimension requires labels")
+
+        self._input_labels = labels
+        self._description = description
+        self._label = label
+
+        # Set application metadata if provided
+        if application is not None:
+            self._application = application
+
+        # Create C dimension using the C API
+        cdef OCArrayRef labels_array = NULL
+        cdef OCStringRef label_ref = NULL
+        cdef OCStringRef desc_ref = NULL
+        cdef OCStringRef error = NULL
+
+        try:
+            # Convert Python string labels to OCStringRef array
+            # TODO: Create proper OCArray of OCStringRef objects from labels
+            # For now, labels_array will be NULL, which should create an empty dimension
+
+            # Prepare label and description
+            if self._label:
+                label_ref = OCStringCreateWithCString(self._label.encode('utf-8'))
+            if self._description:
+                desc_ref = OCStringCreateWithCString(self._description.encode('utf-8'))
+
+            # Create the labeled dimension using the .pxd signature
+            self._labeled_dimension = LabeledDimensionCreate(
+                label_ref, desc_ref, labels_array, &error)
+
+            if self._labeled_dimension == NULL:
+                if error != NULL:
+                    error_msg = OCStringGetCString(error).decode('utf-8')
+                    raise RuntimeError(f"Failed to create labeled dimension: {error_msg}")
+                else:
+                    raise RuntimeError("Failed to create labeled dimension")
+
+            # Cast to base dimension reference
+            self._c_dimension = <DimensionRef>self._labeled_dimension
+
+        finally:
+            if label_ref != NULL:
+                OCRelease(<OCTypeRef>label_ref)
+            if desc_ref != NULL:
+                OCRelease(<OCTypeRef>desc_ref)
+            if labels_array != NULL:
+                OCRelease(<OCTypeRef>labels_array)
+            if error != NULL:
+                OCRelease(<OCTypeRef>error)
+
+    @property
+    def type(self):
+        """Get the type of the dimension."""
+        return 'labeled'
+
+    @property
+    def coordinates(self) -> np.ndarray:
+        """Get coordinates (labels) for this dimension."""
+        return np.array(self._input_labels)
+
+    @property
+    def coords(self) -> np.ndarray:
+        """Alias for coordinates."""
+        return self.coordinates
+
+    @property
+    def labels(self):
+        """Get labels for labeled dimensions."""
+        return self.coordinates
+
+    @property
+    def count(self):
+        """Get the count of the dimension."""
+        return len(self._input_labels)
 
     def copy(self):
-        """Return a copy of the Dimension object."""
-        # Create new dimension with same parameters
-        if self.type == "labeled":
-            params = {
-                "type": self.type,
-                "labels": self.labels.tolist()
-            }
-        else:
-            params = {
-                "type": self.type,
-                "count": self.count
-            }
-            if self.type == "linear":
-                params.update({
-                    "increment": self.increment,
-                    "coordinates_offset": self.coordinates_offset,
-                    "origin_offset": self.origin_offset,
-                    "complex_fft": self.complex_fft
-                })
-                if self.period != float('inf'):
-                    params["period"] = self.period
-            elif self.type == "monotonic":
-                params.update({
-                    "coordinates": self.coordinates,
-                    "coordinates_offset": self.coordinates_offset,
-                    "origin_offset": self.origin_offset
-                })
-                if self.period != float('inf'):
-                    params["period"] = self.period
+        """Create a copy of the dimension."""
+        return LabeledDimension(
+            labels=list(self._input_labels),
+            label=self.label,
+            description=self.description,
+            application=self.application
+        )
 
-        # Add common properties
-        if self.description:
-            params["description"] = self.description
-        if self.label:
-            params["label"] = self.label
-        if self._application:
-            params["application"] = self._application
+    def copy_metadata(self, obj):
+        """
+        Copy LabeledDimension metadata.
 
-        return Dimension(params)
+        Args:
+            obj: Object to copy metadata from
+        """
+        if hasattr(obj, 'label'):
+            self.label = obj.label
+        if hasattr(obj, 'description'):
+            self.description = obj.description
+        if hasattr(obj, 'application'):
+            self.application = obj.application
 
-    def reciprocal_coordinates(self) -> np.ndarray:
-        """Return reciprocal coordinates assuming Nyquist-Shannon theorem."""
-        if self.type == "labeled":
-            raise AttributeError("reciprocal_coordinates not valid for labeled dimensions")
+cdef class SIDimension(BaseDimension):
+    """
+    Base class for quantitative dimensions with SI units.
 
+    Provides common functionality for quantitative dimensions including
+    coordinate offsets, periods, and unit-aware operations.
+    """
+    cdef SIDimensionRef _si_dimension
+    cdef object _coordinates_offset
+    cdef object _origin_offset
+    cdef object _period
+    cdef object _complex_fft
+
+    def __init__(self, label="", description="", application=None,
+                 coordinates_offset='0', origin_offset='0', period=None,
+                 complex_fft=False, **kwargs):
+        """
+        Initialize SI dimension.
+
+        Args:
+            label (str, optional): Short label for the dimension
+            description (str, optional): Description of the dimension
+            application (dict, optional): Application metadata
+            coordinates_offset (str, optional): Coordinates offset value
+            origin_offset (str, optional): Origin offset value
+            period (str, optional): Period value for periodic dimensions
+            complex_fft (bool, optional): Complex FFT flag
+            **kwargs: Additional keyword arguments (for compatibility)
+        """
+        # Set quantitative properties
+        self._coordinates_offset = coordinates_offset
+        self._origin_offset = origin_offset
+        self._period = period
+        self._complex_fft = complex_fft
+        self._description = description
+        self._label = label
+
+        # Set application metadata if provided
+        if application is not None:
+            self._application = application
+
+        # Create C dimension using the C API
+        cdef OCStringRef label_ref = NULL
+        cdef OCStringRef desc_ref = NULL
+        cdef OCMutableDictionaryRef metadata_ref = NULL
+        cdef OCStringRef quantity_name_ref = NULL
+        cdef SIScalarRef offset_ref = NULL
+        cdef SIScalarRef origin_ref = NULL
+        cdef SIScalarRef period_ref = NULL
+        cdef OCStringRef error = NULL
+
+        try:
+            # Prepare label and description
+            if self._label:
+                label_ref = OCStringCreateWithCString(self._label.encode('utf-8'))
+            if self._description:
+                desc_ref = OCStringCreateWithCString(self._description.encode('utf-8'))
+
+            # TODO: Handle metadata, quantity_name, offset, origin, period parameters
+            # For now using NULL values (will be handled by SIDimensionCreate defaults)
+
+            # Create the SI dimension using the C API
+            self._si_dimension = SIDimensionCreate(
+                label_ref, desc_ref, metadata_ref, quantity_name_ref,
+                offset_ref, origin_ref, period_ref, False, 0, &error)
+
+            if self._si_dimension == NULL:
+                if error != NULL:
+                    error_msg = OCStringGetCString(error).decode('utf-8')
+                    raise RuntimeError(f"Failed to create SI dimension: {error_msg}")
+                else:
+                    raise RuntimeError("Failed to create SI dimension")
+
+            # Cast to base dimension reference
+            self._c_dimension = <DimensionRef>self._si_dimension
+
+        finally:
+            if label_ref != NULL:
+                OCRelease(<OCTypeRef>label_ref)
+            if desc_ref != NULL:
+                OCRelease(<OCTypeRef>desc_ref)
+            if error != NULL:
+                OCRelease(<OCTypeRef>error)
+
+    @property
+    def type(self):
+        """Get the type of the dimension."""
+        return 'si'
+
+    @property
+    def count(self):
+        """Get the count of the dimension."""
+        # SIDimension is abstract - subclasses must implement this
+        raise NotImplementedError("SIDimension is abstract - use SILinearDimension or SIMonotonicDimension")
+
+    def copy(self):
+        """Create a copy of the dimension."""
+        return SIDimension(
+            label=self.label,
+            description=self.description,
+            application=self.application,
+            coordinates_offset=str(self._coordinates_offset),
+            origin_offset=str(self._origin_offset),
+            period=self._period,
+            complex_fft=self._complex_fft
+        )
+
+    def copy_metadata(self, obj):
+        """
+        Copy SIDimension metadata.
+
+        Args:
+            obj: Object to copy metadata from
+        """
+        if hasattr(obj, 'label'):
+            self.label = obj.label
+        if hasattr(obj, 'description'):
+            self.description = obj.description
+        if hasattr(obj, 'application'):
+            self.application = obj.application
+        if hasattr(obj, 'coordinates_offset'):
+            self.coordinates_offset = obj.coordinates_offset
+        if hasattr(obj, 'origin_offset'):
+            self.origin_offset = obj.origin_offset
+        if hasattr(obj, 'period'):
+            self.period = obj.period
+        if hasattr(obj, 'complex_fft'):
+            self.complex_fft = obj.complex_fft
+
+    cdef object _parse_numeric_value(self, value):
+        """Parse numeric value from string like '100 Hz' or return float."""
+        if value is None:
+            return 0.0
+        if isinstance(value, str):
+            # Check for infinity variants
+            if "infinity" in value.lower() or "inf" in value.lower() or "∞" in value:
+                return float('inf')
+            import re
+            match = re.search(r'[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?', value)
+            if match:
+                return float(match.group())
+            return 0.0
+        return float(value)
+
+    @property
+    def coordinates_offset(self):
+        """Get coordinates offset."""
+        return self._parse_numeric_value(self._coordinates_offset)
+
+    @coordinates_offset.setter
+    def coordinates_offset(self, value):
+        """Set coordinates offset."""
+        self._coordinates_offset = value
+
+    @property
+    def origin_offset(self):
+        """Get origin offset."""
+        return self._parse_numeric_value(self._origin_offset)
+
+    @origin_offset.setter
+    def origin_offset(self, value):
+        """Set origin offset."""
+        self._origin_offset = value
+
+    @property
+    def period(self):
+        """Get the period."""
+        if self._period is None:
+            return float('inf')
+        return self._parse_numeric_value(self._period)
+
+    @period.setter
+    def period(self, value):
+        """Set the period."""
+        self._period = value
+
+    @property
+    def complex_fft(self):
+        """Get complex FFT flag."""
+        return self._complex_fft
+
+    @complex_fft.setter
+    def complex_fft(self, value):
+        """Set complex FFT flag."""
+        self._complex_fft = bool(value)
+
+    @property
+    def absolute_coordinates(self) -> np.ndarray:
+        """Get absolute coordinates along the dimension."""
         coords = self.coordinates
-        # Simple reciprocal calculation (would be more sophisticated)
-        if len(coords) > 1:
-            spacing = coords[1] - coords[0] if self.type == "linear" else np.mean(np.diff(coords))
-            if spacing != 0:
-                return 1.0 / (len(coords) * spacing) * np.arange(len(coords))
-        return np.array([])
+        return coords + self.origin_offset
 
-    def reciprocal_increment(self) -> float:
-        """Return reciprocal increment assuming Nyquist-Shannon theorem."""
-        if self.type != "linear":
-            raise AttributeError("reciprocal_increment only valid for linear dimensions")
+    @property
+    def axis_label(self):
+        """Get formatted axis label."""
+        if self.label:
+            return self.label
+        elif hasattr(self, 'quantity_name') and self.quantity_name:
+            return f"{self.quantity_name} / arbitrary unit"
+        else:
+            return f"{self.type} / arbitrary unit"
 
-        if self.increment != 0:
-            return 1.0 / (self.count * self.increment)
-        return 0.0
+    @property
+    def quantity_name(self):
+        """Get quantity name for physical quantities."""
+        return "frequency"  # Default placeholder
+
+    def reciprocal_coordinates(self):
+        """Get reciprocal coordinates."""
+        coords = self.coordinates
+        if len(coords) == 0:
+            return np.array([])
+        # Handle zero coordinates to avoid division by zero warning
+        with np.errstate(divide='ignore', invalid='ignore'):
+            result = 1.0 / coords
+        return result
+
+cdef class SILinearDimension(SIDimension):
+    """
+    Linear dimension with constant increment.
+
+    Used for dimensions with evenly spaced coordinates, such as
+    time series or frequency sweeps with constant spacing.
+
+    Examples:
+        >>> dim = SILinearDimension({'count': 5, 'increment': '2.0'})
+        >>> dim.coordinates
+        array([0., 2., 4., 6., 8.])
+        >>> dim.increment
+        2.0
+    """
+    cdef SILinearDimensionRef _linear_dimension
+    cdef object _increment
+    cdef object _count
+
+    def __init__(self, count=10, increment='1.0', label="", description="",
+                 application=None, coordinates_offset='0', origin_offset='0',
+                 period=None, complex_fft=False, **kwargs):
+        """
+        Initialize linear dimension.
+
+        Args:
+            count (int, optional): Number of coordinates
+            increment (str or float, optional): Increment between coordinates
+            label (str, optional): Short label for the dimension
+            description (str, optional): Description of the dimension
+            application (dict, optional): Application metadata
+            coordinates_offset (str, optional): Coordinates offset value
+            origin_offset (str, optional): Origin offset value
+            period (str, optional): Period value for periodic dimensions
+            complex_fft (bool, optional): Complex FFT flag
+            **kwargs: Additional keyword arguments (for compatibility)
+        """
+        # Set linear-specific properties
+        self._increment = increment
+        self._count = count
+
+        # Call parent init with SI dimension properties
+        super().__init__(
+            label=label,
+            description=description,
+            application=application,
+            coordinates_offset=coordinates_offset,
+            origin_offset=origin_offset,
+            period=period,
+            complex_fft=complex_fft,
+            **kwargs
+        )
+
+        # Create C dimension using the C API
+        cdef OCStringRef error = NULL
+
+        try:
+            # Get numeric values for C API
+            count = self._count
+            increment_val = self.increment
+            start = 0.0  # Could be made configurable
+
+            # Create the SI linear dimension
+            self._linear_dimension = SILinearDimensionCreate(count, start, increment_val, &error)
+            if self._linear_dimension == NULL:
+                if error != NULL:
+                    error_msg = OCStringGetCString(error).decode('utf-8')
+                    raise RuntimeError(f"Failed to create linear dimension: {error_msg}")
+                else:
+                    raise RuntimeError("Failed to create linear dimension")
+
+            # Cast to base dimension reference
+            self._c_dimension = <DimensionRef>self._linear_dimension
+
+        finally:
+            if error != NULL:
+                OCRelease(<OCTypeRef>error)
+
+    @property
+    def type(self):
+        """Get the type of the dimension."""
+        return 'linear'
+
+    @property
+    def increment(self):
+        """Get the increment of the dimension."""
+        # Parse the numeric value from strings like "100 Hz" or "5.0 G"
+        if isinstance(self._increment, str):
+            import re
+            match = re.search(r'[-+]?(?:\d+\.?\d*|\.\d+)', self._increment)
+            if match:
+                return float(match.group())
+        return float(self._increment)
+
+    @increment.setter
+    def increment(self, value):
+        """Set the increment of the dimension."""
+        self._increment = value
+
+    @property
+    def count(self):
+        """Get the count of the dimension."""
+        return self._count
+
+    @count.setter
+    def count(self, value):
+        """Set the count of the dimension."""
+        if not isinstance(value, int) or value <= 0:
+            raise TypeError("Count must be a positive integer")
+        self._count = value
+
+    @property
+    def coordinates(self) -> np.ndarray:
+        """Get linear coordinates."""
+        # Linear dimensions generate coordinates based on count and increment
+        # rather than storing them directly
+        increment_val = self.increment
+        return np.arange(self._count, dtype=np.float64) * increment_val
+
+    @property
+    def coords(self) -> np.ndarray:
+        """Alias for coordinates."""
+        return self.coordinates
+
+    def reciprocal_increment(self):
+        """Get reciprocal increment."""
+        inc = self.increment
+        if inc == 0.0:
+            return float('inf')
+        return 1.0 / inc
+
+    def copy(self):
+        """Create a copy of the dimension."""
+        return SILinearDimension(
+            count=self._count,
+            increment=str(self._increment),
+            label=self.label,
+            description=self.description,
+            application=self.application,
+            coordinates_offset=str(self._coordinates_offset),
+            origin_offset=str(self._origin_offset),
+            period=self._period,
+            complex_fft=self._complex_fft
+        )
+
+    def copy_metadata(self, obj):
+        """
+        Copy SILinearDimension metadata.
+
+        Args:
+            obj: Object to copy metadata from
+        """
+        if hasattr(obj, 'label'):
+            self.label = obj.label
+        if hasattr(obj, 'description'):
+            self.description = obj.description
+        if hasattr(obj, 'application'):
+            self.application = obj.application
+        if hasattr(obj, 'coordinates_offset'):
+            self.coordinates_offset = obj.coordinates_offset
+        if hasattr(obj, 'origin_offset'):
+            self.origin_offset = obj.origin_offset
+        if hasattr(obj, 'period'):
+            self.period = obj.period
+        if hasattr(obj, 'complex_fft'):
+            self.complex_fft = obj.complex_fft
+        if hasattr(obj, 'increment'):
+            self.increment = obj.increment
+        if hasattr(obj, 'count'):
+            self.count = obj.count
+
+cdef class SIMonotonicDimension(SIDimension):
+    """
+    Monotonic dimension with arbitrary coordinate spacing.
+
+    Used for dimensions where coordinates are not evenly spaced
+    but maintain a monotonic (increasing or decreasing) order.
+
+    Examples:
+        >>> dim = SIMonotonicDimension({'coordinates': [1.0, 2.5, 4.0, 7.0]})
+        >>> dim.coordinates
+        array([1. , 2.5, 4. , 7. ])
+        >>> dim.count
+        4
+    """
+    cdef SIMonotonicDimensionRef _monotonic_dimension
+    cdef object _input_coordinates
+
+    def __init__(self, coordinates, label="", description="", application=None,
+                 coordinates_offset='0', origin_offset='0', period=None,
+                 complex_fft=False, **kwargs):
+        """
+        Initialize monotonic dimension.
+
+        Args:
+            coordinates (list): List of coordinate values
+            label (str, optional): Short label for the dimension
+            description (str, optional): Description of the dimension
+            application (dict, optional): Application metadata
+            coordinates_offset (str, optional): Coordinates offset value
+            origin_offset (str, optional): Origin offset value
+            period (str, optional): Period value for periodic dimensions
+            complex_fft (bool, optional): Complex FFT flag
+            **kwargs: Additional keyword arguments (for compatibility)
+        """
+        # Validate coordinates
+        if not coordinates:
+            raise ValueError("Monotonic dimension requires coordinates")
+
+        self._input_coordinates = coordinates
+
+        # Call parent init with SI dimension properties
+        super().__init__(
+            label=label,
+            description=description,
+            application=application,
+            coordinates_offset=coordinates_offset,
+            origin_offset=origin_offset,
+            period=period,
+            complex_fft=complex_fft,
+            **kwargs
+        )
+
+        # Create C dimension using the C API
+        cdef OCArrayRef coords_array = NULL
+        cdef OCStringRef error = NULL
+
+        try:
+            # Convert Python coordinates to C array
+            coords_np = np.array(coordinates, dtype=np.float64)
+            coords_array = OCArrayCreateWithDoubles(<double*>coords_np.data, len(coordinates))
+
+            if coords_array == NULL:
+                raise RuntimeError("Failed to create coordinates array")
+
+            # Create the SI monotonic dimension
+            self._monotonic_dimension = SIMonotonicDimensionCreate(coords_array, &error)
+            if self._monotonic_dimension == NULL:
+                if error != NULL:
+                    error_msg = OCStringGetCString(error).decode('utf-8')
+                    raise RuntimeError(f"Failed to create monotonic dimension: {error_msg}")
+                else:
+                    raise RuntimeError("Failed to create monotonic dimension")
+
+            # Cast to base dimension reference
+            self._c_dimension = <DimensionRef>self._monotonic_dimension
+
+        finally:
+            if coords_array != NULL:
+                OCRelease(<OCTypeRef>coords_array)
+            if error != NULL:
+                OCRelease(<OCTypeRef>error)
+
+    @property
+    def type(self):
+        """Get the type of the dimension."""
+        return 'monotonic'
+
+    @property
+    def count(self):
+        """Get the count of the dimension."""
+        return len(self._input_coordinates)
+
+    @property
+    def coordinates(self) -> np.ndarray:
+        """Get monotonic coordinates."""
+        # Try to use C API first if we have a C object
+        if self._c_dimension != NULL:
+            cdef OCArrayRef coords_ref = SIMonotonicDimensionGetCoordinates(self._monotonic_dimension)
+            if coords_ref != NULL:
+                cdef OCIndex count = OCArrayGetCount(coords_ref)
+                if count > 0:
+                    cdef double* coords_ptr = OCArrayGetDoubles(coords_ref)
+                    if coords_ptr != NULL:
+                        # Convert C array to numpy array
+                        coords_list = [coords_ptr[i] for i in range(count)]
+                        return np.array(coords_list, dtype=np.float64)
+
+        # Fallback: return the input coordinates
+        return np.array(self._input_coordinates, dtype=np.float64)
+
+    @property
+    def coords(self) -> np.ndarray:
+        """Alias for coordinates."""
+        return self.coordinates
+
+    def copy(self):
+        """Create a copy of the dimension."""
+        return SIMonotonicDimension(
+            coordinates=list(self._input_coordinates),
+            label=self.label,
+            description=self.description,
+            application=self.application,
+            coordinates_offset=str(self._coordinates_offset),
+            origin_offset=str(self._origin_offset),
+            period=self._period,
+            complex_fft=self._complex_fft
+        )
+
+    def to_dict(self):
+        """Convert to dictionary."""
+        result = super().to_dict()
+        result['coordinates'] = list(self._input_coordinates)
+        return result
+
+    def copy_metadata(self, obj):
+        """
+        Copy SIMonotonicDimension metadata.
+
+        Args:
+            obj: Object to copy metadata from
+        """
+        if hasattr(obj, 'label'):
+            self.label = obj.label
+        if hasattr(obj, 'description'):
+            self.description = obj.description
+        if hasattr(obj, 'application'):
+            self.application = obj.application
+        if hasattr(obj, 'coordinates_offset'):
+            self.coordinates_offset = obj.coordinates_offset
+        if hasattr(obj, 'origin_offset'):
+            self.origin_offset = obj.origin_offset
+        if hasattr(obj, 'period'):
+            self.period = obj.period
+        if hasattr(obj, 'complex_fft'):
+            self.complex_fft = obj.complex_fft
+        if hasattr(obj, 'coordinates'):
+            # For monotonic, copy the coordinates array
+            if hasattr(obj.coordinates, 'tolist'):
+                self._input_coordinates = obj.coordinates.tolist()
+            else:
+                self._input_coordinates = list(obj.coordinates)

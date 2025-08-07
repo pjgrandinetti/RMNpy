@@ -34,7 +34,7 @@ Most common operations:
    velocity = distance / time           # 20.0 m/s
 
    # Unit conversion
-   velocity_kmh = velocity.convert_to("km/h")  # 72.0 km/h
+   velocity_kmh = velocity.to("km/h")  # 72.0 km/h
 
    # Work with units when needed
    meter_unit = Unit("m")

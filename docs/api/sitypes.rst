@@ -33,11 +33,11 @@ With Scalar, units are **tracked automatically**:
    # Output: 277.778 m/s
 
    # Convert to any compatible unit instantly
-   speed_kmh = speed.convert_to("km/h")
+   speed_kmh = speed.to("km/h")
    print(speed_kmh)
    # Output: 1000.0 km/h
 
-   speed_mph = speed.convert_to("mph")
+   speed_mph = speed.to("mph")
    print(speed_mph)
    # Output: 621.371 mph
 

@@ -430,7 +430,23 @@ def get_extensions() -> list[Extension]:
     #     )
     # ])
 
-    # Phase 3: RMNLib wrappers
+    # Phase 3A: RMNLib Dimension wrapper (ENABLED after fixing header issue)
+    extensions.extend(
+        [
+            Extension(
+                "rmnpy.wrappers.rmnlib.dimension",
+                sources=["src/rmnpy/wrappers/rmnlib/dimension.pyx"],
+                include_dirs=include_dirs,
+                library_dirs=library_dirs,
+                libraries=libraries,
+                language="c",
+                extra_compile_args=extra_compile_args,
+                extra_link_args=extra_link_args,
+            )
+        ]
+    )
+
+    # Phase 3B+: Other RMNLib wrappers (DISABLED until Phase 3A testing complete)
     # Build the dependent_variable wrapper for RMNLib
     # TODO: Re-enable when dependent_variable.pyx compilation issues are fixed
     # extensions.extend([

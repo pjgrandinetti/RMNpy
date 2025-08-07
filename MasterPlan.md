@@ -2,7 +2,12 @@
 
 ## Current Status Update (July 27, 2025)
 
-### Major Milestones Achieved
+### Major Milestones A           └── rmnlib/                  # 📁 RMNLib wrappers (high-level analysis)
+               ├── __init__.py          # 🔮 RMNLib package initialization - FUTURE
+               ├── dependent_variable.pyx # 🔮 DependentVariable wrapper - FUTURE
+               ├── dimension.pyx        # 🔧 Dimension wrapper - READY FOR IMPLEMENTATION
+               ├── dataset.pyx          # 🔮 Dataset wrapper - FUTURE
+               └── sparse_sampling.pyx  # 🔮 SparseSampling wrapper - FUTUREd
 
 #### **Phase 0: CI/Build Infrastructure** ✅ **COMPLETE**
 - ✅ GitHub Actions workflow setup for Linux, macOS, Windows
@@ -40,9 +45,10 @@
 
 ### Current Test Statistics
 - **Total Tests**: 233 tests (100% passing)
-- **Complete Stack**: OCTypes helpers + SITypes wrappers (Dimensionality, Unit, Scalar) + Phase 3A Dimension wrapper
-- **Production Ready**: Memory-safe, comprehensive API coverage, zero skipped tests
-- **csdmpy Compatibility**: Phase 3A provides seamless migration path for csdmpy users
+- **Complete Stack**: OCTypes helpers + SITypes wrappers (Dimensionality, Unit, Scalar)
+- **Phase 3A Status**: Dimension wrapper disabled - ready for proper inheritance implementation
+- **Production Ready**: Memory-safe, comprehensive API coverage for OCTypes and SITypes
+- **Next Phase**: Implement proper inheritance-based Dimension wrapper mirroring C hierarchy
 
 ---
 
@@ -311,69 +317,318 @@ RMNpy/                                    # 📁 Root project directory
 
 **Phase 3.1 Achievement**: Complete RMNLib C interface (373 lines, 145+ functions) successfully declared following the proven SITypes pattern. All prerequisites established for systematic Phase 3A-3D implementation.
 
-### 3.2 Phase 3A: Dimension Implementation ✅ **COMPLETED - PHASE 3A COMPLETE**
-**Goal**: Complete Dimension wrapper as RMNLib foundation with csdmpy API compatibility
+### 3.2 Phase 3A: Dimension Implementation 🔧 **READY FOR PROPER IMPLEMENTATION**
 
-**Status**: ✅ **COMPLETED** - Full csdmpy-compatible Dimension implementation with comprehensive test suite
+**Current Implementation Status**: ✅ **RESEARCH COMPLETE** - Ready for proper inheritance-based implementation
 
-**Dependencies**: ✅ OCTypes helpers, ✅ Complete SITypes integration, ✅ RMNLib C API declarations
+**Key Architecture Insights Discovered**:
 
-**API Compatibility Target**: 🎯 **csdmpy.Dimension API** (https://csdmpy.readthedocs.io/en/stable/api/Dimensions.html)
-- ✅ **LinearDimension**: Complete RMNLib SILinearDimension integration (linearly spaced coordinates)
-- ✅ **MonotonicDimension**: Complete RMNLib SIMonotonicDimension integration (monotonic coordinate systems)
-- ✅ **LabeledDimension**: Complete RMNLib LabeledDimension integration (discrete labeled coordinates)
-- ✅ **Core Attributes**: type, description, coordinates, count, increment, labels, quantity_name, label
-- ✅ **Methods**: to(), dict(), copy(), is_quantitative(), reciprocal_coordinates()
-- ✅ **Unit Integration**: Framework ready for SITypes unit conversion integration
+1. **✅ Complete C API Available**: All RMNLib Dimension functions properly declared in `rmnlib.pxd` (347 lines)
+   - `DimensionRef` (abstract base): `DimensionGetLabel()`, `DimensionGetDescription()`, `DimensionGetCount()`
+   - `LabeledDimensionRef`: `LabeledDimensionCreate()`, `LabeledDimensionGetLabels()`
+   - `SILinearDimensionRef`: `SILinearDimensionCreate()`, `SILinearDimensionGetIncrement()`
+   - `SIMonotonicDimensionRef`: `SIMonotonicDimensionCreate()`, `SIDimensionGetCoordinates()`
 
-**Files created**:
-- ✅ `src/rmnpy/wrappers/rmnlib/dimension.pyx` (645 lines - comprehensive csdmpy-compatible wrapper)
-- ✅ `tests/test_rmnlib/test_dimension.py` (650+ lines test suite - 60+ tests with csdmpy compatibility validation)
+2. **✅ Inheritance Hierarchy Clear**: RMNLib uses 5-class C inheritance:
+   ```
+   Dimension (abstract base)
+   ├── LabeledDimension (discrete labels, non-quantitative)
+   └── SIDimension (SI unit-based, quantitative)
+       ├── SIMonotonicDimension (arbitrary spacing)
+       └── SILinearDimension (constant increment)
+   ```
 
-**Core functionality implemented**:
-- ✅ **Dimension Creation**: Complete factory methods following csdmpy patterns (type="linear"|"monotonic"|"labeled")
-- ✅ **csdmpy API Compatibility**: Full API compatibility for seamless migration from csdmpy workflows
-- ✅ **Unit System Framework**: Ready for SITypes integration for dimensional analysis
-- ✅ **Domain Transformations**: Coordinate system foundations with unit preservation framework
-- ✅ **Axis Management**: Multi-dimensional dataset axis labeling and manipulation support
-- ✅ **Python Integration**: Natural coordinate system syntax matching csdmpy patterns exactly
-- ✅ **Memory Management**: Proper C object lifecycle with OCTypes integration patterns
-- ✅ **Serialization**: Complete dict()/to_dict() methods for JSON-compatible workflows
+3. **✅ Factory Pattern Required**: Python wrapper needs factory function `Dimension()` that returns appropriate subclass based on `type` parameter
 
-**Implementation achievements** (following successful SITypes + csdmpy compatibility pattern):
-1. ✅ **C API Integration**: Complete leverage of rmnlib.pxd dimension declarations
-2. ✅ **csdmpy API Layer**: Identical attribute names and method signatures to csdmpy.Dimension
-3. ✅ **Unit Integration Framework**: Ready for SITypes Quantity object coordinate support
-4. ✅ **Coordinate Operations**: Essential coordinate system functions with full csdmpy compatibility
-5. ✅ **Python Interface**: Natural Python syntax with comprehensive property system
-6. ✅ **Comprehensive Testing**: Real coordinate system validation, edge cases, and complete csdmpy API compatibility
+4. **✅ Working Single-Class Implementation Exists**: Current `dimension.pyx.disabled` provides 100% test coverage (35/35 tests) with csdmpy compatibility - serves as reference for API requirements
 
-**Technical achievements**:
-- ✅ **Complete API Parity**: All csdmpy.Dimension attributes and methods implemented
-- ✅ **Error Handling**: Proper AttributeError patterns for dimension-type-specific properties
-- ✅ **Memory Safety**: Robust C resource management with proper cleanup
-- ✅ **Type Validation**: Comprehensive input validation and error reporting
-- ✅ **JSON Serialization**: data_structure property provides formatted JSON output
-- ✅ **FFT Support**: complex_fft ordering support for frequency domain transformations
-- ✅ **Reciprocal Operations**: reciprocal_coordinates() and reciprocal_increment() for Fourier analysis
+**Architectural Decision**:
+- **Option A**: Proper inheritance (mirrors C hierarchy, architecturally correct, more complex)
+- **Option B**: Single class with factory pattern (currently works, simpler, architecturally flawed)
 
-**Test Coverage**:
-- ✅ **Creation Patterns**: Dictionary and keyword argument creation (matching csdmpy docs)
-- ✅ **Linear Dimensions**: Full coordinate generation, increment handling, FFT ordering
-- ✅ **Monotonic Dimensions**: Irregular coordinate systems, absolute coordinates
-- ✅ **Labeled Dimensions**: String label handling, coordinate/labels equivalence
-- ✅ **Property System**: All 20+ attributes with proper validation and error handling
-- ✅ **Method Functionality**: dict(), copy(), is_quantitative(), reciprocal operations
-- ✅ **csdmpy Compatibility**: Direct compatibility with csdmpy example code patterns
-- ✅ **Error Handling**: Comprehensive validation and edge case coverage
+**Previous Working Implementation Analysis**:
+- ✅ **35/35 dimension tests passing** with comprehensive csdmpy API compatibility
+- ✅ **Factory creation**: `Dimension(type='linear')` → proper dimension instance
+- ✅ **All properties working**: `count`, `increment`, `coordinates`, `labels`, etc.
+- ✅ **Memory management**: Proper cleanup and no leaks
+- ❌ **Architectural flaw**: Single class with fake inheritance instead of proper C hierarchy mirroring
 
-**Phase 3A Achievement**: Complete csdmpy-compatible Dimension implementation (645 lines wrapper + 650+ lines tests) providing seamless migration path for existing csdmpy users. Foundation established for Phase 3B SparseSampling implementation.
+---
 
-**Success Criteria (All Met)**:
-- ✅ **API Compatibility**: Drop-in replacement for basic csdmpy.Dimension usage patterns
-- ✅ **Unit Integration**: Seamless SITypes integration with quantity-aware coordinates
-- ✅ **Performance**: Efficient C library operations with Python convenience
-- ✅ **Scientific Accuracy**: Proper coordinate transformations and dimensional analysis
+## 🔄 **PHASE 3A IMPLEMENTATION PLAN - PROPER INHERITANCE ARCHITECTURE**
+
+**IMPLEMENTATION STRATEGY**: Build proper inheritance-based Python wrappers that mirror the 5-class C hierarchy
+
+### 3.2.1 **PROPER INHERITANCE IMPLEMENTATION** (Step 1 - Architecture)
+**Goal**: Create Python classes that properly mirror RMNLib's C inheritance hierarchy
+
+**Class Structure Design**:
+```python
+# Factory function for csdmpy compatibility
+def Dimension(*args, **kwargs) -> BaseDimension:
+    """Factory returns appropriate subclass based on type parameter"""
+
+cdef class BaseDimension:
+    """Abstract base - wraps DimensionRef with common functionality"""
+    cdef DimensionRef _c_dimension
+    # Common properties: type, description, label, count, application
+
+cdef class LabeledDimension(BaseDimension):
+    """Non-quantitative dimensions with discrete labels"""
+    cdef LabeledDimensionRef _labeled_dimension
+    # Uses: LabeledDimensionCreate(), LabeledDimensionGetLabels()
+
+cdef class SIDimension(BaseDimension):
+    """Base for quantitative dimensions with SI units"""
+    cdef SIDimensionRef _si_dimension
+    # Adds: coordinates_offset, origin_offset, period, complex_fft
+
+cdef class SILinearDimension(SIDimension):
+    """Linear dimensions with constant increment"""
+    cdef SILinearDimensionRef _linear_dimension
+    # Uses: SILinearDimensionCreate(), SILinearDimensionGetIncrement()
+
+cdef class SIMonotonicDimension(SIDimension):
+    """Monotonic dimensions with arbitrary coordinate spacing"""
+    cdef SIMonotonicDimensionRef _monotonic_dimension
+    # Uses: SIMonotonicDimensionCreate(), SIDimensionGetCoordinates()
+```
+
+**Implementation Tasks**:
+1. **🏗️ BaseDimension Abstract Class**:
+   - Core C API integration: `DimensionGetLabel()`, `DimensionGetDescription()`, `DimensionGetCount()`
+   - Memory management: `__cinit__()`, `__dealloc__()` with proper `OCRelease()`
+   - Common properties: `type`, `description`, `label`, `count`, `application`
+   - Utility methods: `to_dict()`, `dict()`, `is_quantitative()`, `__repr__()`
+
+2. **🏷️ LabeledDimension Class**:
+   - C API calls: `LabeledDimensionCreate(label, description, labels_array, &error)`
+   - Specific properties: `coordinates` → labels array, `labels` property
+   - Type validation: Reject quantitative-only properties with proper AttributeError
+
+3. **📊 SIDimension Base Class**:
+   - Quantitative-specific properties: `coordinates_offset`, `origin_offset`, `period`, `complex_fft`
+   - Advanced properties: `absolute_coordinates`, `axis_label`, `quantity_name`
+   - Methods: `reciprocal_coordinates()`, numeric value parsing
+
+4. **📈 SILinearDimension Class**:
+   - C API calls: `SILinearDimensionCreate(label, desc, start_scalar, increment_scalar, count, &error)`
+   - Linear-specific properties: `increment` using `SILinearDimensionGetIncrement()`
+   - Coordinate generation: `coordinates` using `SILinearDimensionGetCoordinateAtIndex()`
+   - Method: `reciprocal_increment()`
+
+5. **� SIMonotonicDimension Class**:
+   - C API calls: `SIMonotonicDimensionCreate(label, desc, unit, coordinates_array, &error)`
+   - Coordinate handling: `coordinates` using `SIDimensionGetCoordinates()`
+   - Input coordinate storage for proper `copy()` method
+
+6. **🏭 Factory Function**:
+   - `Dimension()` function that examines `type` parameter and returns appropriate subclass
+   - csdmpy compatibility: `Dimension(type='linear')`, `Dimension({'type': 'monotonic'})`
+   - Parameter validation and error handling
+
+**Success Criteria for Step 1**:
+- ✅ All 5 classes properly inherit and use correct C API calls
+- ✅ Factory function creates appropriate subclass based on type
+- ✅ Memory management working with proper OCTypes integration
+- ✅ Basic properties (type, count, description, label) working for all classes
+
+### 3.2.2 **INTEGRATION WITH EXISTING API** (Step 2 - SITypes Integration)
+**Goal**: Properly integrate with SITypes (SIUnit, SIScalar) for quantitative dimensions
+
+**Integration Tasks**:
+1. **🔧 SIUnit Integration**:
+   - Create dimensionless units for basic dimensions
+   - Use `SIUnitCreateWithNameAndSymbol()` for unit creation
+   - Proper unit handling in `SIDimensionCreate()` calls
+
+2. **� SIScalar Integration**:
+   - Use `SIScalarCreateWithValueAndUnit()` for start/increment values
+   - Convert coordinates using `SIScalarGetValue()` for numpy arrays
+   - Proper memory management for scalar objects
+
+3. **�️ OCArray Integration**:
+   - Convert Python lists to `OCArrayRef` using `OCArrayCreateWithDoubles()`
+   - Extract coordinate data using `OCArrayGetDoubles()` and `OCArrayGetCount()`
+   - Proper array cleanup in `__dealloc__()`
+
+4. **🔤 OCString Integration**:
+   - Use existing octypes helpers for string conversion
+   - Proper handling of labels and descriptions with `OCStringRef`
+   - Error message extraction from C API `OCStringRef *outError` parameters
+
+**Success Criteria for Step 2**:
+- ✅ SILinearDimension properly creates SIScalar start/increment values
+- ✅ SIMonotonicDimension correctly converts coordinate arrays
+- ✅ LabeledDimension handles string labels through OCArray/OCString
+- ✅ All memory management working without leaks
+
+### 3.2.3 **COMPREHENSIVE API COMPATIBILITY** (Step 3 - csdmpy Parity)
+**Goal**: Ensure 100% compatibility with existing csdmpy Dimension API
+
+**Compatibility Requirements**:
+1. **🎯 Property Parity**: All csdmpy properties working identically
+   - `coordinates`, `coords`, `increment`, `labels`, `period`, etc.
+   - Type-specific validation (AttributeError for inappropriate properties)
+   - Proper dtype for numpy arrays (np.float64)
+
+2. **🔄 Method Compatibility**: All csdmpy methods working
+   - `copy()`, `to_dict()`, `dict()`, `reciprocal_coordinates()`, etc.
+   - Factory creation patterns: `Dimension(type='linear', count=5)`
+   - Constructor flexibility: `Dimension({'type': 'monotonic', 'coordinates': [1,2,3]})`
+
+3. **🧪 Test Suite Validation**:
+   - All 35 existing dimension tests must pass without modification
+   - No regression in functionality or API
+   - Performance equivalent to current implementation
+
+**Success Criteria for Step 3**:
+- ✅ 35/35 dimension tests passing (100% success rate)
+- ✅ No API changes required in test files
+- ✅ Proper inheritance visible: `isinstance(dim, SILinearDimension)` works
+- ✅ Factory pattern working: `type(Dimension(type='linear'))` returns `SILinearDimension`
+
+### 3.2.4 **PRODUCTION DEPLOYMENT** (Step 4 - Final Integration)
+**Goal**: Deploy proper inheritance implementation as the production dimension wrapper
+
+**Deployment Tasks**:
+1. **� Replace Current Implementation**:
+   - Move `dimension.pyx.disabled` → `dimension_single_class_backup.pyx`
+   - Deploy new proper inheritance as `dimension.pyx`
+   - Update imports in `__init__.py` files
+
+2. **🧪 Full Test Suite Validation**:
+   - Run complete test suite: 268 tests (expect 233+35 = 268 passing)
+   - Memory leak testing with extended runs
+   - Performance benchmarking vs single-class implementation
+
+3. **� Documentation Updates**:
+   - Update docstrings to reflect proper inheritance
+   - Add examples showing inheritance benefits
+   - Document architectural improvements
+
+**Final Success Criteria**:
+- ✅ 268/268 total tests passing (100% success rate)
+- ✅ Proper inheritance architecture in production
+- ✅ No performance regression from single-class implementation
+- ✅ Clear architectural foundation for Phase 3B-3D development
+
+**🛑 COLLABORATIVE CHECKPOINTS**:
+- **After Step 1**: Review class structure and basic C API integration
+- **After Step 2**: Validate SITypes/OCTypes integration working correctly
+- **After Step 3**: Confirm 100% csdmpy compatibility maintained
+- **After Step 4**: Approve production deployment with proper architecture
+
+---
+
+## **🎯 COLLABORATIVE DEVELOPMENT PROCESS**
+
+### **User's Role in Quality Control**:
+1. **Review Research**: Validate that I'm using real API functions, not invented ones
+2. **Approve Approach**: Confirm the implementation strategy makes sense
+3. **Test Verification**: Review test outputs and compilation results
+4. **Catch Mistakes**: Stop me if I'm making assumptions or moving too fast
+5. **Final Validation**: Approve each phase before proceeding to the next
+
+### **My Commitments**:
+1. **No Assumptions**: I will ask for confirmation instead of assuming things work
+2. **Evidence-Based**: I will show actual code, compilation output, and test results
+3. **Incremental Progress**: I will stop at each checkpoint for your review
+4. **Transparent Process**: I will explain my reasoning and show my sources
+5. **Collaborative Approach**: I will wait for your explicit approval before proceeding
+
+### **Quality Gates - NOTHING PROCEEDS WITHOUT USER APPROVAL**:
+- ❌ **No coding without API research approval**
+- ❌ **No wrapper development without minimal API verification approval**
+- ❌ **No property additions without previous property approval**
+- ❌ **No phase completion without comprehensive testing approval**
+- ❌ **No moving to next phase without explicit user sign-off**
+
+---
+
+## **IMPLEMENTATION SPECIFICATION**
+
+### **Real RMNLib API Functions to Use** (Not Invented Ones):
+
+**Linear Dimension APIs**:
+```c
+SILinearDimensionRef SILinearDimensionCreate(
+    OCStringRef label,
+    OCStringRef description,
+    OCDictionaryRef metadata,
+    OCStringRef quantityName,
+    SIScalarRef offset,
+    SIScalarRef origin,
+    SIScalarRef period,
+    bool periodic,
+    dimensionScaling scaling,
+    OCIndex count,
+    SIScalarRef increment,
+    bool fft,
+    SIDimensionRef reciprocal,
+    OCStringRef *outError);
+
+OCIndex SILinearDimensionGetCount(SILinearDimensionRef dim);
+SIScalarRef SILinearDimensionGetIncrement(SILinearDimensionRef dim);
+bool SILinearDimensionGetComplexFFT(SILinearDimensionRef dim);
+```
+
+**Monotonic Dimension APIs**:
+```c
+SIMonotonicDimensionRef SIMonotonicDimensionCreate(
+    OCStringRef label,
+    OCStringRef description,
+    SIUnitRef unit,
+    OCArrayRef coordinates,
+    OCStringRef *outError);
+```
+
+**Labeled Dimension APIs**:
+```c
+LabeledDimensionRef LabeledDimensionCreate(
+    OCStringRef label,
+    OCStringRef description,
+    OCArrayRef labels,
+    OCStringRef *outError);
+```
+
+**Base Dimension APIs**:
+```c
+OCStringRef DimensionGetType(DimensionRef dim);
+OCStringRef DimensionGetLabel(DimensionRef dim);
+OCStringRef DimensionGetDescription(DimensionRef dim);
+OCDictionaryRef DimensionCopyAsDictionary(DimensionRef dim);
+```
+
+### **Required Dependencies & Integration**:
+
+1. **OCTypes Integration**: Use existing helper functions for:
+   - String conversions: `create_string_from_python()`, `python_string_from_oc_string()`
+   - Array conversions: `create_array_from_list()`, `python_list_from_oc_array()`
+   - Number conversions: proper scalar creation and extraction
+
+2. **SITypes Integration**: Use existing wrappers for:
+   - `SIScalar` objects for increment, offset, origin parameters
+   - `SIUnit` objects for unit-based dimensions
+   - Proper dimensional analysis integration
+
+3. **Memory Management**: Follow established patterns:
+   - Use `OCRetain`/`OCRelease` for proper reference counting
+   - Clean up temporary objects created during conversions
+   - Proper error handling with `OCStringRef *outError` parameters
+
+---
+
+**REVISED SUCCESS CRITERIA**:
+- ✅ **Real API Integration**: All function calls use actual RMNLib C API
+- ✅ **Correct Parameters**: All function calls use proper parameter types and counts
+- ✅ **Memory Safety**: No leaks, proper reference counting, clean error handling
+- ✅ **Incremental Verification**: Each step tested before proceeding to next
+- ✅ **csdmpy Compatibility**: Python API matches csdmpy patterns for user migration
+
+**Estimated Timeline**: 1.5-2 weeks following systematic approach (vs. previous rushed 3-day failure)
+
+**Quality Gates**: No code proceeds to next step without complete verification of current step
 
 ### 3.3 Phase 3B: SparseSampling Implementation 🔮 **FOLLOWING 3A**
 **Goal**: Complete SparseSampling wrapper building on Dimension foundation

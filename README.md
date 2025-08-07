@@ -126,7 +126,7 @@ acceleration = Scalar(9.8, "m/s^2")
 force = Scalar(5, "kg") * acceleration  # Result: 49 N (automatic units)
 
 # Unit conversions
-speed_kmh = speed.convert_to("km/h")     # Convert to km/h
+speed_kmh = speed.to("km/h")     # Convert to km/h
 speed_si = speed.to_coherent_si()        # Convert to SI base units
 
 # === Dimensional Analysis & Safety ===

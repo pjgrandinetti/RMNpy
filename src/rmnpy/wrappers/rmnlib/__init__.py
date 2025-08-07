@@ -7,10 +7,16 @@ high-level analysis and computation tools.
 
 # Import wrapper classes when they're available
 try:
-    from .dependent_variable import DependentVariable
     from .dimension import Dimension
 
-    __all__ = ["Dimension", "DependentVariable"]
+    __all__ = ["Dimension"]
 except ImportError:
     # Wrapper not yet built/available
     __all__ = []
+
+# TODO: Add other wrappers when implemented
+# try:
+#     from .dependent_variable import DependentVariable
+#     __all__.append("DependentVariable")
+# except ImportError:
+#     pass
