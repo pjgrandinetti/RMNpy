@@ -42,9 +42,6 @@ ctypedef enum dimensionScaling:
     kDimensionScalingNMR
 
 cdef extern from "RMNLibrary.h":
-    # cJSON forward declaration (from included cJSON.h)
-    ctypedef struct cJSON
-
     # ====================================================================================
     # Phase 3A: Dimension API (Foundation Component)
     # ====================================================================================
@@ -62,10 +59,8 @@ cdef extern from "RMNLibrary.h":
     OCTypeID LabeledDimensionGetTypeID()
     LabeledDimensionRef LabeledDimensionCreate(OCStringRef label, OCStringRef description,
                                                OCArrayRef labels, OCStringRef *outError)
-    LabeledDimensionRef LabeledDimensionCreateFromJSON(cJSON *json, OCStringRef *outError)
     OCArrayRef LabeledDimensionGetLabels(LabeledDimensionRef dim)
     bool LabeledDimensionSetLabels(LabeledDimensionRef dim, OCArrayRef labels, OCStringRef *outError)
-    OCIndex LabeledDimensionGetCount(LabeledDimensionRef dim)
     OCStringRef LabeledDimensionGetLabelAtIndex(LabeledDimensionRef dim, OCIndex index)
 
     # SIDimension - SI unit-based coordinate systems
@@ -73,12 +68,10 @@ cdef extern from "RMNLibrary.h":
     SIDimensionRef SIDimensionCreate(OCStringRef label, OCStringRef description,
                                      SIUnitRef unit, OCArrayRef coordinates,
                                      OCStringRef *outError)
-    SIDimensionRef SIDimensionCreateFromJSON(cJSON *json, OCStringRef *outError)
     SIUnitRef SIDimensionGetUnit(SIDimensionRef dim)
     bool SIDimensionSetUnit(SIDimensionRef dim, SIUnitRef unit, OCStringRef *outError)
     OCArrayRef SIDimensionGetCoordinates(SIDimensionRef dim)
     bool SIDimensionSetCoordinates(SIDimensionRef dim, OCArrayRef coords, OCStringRef *outError)
-    OCIndex SIDimensionGetCount(SIDimensionRef dim)
     SIScalarRef SIDimensionGetCoordinateAtIndex(SIDimensionRef dim, OCIndex index)
 
     # SIMonotonicDimension - Monotonic coordinate systems
@@ -86,7 +79,6 @@ cdef extern from "RMNLibrary.h":
     SIMonotonicDimensionRef SIMonotonicDimensionCreate(OCStringRef label, OCStringRef description,
                                                        SIUnitRef unit, OCArrayRef coordinates,
                                                        OCStringRef *outError)
-    SIMonotonicDimensionRef SIMonotonicDimensionCreateFromJSON(cJSON *json, OCStringRef *outError)
     bool SIMonotonicDimensionIsMonotonic(SIMonotonicDimensionRef dim)
     bool SIMonotonicDimensionIsIncreasing(SIMonotonicDimensionRef dim)
     SIScalarRef SIMonotonicDimensionGetMinimum(SIMonotonicDimensionRef dim)
@@ -97,14 +89,19 @@ cdef extern from "RMNLibrary.h":
     SILinearDimensionRef SILinearDimensionCreate(OCStringRef label, OCStringRef description,
                                                  SIScalarRef start, SIScalarRef increment,
                                                  OCIndex count, OCStringRef *outError)
-    SILinearDimensionRef SILinearDimensionCreateFromJSON(cJSON *json, OCStringRef *outError)
     SIScalarRef SILinearDimensionGetStart(SILinearDimensionRef dim)
     bool SILinearDimensionSetStart(SILinearDimensionRef dim, SIScalarRef start, OCStringRef *outError)
     SIScalarRef SILinearDimensionGetIncrement(SILinearDimensionRef dim)
     bool SILinearDimensionSetIncrement(SILinearDimensionRef dim, SIScalarRef increment, OCStringRef *outError)
     OCIndex SILinearDimensionGetCount(SILinearDimensionRef dim)
-    bool SILinearDimensionSetCount(SILinearDimensionRef dim, OCIndex count, OCStringRef *outError)
     SIScalarRef SILinearDimensionGetCoordinateAtIndex(SILinearDimensionRef dim, OCIndex index)
+
+    # Dimension Utilities - Polymorphic operations across all dimension types
+    OCStringRef DimensionGetType(DimensionRef dim)
+    OCDictionaryRef DimensionCopyAsDictionary(DimensionRef dim)
+    DimensionRef DimensionCreateFromDictionary(OCDictionaryRef dict, OCStringRef *outError)
+    OCIndex DimensionGetCount(DimensionRef dim)
+    OCStringRef CreateDimensionLongLabel(DimensionRef dim, OCIndex index)
 
     # ====================================================================================
     # Phase 3B: SparseSampling API (Depends on Dimension)
@@ -112,7 +109,6 @@ cdef extern from "RMNLibrary.h":
 
     # SparseSampling - Sparse sampling pattern definitions
     OCTypeID SparseSamplingGetTypeID()
-    bool validateSparseSampling(SparseSamplingRef ss, OCStringRef *outError)
     SparseSamplingRef SparseSamplingCreate(OCIndexSetRef dimensionIndexes,
                                            OCArrayRef sparseGridVertexes,
                                            OCNumberType unsignedIntegerType,
@@ -120,7 +116,8 @@ cdef extern from "RMNLibrary.h":
                                            OCStringRef description,
                                            OCDictionaryRef metadata,
                                            OCStringRef *outError)
-    SparseSamplingRef SparseSamplingCreateFromJSON(cJSON *json, OCStringRef *outError)
+    SparseSamplingRef SparseSamplingCreateFromDictionary(OCDictionaryRef dict, OCStringRef *outError)
+    OCDictionaryRef SparseSamplingCopyAsDictionary(SparseSamplingRef ss)
 
     # SparseSampling accessors
     OCIndexSetRef SparseSamplingGetDimensionIndexes(SparseSamplingRef ss)
@@ -221,10 +218,6 @@ cdef extern from "RMNLibrary.h":
         OCArrayRef components,
         OCStringRef *outError)
 
-    DependentVariableRef DependentVariableCreateFromJSON(
-        cJSON *json,
-        OCStringRef *outError)
-
     # DependentVariable mutation
     bool DependentVariableAppend(
         DependentVariableRef dv,
@@ -236,7 +229,6 @@ cdef extern from "RMNLibrary.h":
     DependentVariableRef DependentVariableCreateFromDictionary(
         OCDictionaryRef dict,
         OCStringRef *outError)
-    OCDictionaryRef DependentVariableDictionaryCreateFromJSON(cJSON *json, OCStringRef *outError)
     OCDataRef DependentVariableCreateCSDMComponentsData(DependentVariableRef dv, OCArrayRef dimensions)
 
     # DependentVariable type checking
@@ -315,6 +307,9 @@ cdef extern from "RMNLibrary.h":
     bool DependentVariableMultiply(DependentVariableRef dv1, DependentVariableRef dv2)
     bool DependentVariableDivide(DependentVariableRef dv1, DependentVariableRef dv2)
 
+    # Note: DependentVariable inherits from SIQuantity, so all SIQuantity functions
+    # (declared in sitypes.pxd) can be used with DependentVariableRef cast to SIQuantityRef
+
     # ====================================================================================
     # Phase 3D: Dataset API (Depends on all previous components)
     # ====================================================================================
@@ -322,8 +317,8 @@ cdef extern from "RMNLibrary.h":
     # Dataset - High-level data container and workflow orchestration
     OCTypeID DatasetGetTypeID()
     DatasetRef DatasetCreate(OCStringRef name, OCStringRef description, OCStringRef *outError)
-    DatasetRef DatasetCreateFromJSON(cJSON *json, OCStringRef *outError)
     DatasetRef DatasetCreateFromDictionary(OCDictionaryRef dict, OCStringRef *outError)
+    OCDictionaryRef DatasetCopyAsDictionary(DatasetRef dataset)
 
     # Dataset basic accessors
     OCStringRef DatasetGetName(DatasetRef dataset)
@@ -335,34 +330,19 @@ cdef extern from "RMNLibrary.h":
     OCArrayRef DatasetGetDimensions(DatasetRef dataset)
     bool DatasetSetDimensions(DatasetRef dataset, OCArrayRef dimensions, OCStringRef *outError)
     bool DatasetAddDimension(DatasetRef dataset, DimensionRef dimension, OCStringRef *outError)
-    OCIndex DatasetGetDimensionCount(DatasetRef dataset)
-    DimensionRef DatasetGetDimensionAtIndex(DatasetRef dataset, OCIndex index)
 
     # Dataset dependent variables management
     OCArrayRef DatasetGetDependentVariables(DatasetRef dataset)
     bool DatasetSetDependentVariables(DatasetRef dataset, OCArrayRef variables, OCStringRef *outError)
     bool DatasetAddDependentVariable(DatasetRef dataset, DependentVariableRef variable, OCStringRef *outError)
-    OCIndex DatasetGetDependentVariableCount(DatasetRef dataset)
-    DependentVariableRef DatasetGetDependentVariableAtIndex(DatasetRef dataset, OCIndex index)
 
     # Dataset metadata
     OCDictionaryRef DatasetGetMetadata(DatasetRef dataset)
     bool DatasetSetMetadata(DatasetRef dataset, OCDictionaryRef metadata, OCStringRef *outError)
 
-    # Dataset serialization
-    OCDictionaryRef DatasetCopyAsDictionary(DatasetRef dataset)
-    cJSON* DatasetCopyAsJSON(DatasetRef dataset)
-
     # ====================================================================================
     # Utility Functions and Metadata Handling
     # ====================================================================================
 
-    # JSON metadata conversion (from RMNLibrary.h)
-    cJSON* OCMetadataCopyJSON(OCDictionaryRef dict)
-    OCDictionaryRef OCMetadataCreateFromJSON(cJSON *json, OCStringRef *outError)
-
-    # Library management
+    # Internal library management (not exposed to Python users)
     void RMNLibTypesShutdown()
-
-    # Note: DependentVariable inherits from SIQuantity, so all SIQuantity functions
-    # (declared in sitypes.pxd) can be used with DependentVariableRef cast to SIQuantityRef
