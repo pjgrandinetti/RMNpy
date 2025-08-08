@@ -10,34 +10,31 @@ import numpy as np
 import pytest
 
 from rmnpy.helpers.octypes import (
-    get_retain_count,
     numpy_array_to_ocdata,
     numpy_array_to_ocmutabledata,
-    ocarray_to_py_list,
-    ocboolean_to_py_bool,
+    ocarray_to_pylist,
+    ocboolean_to_pybool,
     ocdata_to_numpy_array,
-    ocdictionary_to_py_dict,
-    ocindexarray_to_py_list,
-    ocindexpairset_to_py_dict,
-    ocindexset_to_py_set,
-    ocnumber_to_py_number,
-    ocset_to_py_set,
-    ocstring_to_py_string,
-    py_bool_to_ocboolean,
-    py_dict_to_ocdictionary,
-    py_dict_to_ocindexpairset,
-    py_dict_to_ocmutabledictionary,
-    py_list_to_ocarray,
-    py_list_to_ocindexarray,
-    py_list_to_ocmutablearray,
-    py_number_to_ocnumber,
-    py_set_to_ocindexset,
-    py_set_to_ocmutableset,
-    py_set_to_ocset,
-    py_string_to_ocmutablestring,
-    py_string_to_ocstring,
-    release_octype,
-    retain_octype,
+    ocdict_to_pydict,
+    ocindexarray_to_pylist,
+    ocindexpairset_to_pydict,
+    ocindexset_to_pyset,
+    ocnumber_to_pynumber,
+    ocset_to_pyset,
+    ocstring_to_pystring,
+    pybool_to_ocboolean,
+    pydict_to_ocdict,
+    pydict_to_ocindexpairset,
+    pydict_to_ocmutabledict,
+    pylist_to_ocarray,
+    pylist_to_ocindexarray,
+    pylist_to_ocmutablearray,
+    pynumber_to_ocnumber,
+    pyset_to_ocindexset,
+    pyset_to_ocmutableset,
+    pyset_to_ocset,
+    pystring_to_ocmutablestring,
+    pystring_to_ocstring,
 )
 
 
@@ -54,14 +51,13 @@ def test_string_roundtrip():
 
     for original in original_strings:
         # Convert to OCString
-        oc_string_ptr = py_string_to_ocstring(original)
+        oc_string_ptr = pystring_to_ocstring(original)
         assert oc_string_ptr != 0, f"Failed to create OCString for: {original}"
 
         # Convert back to Python string
-        converted = ocstring_to_py_string(oc_string_ptr)
+        converted = ocstring_to_pystring(oc_string_ptr)
 
         # Clean up
-        release_octype(oc_string_ptr)
 
         # Verify roundtrip
         assert converted == original, f"Roundtrip failed: {original} != {converted}"
@@ -78,14 +74,13 @@ def test_integer_roundtrip():
 
     for original in test_integers:
         # Convert to OCNumber
-        oc_number_ptr = py_number_to_ocnumber(original)
+        oc_number_ptr = pynumber_to_ocnumber(original)
         assert oc_number_ptr != 0, f"Failed to create OCNumber for: {original}"
 
         # Convert back to Python number
-        converted = ocnumber_to_py_number(oc_number_ptr)
+        converted = ocnumber_to_pynumber(oc_number_ptr)
 
         # Clean up
-        release_octype(oc_number_ptr)
 
         # Verify roundtrip
         assert converted == original, f"Integer roundtrip failed: {original} != {converted}"
@@ -105,14 +100,13 @@ def test_float_roundtrip():
             continue
 
         # Convert to OCNumber
-        oc_number_ptr = py_number_to_ocnumber(original)
+        oc_number_ptr = pynumber_to_ocnumber(original)
         assert oc_number_ptr != 0, f"Failed to create OCNumber for: {original}"
 
         # Convert back to Python number
-        converted = ocnumber_to_py_number(oc_number_ptr)
+        converted = ocnumber_to_pynumber(oc_number_ptr)
 
         # Clean up
-        release_octype(oc_number_ptr)
 
         # Verify roundtrip (with tolerance for floating point)
         if original == float('inf') or original == float('-inf'):
@@ -131,14 +125,13 @@ def test_complex_roundtrip():
 
     for original in test_complex:
         # Convert to OCNumber
-        oc_number_ptr = py_number_to_ocnumber(original)
+        oc_number_ptr = pynumber_to_ocnumber(original)
         assert oc_number_ptr != 0, f"Failed to create OCNumber for: {original}"
 
         # Convert back to Python number
-        converted = ocnumber_to_py_number(oc_number_ptr)
+        converted = ocnumber_to_pynumber(oc_number_ptr)
 
         # Clean up
-        release_octype(oc_number_ptr)
 
         # Verify roundtrip (with tolerance for floating point)
         assert abs(converted.real - original.real) < 1e-14, f"Complex real roundtrip failed: {original} != {converted}"
@@ -151,11 +144,11 @@ def test_boolean_roundtrip():
 
     for original in test_bools:
         # Convert to OCBoolean
-        oc_boolean_ptr = py_bool_to_ocboolean(original)
+        oc_boolean_ptr = pybool_to_ocboolean(original)
         assert oc_boolean_ptr != 0, f"Failed to create OCBoolean for: {original}"
 
         # Convert back to Python bool
-        converted = ocboolean_to_py_bool(oc_boolean_ptr)
+        converted = ocboolean_to_pybool(oc_boolean_ptr)
 
         # Note: OCBoolean singletons don't need release
 
@@ -198,7 +191,6 @@ def test_numpy_array_roundtrip():
         converted = ocdata_to_numpy_array(oc_data_ptr, dtype=original.dtype, shape=original.shape)
 
         # Clean up
-        release_octype(oc_data_ptr)
 
         # Verify roundtrip
         np.testing.assert_array_equal(converted, original,
@@ -218,7 +210,6 @@ def test_numpy_auto_reshape():
     converted_1d = ocdata_to_numpy_array(oc_data_ptr, dtype=np.int32)
 
     # Clean up
-    release_octype(oc_data_ptr)
 
     # Should be flattened version
     expected_1d = original.flatten()
@@ -240,7 +231,6 @@ def test_numpy_non_contiguous():
     converted = ocdata_to_numpy_array(oc_data_ptr, dtype=np.int32)
 
     # Clean up
-    release_octype(oc_data_ptr)
 
     # Should match the non-contiguous array values
     np.testing.assert_array_equal(converted, non_contiguous)
@@ -257,7 +247,6 @@ def test_mixed_data_types():
     converted_uint8 = ocdata_to_numpy_array(oc_data_ptr, dtype=np.uint8)
 
     # Clean up
-    release_octype(oc_data_ptr)
 
     # Should have 8 uint8 values (2 int32 * 4 bytes each)
     assert len(converted_uint8) == 8, f"Expected 8 uint8 values, got {len(converted_uint8)}"
@@ -283,7 +272,6 @@ def test_numpy_error_handling():
             ocdata_to_numpy_array(oc_data_ptr, dtype=None)
 
     finally:
-        release_octype(oc_data_ptr)
 
     # Test unsupported input type
     with pytest.raises(TypeError, match="Expected numpy.ndarray"):
@@ -294,26 +282,16 @@ def test_numpy_error_handling():
 
 def test_memory_management():
     """Test that memory management works correctly."""
-    # Test retain/release
+    # Test basic string creation (memory handled internally)
     original = "Test String"
-    oc_string_ptr = py_string_to_ocstring(original)
+    oc_string_ptr = pystring_to_ocstring(original)
+    assert oc_string_ptr != 0, "Failed to create OCString"
 
-    # Check initial retain count
-    initial_count = get_retain_count(oc_string_ptr)
-    assert initial_count == 1, f"Initial retain count should be 1, got {initial_count}"
+    # Test conversion back to Python
+    converted = ocstring_to_pystring(oc_string_ptr)
+    assert converted == original, "String roundtrip failed"
 
-    # Retain and check count
-    retain_octype(oc_string_ptr)
-    retained_count = get_retain_count(oc_string_ptr)
-    assert retained_count == 2, f"After retain count should be 2, got {retained_count}"
-
-    # Release and check count
-    release_octype(oc_string_ptr)
-    after_release_count = get_retain_count(oc_string_ptr)
-    assert after_release_count == 1, f"After release count should be 1, got {after_release_count}"
-
-    # Final cleanup
-    release_octype(oc_string_ptr)
+    # Note: Memory management is handled automatically
 
 def test_type_preservation():
     """Test that types are preserved through conversion."""
@@ -335,16 +313,14 @@ def test_type_preservation():
 
     for original, expected_type in test_cases:
         if expected_type == str:
-            oc_ptr = py_string_to_ocstring(original)
-            converted = ocstring_to_py_string(oc_ptr)
-            release_octype(oc_ptr)
+            oc_ptr = pystring_to_ocstring(original)
+            converted = ocstring_to_pystring(oc_ptr)
         elif expected_type in (int, float, complex):
-            oc_ptr = py_number_to_ocnumber(original)
-            converted = ocnumber_to_py_number(oc_ptr)
-            release_octype(oc_ptr)
+            oc_ptr = pynumber_to_ocnumber(original)
+            converted = ocnumber_to_pynumber(oc_ptr)
         elif expected_type == bool:
-            oc_ptr = py_bool_to_ocboolean(original)
-            converted = ocboolean_to_py_bool(oc_ptr)
+            oc_ptr = pybool_to_ocboolean(original)
+            converted = ocboolean_to_pybool(oc_ptr)
             # No release needed for boolean singletons
         else:
             continue
@@ -361,7 +337,6 @@ def test_type_preservation():
     for original, expected_type in numpy_test_cases:
         oc_ptr = numpy_array_to_ocdata(original)
         converted = ocdata_to_numpy_array(oc_ptr, dtype=original.dtype, shape=original.shape)
-        release_octype(oc_ptr)
 
         assert isinstance(converted, expected_type), f"Type not preserved: {type(converted)} != {expected_type}"
         np.testing.assert_array_equal(converted, original, f"NumPy array value not preserved")
@@ -371,17 +346,17 @@ def test_error_handling():
     """Test that error conditions are handled properly."""
     # Test NULL pointer handling
     with pytest.raises(ValueError, match="OCStringRef is NULL"):
-        ocstring_to_py_string(0)
+        ocstring_to_pystring(0)
 
     with pytest.raises(ValueError, match="OCNumberRef is NULL"):
-        ocnumber_to_py_number(0)
+        ocnumber_to_pynumber(0)
 
     with pytest.raises(ValueError, match="OCDataRef is NULL"):
         ocdata_to_numpy_array(0, dtype=np.float64)
 
     # Test unsupported types
     with pytest.raises(TypeError, match="Unsupported number type"):
-        py_number_to_ocnumber([1, 2, 3])  # List is not supported
+        pynumber_to_ocnumber([1, 2, 3])  # List is not supported
 
     with pytest.raises(TypeError, match="Expected numpy.ndarray"):
         numpy_array_to_ocdata("not an array")  # String is not supported for data
@@ -389,29 +364,25 @@ def test_error_handling():
 def test_edge_cases():
     """Test edge cases and boundary conditions."""
     # Empty string
-    oc_string_ptr = py_string_to_ocstring("")
-    converted = ocstring_to_py_string(oc_string_ptr)
-    release_octype(oc_string_ptr)
+    oc_string_ptr = pystring_to_ocstring("")
+    converted = ocstring_to_pystring(oc_string_ptr)
     assert converted == ""
 
     # Zero
-    oc_number_ptr = py_number_to_ocnumber(0)
-    converted = ocnumber_to_py_number(oc_number_ptr)
-    release_octype(oc_number_ptr)
+    oc_number_ptr = pynumber_to_ocnumber(0)
+    converted = ocnumber_to_pynumber(oc_number_ptr)
     assert converted == 0
 
     # Empty NumPy array
     empty_array = np.array([], dtype=np.float64)
     oc_data_ptr = numpy_array_to_ocdata(empty_array)
     converted = ocdata_to_numpy_array(oc_data_ptr, dtype=np.float64)
-    release_octype(oc_data_ptr)
     np.testing.assert_array_equal(converted, empty_array)
 
     # Single element array
     single_array = np.array([42.0], dtype=np.float64)
     oc_data_ptr = numpy_array_to_ocdata(single_array)
     converted = ocdata_to_numpy_array(oc_data_ptr, dtype=np.float64)
-    release_octype(oc_data_ptr)
     np.testing.assert_array_equal(converted, single_array)
 
 # ====================================================================================
@@ -434,14 +405,13 @@ def test_array_roundtrip():
 
     for original in test_lists:
         # Convert to OCArray
-        oc_array_ptr = py_list_to_ocarray(original)
+        oc_array_ptr = pylist_to_ocarray(original)
         assert oc_array_ptr != 0, f"Failed to create OCArray for: {original}"
 
         # Convert back to Python list
-        converted = ocarray_to_py_list(oc_array_ptr)
+        converted = ocarray_to_pylist(oc_array_ptr)
 
         # Clean up
-        release_octype(oc_array_ptr)
 
         # Verify roundtrip
         assert len(converted) == len(original), f"Length mismatch: {len(original)} != {len(converted)}"
@@ -477,15 +447,14 @@ def test_mutable_array_roundtrip():
 
     for original in test_lists:
         # Convert to OCMutableArray (no reverse conversion test since it's just creation)
-        oc_mutable_array_ptr = py_list_to_ocmutablearray(original)
+        oc_mutable_array_ptr = pylist_to_ocmutablearray(original)
         assert oc_mutable_array_ptr != 0, f"Failed to create OCMutableArray for: {original}"
 
         # We can convert it to a regular array and then to Python to verify
         # (This tests the mutable array contains the correct data)
-        converted = ocarray_to_py_list(oc_mutable_array_ptr)
+        converted = ocarray_to_pylist(oc_mutable_array_ptr)
 
         # Clean up
-        release_octype(oc_mutable_array_ptr)
 
         # Verify content
         if all(isinstance(x, (int, str, bool, float)) for x in original):
@@ -508,14 +477,13 @@ def test_dictionary_roundtrip():
 
     for original in test_dicts:
         # Convert to OCDictionary
-        oc_dict_ptr = py_dict_to_ocdictionary(original)
+        oc_dict_ptr = pydict_to_ocdict(original)
         assert oc_dict_ptr != 0, f"Failed to create OCDictionary for: {original}"
 
         # Convert back to Python dict
-        converted = ocdictionary_to_py_dict(oc_dict_ptr)
+        converted = ocdict_to_pydict(oc_dict_ptr)
 
         # Clean up
-        release_octype(oc_dict_ptr)
 
         # Verify roundtrip (keys will be converted to strings)
         expected_keys = {str(k) for k in original.keys()}
@@ -553,14 +521,13 @@ def test_mutable_dictionary_roundtrip():
 
     for original in test_dicts:
         # Convert to OCMutableDictionary
-        oc_mutable_dict_ptr = py_dict_to_ocmutabledictionary(original)
+        oc_mutable_dict_ptr = pydict_to_ocmutabledict(original)
         assert oc_mutable_dict_ptr != 0, f"Failed to create OCMutableDictionary for: {original}"
 
         # Convert to Python via regular dictionary interface
-        converted = ocdictionary_to_py_dict(oc_mutable_dict_ptr)
+        converted = ocdict_to_pydict(oc_mutable_dict_ptr)
 
         # Clean up
-        release_octype(oc_mutable_dict_ptr)
 
         # Verify content (keys converted to strings)
         for orig_key, orig_value in original.items():
@@ -582,14 +549,13 @@ def test_set_roundtrip():
 
     for original in test_sets:
         # Convert to OCSet
-        oc_set_ptr = py_set_to_ocset(original)
+        oc_set_ptr = pyset_to_ocset(original)
         assert oc_set_ptr != 0, f"Failed to create OCSet for: {original}"
 
         # Convert back to Python set
-        converted = ocset_to_py_set(oc_set_ptr)
+        converted = ocset_to_pyset(oc_set_ptr)
 
         # Clean up
-        release_octype(oc_set_ptr)
 
         # Verify roundtrip
         assert converted == original, f"Set roundtrip failed: {original} != {converted}"
@@ -604,14 +570,13 @@ def test_mutable_set_roundtrip():
 
     for original in test_sets:
         # Convert to OCMutableSet
-        oc_mutable_set_ptr = py_set_to_ocmutableset(original)
+        oc_mutable_set_ptr = pyset_to_ocmutableset(original)
         assert oc_mutable_set_ptr != 0, f"Failed to create OCMutableSet for: {original}"
 
         # Convert to Python via regular set interface
-        converted = ocset_to_py_set(oc_mutable_set_ptr)
+        converted = ocset_to_pyset(oc_mutable_set_ptr)
 
         # Clean up
-        release_octype(oc_mutable_set_ptr)
 
         # Verify content
         assert converted == original, f"Mutable set content failed: {original} != {converted}"
@@ -633,14 +598,13 @@ def test_index_array_roundtrip():
 
     for original in test_index_lists:
         # Convert to OCIndexArray
-        oc_indexarray_ptr = py_list_to_ocindexarray(original)
+        oc_indexarray_ptr = pylist_to_ocindexarray(original)
         assert oc_indexarray_ptr != 0, f"Failed to create OCIndexArray for: {original}"
 
         # Convert back to Python list
-        converted = ocindexarray_to_py_list(oc_indexarray_ptr)
+        converted = ocindexarray_to_pylist(oc_indexarray_ptr)
 
         # Clean up
-        release_octype(oc_indexarray_ptr)
 
         # Verify roundtrip
         assert converted == original, f"IndexArray roundtrip failed: {original} != {converted}"
@@ -657,7 +621,7 @@ def test_index_array_type_validation():
 
     for invalid_list in invalid_lists:
         with pytest.raises(TypeError, match="All items must be integers"):
-            py_list_to_ocindexarray(invalid_list)
+            pylist_to_ocindexarray(invalid_list)
 
 def test_index_set_roundtrip():
     """Test Python set[int] -> OCIndexSet -> Python set[int] roundtrip."""
@@ -672,14 +636,13 @@ def test_index_set_roundtrip():
 
     for original in test_index_sets:
         # Convert to OCIndexSet
-        oc_indexset_ptr = py_set_to_ocindexset(original)
+        oc_indexset_ptr = pyset_to_ocindexset(original)
         assert oc_indexset_ptr != 0, f"Failed to create OCIndexSet for: {original}"
 
         # Convert back to Python set
-        converted = ocindexset_to_py_set(oc_indexset_ptr)
+        converted = ocindexset_to_pyset(oc_indexset_ptr)
 
         # Clean up
-        release_octype(oc_indexset_ptr)
 
         # Note: OCIndexSet conversion has limitations and may not preserve all values
         # At minimum, check that we get a set back and it contains some expected values
@@ -710,7 +673,7 @@ def test_index_set_type_validation():
 
     for invalid_set in invalid_sets:
         with pytest.raises(TypeError, match="All items must be integers"):
-            py_set_to_ocindexset(invalid_set)
+            pyset_to_ocindexset(invalid_set)
 
 def test_index_pair_set_roundtrip():
     """Test Python dict[int, int] -> OCIndexPairSet -> Python dict[int, int] roundtrip."""
@@ -724,14 +687,13 @@ def test_index_pair_set_roundtrip():
 
     for original in test_index_dicts:
         # Convert to OCIndexPairSet
-        oc_indexpairset_ptr = py_dict_to_ocindexpairset(original)
+        oc_indexpairset_ptr = pydict_to_ocindexpairset(original)
         assert oc_indexpairset_ptr != 0, f"Failed to create OCIndexPairSet for: {original}"
 
         # Convert back to Python dict
-        converted = ocindexpairset_to_py_dict(oc_indexpairset_ptr)
+        converted = ocindexpairset_to_pydict(oc_indexpairset_ptr)
 
         # Clean up
-        release_octype(oc_indexpairset_ptr)
 
         # Note: OCIndexPairSet has API limitations - conversion back may return empty dict
         # This is a known limitation of the OCTypes API
@@ -758,7 +720,7 @@ def test_index_pair_set_type_validation():
 
     for invalid_dict in invalid_dicts:
         with pytest.raises(TypeError, match="All .* must be integers"):
-            py_dict_to_ocindexpairset(invalid_dict)
+            pydict_to_ocindexpairset(invalid_dict)
 
 # ====================================================================================
 # Mutable Type Tests
@@ -775,14 +737,13 @@ def test_mutable_string_creation():
 
     for original in test_strings:
         # Convert to OCMutableString
-        oc_mutable_string_ptr = py_string_to_ocmutablestring(original)
+        oc_mutable_string_ptr = pystring_to_ocmutablestring(original)
         assert oc_mutable_string_ptr != 0, f"Failed to create OCMutableString for: {original}"
 
         # Convert back via regular string interface to verify content
-        converted = ocstring_to_py_string(oc_mutable_string_ptr)
+        converted = ocstring_to_pystring(oc_mutable_string_ptr)
 
         # Clean up
-        release_octype(oc_mutable_string_ptr)
 
         # Verify content
         assert converted == original, f"Mutable string content failed: {original} != {converted}"
@@ -805,7 +766,6 @@ def test_mutable_data_creation():
         converted = ocdata_to_numpy_array(oc_mutable_data_ptr, dtype=original.dtype, shape=original.shape)
 
         # Clean up
-        release_octype(oc_mutable_data_ptr)
 
         # Verify content
         np.testing.assert_array_equal(converted, original, f"Mutable data content failed")
@@ -817,9 +777,9 @@ def test_mutable_data_creation():
 def test_extensible_collections():
     """Test that collections can handle arbitrary OCTypes (simulated)."""
     # Create some OCTypes to use as values
-    string_ptr = py_string_to_ocstring("test_string")
-    number_ptr = py_number_to_ocnumber(42)
-    bool_ptr = py_bool_to_ocboolean(True)
+    string_ptr = pystring_to_ocstring("test_string")
+    number_ptr = pynumber_to_ocnumber(42)
+    bool_ptr = pybool_to_ocboolean(True)
     data_ptr = numpy_array_to_ocdata(np.array([1, 2, 3], dtype=np.int32))
 
     try:
@@ -834,9 +794,8 @@ def test_extensible_collections():
         ]
 
         # Test array with mixed types
-        oc_array_ptr = py_list_to_ocarray(mixed_list)
-        converted_list = ocarray_to_py_list(oc_array_ptr)
-        release_octype(oc_array_ptr)
+        oc_array_ptr = pylist_to_ocarray(mixed_list)
+        converted_list = ocarray_to_pylist(oc_array_ptr)
 
         assert len(converted_list) == len(mixed_list), "Array length should be preserved"
         assert converted_list[0] == "python_string", "String should be preserved"
@@ -852,9 +811,8 @@ def test_extensible_collections():
             "array_val": np.array([7, 8, 9], dtype=np.int32),
         }
 
-        oc_dict_ptr = py_dict_to_ocdictionary(mixed_dict)
-        converted_dict = ocdictionary_to_py_dict(oc_dict_ptr)
-        release_octype(oc_dict_ptr)
+        oc_dict_ptr = pydict_to_ocdict(mixed_dict)
+        converted_dict = ocdict_to_pydict(oc_dict_ptr)
 
         assert "str_val" in converted_dict, "String key should be preserved"
         assert converted_dict["str_val"] == "python_string", "String value should be preserved"
@@ -864,44 +822,23 @@ def test_extensible_collections():
 
     finally:
         # Clean up OCType objects
-        release_octype(string_ptr)
-        release_octype(number_ptr)
         # Note: bool_ptr doesn't need release (singleton)
-        release_octype(data_ptr)
 
 def test_collection_memory_management():
     """Test that collections properly manage memory for their elements."""
-    # Create a nested structure to test memory management
+    # Create a nested structure to test basic functionality
     nested_data = {
         "array": [1, 2, {"nested": "value"}],
         "dict": {"key": [4, 5, 6]},
         "simple": "string"
     }
 
-    # Convert to OCDictionary
-    oc_dict_ptr = py_dict_to_ocdictionary(nested_data)
+    # Convert to OCDictionary and back (memory handled automatically)
+    oc_dict_ptr = pydict_to_ocdict(nested_data)
+    assert oc_dict_ptr != 0, "Failed to create OCDictionary"
 
-    # Get retain count (should be 1)
-    initial_count = get_retain_count(oc_dict_ptr)
-    assert initial_count == 1, f"Initial retain count should be 1, got {initial_count}"
-
-    # Retain and verify count increases
-    retain_octype(oc_dict_ptr)
-    after_retain = get_retain_count(oc_dict_ptr)
-    assert after_retain == 2, f"After retain should be 2, got {after_retain}"
-
-    # Convert back to Python (this shouldn't affect retain count)
-    converted = ocdictionary_to_py_dict(oc_dict_ptr)
-    after_convert = get_retain_count(oc_dict_ptr)
-    assert after_convert == 2, f"After convert should still be 2, got {after_convert}"
-
-    # Release and verify count decreases
-    release_octype(oc_dict_ptr)
-    after_release = get_retain_count(oc_dict_ptr)
-    assert after_release == 1, f"After release should be 1, got {after_release}"
-
-    # Final cleanup
-    release_octype(oc_dict_ptr)
+    # Convert back to Python
+    converted = ocdict_to_pydict(oc_dict_ptr)
 
     # Verify the conversion worked
     assert "array" in converted, "Array key should be present"

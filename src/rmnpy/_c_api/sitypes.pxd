@@ -131,6 +131,9 @@ cdef extern from "SITypes/SIUnit.h":
         kSIPrefixZetta = 21
         kSIPrefixYotta = 24
 
+    # Type ID
+    OCTypeID SIUnitGetTypeID()
+
     # Parsing
     SIUnitRef SIUnitFromExpression(OCStringRef expression, double *unit_multiplier, OCStringRef *error)
 

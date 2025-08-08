@@ -19,6 +19,7 @@ from libc.stdint cimport (
     uint16_t,
     uint32_t,
     uint64_t,
+    uintptr_t,
 )
 from libc.stdlib cimport free, malloc
 from libc.string cimport memcpy
@@ -27,6 +28,34 @@ from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.sitypes cimport *
 
 import cython
+
+# Import Scalar class for proper SIScalar conversion
+# Use duck typing instead of isinstance for better Cython performance and robustness
+try:
+    from rmnpy.wrappers.sitypes.scalar import Scalar
+    SCALAR_AVAILABLE = True
+    SCALAR_CLASS = Scalar  # Keep reference for _from_ref calls
+except ImportError:
+    SCALAR_AVAILABLE = False
+    SCALAR_CLASS = None
+
+# Import Unit class for proper SIUnit conversion
+try:
+    from rmnpy.wrappers.sitypes.unit import Unit
+    UNIT_AVAILABLE = True
+    UNIT_CLASS = Unit  # Keep reference for _from_ref calls
+except ImportError:
+    UNIT_AVAILABLE = False
+    UNIT_CLASS = None
+
+# Import Dimensionality class for proper SIDimensionality conversion
+try:
+    from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
+    DIMENSIONALITY_AVAILABLE = True
+    DIMENSIONALITY_CLASS = Dimensionality  # Keep reference for _from_ref calls
+except ImportError:
+    DIMENSIONALITY_AVAILABLE = False
+    DIMENSIONALITY_CLASS = None
 
 # ====================================================================================
 # Debug Helper Functions
@@ -50,6 +79,9 @@ def debug_octype_ids():
     debug_info.append(f"  OCIndexArray: {OCIndexArrayGetTypeID()}")
     debug_info.append(f"  OCIndexSet: {OCIndexSetGetTypeID()}")
     debug_info.append(f"  OCIndexPairSet: {OCIndexPairSetGetTypeID()}")
+    debug_info.append(f"  SIScalar: {SIScalarGetTypeID()}")
+    debug_info.append(f"  SIUnit: {SIUnitGetTypeID()}")
+    debug_info.append(f"  SIDimensionality: {SIDimensionalityGetTypeID()}")
 
     return "\n".join(debug_info)
 
@@ -58,7 +90,7 @@ def debug_number_creation(py_number):
     Debug function to test individual number creation.
     """
     try:
-        oc_num_ptr = py_number_to_ocnumber(py_number)
+        oc_num_ptr = pynumber_to_ocnumber(py_number)
         type_id = OCGetTypeID(<const void*>oc_num_ptr)
         type_name = OCTypeNameFromTypeID(type_id)
         type_name_str = type_name.decode('utf-8') if type_name else 'Unknown'
@@ -80,7 +112,7 @@ def debug_minimal_array_creation(double value):
 
     # Step 1: Create the number
     print("Step 1: Creating number...")
-    num_ptr = py_number_to_ocnumber(value)
+    num_ptr = pynumber_to_ocnumber(value)
     num_type_id = OCGetTypeID(<const void*>num_ptr)
     print(f"Number created: ptr={num_ptr}, typeID={num_type_id}")
 
@@ -140,7 +172,7 @@ def debug_direct_number(double value):
     """Debug function to test individual number creation."""
     print(f"Creating number from: {value}")
 
-    cdef uint64_t num_ptr = py_number_to_ocnumber(value)
+    cdef uint64_t num_ptr = pynumber_to_ocnumber(value)
     print(f"Created pointer: {num_ptr}")
 
     cdef OCTypeID type_id = OCGetTypeID(<const void*>num_ptr)
@@ -201,7 +233,7 @@ def debug_array_elements(uint64_t oc_array_ptr):
         if type_id == OCStringGetTypeID():
             debug_info.append(f"    -> OCString")
             try:
-                py_value = ocstring_to_py_string(<uint64_t>item_ptr)
+                py_value = ocstring_to_pystring(<uint64_t>item_ptr)
                 debug_info.append(f"    -> Value: '{py_value}'")
             except Exception as e:
                 debug_info.append(f"    -> String conversion failed: {e}")
@@ -211,14 +243,14 @@ def debug_array_elements(uint64_t oc_array_ptr):
             number_type = OCNumberGetType(num_ptr)
             debug_info.append(f"    -> Internal OCNumberType: {number_type}")
             try:
-                py_value = ocnumber_to_py_number(<uint64_t>item_ptr)
+                py_value = ocnumber_to_pynumber(<uint64_t>item_ptr)
                 debug_info.append(f"    -> Value: {py_value}")
             except Exception as e:
                 debug_info.append(f"    -> Number conversion failed: {e}")
         elif type_id == OCBooleanGetTypeID():
             debug_info.append(f"    -> OCBoolean")
             try:
-                py_value = ocboolean_to_py_bool(<uint64_t>item_ptr)
+                py_value = ocboolean_to_pybool(<uint64_t>item_ptr)
                 debug_info.append(f"    -> Value: {py_value}")
             except Exception as e:
                 debug_info.append(f"    -> Boolean conversion failed: {e}")
@@ -250,7 +282,7 @@ def debug_convert_single_element(uint64_t oc_array_ptr, uint64_t index):
     cdef OCTypeID number_type_id = OCNumberGetTypeID()
 
     if type_id == number_type_id:
-        return ocnumber_to_py_number(<uint64_t>item_ptr)
+        return ocnumber_to_pynumber(<uint64_t>item_ptr)
     else:
         return f"Type mismatch: element_type={type_id}, number_type={number_type_id}"
 
@@ -294,17 +326,27 @@ cdef uint64_t convert_python_to_octype(object item) except 0:
 
     # Handle built-in Python types
     if isinstance(item, str):
-        return py_string_to_ocstring(item)
+        return pystring_to_ocstring(item)
     elif isinstance(item, bool):  # Check bool before int (bool is subclass of int)
-        return py_bool_to_ocboolean(item)
+        return pybool_to_ocboolean(item)
     elif isinstance(item, (int, float, complex)):
-        return py_number_to_ocnumber(item)
+        return pynumber_to_ocnumber(item)
     elif isinstance(item, np.ndarray):
         return numpy_array_to_ocdata(item)
-    # Handle Scalar objects from RMNpy wrappers
+    # Handle Scalar objects from RMNpy wrappers using duck typing
+    # We use hasattr instead of isinstance for better Cython performance
+    # and to avoid circular import issues with dynamically imported classes
     elif hasattr(item, 'value') and hasattr(item, 'unit'):
         # This looks like a Scalar object - convert to SIScalar
-        return py_scalar_to_siscalar(item)
+        return pyscalar_to_siscalar(item)
+    # Handle Unit objects from RMNpy wrappers using duck typing
+    elif hasattr(item, '_c_unit'):
+        # This looks like a Unit object - convert to SIUnit
+        return pyunit_to_siunit(item)
+    # Handle Dimensionality objects from RMNpy wrappers using duck typing
+    elif hasattr(item, '_dim_ref'):
+        # This looks like a Dimensionality object - convert to SIDimensionality
+        return pydimensionality_to_sidimensionality(item)
     else:
         raise TypeError(f"Unsupported item type: {type(item)}. For collections, use specific conversion functions. For OCTypes from other libraries, pass as integer pointer.")
 
@@ -329,29 +371,32 @@ cdef object convert_octype_to_python(const void* oc_ptr):
 
     # Handle known OCTypes
     if type_id == OCStringGetTypeID():
-        return ocstring_to_py_string(<uint64_t>oc_ptr)
+        return ocstring_to_pystring(<uint64_t>oc_ptr)
     elif type_id == OCNumberGetTypeID():
-        return ocnumber_to_py_number(<uint64_t>oc_ptr)
+        return ocnumber_to_pynumber(<uint64_t>oc_ptr)
     elif type_id == OCBooleanGetTypeID():
-        return ocboolean_to_py_bool(<uint64_t>oc_ptr)
+        return ocboolean_to_pybool(<uint64_t>oc_ptr)
     elif type_id == OCDataGetTypeID():
         # Default to uint8 array for OCData
         return ocdata_to_numpy_array(<uint64_t>oc_ptr, np.uint8)
     elif type_id == OCArrayGetTypeID():
-        return ocarray_to_py_list(<uint64_t>oc_ptr)
+        return ocarray_to_pylist(<uint64_t>oc_ptr)
     elif type_id == OCDictionaryGetTypeID():
-        return ocdictionary_to_py_dict(<uint64_t>oc_ptr)
+        return ocdict_to_pydict(<uint64_t>oc_ptr)
     elif type_id == OCSetGetTypeID():
-        return ocset_to_py_set(<uint64_t>oc_ptr)
+        return ocset_to_pyset(<uint64_t>oc_ptr)
     elif type_id == OCIndexArrayGetTypeID():
-        return ocindexarray_to_py_list(<uint64_t>oc_ptr)
+        return ocindexarray_to_pylist(<uint64_t>oc_ptr)
     elif type_id == OCIndexSetGetTypeID():
-        return ocindexset_to_py_set(<uint64_t>oc_ptr)
+        return ocindexset_to_pyset(<uint64_t>oc_ptr)
     elif type_id == OCIndexPairSetGetTypeID():
-        return ocindexpairset_to_py_dict(<uint64_t>oc_ptr)
+        return ocindexpairset_to_pydict(<uint64_t>oc_ptr)
     elif type_id == SIScalarGetTypeID():
-        # Handle SIScalar objects - return as tuple (value, unit_string)
-        return siscalar_to_py_tuple(<uint64_t>oc_ptr)
+        return siscalar_to_pyscalar(<uint64_t>oc_ptr)
+    elif type_id == SIUnitGetTypeID():
+        return siunit_to_pyunit(<uint64_t>oc_ptr)
+    elif type_id == SIDimensionalityGetTypeID():
+        return sidimensionality_to_pydimensionality(<uint64_t>oc_ptr)
     else:
         # Unknown OCType (could be from SITypes or other extensions)
         # Return as integer pointer for use by other libraries
@@ -361,19 +406,26 @@ cdef object convert_octype_to_python(const void* oc_ptr):
 # String Helper Functions
 # ====================================================================================
 
-def py_string_to_ocstring(str py_string):
+def pystring_to_ocstring(py_string):
     """
     Convert a Python string to an OCStringRef.
 
     Args:
-        py_string (str): Python string to convert
+        py_string (str or None): Python string to convert, or None
 
     Returns:
-        OCStringRef: OCTypes string reference (needs to be released)
+        uint64_t: OCTypes string reference (needs to be released), or 0 if py_string is None
 
     Raises:
         RuntimeError: If string creation fails
+        TypeError: If input is not str or None
     """
+    if py_string is None:
+        return 0  # Return NULL pointer as uint64_t for None
+
+    if not isinstance(py_string, str):
+        raise TypeError(f"Expected str or None, got {type(py_string)}")
+
     cdef bytes utf8_bytes = py_string.encode('utf-8')
     cdef const char* c_string = utf8_bytes
 
@@ -383,7 +435,7 @@ def py_string_to_ocstring(str py_string):
 
     return <uint64_t>oc_string
 
-def ocstring_to_py_string(uint64_t oc_string_ptr):
+def ocstring_to_pystring(uint64_t oc_string_ptr):
     """
     Convert an OCStringRef to a Python string.
 
@@ -406,7 +458,7 @@ def ocstring_to_py_string(uint64_t oc_string_ptr):
 
     return c_string.decode('utf-8')
 
-def py_string_to_ocmutablestring(str py_string):
+def pystring_to_ocmutablestring(str py_string):
     """
     Convert a Python string to an OCMutableStringRef.
 
@@ -416,7 +468,7 @@ def py_string_to_ocmutablestring(str py_string):
     Returns:
         OCMutableStringRef: OCTypes mutable string reference (needs to be released)
     """
-    cdef uint64_t immutable_string_ptr = py_string_to_ocstring(py_string)
+    cdef uint64_t immutable_string_ptr = pystring_to_ocstring(py_string)
     cdef OCStringRef immutable_string = <OCStringRef>immutable_string_ptr
     cdef OCMutableStringRef mutable_string = OCStringCreateMutableCopy(immutable_string)
 
@@ -432,7 +484,7 @@ def py_string_to_ocmutablestring(str py_string):
 # Number Helper Functions
 # ====================================================================================
 
-def py_complex_to_ocnumber(double real_part, double imag_part):
+def pycomplex_to_ocnumber(double real_part, double imag_part):
     """
     Convert separate real and imaginary parts to an OCNumberRef.
 
@@ -455,7 +507,7 @@ def py_complex_to_ocnumber(double real_part, double imag_part):
         raise RuntimeError(f"Failed to create complex OCNumber from {real_part}+{imag_part}j")
     return <uint64_t>oc_number
 
-def py_number_to_ocnumber(py_number):
+def pynumber_to_ocnumber(py_number):
     """
     Convert a Python number (int, float, complex) to an OCNumberRef.
 
@@ -485,7 +537,7 @@ def py_number_to_ocnumber(py_number):
         # Direct complex number handling without wrapper to avoid circular imports
         real_part = py_number.real
         imag_part = py_number.imag
-        return py_complex_to_ocnumber(real_part, imag_part)
+        return pycomplex_to_ocnumber(real_part, imag_part)
     else:
         raise TypeError(f"Unsupported number type: {type(py_number)}")
 
@@ -494,7 +546,7 @@ def py_number_to_ocnumber(py_number):
 
     return <uint64_t>oc_number
 
-def ocnumber_to_py_number(uint64_t oc_number_ptr):
+def ocnumber_to_pynumber(uint64_t oc_number_ptr):
     """
     Convert an OCNumberRef to a Python number.
 
@@ -554,7 +606,7 @@ def ocnumber_to_py_number(uint64_t oc_number_ptr):
 # Boolean Helper Functions
 # ====================================================================================
 
-def py_bool_to_ocboolean(bint py_bool):
+def pybool_to_ocboolean(bint py_bool):
     """
     Convert a Python bool to an OCBooleanRef.
 
@@ -569,7 +621,7 @@ def py_bool_to_ocboolean(bint py_bool):
     else:
         return <uint64_t>kOCBooleanFalse
 
-def ocboolean_to_py_bool(uint64_t oc_boolean_ptr):
+def ocboolean_to_pybool(uint64_t oc_boolean_ptr):
     """
     Convert an OCBooleanRef to a Python bool.
 
@@ -680,7 +732,7 @@ def ocdata_to_numpy_array(uint64_t oc_data_ptr, object dtype, object shape=None)
 # Array Helper Functions
 # ====================================================================================
 
-def py_list_to_ocarray(list py_list):
+def pylist_to_ocarray(py_list):
     """
     Convert a Python list to an OCArrayRef.
 
@@ -693,6 +745,9 @@ def py_list_to_ocarray(list py_list):
     Raises:
         RuntimeError: If array creation fails
     """
+    if py_list is None:
+        return <uint64_t>0
+
     cdef OCMutableArrayRef mutable_array = OCArrayCreateMutable(0, &kOCTypeArrayCallBacks)
     cdef uint64_t oc_item_ptr = 0
 
@@ -706,17 +761,17 @@ def py_list_to_ocarray(list py_list):
         try:
             # Handle collections explicitly to avoid circular dependencies
             if isinstance(item, list):
-                oc_item_ptr = py_list_to_ocarray(item)
+                oc_item_ptr = pylist_to_ocarray(item)
             elif isinstance(item, dict):
-                oc_item_ptr = py_dict_to_ocdictionary(item)
+                oc_item_ptr = pydict_to_ocdict(item)
             elif isinstance(item, set):
-                oc_item_ptr = py_set_to_ocset(item)
+                oc_item_ptr = pyset_to_ocset(item)
             elif isinstance(item, str):
-                oc_item_ptr = py_string_to_ocstring(item)
+                oc_item_ptr = pystring_to_ocstring(item)
             elif isinstance(item, bool):  # Check bool before int (bool is subclass of int)
-                oc_item_ptr = py_bool_to_ocboolean(item)
+                oc_item_ptr = pybool_to_ocboolean(item)
             elif isinstance(item, (int, float, complex)):
-                oc_item_ptr = py_number_to_ocnumber(item)
+                oc_item_ptr = pynumber_to_ocnumber(item)
             elif isinstance(item, np.ndarray):
                 oc_item_ptr = numpy_array_to_ocdata(item)
             else:
@@ -743,7 +798,7 @@ def py_list_to_ocarray(list py_list):
 
     return <uint64_t>immutable_array
 
-def ocarray_to_py_list(uint64_t oc_array_ptr):
+def ocarray_to_pylist(uint64_t oc_array_ptr):
     """
     Convert an OCArrayRef to a Python list.
 
@@ -778,27 +833,33 @@ def ocarray_to_py_list(uint64_t oc_array_ptr):
 
         # Handle known OCTypes directly
         if type_id == OCStringGetTypeID():
-            py_item = ocstring_to_py_string(<uint64_t>item_ptr)
+            py_item = ocstring_to_pystring(<uint64_t>item_ptr)
         elif type_id == OCNumberGetTypeID():
-            py_item = ocnumber_to_py_number(<uint64_t>item_ptr)
+            py_item = ocnumber_to_pynumber(<uint64_t>item_ptr)
         elif type_id == OCBooleanGetTypeID():
-            py_item = ocboolean_to_py_bool(<uint64_t>item_ptr)
+            py_item = ocboolean_to_pybool(<uint64_t>item_ptr)
         elif type_id == OCDataGetTypeID():
             # Default to uint8 array for OCData
             py_item = ocdata_to_numpy_array(<uint64_t>item_ptr, np.uint8)
         elif type_id == OCArrayGetTypeID():
             # Recursive call - this could be the source of issues
-            py_item = ocarray_to_py_list(<uint64_t>item_ptr)
+            py_item = ocarray_to_pylist(<uint64_t>item_ptr)
         elif type_id == OCDictionaryGetTypeID():
-            py_item = ocdictionary_to_py_dict(<uint64_t>item_ptr)
+            py_item = ocdict_to_pydict(<uint64_t>item_ptr)
         elif type_id == OCSetGetTypeID():
-            py_item = ocset_to_py_set(<uint64_t>item_ptr)
+            py_item = ocset_to_pyset(<uint64_t>item_ptr)
         elif type_id == OCIndexArrayGetTypeID():
-            py_item = ocindexarray_to_py_list(<uint64_t>item_ptr)
+            py_item = ocindexarray_to_pylist(<uint64_t>item_ptr)
         elif type_id == OCIndexSetGetTypeID():
-            py_item = ocindexset_to_py_set(<uint64_t>item_ptr)
+            py_item = ocindexset_to_pyset(<uint64_t>item_ptr)
         elif type_id == OCIndexPairSetGetTypeID():
-            py_item = ocindexpairset_to_py_dict(<uint64_t>item_ptr)
+            py_item = ocindexpairset_to_pydict(<uint64_t>item_ptr)
+        elif type_id == SIScalarGetTypeID():
+            py_item = siscalar_to_pyscalar(<uint64_t>item_ptr)
+        elif type_id == SIUnitGetTypeID():
+            py_item = siunit_to_pyunit(<uint64_t>item_ptr)
+        elif type_id == SIDimensionalityGetTypeID():
+            py_item = sidimensionality_to_pydimensionality(<uint64_t>item_ptr)
         else:
             # Unknown OCType - return as integer pointer
             py_item = <uint64_t>item_ptr
@@ -807,7 +868,7 @@ def ocarray_to_py_list(uint64_t oc_array_ptr):
 
     return result
 
-def py_list_to_ocmutablearray(list py_list):
+def pylist_to_ocmutablearray(list py_list):
     """
     Convert a Python list to an OCMutableArrayRef.
 
@@ -830,11 +891,11 @@ def py_list_to_ocmutablearray(list py_list):
         try:
             # Handle collections explicitly to avoid circular dependencies
             if isinstance(item, list):
-                oc_item_ptr = py_list_to_ocarray(item)
+                oc_item_ptr = pylist_to_ocarray(item)
             elif isinstance(item, dict):
-                oc_item_ptr = py_dict_to_ocdictionary(item)
+                oc_item_ptr = pydict_to_ocdict(item)
             elif isinstance(item, set):
-                oc_item_ptr = py_set_to_ocset(item)
+                oc_item_ptr = pyset_to_ocset(item)
             else:
                 # Use the generic converter for basic types and OCTypes (including SITypes, RMNLib)
                 oc_item_ptr = convert_python_to_octype(item)
@@ -857,7 +918,7 @@ def py_list_to_ocmutablearray(list py_list):
 # Dictionary Helper Functions
 # ====================================================================================
 
-def py_dict_to_ocdictionary(dict py_dict):
+def pydict_to_ocdict(py_dict):
     """
     Convert a Python dict to an OCDictionaryRef.
 
@@ -872,6 +933,12 @@ def py_dict_to_ocdictionary(dict py_dict):
     Raises:
         RuntimeError: If dictionary creation fails
     """
+    # Return NULL pointer if no dictionary provided
+    if py_dict is None:
+        return <uint64_t>0
+    # Ensure correct type
+    if not isinstance(py_dict, dict):
+        raise TypeError(f"Expected dict or None, got {type(py_dict)}")
     cdef OCMutableDictionaryRef mutable_dict = OCDictionaryCreateMutable(0)
     cdef uint64_t oc_key_ptr = 0
     cdef uint64_t oc_value_ptr = 0
@@ -891,16 +958,16 @@ def py_dict_to_ocdictionary(dict py_dict):
                 str_key = key
             else:
                 str_key = str(key)  # Convert to string representation
-            oc_key_ptr = py_string_to_ocstring(str_key)
+            oc_key_ptr = pystring_to_ocstring(str_key)
 
             # Convert value
             # Handle collections explicitly to avoid circular dependencies
             if isinstance(value, list):
-                oc_value_ptr = py_list_to_ocarray(value)
+                oc_value_ptr = pylist_to_ocarray(value)
             elif isinstance(value, dict):
-                oc_value_ptr = py_dict_to_ocdictionary(value)
+                oc_value_ptr = pydict_to_ocdict(value)
             elif isinstance(value, set):
-                oc_value_ptr = py_set_to_ocset(value)
+                oc_value_ptr = pyset_to_ocset(value)
             else:
                 # Use the generic converter for basic types and OCTypes (including SITypes, RMNLib)
                 oc_value_ptr = convert_python_to_octype(value)
@@ -929,7 +996,7 @@ def py_dict_to_ocdictionary(dict py_dict):
 
     return <uint64_t>immutable_dict
 
-def ocdictionary_to_py_dict(uint64_t oc_dict_ptr):
+def ocdict_to_pydict(uint64_t oc_dict_ptr):
     """
     Convert an OCDictionaryRef to a Python dict.
 
@@ -984,7 +1051,7 @@ def ocdictionary_to_py_dict(uint64_t oc_dict_ptr):
             if key_type_id != OCStringGetTypeID():
                 continue  # Skip non-string keys
 
-            py_key = ocstring_to_py_string(<uint64_t>keys[i])
+            py_key = ocstring_to_pystring(<uint64_t>keys[i])
 
             # Convert value using extensible converter that handles all OCTypes
             py_value = convert_octype_to_python(values[i])
@@ -999,7 +1066,7 @@ def ocdictionary_to_py_dict(uint64_t oc_dict_ptr):
         if values != NULL:
             free(values)
 
-def py_dict_to_ocmutabledictionary(dict py_dict):
+def pydict_to_ocmutabledict(dict py_dict):
     """
     Convert a Python dict to an OCMutableDictionaryRef.
 
@@ -1030,16 +1097,16 @@ def py_dict_to_ocmutabledictionary(dict py_dict):
                 str_key = key
             else:
                 str_key = str(key)  # Convert to string representation
-            oc_key_ptr = py_string_to_ocstring(str_key)
+            oc_key_ptr = pystring_to_ocstring(str_key)
 
             # Convert value
             # Handle collections explicitly to avoid circular dependencies
             if isinstance(value, list):
-                oc_value_ptr = py_list_to_ocarray(value)
+                oc_value_ptr = pylist_to_ocarray(value)
             elif isinstance(value, dict):
-                oc_value_ptr = py_dict_to_ocdictionary(value)
+                oc_value_ptr = pydict_to_ocdict(value)
             elif isinstance(value, set):
-                oc_value_ptr = py_set_to_ocset(value)
+                oc_value_ptr = pyset_to_ocset(value)
             else:
                 # Use the generic converter for basic types and OCTypes (including SITypes, RMNLib)
                 oc_value_ptr = convert_python_to_octype(value)
@@ -1065,7 +1132,7 @@ def py_dict_to_ocmutabledictionary(dict py_dict):
 # Set Helper Functions
 # ====================================================================================
 
-def py_set_to_ocset(set py_set):
+def pyset_to_ocset(set py_set):
     """
     Convert a Python set to an OCSetRef.
 
@@ -1114,7 +1181,7 @@ def py_set_to_ocset(set py_set):
 
     return <uint64_t>immutable_set
 
-def ocset_to_py_set(uint64_t oc_set_ptr):
+def ocset_to_pyset(uint64_t oc_set_ptr):
     """
     Convert an OCSetRef to a Python set.
 
@@ -1154,17 +1221,44 @@ def ocset_to_py_set(uint64_t oc_set_ptr):
 
         # Convert based on type (only hashable types for sets)
         if type_id == OCStringGetTypeID():
-            result.add(ocstring_to_py_string(<uint64_t>item_ptr))
+            result.add(ocstring_to_pystring(<uint64_t>item_ptr))
         elif type_id == OCNumberGetTypeID():
-            result.add(ocnumber_to_py_number(<uint64_t>item_ptr))
+            result.add(ocnumber_to_pynumber(<uint64_t>item_ptr))
         elif type_id == OCBooleanGetTypeID():
-            result.add(ocboolean_to_py_bool(<uint64_t>item_ptr))
+            result.add(ocboolean_to_pybool(<uint64_t>item_ptr))
+        elif type_id == SIScalarGetTypeID():
+            # Convert SIScalar to Scalar object (if hashable)
+            scalar_obj = siscalar_to_pyscalar(<uint64_t>item_ptr)
+            try:
+                result.add(scalar_obj)
+            except TypeError:
+                # If Scalar objects aren't hashable, fall back to tuple representation
+                tuple_repr = siscalar_to_pytuple(<uint64_t>item_ptr)
+                result.add(tuple_repr)
+        elif type_id == SIUnitGetTypeID():
+            # Convert SIUnit to Unit object (if hashable)
+            unit_obj = siunit_to_pyunit(<uint64_t>item_ptr)
+            try:
+                result.add(unit_obj)
+            except TypeError:
+                # If Unit objects aren't hashable, convert to string representation
+                # For now, add as integer pointer - this could be improved with string conversion
+                result.add(f"SIUnit({<uint64_t>item_ptr})")
+        elif type_id == SIDimensionalityGetTypeID():
+            # Convert SIDimensionality to Dimensionality object (if hashable)
+            dim_obj = sidimensionality_to_pydimensionality(<uint64_t>item_ptr)
+            try:
+                result.add(dim_obj)
+            except TypeError:
+                # If Dimensionality objects aren't hashable, convert to string representation
+                # For now, add as integer pointer - this could be improved with string conversion
+                result.add(f"SIDimensionality({<uint64_t>item_ptr})")
         # Note: Can't add arrays/dicts to sets as they're not hashable
 
     OCRelease(<const void*>values_array)
     return result
 
-def py_set_to_ocmutableset(set py_set):
+def pyset_to_ocmutableset(set py_set):
     """
     Convert a Python set to an OCMutableSetRef.
 
@@ -1207,7 +1301,7 @@ def py_set_to_ocmutableset(set py_set):
 # Index Collection Helper Functions
 # ====================================================================================
 
-def py_list_to_ocindexarray(list py_list):
+def pylist_to_ocindexarray(list py_list):
     """
     Convert a Python list of integers to an OCIndexArrayRef.
 
@@ -1250,7 +1344,7 @@ def py_list_to_ocindexarray(list py_list):
         if indices != NULL:
             free(indices)
 
-def ocindexarray_to_py_list(uint64_t oc_indexarray_ptr):
+def ocindexarray_to_pylist(uint64_t oc_indexarray_ptr):
     """
     Convert an OCIndexArrayRef to a Python list of integers.
 
@@ -1276,7 +1370,7 @@ def ocindexarray_to_py_list(uint64_t oc_indexarray_ptr):
 
     return result
 
-def py_set_to_ocindexset(set py_set):
+def pyset_to_ocindexset(set py_set):
     """
     Convert a Python set of integers to an OCIndexSetRef.
 
@@ -1319,7 +1413,7 @@ def py_set_to_ocindexset(set py_set):
 
     return <uint64_t>immutable_indexset
 
-def ocindexset_to_py_set(uint64_t oc_indexset_ptr):
+def ocindexset_to_pyset(uint64_t oc_indexset_ptr):
     """
     Convert an OCIndexSetRef to a Python set of integers.
 
@@ -1368,7 +1462,7 @@ def ocindexset_to_py_set(uint64_t oc_indexset_ptr):
 
     return result
 
-def py_dict_to_ocindexpairset(dict py_dict):
+def pydict_to_ocindexpairset(dict py_dict):
     """
     Convert a Python dict[int, int] to an OCIndexPairSetRef.
 
@@ -1407,7 +1501,7 @@ def py_dict_to_ocindexpairset(dict py_dict):
     OCRelease(<OCTypeRef>mutable_pairset)
     return <uint64_t>immutable_pairset
 
-def ocindexpairset_to_py_dict(uint64_t oc_indexpairset_ptr):
+def ocindexpairset_to_pydict(uint64_t oc_indexpairset_ptr):
     """
     Convert an OCIndexPairSetRef to a Python dict[int, int].
 
@@ -1485,112 +1579,6 @@ def numpy_array_to_ocmutabledata(object numpy_array):
     return <uint64_t>oc_mutable_data
 
 # ====================================================================================
-# Type Introspection Helper Functions
-# ====================================================================================
-
-def octype_get_type_id(uint64_t oc_object_ptr):
-    """
-    Get the type ID of an OCTypes object.
-
-    Args:
-        oc_object_ptr (uint64_t): Pointer to any OCTypes object
-
-    Returns:
-        int: OCTypeID value
-
-    Raises:
-        ValueError: If the object pointer is NULL
-    """
-    if oc_object_ptr == 0:
-        raise ValueError("OCTypes object pointer is NULL")
-
-    return int(OCGetTypeID(<const void*>oc_object_ptr))
-
-def octype_equal(uint64_t oc_object1_ptr, uint64_t oc_object2_ptr):
-    """
-    Test equality between two OCTypes objects.
-
-    Args:
-        oc_object1_ptr (uint64_t): Pointer to first OCTypes object
-        oc_object2_ptr (uint64_t): Pointer to second OCTypes object
-
-    Returns:
-        bool: True if objects are equal, False otherwise
-    """
-    if oc_object1_ptr == 0 and oc_object2_ptr == 0:
-        return True
-    if oc_object1_ptr == 0 or oc_object2_ptr == 0:
-        return False
-
-    return bool(OCTypeEqual(<const void*>oc_object1_ptr, <const void*>oc_object2_ptr))
-
-def octype_deep_copy(uint64_t oc_object_ptr):
-    """
-    Create a deep copy of an OCTypes object.
-
-    Args:
-        oc_object_ptr (uint64_t): Pointer to OCTypes object to copy
-
-    Returns:
-        uint64_t: Pointer to copied object (needs to be released)
-
-    Raises:
-        ValueError: If the object pointer is NULL
-        RuntimeError: If copying fails
-    """
-    if oc_object_ptr == 0:
-        raise ValueError("OCTypes object pointer is NULL")
-
-    cdef void* copied_object = OCTypeDeepCopy(<const void*>oc_object_ptr)
-    if copied_object == NULL:
-        raise RuntimeError("Failed to create deep copy of OCTypes object")
-
-    return <uint64_t>copied_object
-
-# ====================================================================================
-# Utility Functions
-# ====================================================================================
-
-def release_octype(uint64_t oc_object_ptr):
-    """
-    Release an OCTypes object.
-
-    Args:
-        oc_object_ptr (uint64_t): Pointer to any OCTypes object
-    """
-    if oc_object_ptr != 0:
-        OCRelease(<const void*>oc_object_ptr)
-
-def retain_octype(uint64_t oc_object_ptr):
-    """
-    Retain an OCTypes object.
-
-    Args:
-        oc_object_ptr (uint64_t): Pointer to any OCTypes object
-
-    Returns:
-        uint64_t: Same pointer (retained)
-    """
-    if oc_object_ptr != 0:
-        OCRetain(<const void*>oc_object_ptr)
-    return oc_object_ptr
-
-def get_retain_count(uint64_t oc_object_ptr):
-    """
-    Get the retain count of an OCTypes object.
-
-    Args:
-        oc_object_ptr (uint64_t): Pointer to any OCTypes object
-
-    Returns:
-        int: Retain count
-    """
-    if oc_object_ptr == 0:
-        return 0
-    return OCTypeGetRetainCount(<const void*>oc_object_ptr)
-
-
-# ====================================================================================
 # SITypes Scalar Helper Functions
 # ====================================================================================
 
@@ -1650,7 +1638,7 @@ def py_number_to_siscalar(py_number, str unit_string="1"):
         if unit_oc_string != NULL:
             OCRelease(<const void*>unit_oc_string)
 
-def py_scalar_to_siscalar(object py_scalar):
+def pyscalar_to_siscalar(object py_scalar):
     """
     Convert a Python Scalar object to an SIScalarRef.
 
@@ -1688,7 +1676,7 @@ def py_scalar_to_siscalar(object py_scalar):
     except Exception as e:
         raise RuntimeError(f"Failed to convert Scalar to SIScalar: {e}")
 
-def py_number_to_siscalar_expression(py_number, str expression="1"):
+def pynumber_to_siscalar_expression(py_number, str expression="1"):
     """
     Convert a Python number to an SIScalarRef using expression parsing.
 
@@ -1754,7 +1742,7 @@ def py_number_to_siscalar_expression(py_number, str expression="1"):
         if expr_string != NULL:
             OCRelease(<const void*>expr_string)
 
-def siscalar_to_py_number(uint64_t si_scalar_ptr):
+def siscalar_to_pynumber(uint64_t si_scalar_ptr):
     """
     Convert an SIScalarRef to a Python number.
 
@@ -1795,7 +1783,7 @@ def siscalar_to_py_number(uint64_t si_scalar_ptr):
     except Exception as e:
         raise RuntimeError(f"Failed to extract value from SIScalar: {e}")
 
-def siscalar_to_py_tuple(uint64_t si_scalar_ptr):
+def siscalar_to_pytuple(uint64_t si_scalar_ptr):
     """
     Convert an SIScalarRef to a Python (value, unit_string) tuple.
 
@@ -1818,7 +1806,7 @@ def siscalar_to_py_tuple(uint64_t si_scalar_ptr):
 
     try:
         # Extract the numeric value
-        py_value = siscalar_to_py_number(si_scalar_ptr)
+        py_value = siscalar_to_pynumber(si_scalar_ptr)
 
         # Extract the unit string
         unit_string = SIScalarCopyUnitSymbol(si_scalar)
@@ -1837,6 +1825,37 @@ def siscalar_to_py_tuple(uint64_t si_scalar_ptr):
 
     except Exception as e:
         raise RuntimeError(f"Failed to extract value and unit from SIScalar: {e}")
+
+def siscalar_to_pyscalar(uint64_t si_scalar_ptr):
+    """
+    Convert an SIScalarRef to a Python Scalar object.
+
+    Args:
+        si_scalar_ptr (uint64_t): Pointer to SIScalarRef
+
+    Returns:
+        Scalar: Python Scalar object with proper value and unit
+
+    Raises:
+        ValueError: If the SIScalarRef is NULL
+        RuntimeError: If Scalar class is not available or conversion fails
+    """
+    cdef SIScalarRef si_scalar = <SIScalarRef>si_scalar_ptr
+
+    if si_scalar == NULL:
+        raise ValueError("SIScalarRef is NULL")
+
+    if not SCALAR_AVAILABLE:
+        # Fallback to tuple if Scalar class is not available
+        return siscalar_to_pytuple(si_scalar_ptr)
+
+    try:
+        # Use the Scalar class's _from_ref method to create a proper Scalar object
+        # We need to retain the reference since _from_ref takes ownership
+        retained_ref = <SIScalarRef>OCRetain(<const void*>si_scalar)
+        return SCALAR_CLASS._from_ref(<uint64_t>retained_ref)
+    except Exception as e:
+        raise RuntimeError(f"Failed to convert SIScalar to Scalar: {e}")
 
 def py_list_to_siscalar_ocarray(list py_list, str unit_expression="1"):
     """
@@ -1868,7 +1887,7 @@ def py_list_to_siscalar_ocarray(list py_list, str unit_expression="1"):
 
         try:
             # Convert to SIScalar using expression method (more robust)
-            si_scalar_ptr = py_number_to_siscalar_expression(item, unit_expression)
+            si_scalar_ptr = pynumber_to_siscalar_expression(item, unit_expression)
 
             # Add to array
             OCArrayAppendValue(mutable_array, <const void*>si_scalar_ptr)
@@ -1922,10 +1941,10 @@ def py_coordinate_list_to_siscalar_ocarray(list coordinates):
             # Check if it's already a Scalar object (has value and unit attributes)
             if hasattr(coord, 'value') and hasattr(coord, 'unit'):
                 # Convert Scalar object to SIScalar
-                si_scalar_ptr = py_scalar_to_siscalar(coord)
+                si_scalar_ptr = pyscalar_to_siscalar(coord)
             elif isinstance(coord, (int, float, complex)):
                 # Convert plain number to dimensionless SIScalar using expression method
-                si_scalar_ptr = py_number_to_siscalar_expression(coord, "1")
+                si_scalar_ptr = pynumber_to_siscalar_expression(coord, "1")
             else:
                 raise TypeError(f"Unsupported coordinate type: {type(coord)}. Expected number or Scalar object.")
 
@@ -1950,53 +1969,124 @@ def py_coordinate_list_to_siscalar_ocarray(list coordinates):
 
     return <uint64_t>immutable_array
 
+# ====================================================================================
+# SIUnit Helper Functions
+# ====================================================================================
+
+def pyunit_to_siunit(object py_unit):
+    """
+    Convert a Python Unit object to an SIUnitRef.
+
+    Args:
+        py_unit: Python Unit object
+
+    Returns:
+        uint64_t: SIUnitRef as integer pointer (needs to be released)
+
+    Raises:
+        RuntimeError: If unit conversion fails
+        TypeError: If input is not a Unit object
+    """
+    # Check if it has the expected Unit attributes
+    if not hasattr(py_unit, '_c_unit'):
+        raise TypeError(f"Expected Unit object with '_c_unit' attribute, got {type(py_unit)}")
+
+    # Extract the C unit reference and retain it
+    cdef SIUnitRef c_unit = <SIUnitRef>(<uintptr_t>py_unit._c_unit)
+    if c_unit == NULL:
+        raise RuntimeError("Unit object contains NULL C reference")
+
+    # Return retained reference
+    return <uint64_t>OCRetain(<const void*>c_unit)
+
+def siunit_to_pyunit(uint64_t si_unit_ptr):
+    """
+    Convert an SIUnitRef to a Python Unit object.
+
+    Args:
+        si_unit_ptr (uint64_t): Pointer to SIUnitRef
+
+    Returns:
+        Unit: Python Unit object
+
+    Raises:
+        ValueError: If the SIUnitRef is NULL
+        RuntimeError: If Unit class is not available or conversion fails
+    """
+    cdef SIUnitRef si_unit = <SIUnitRef>si_unit_ptr
+
+    if si_unit == NULL:
+        raise ValueError("SIUnitRef is NULL")
+
+    if not UNIT_AVAILABLE:
+        # Fallback to integer pointer if Unit class is not available
+        return si_unit_ptr
+
+    try:
+        # Use the Unit class's _from_ref method to create a proper Unit object
+        # We need to retain the reference since _from_ref takes ownership
+        retained_ref = <SIUnitRef>OCRetain(<const void*>si_unit)
+        return UNIT_CLASS._from_ref(<uint64_t>retained_ref)
+    except Exception as e:
+        raise RuntimeError(f"Failed to convert SIUnit to Unit: {e}")
 
 # ====================================================================================
-# Convenience Helper Functions for SITypes Integration
+# SIDimensionality Helper Functions
 # ====================================================================================
 
-def parse_c_string(uint64_t oc_string_ptr):
+def pydimensionality_to_sidimensionality(object py_dimensionality):
     """
-    Convenience function to parse an OCStringRef to Python string.
-
-    This is an alias for ocstring_to_py_string() to match the naming
-    convention used in the SITypes wrappers.
+    Convert a Python Dimensionality object to an SIDimensionalityRef.
 
     Args:
-        oc_string_ptr (uint64_t): Pointer to OCStringRef
+        py_dimensionality: Python Dimensionality object
 
     Returns:
-        str: Python string
-    """
-    return ocstring_to_py_string(oc_string_ptr)
+        uint64_t: SIDimensionalityRef as integer pointer (needs to be released)
 
-def create_oc_string(str py_string):
+    Raises:
+        RuntimeError: If dimensionality conversion fails
+        TypeError: If input is not a Dimensionality object
     """
-    Convenience function to create an OCStringRef from Python string.
+    # Check if it has the expected Dimensionality attributes
+    if not hasattr(py_dimensionality, '_dim_ref'):
+        raise TypeError(f"Expected Dimensionality object with '_dim_ref' attribute, got {type(py_dimensionality)}")
 
-    This is an alias for py_string_to_ocstring() to match the naming
-    convention used in the SITypes wrappers.
+    # Extract the C dimensionality reference and retain it
+    cdef SIDimensionalityRef c_dim = <SIDimensionalityRef>(<uintptr_t>py_dimensionality._dim_ref)
+    if c_dim == NULL:
+        raise RuntimeError("Dimensionality object contains NULL C reference")
+
+    # Return retained reference
+    return <uint64_t>OCRetain(<const void*>c_dim)
+
+def sidimensionality_to_pydimensionality(uint64_t si_dimensionality_ptr):
+    """
+    Convert an SIDimensionalityRef to a Python Dimensionality object.
 
     Args:
-        py_string (str): Python string to convert
+        si_dimensionality_ptr (uint64_t): Pointer to SIDimensionalityRef
 
     Returns:
-        uint64_t: OCStringRef as integer pointer (needs to be released)
+        Dimensionality: Python Dimensionality object
+
+    Raises:
+        ValueError: If the SIDimensionalityRef is NULL
+        RuntimeError: If Dimensionality class is not available or conversion fails
     """
-    return py_string_to_ocstring(py_string)
+    cdef SIDimensionalityRef si_dimensionality = <SIDimensionalityRef>si_dimensionality_ptr
 
+    if si_dimensionality == NULL:
+        raise ValueError("SIDimensionalityRef is NULL")
 
-def parse_c_string(uint64_t oc_string_ptr):
-    """
-    Convenience function to convert OCStringRef to Python string.
+    if not DIMENSIONALITY_AVAILABLE:
+        # Fallback to integer pointer if Dimensionality class is not available
+        return si_dimensionality_ptr
 
-    This is an alias for ocstring_to_py_string() to match the naming
-    convention used in the SITypes wrappers.
-
-    Args:
-        oc_string_ptr (uint64_t): OCStringRef as integer pointer
-
-    Returns:
-        str: Python string
-    """
-    return ocstring_to_py_string(oc_string_ptr)
+    try:
+        # Use the Dimensionality class's _from_ref method to create a proper Dimensionality object
+        # We need to retain the reference since _from_ref takes ownership
+        retained_ref = <SIDimensionalityRef>OCRetain(<const void*>si_dimensionality)
+        return DIMENSIONALITY_CLASS._from_ref(<uint64_t>retained_ref)
+    except Exception as e:
+        raise RuntimeError(f"Failed to convert SIDimensionality to Dimensionality: {e}")
