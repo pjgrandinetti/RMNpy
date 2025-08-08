@@ -31,7 +31,7 @@ from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
 from rmnpy.wrappers.sitypes.unit cimport Unit
 
-from rmnpy.helpers.octypes import parse_c_string
+from rmnpy.helpers.octypes import ocstring_to_pystring
 from rmnpy.wrappers.sitypes.unit import Unit
 
 from libc.stdint cimport uint8_t, uint64_t, uintptr_t
@@ -161,7 +161,7 @@ cdef class Scalar:
 
             if base_scalar == NULL:
                 if error_string != NULL:
-                    error_msg = parse_c_string(<uint64_t>error_string)
+                    error_msg = ocstring_to_pystring(<uint64_t>error_string)
                     OCRelease(<OCTypeRef>error_string)
                     raise RMNError(f"Failed to parse scalar expression '{expression}': {error_msg}")
                 else:
@@ -361,7 +361,7 @@ cdef class Scalar:
 
             if result == NULL:
                 if error_string != NULL:
-                    error_msg = parse_c_string(<uint64_t>error_string)
+                    error_msg = ocstring_to_pystring(<uint64_t>error_string)
                     OCRelease(<OCTypeRef>error_string)
                     raise ValueError(f"Unit conversion failed: {error_msg}")
                 else:
@@ -412,7 +412,7 @@ cdef class Scalar:
 
         if result == NULL:
             if error_string != NULL:
-                error_msg = parse_c_string(<uint64_t>error_string)
+                error_msg = ocstring_to_pystring(<uint64_t>error_string)
                 OCRelease(<OCTypeRef>error_string)
                 raise RMNError(f"Coherent SI conversion failed: {error_msg}")
             else:
@@ -462,7 +462,7 @@ cdef class Scalar:
 
         if result == NULL:
             if error_string != NULL:
-                error_msg = parse_c_string(<uint64_t>error_string)
+                error_msg = ocstring_to_pystring(<uint64_t>error_string)
                 OCRelease(<OCTypeRef>error_string)
                 raise RMNError(f"Root operation failed: {error_msg}")
             else:
@@ -485,7 +485,7 @@ cdef class Scalar:
 
         if result == NULL:
             if error_string != NULL:
-                error_msg = parse_c_string(<uint64_t>error_string)
+                error_msg = ocstring_to_pystring(<uint64_t>error_string)
                 OCRelease(<OCTypeRef>error_string)
                 raise RMNError(f"Addition failed: {error_msg}")
             else:
@@ -512,7 +512,7 @@ cdef class Scalar:
 
         if result == NULL:
             if error_string != NULL:
-                error_msg = parse_c_string(<uint64_t>error_string)
+                error_msg = ocstring_to_pystring(<uint64_t>error_string)
                 OCRelease(<OCTypeRef>error_string)
                 raise RMNError(f"Subtraction failed: {error_msg}")
             else:
@@ -541,7 +541,7 @@ cdef class Scalar:
 
             if result == NULL:
                 if error_string != NULL:
-                    error_msg = parse_c_string(<uint64_t>error_string)
+                    error_msg = ocstring_to_pystring(<uint64_t>error_string)
                     OCRelease(<OCTypeRef>error_string)
                     raise RMNError(f"Multiplication failed: {error_msg}")
                 else:
@@ -592,7 +592,7 @@ cdef class Scalar:
 
             if result == NULL:
                 if error_string != NULL:
-                    error_msg = parse_c_string(<uint64_t>error_string)
+                    error_msg = ocstring_to_pystring(<uint64_t>error_string)
                     OCRelease(<OCTypeRef>error_string)
                     raise RMNError(f"Division failed: {error_msg}")
                 else:
@@ -647,7 +647,7 @@ cdef class Scalar:
 
             if result == NULL:
                 if error_string != NULL:
-                    error_msg = parse_c_string(<uint64_t>error_string)
+                    error_msg = ocstring_to_pystring(<uint64_t>error_string)
                     OCRelease(<OCTypeRef>error_string)
                     raise RMNError(f"Power operation failed: {error_msg}")
                 else:
@@ -666,7 +666,7 @@ cdef class Scalar:
 
                     if result == NULL:
                         if error_string != NULL:
-                            error_msg = parse_c_string(<uint64_t>error_string)
+                            error_msg = ocstring_to_pystring(<uint64_t>error_string)
                             OCRelease(<OCTypeRef>error_string)
                             raise RMNError(f"Nth root operation failed: {error_msg}")
                         else:
@@ -871,7 +871,7 @@ cdef class Scalar:
             return f"Scalar({self.value})"
 
         try:
-            return parse_c_string(<uint64_t>str_ref)
+            return ocstring_to_pystring(<uint64_t>str_ref)
         finally:
             OCRelease(<OCTypeRef>str_ref)
 

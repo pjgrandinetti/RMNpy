@@ -15,21 +15,9 @@ from rmnpy._c_api.octypes cimport (
 from rmnpy._c_api.sitypes cimport *
 
 from rmnpy.exceptions import RMNError
+from rmnpy.helpers.octypes import ocstring_to_pystring
 
 from libc.stdint cimport uint64_t
-
-
-cdef str _parse_c_string(uint64_t oc_string_ptr):
-    """Helper to convert OCStringRef to Python string."""
-    if oc_string_ptr == 0:
-        return ""
-
-    cdef OCStringRef oc_string = <OCStringRef>oc_string_ptr
-    cdef const char* c_str = OCStringGetCString(oc_string)
-    if c_str == NULL:
-        return ""
-
-    return c_str.decode('utf-8')
 
 
 cdef class Dimensionality:
@@ -97,7 +85,7 @@ cdef class Dimensionality:
             dim_ref = SIDimensionalityFromExpression(expr_str, &error_str)
 
             if error_str != NULL:
-                error_msg = _parse_c_string(<uint64_t>error_str)
+                error_msg = ocstring_to_pystring(<uint64_t>error_str)
                 OCRelease(error_str)
                 raise RMNError(f"Failed to parse dimensionality expression '{expression}': {error_msg}")
 
@@ -154,7 +142,7 @@ cdef class Dimensionality:
             dim_ref = SIDimensionalityForQuantity(quantity_str, &error_str)
 
             if error_str != NULL:
-                error_msg = _parse_c_string(<uint64_t>error_str)
+                error_msg = ocstring_to_pystring(<uint64_t>error_str)
                 OCRelease(error_str)
                 raise RMNError(f"Unknown quantity constant: {error_msg}")
 
@@ -272,7 +260,7 @@ cdef class Dimensionality:
             self._dim_ref, n, &error_str)
 
         if error_str != NULL:
-            error_msg = _parse_c_string(<uint64_t>error_str)
+            error_msg = ocstring_to_pystring(<uint64_t>error_str)
             OCRelease(error_str)
             raise RMNError(f"Dimensionality root operation failed: {error_msg}")
 
@@ -309,7 +297,7 @@ cdef class Dimensionality:
             return ""
 
         cdef OCStringRef symbol_str = SIDimensionalityCopySymbol(self._dim_ref)
-        return _parse_c_string(<uint64_t>symbol_str)
+        return ocstring_to_pystring(<uint64_t>symbol_str)
 
     def __repr__(self):
         """Detailed string representation."""
@@ -347,7 +335,7 @@ cdef class Dimensionality:
             self._dim_ref, (<Dimensionality>other)._dim_ref, &error_str)
 
         if error_str != NULL:
-            error_msg = _parse_c_string(<uint64_t>error_str)
+            error_msg = ocstring_to_pystring(<uint64_t>error_str)
             OCRelease(error_str)
             raise RMNError(f"Dimensionality multiplication failed: {error_msg}")
 
@@ -382,7 +370,7 @@ cdef class Dimensionality:
             self._dim_ref, float(exponent), &error_str)
 
         if error_str != NULL:
-            error_msg = _parse_c_string(<uint64_t>error_str)
+            error_msg = ocstring_to_pystring(<uint64_t>error_str)
             OCRelease(error_str)
             raise RMNError(f"Dimensionality power operation failed: {error_msg}")
 

@@ -359,11 +359,10 @@ cdef class LabeledDimension(BaseDimension):
     def coordinate_labels(self, value):
         """Set coordinate labels."""
         cdef OCStringRef error = NULL
+        cdef OCArrayRef labels_array = <OCArrayRef><uint64_t>pylist_to_ocarray(value)
 
         # Update C dimension object - single source of truth
         if self._c_dimension != NULL:
-            # Convert Python list to OCArray (raises on bad input)
-            cdef OCArrayRef labels_array = <OCArrayRef><uint64_t>pylist_to_ocarray(value)
             try:
                 if not LabeledDimensionSetCoordinateLabels(self._labeled_dimension, labels_array, &error):
                     if error != NULL:
