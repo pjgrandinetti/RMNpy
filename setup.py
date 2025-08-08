@@ -221,6 +221,12 @@ def get_extensions() -> list[Extension]:
     library_dirs = ["lib"]
     libraries = ["OCTypes", "SITypes", "RMN"]
 
+    # Add runtime library directory for shared libraries
+    # This tells the dynamic linker where to find .dylib/.so files at runtime
+    import os
+
+    runtime_library_dirs = [os.path.abspath("lib")]
+
     # Common compiler/linker options (platform-specific)
     extra_link_args: list[str] = []
     define_macros: list[tuple[str, str]] = [
@@ -305,6 +311,7 @@ def get_extensions() -> list[Extension]:
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 libraries=libraries,
+                runtime_library_dirs=runtime_library_dirs,
                 language="c",
                 extra_compile_args=extra_compile_args,
                 extra_link_args=extra_link_args,
@@ -357,6 +364,7 @@ def get_extensions() -> list[Extension]:
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 libraries=libraries,
+                runtime_library_dirs=runtime_library_dirs,
                 language="c",
                 extra_compile_args=extra_compile_args,
                 extra_link_args=extra_link_args,
@@ -373,6 +381,7 @@ def get_extensions() -> list[Extension]:
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 libraries=libraries,
+                runtime_library_dirs=runtime_library_dirs,
                 language="c",
                 extra_compile_args=extra_compile_args,
                 extra_link_args=extra_link_args,
@@ -389,6 +398,7 @@ def get_extensions() -> list[Extension]:
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 libraries=libraries,
+                runtime_library_dirs=runtime_library_dirs,
                 language="c",
                 extra_compile_args=extra_compile_args,
                 extra_link_args=extra_link_args,
@@ -439,6 +449,7 @@ def get_extensions() -> list[Extension]:
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 libraries=libraries,
+                runtime_library_dirs=runtime_library_dirs,
                 language="c",
                 extra_compile_args=extra_compile_args,
                 extra_link_args=extra_link_args,
@@ -461,6 +472,23 @@ def get_extensions() -> list[Extension]:
     #         extra_link_args=extra_link_args
     #     )
     # ])
+
+    # Constants module - SI quantity constants
+    extensions.extend(
+        [
+            Extension(
+                "rmnpy.constants",
+                sources=["src/rmnpy/constants.pyx"],
+                include_dirs=include_dirs,
+                library_dirs=library_dirs,
+                libraries=libraries,
+                runtime_library_dirs=runtime_library_dirs,
+                language="c",
+                extra_compile_args=extra_compile_args,
+                extra_link_args=extra_link_args,
+            )
+        ]
+    )
 
     return extensions
 

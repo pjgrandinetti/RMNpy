@@ -122,6 +122,9 @@ cdef extern from "OCTypes/OCString.h":
     OCStringRef OCStringCreateWithCString(const char *string)
     OCMutableStringRef OCStringCreateMutableCopy(OCStringRef theString)
     OCMutableStringRef OCStringCreateMutable(uint64_t maxLength)
+    OCStringRef impl_OCStringMakeConstantString(const char *cStr)
+    const char* OCStringGetCString(OCStringRef str)
+    OCStringRef OCStringCreateWithCString(const char *string)  # For STR() macro support
 
     # String access
     const char *OCStringGetCString(OCStringRef theString)

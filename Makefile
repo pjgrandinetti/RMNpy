@@ -7,7 +7,7 @@ help:
 	@echo "RMNpy Makefile"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  synclib      - Copy OCTypes, SITypes, and RMNLib libraries/headers from local ../directories"
+	@echo "  synclib      - Copy SHARED libraries/headers from local ../directories (fixes type registry)"
 	@echo "  download-libs - Download OCTypes, SITypes, and RMNLib libraries/headers from GitHub releases"
 	@echo "  clean-libs   - Remove lib/ and include/ directories"
 	@echo "  clean        - Remove generated C files and build artifacts"
@@ -18,41 +18,53 @@ help:
 	@echo "  help         - Show this help message"
 
 # Copy libraries and headers from local directories
+# Copy SHARED libraries and headers from local directories
+# Note: Using shared libraries fixes type registry issues across multiple Cython modules
 synclib:
-	@echo "Synchronizing libraries from local directories..."
+	@echo "Synchronizing SHARED libraries from local directories..."
 	@echo "Copying from ../OCTypes, ../SITypes, and ../RMNLib to lib/ and include/"
 	@mkdir -p lib include/OCTypes include/SITypes include/RMNLib
-	@if [ -f ../OCTypes/install/lib/libOCTypes.a ]; then \
-		echo "  ✓ Copying libOCTypes.a (from ../OCTypes)"; \
-		cp ../OCTypes/install/lib/libOCTypes.a lib/; \
-	elif [ -f OCTypes/install/lib/libOCTypes.a ]; then \
-		echo "  ✓ Copying libOCTypes.a (from OCTypes)"; \
-		cp OCTypes/install/lib/libOCTypes.a lib/; \
+	# Copy shared libraries (.dylib on macOS, .so on Linux, .dll on Windows)
+	@if [ -f ../OCTypes/install/lib/libOCTypes.dylib ]; then \
+		echo "  ✓ Copying libOCTypes.dylib (from ../OCTypes)"; \
+		cp ../OCTypes/install/lib/libOCTypes.dylib lib/; \
+	elif [ -f ../OCTypes/install/lib/libOCTypes.so ]; then \
+		echo "  ✓ Copying libOCTypes.so (from ../OCTypes)"; \
+		cp ../OCTypes/install/lib/libOCTypes.so lib/; \
+	elif [ -f ../OCTypes/install/lib/libOCTypes.dll ]; then \
+		echo "  ✓ Copying libOCTypes.dll (from ../OCTypes)"; \
+		cp ../OCTypes/install/lib/libOCTypes.dll lib/; \
 	else \
-		echo "  ✗ libOCTypes.a not found in ../OCTypes/install/lib/ or OCTypes/install/lib/"; \
-		echo "  Run 'make install' in ../OCTypes or OCTypes first to build and install the library"; \
+		echo "  ✗ libOCTypes shared library not found in ../OCTypes/install/lib/"; \
+		echo "  Run 'make install-shared' in ../OCTypes first to build shared libraries"; \
 		exit 1; \
 	fi
-	@if [ -f ../SITypes/install/lib/libSITypes.a ]; then \
-		echo "  ✓ Copying libSITypes.a (from ../SITypes)"; \
-		cp ../SITypes/install/lib/libSITypes.a lib/; \
-	elif [ -f SITypes/install/lib/libSITypes.a ]; then \
-		echo "  ✓ Copying libSITypes.a (from SITypes)"; \
-		cp SITypes/install/lib/libSITypes.a lib/; \
+	@if [ -f ../SITypes/install/lib/libSITypes.dylib ]; then \
+		echo "  ✓ Copying libSITypes.dylib (from ../SITypes)"; \
+		cp ../SITypes/install/lib/libSITypes.dylib lib/; \
+	elif [ -f ../SITypes/install/lib/libSITypes.so ]; then \
+		echo "  ✓ Copying libSITypes.so (from ../SITypes)"; \
+		cp ../SITypes/install/lib/libSITypes.so lib/; \
+	elif [ -f ../SITypes/install/lib/libSITypes.dll ]; then \
+		echo "  ✓ Copying libSITypes.dll (from ../SITypes)"; \
+		cp ../SITypes/install/lib/libSITypes.dll lib/; \
 	else \
-		echo "  ✗ libSITypes.a not found in ../SITypes/install/lib/ or SITypes/install/lib/"; \
-		echo "  Run 'make install' in ../SITypes or SITypes first to build and install the library"; \
+		echo "  ✗ libSITypes shared library not found in ../SITypes/install/lib/"; \
+		echo "  Run 'make install-shared' in ../SITypes first to build shared libraries"; \
 		exit 1; \
 	fi
-	@if [ -f ../RMNLib/install/lib/libRMN.a ]; then \
-		echo "  ✓ Copying libRMN.a (from ../RMNLib)"; \
-		cp ../RMNLib/install/lib/libRMN.a lib/; \
-	elif [ -f RMNLib/install/lib/libRMN.a ]; then \
-		echo "  ✓ Copying libRMN.a (from RMNLib)"; \
-		cp RMNLib/install/lib/libRMN.a lib/; \
+	@if [ -f ../RMNLib/install/lib/libRMN.dylib ]; then \
+		echo "  ✓ Copying libRMN.dylib (from ../RMNLib)"; \
+		cp ../RMNLib/install/lib/libRMN.dylib lib/; \
+	elif [ -f ../RMNLib/install/lib/libRMN.so ]; then \
+		echo "  ✓ Copying libRMN.so (from ../RMNLib)"; \
+		cp ../RMNLib/install/lib/libRMN.so lib/; \
+	elif [ -f ../RMNLib/install/lib/libRMN.dll ]; then \
+		echo "  ✓ Copying libRMN.dll (from ../RMNLib)"; \
+		cp ../RMNLib/install/lib/libRMN.dll lib/; \
 	else \
-		echo "  ✗ libRMN.a not found in ../RMNLib/install/lib/ or RMNLib/install/lib/"; \
-		echo "  Run 'make install' in ../RMNLib or RMNLib first to build and install the library"; \
+		echo "  ✗ libRMN shared library not found in ../RMNLib/install/lib/"; \
+		echo "  Run 'make install-shared' in ../RMNLib first to build shared libraries"; \
 		exit 1; \
 	fi
 	@if [ -d ../OCTypes/install/include/OCTypes ]; then \
@@ -88,7 +100,7 @@ synclib:
 		echo "  Run 'make install' in ../RMNLib or RMNLib first to create the organized header structure"; \
 		exit 1; \
 	fi
-	@echo "  ✓ Library synchronization complete!"
+	@echo "  ✓ SHARED library synchronization complete!"
 	@echo ""
 	@echo "Next steps:"
 	@echo "  pip install -e . --force-reinstall"

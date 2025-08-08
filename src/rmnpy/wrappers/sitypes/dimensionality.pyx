@@ -104,16 +104,15 @@ cdef class Dimensionality:
         Create dimensionality from a predefined physical quantity constant.
 
         Args:
-            quantity_constant (OCStringRef): A quantity constant from the SITypes library.
-                                           Must be one of the kSIQuantity* constants defined
-                                           in SIDimensionality.h, not a literal string.
+            quantity_constant (str): A quantity constant string. Can be one of the
+                                   kSIQuantity* constants from the constants module
+                                   or the equivalent string value.
 
         Returns:
             Dimensionality: Dimensionality for the quantity constant
 
         Raises:
             RMNError: If quantity constant is not recognized
-            TypeError: If a string literal is passed instead of a constant
 
         Examples:
             >>> # Import quantity constants
@@ -121,21 +120,22 @@ cdef class Dimensionality:
             >>> pressure_dim = Dimensionality.for_quantity(kSIQuantityPressure)
             >>> energy_dim = Dimensionality.for_quantity(kSIQuantityEnergy)
             >>>
-            >>> # This will raise TypeError:
-            >>> # pressure_dim = Dimensionality.for_quantity("pressure")  # NOT allowed
+            >>> # Also works with strings directly:
+            >>> pressure_dim2 = Dimensionality.for_quantity("pressure")
         """
         cdef OCStringRef error_str = NULL
 
-        # Reject string literals - only allow OCStringRef constants
+        # Handle both string constants and OCStringRef objects
         if isinstance(quantity_constant, str):
+            # Convert Python string to OCStringRef
+            quantity_str = OCStringCreateWithCString(quantity_constant.encode('utf-8'))
+        else:
+            # Reject anything that's not a string
             raise TypeError(
-                "String literals are not allowed. Use predefined quantity constants "
-                "from the SITypes library (kSIQuantity* constants) instead of literal strings. "
-                f"Got string: '{quantity_constant}'"
+                "quantity_constant must be a string from the constants module. "
+                f"Got type: {type(quantity_constant)}"
             )
 
-        # Cast to OCStringRef - should be a predefined constant
-        cdef OCStringRef quantity_str = <OCStringRef>quantity_constant
         cdef SIDimensionalityRef dim_ref
 
         try:

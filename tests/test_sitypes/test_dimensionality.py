@@ -587,17 +587,15 @@ def test_for_quantity_with_constants():
     from rmnpy.constants import kSIQuantityDimensionless, kSIQuantityLength
     from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
-    # Should work with OCStringRef constants
+    # Should work with SI quantity constants (now Python strings)
     length_dim = Dimensionality.for_quantity(kSIQuantityLength)
     assert str(length_dim) == "L"
     dimless_dim = Dimensionality.for_quantity(kSIQuantityDimensionless)
     assert dimless_dim.is_dimensionless
 
-    # Should raise TypeError if given a string
-    import pytest
-
-    with pytest.raises(TypeError):
-        Dimensionality.for_quantity("length")
+    # Should also work if given the same string directly
+    length_dim2 = Dimensionality.for_quantity("length")
+    assert str(length_dim2) == "L"
 
 
 # Also define the test function properly for pytest discovery

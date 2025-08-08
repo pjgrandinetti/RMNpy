@@ -86,7 +86,11 @@ def generate_python_constants(
         "# Import the C API to get OCStringRef constants",
         "from rmnpy._c_api.sitypes cimport *",
         "",
-        "# All quantity constants as OCStringRef (not strings)",
+        "# Define STR function to return Python string",
+        "cdef inline object STR(const char* cStr):",
+        "    return cStr.decode('utf-8')",
+        "",
+        "# All quantity constants as Python strings",
     ]
 
     # Add each constant
