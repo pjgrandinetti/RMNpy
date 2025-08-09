@@ -602,13 +602,13 @@ cdef class SIDimension(BaseDimension):
         if self._c_dimension != NULL and self._si_dimension != NULL:
             period_ref = SIDimensionGetPeriod(self._si_dimension)
             if period_ref != NULL:
-                # Try to extract value directly first
+                # Extract value directly without creating Scalar wrapper to avoid memory issues
                 value = SIScalarDoubleValue(period_ref)
-                # Check for nan, zero, and valid values
+                # Check for nan and infinity
                 if value != value:  # nan check
                     return float("inf")  # treat nan as infinite
-                elif value == 0.0:
-                    return float("inf")  # Zero period means infinite
+                elif value == float("inf") or value == float("-inf"):
+                    return float("inf")  # treat inf as infinite
                 else:
                     return value
             else:
@@ -620,31 +620,54 @@ cdef class SIDimension(BaseDimension):
     def period(self, value):
         """Set the period."""
         cdef OCStringRef error = NULL
+        cdef SIScalarRef scalar_ref = NULL
 
         # Ensure we have valid dimension pointers
         if self._c_dimension == NULL or self._si_dimension == NULL:
             raise RMNError("Cannot set period: dimension not properly initialized")
 
-        # Update the C dimension object
+        # Handle special string values for infinity
+        if value is not None and isinstance(value, str) and value.lower() in ['infinity', 'inf']:
+            value = None
+
         if value is not None:
-            # Convert value to SIScalarRef - use simple approach
-            scalar_obj = Scalar(str(value))
-            if not SIDimensionSetPeriod(self._si_dimension, scalar_obj.get_c_scalar(), &error):
-                if error != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error)
-                    OCRelease(<OCTypeRef>error)
-                    raise RMNError(f"Failed to set period: {error_msg}")
+            # Convert value to SIScalarRef with proper dimensionality
+            # For dimensionless quantities, create a dimensionless scalar
+            try:
+                # Create scalar - if it's just a number, make it dimensionless
+                if str(value).replace('.', '').replace('-', '').replace('+', '').replace('e', '').replace('E', '').isdigit():
+                    scalar_obj = Scalar(f"{value}")  # dimensionless scalar
                 else:
-                    raise RMNError("Failed to set period")
+                    scalar_obj = Scalar(str(value))
+
+                scalar_ref = scalar_obj.get_c_scalar()
+
+                # Retain the scalar reference before passing to API
+                OCRetain(<OCTypeRef>scalar_ref)
+
+                if not SIDimensionSetPeriod(self._si_dimension, scalar_ref, &error):
+                    # Release our retained reference on failure
+                    OCRelease(<OCTypeRef>scalar_ref)
+                    if error != NULL:
+                        error_msg = ocstring_to_pystring(<uint64_t>error)
+                        OCRelease(<OCTypeRef>error)
+                        raise RMNError(f"Failed to set period: {error_msg}")
+                    else:
+                        raise RMNError("Failed to set period")
+                # Don't release scalar_ref here - let the dimension manage it
+            except Exception as e:
+                if scalar_ref != NULL:
+                    OCRelease(<OCTypeRef>scalar_ref)
+                raise RMNError(f"Failed to create period scalar: {e}")
         else:
-            # Set NULL period for infinite period
-            if not SIDimensionSetPeriod(self._si_dimension, NULL, &error):
+            # For infinite period, disable periodicity (don't call SIDimensionSetPeriod with NULL)
+            if not SIDimensionSetPeriodic(self._si_dimension, False, &error):
                 if error != NULL:
                     error_msg = ocstring_to_pystring(<uint64_t>error)
                     OCRelease(<OCTypeRef>error)
-                    raise RMNError(f"Failed to clear period: {error_msg}")
+                    raise RMNError(f"Failed to set period to infinite: {error_msg}")
                 else:
-                    raise RMNError("Failed to clear period")
+                    raise RMNError("Failed to set period to infinite")
 
     @property
     def absolute_coordinates(self) -> np.ndarray:
@@ -955,9 +978,9 @@ cdef class SILinearDimension(SIDimension):
         if self._c_dimension != NULL:
             increment_ref = SILinearDimensionGetIncrement(self._linear_dimension)
             if increment_ref != NULL:
-                # Convert SIScalarRef to Python float
-                scalar = Scalar._from_ref(increment_ref)
-                return scalar.value
+                # Extract value directly without creating Scalar wrapper to avoid memory issues
+                value = SIScalarDoubleValue(increment_ref)
+                return value
         return None
 
     @increment.setter
@@ -1131,19 +1154,27 @@ cdef class SILinearDimension(SIDimension):
         if self._c_dimension != NULL:
             reciprocal_increment_ref = SILinearDimensionGetReciprocalIncrement(self._linear_dimension)
             if reciprocal_increment_ref != NULL:
-                # Create Scalar wrapper from the C SIScalarRef using _from_ref
-                return Scalar._from_ref(reciprocal_increment_ref)
+                # Create Scalar wrapper from the C SIScalarRef using constructor to avoid memory issues
+                value = SIScalarDoubleValue(reciprocal_increment_ref)
+                return Scalar(str(value))
         return None
 
     def copy(self):
         """Create a copy of the dimension."""
+        # Get increment as string value to avoid constructor type mismatch
+        increment_value = self.increment
+        increment_str = str(increment_value) if increment_value is not None else None
+
         return SILinearDimension(
             count=self.count,
-            increment=self.increment,  # This returns a Scalar object now
+            increment=increment_str,  # Pass as string to match constructor expectations
+            coordinates_offset=self.coordinates_offset,
+            origin_offset=self.origin_offset,
             label=self.label,
             description=self.description,
             application=self.application,
-            complex_fft=self.complex_fft
+            complex_fft=self.complex_fft,
+            period=self.period if self.period != float("inf") else None
         )
 
 cdef class SIMonotonicDimension(SIDimension):
@@ -1253,7 +1284,14 @@ cdef class SIMonotonicDimension(SIDimension):
 
     def copy(self):
         """Create a copy of the dimension."""
-        return SIMonotonicDimension(coordinates=self.coordinates.tolist())
+        return SIMonotonicDimension(
+            coordinates=self.coordinates.tolist(),
+            origin_offset=self.origin_offset,
+            label=self.label,
+            description=self.description,
+            application=self.application,
+            period=self.period if self.period != float("inf") else None
+        )
 
     @property
     def reciprocal(self):
