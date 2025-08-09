@@ -1828,34 +1828,29 @@ def siscalar_to_pytuple(uint64_t si_scalar_ptr):
 
 def siscalar_to_pyscalar(uint64_t si_scalar_ptr):
     """
-    Convert an SIScalarRef to a Python Scalar object.
+    Convert an SIScalarRef to a Python numeric value.
+
+    For coordinate arrays, we want numeric values that work with numpy,
+    not full Scalar objects. This avoids circular import issues and
+    provides the expected numeric behavior.
 
     Args:
         si_scalar_ptr (uint64_t): Pointer to SIScalarRef
 
     Returns:
-        Scalar: Python Scalar object with proper value and unit
+        float/int: Python numeric value (loses unit information)
 
     Raises:
         ValueError: If the SIScalarRef is NULL
-        RuntimeError: If Scalar class is not available or conversion fails
+        RuntimeError: If value extraction fails
     """
     cdef SIScalarRef si_scalar = <SIScalarRef>si_scalar_ptr
 
     if si_scalar == NULL:
         raise ValueError("SIScalarRef is NULL")
 
-    if not SCALAR_AVAILABLE:
-        # Fallback to tuple if Scalar class is not available
-        return siscalar_to_pytuple(si_scalar_ptr)
-
-    try:
-        # Use the Scalar class's _from_ref method to create a proper Scalar object
-        # We need to retain the reference since _from_ref takes ownership
-        retained_ref = <SIScalarRef>OCRetain(<const void*>si_scalar)
-        return SCALAR_CLASS._from_ref(<uint64_t>retained_ref)
-    except Exception as e:
-        raise RuntimeError(f"Failed to convert SIScalar to Scalar: {e}")
+    # Return numeric value directly - this is what coordinate arrays need
+    return siscalar_to_pynumber(si_scalar_ptr)
 
 def py_list_to_siscalar_ocarray(list py_list, str unit_expression="1"):
     """

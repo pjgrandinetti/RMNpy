@@ -171,7 +171,12 @@ addopts = [
     "--cov-report=html",
     "--cov-report=xml",
 ]
-testpaths = ["tests"]
+testpaths = [
+    "tests/test_helpers",      # OCTypes helpers first (foundational)
+    "tests/test_sitypes",      # SITypes second (depends on OCTypes)
+    "tests/test_rmnlib",       # RMNLib last (depends on both OCTypes and SITypes)
+    "tests/test_math",         # General math utilities
+]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
