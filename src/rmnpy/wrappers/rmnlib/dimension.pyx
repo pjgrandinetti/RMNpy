@@ -1168,7 +1168,7 @@ cdef class SILinearDimension(SIDimension):
     def reciprocal_increment(self):
         """Get reciprocal increment."""
         if self._c_dimension != NULL:
-            reciprocal_increment_ref = SILinearDimensionGetReciprocalIncrement(self._linear_dimension)
+            reciprocal_increment_ref = SILinearDimensionCreateReciprocalIncrement(self._linear_dimension)
             if reciprocal_increment_ref != NULL:
                 # Create Scalar wrapper from the C SIScalarRef using constructor to avoid memory issues
                 value = SIScalarDoubleValue(reciprocal_increment_ref)

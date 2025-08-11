@@ -88,7 +88,7 @@ cdef extern from "RMNLibrary.h":
     bint SILinearDimensionSetCount(SILinearDimensionRef dim, OCIndex count)
     SIScalarRef SILinearDimensionGetIncrement(SILinearDimensionRef dim)
     bint SILinearDimensionSetIncrement(SILinearDimensionRef dim, SIScalarRef inc)
-    SIScalarRef SILinearDimensionGetReciprocalIncrement(SILinearDimensionRef dim)
+    SIScalarRef SILinearDimensionCreateReciprocalIncrement(SILinearDimensionRef dim)
     bint SILinearDimensionGetComplexFFT(SILinearDimensionRef dim)
     bint SILinearDimensionSetComplexFFT(SILinearDimensionRef dim, bint fft)
     SIDimensionRef SILinearDimensionGetReciprocal(SILinearDimensionRef dim)
