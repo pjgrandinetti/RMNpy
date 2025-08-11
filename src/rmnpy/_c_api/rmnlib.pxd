@@ -40,9 +40,9 @@ cdef extern from "RMNLibrary.h":
 
     # Dimension (Abstract Base) - Core coordinate system functionality
     OCStringRef DimensionGetType(DimensionRef dim)
-    OCStringRef DimensionGetLabel(DimensionRef dim)
+    OCStringRef DimensionCopyLabel(DimensionRef dim)
     bint DimensionSetLabel(DimensionRef dim, OCStringRef label, OCStringRef *outError)
-    OCStringRef DimensionGetDescription(DimensionRef dim)
+    OCStringRef DimensionCopyDescription(DimensionRef dim)
     bint DimensionSetDescription(DimensionRef dim, OCStringRef desc, OCStringRef *outError)
     OCMutableDictionaryRef DimensionGetApplicationMetaData(DimensionRef dim)
     bint DimensionSetApplicationMetaData(DimensionRef dim, OCDictionaryRef dict, OCStringRef *outError)
@@ -55,7 +55,7 @@ cdef extern from "RMNLibrary.h":
     LabeledDimensionRef LabeledDimensionCreate(OCStringRef label, OCStringRef description,
                                                OCDictionaryRef metadata, OCArrayRef coordinateLabels,
                                                OCStringRef *outError)
-    OCArrayRef LabeledDimensionGetCoordinateLabels(LabeledDimensionRef dim)
+    OCArrayRef LabeledDimensionCopyCoordinateLabels(LabeledDimensionRef dim)
     bint LabeledDimensionSetCoordinateLabels(LabeledDimensionRef dim, OCArrayRef labels, OCStringRef *outError)
     bint LabeledDimensionSetCoordinateLabelAtIndex(LabeledDimensionRef dim, OCIndex index, OCStringRef label)
 
@@ -64,13 +64,13 @@ cdef extern from "RMNLibrary.h":
                                      OCDictionaryRef metadata, OCStringRef quantityName,
                                      SIScalarRef offset, SIScalarRef origin, SIScalarRef period,
                                      bint periodic, dimensionScaling scaling, OCStringRef *outError)
-    OCStringRef SIDimensionGetQuantityName(SIDimensionRef dim)
+    OCStringRef SIDimensionCopyQuantityName(SIDimensionRef dim)
     bint SIDimensionSetQuantityName(SIDimensionRef dim, OCStringRef name, OCStringRef *outError)
-    SIScalarRef SIDimensionGetCoordinatesOffset(SIDimensionRef dim)
+    SIScalarRef SIDimensionCopyCoordinatesOffset(SIDimensionRef dim)
     bint SIDimensionSetCoordinatesOffset(SIDimensionRef dim, SIScalarRef val, OCStringRef *outError)
-    SIScalarRef SIDimensionGetOriginOffset(SIDimensionRef dim)
+    SIScalarRef SIDimensionCopyOriginOffset(SIDimensionRef dim)
     bint SIDimensionSetOriginOffset(SIDimensionRef dim, SIScalarRef val, OCStringRef *outError)
-    SIScalarRef SIDimensionGetPeriod(SIDimensionRef dim)
+    SIScalarRef SIDimensionCopyPeriod(SIDimensionRef dim)
     bint SIDimensionSetPeriod(SIDimensionRef dim, SIScalarRef val, OCStringRef *outError)
     bint SIDimensionIsPeriodic(SIDimensionRef dim)
     bint SIDimensionSetPeriodic(SIDimensionRef dim, bint flag, OCStringRef *outError)
@@ -86,12 +86,12 @@ cdef extern from "RMNLibrary.h":
                                                  OCStringRef *outError)
     OCIndex SILinearDimensionGetCount(SILinearDimensionRef dim)
     bint SILinearDimensionSetCount(SILinearDimensionRef dim, OCIndex count)
-    SIScalarRef SILinearDimensionGetIncrement(SILinearDimensionRef dim)
+    SIScalarRef SILinearDimensionCopyIncrement(SILinearDimensionRef dim)
     bint SILinearDimensionSetIncrement(SILinearDimensionRef dim, SIScalarRef inc)
     SIScalarRef SILinearDimensionCreateReciprocalIncrement(SILinearDimensionRef dim)
     bint SILinearDimensionGetComplexFFT(SILinearDimensionRef dim)
     bint SILinearDimensionSetComplexFFT(SILinearDimensionRef dim, bint fft)
-    SIDimensionRef SILinearDimensionGetReciprocal(SILinearDimensionRef dim)
+    SIDimensionRef SILinearDimensionCopyReciprocal(SILinearDimensionRef dim)
     bint SILinearDimensionSetReciprocal(SILinearDimensionRef dim, SIDimensionRef rec, OCStringRef *outError)
     OCArrayRef SILinearDimensionCreateCoordinates(SILinearDimensionRef dim)
     OCArrayRef SILinearDimensionCreateAbsoluteCoordinates(SILinearDimensionRef dim)
@@ -102,10 +102,10 @@ cdef extern from "RMNLibrary.h":
                                                        SIScalarRef offset, SIScalarRef origin, SIScalarRef period,
                                                        bint periodic, dimensionScaling scaling, OCArrayRef coordinates,
                                                        SIDimensionRef reciprocal, OCStringRef *outError)
-    OCArrayRef SIMonotonicDimensionGetCoordinates(SIMonotonicDimensionRef dim)
+    OCArrayRef SIMonotonicDimensionCopyCoordinates(SIMonotonicDimensionRef dim)
     bint SIMonotonicDimensionSetCoordinates(SIMonotonicDimensionRef dim, OCArrayRef coords)
     OCArrayRef SIMonotonicDimensionCreateAbsoluteCoordinates(SIMonotonicDimensionRef dim)
-    SIDimensionRef SIMonotonicDimensionGetReciprocal(SIMonotonicDimensionRef dim)
+    SIDimensionRef SIMonotonicDimensionCopyReciprocal(SIMonotonicDimensionRef dim)
     bint SIMonotonicDimensionSetReciprocal(SIMonotonicDimensionRef dim, SIDimensionRef rec, OCStringRef *outError)
 
     # ====================================================================================

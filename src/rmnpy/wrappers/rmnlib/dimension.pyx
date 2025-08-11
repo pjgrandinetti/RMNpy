@@ -85,7 +85,7 @@ cdef class BaseDimension:
     def description(self):
         """Get the description of the dimension."""
         if self._c_dimension != NULL:
-            desc_ref = DimensionGetDescription(self._c_dimension)
+            desc_ref = DimensionCopyDescription(self._c_dimension)
             if desc_ref != NULL:
                 return ocstring_to_pystring(<uint64_t>desc_ref)
         return ""
@@ -117,7 +117,7 @@ cdef class BaseDimension:
     def label(self):
         """Get the label of the dimension."""
         if self._c_dimension != NULL:
-            label_ref = DimensionGetLabel(self._c_dimension)
+            label_ref = DimensionCopyLabel(self._c_dimension)
             if label_ref != NULL:
                 return ocstring_to_pystring(<uint64_t>label_ref)
         return ""
@@ -201,6 +201,16 @@ cdef class BaseDimension:
     def is_quantitative(self):
         """Check if dimension is quantitative (not labeled)."""
         return self.type != "labeled"
+
+    @property
+    def axis_label(self):
+        """Get formatted axis label for plotting."""
+        if self.label:
+            return self.label
+        elif hasattr(self, 'quantity_name') and self.quantity_name != "dimensionless":
+            return self.quantity_name
+        else:
+            return f"{self.type} dimension"
 
     def axis_label(self, index):
         """Get formatted axis label using C API."""
@@ -345,7 +355,7 @@ cdef class LabeledDimension(BaseDimension):
     def coordinates(self) -> np.ndarray:
         """Get coordinates (labels) for this dimension."""
         if self._c_dimension != NULL:
-            labels_ref = LabeledDimensionGetCoordinateLabels(self._labeled_dimension)
+            labels_ref = LabeledDimensionCopyCoordinateLabels(self._labeled_dimension)
             if labels_ref != NULL:
                 # Use helper function to convert OCArray to Python list
                 labels_list = ocarray_to_pylist(<uint64_t>labels_ref)
@@ -550,7 +560,7 @@ cdef class SIDimension(BaseDimension):
     def coordinates_offset(self):
         """Get coordinates offset."""
         if self._c_dimension != NULL and self._si_dimension != NULL:
-            offset_ref = SIDimensionGetCoordinatesOffset(self._si_dimension)
+            offset_ref = SIDimensionCopyCoordinatesOffset(self._si_dimension)
             if offset_ref != NULL:
                 # Extract value directly without creating Scalar wrapper to avoid memory issues
                 value = SIScalarDoubleValue(offset_ref)
@@ -581,7 +591,7 @@ cdef class SIDimension(BaseDimension):
     def origin_offset(self):
         """Get origin offset."""
         if self._c_dimension != NULL and self._si_dimension != NULL:
-            origin_ref = SIDimensionGetOriginOffset(self._si_dimension)
+            origin_ref = SIDimensionCopyOriginOffset(self._si_dimension)
             if origin_ref != NULL:
                 # Extract value directly without creating Scalar wrapper to avoid memory issues
                 value = SIScalarDoubleValue(origin_ref)
@@ -611,7 +621,7 @@ cdef class SIDimension(BaseDimension):
     def period(self):
         """Get the period."""
         if self._c_dimension != NULL and self._si_dimension != NULL:
-            period_ref = SIDimensionGetPeriod(self._si_dimension)
+            period_ref = SIDimensionCopyPeriod(self._si_dimension)
             if period_ref != NULL:
                 # Extract value directly without creating Scalar wrapper to avoid memory issues
                 value = SIScalarDoubleValue(period_ref)
@@ -735,7 +745,7 @@ cdef class SIDimension(BaseDimension):
             if dim_type == "linear":
                 coords_ref = SILinearDimensionCreateCoordinates(<SILinearDimensionRef>self._si_dimension)
             elif dim_type == "monotonic":
-                coords_ref = SIMonotonicDimensionGetCoordinates(<SIMonotonicDimensionRef>self._si_dimension)
+                coords_ref = SIMonotonicDimensionCopyCoordinates(<SIMonotonicDimensionRef>self._si_dimension)
 
             if coords_ref != NULL:
                 try:
@@ -760,7 +770,7 @@ cdef class SIDimension(BaseDimension):
     def quantity_name(self):
         """Get quantity name for physical quantities."""
         if self._c_dimension != NULL and self._si_dimension != NULL:
-            quantity_ref = SIDimensionGetQuantityName(self._si_dimension)
+            quantity_ref = SIDimensionCopyQuantityName(self._si_dimension)
             if quantity_ref != NULL:
                 return ocstring_to_pystring(<uint64_t>quantity_ref)
         return "dimensionless"  # Default fallback
@@ -1030,7 +1040,7 @@ cdef class SILinearDimension(SIDimension):
     def increment(self):
         """Get the increment of the dimension."""
         if self._c_dimension != NULL:
-            increment_ref = SILinearDimensionGetIncrement(self._linear_dimension)
+            increment_ref = SILinearDimensionCopyIncrement(self._linear_dimension)
             if increment_ref != NULL:
                 # Extract value directly without creating Scalar wrapper to avoid memory issues
                 value = SIScalarDoubleValue(increment_ref)
@@ -1134,7 +1144,7 @@ cdef class SILinearDimension(SIDimension):
 
         # Try to get from C API if we don't have a cached value
         if self._c_dimension != NULL:
-            reciprocal_ref = SILinearDimensionGetReciprocal(self._linear_dimension)
+            reciprocal_ref = SILinearDimensionCopyReciprocal(self._linear_dimension)
             if reciprocal_ref != NULL:
                 # Create and cache the wrapper
                 self._reciprocal = self._create_dimension_wrapper_from_ref(reciprocal_ref)
@@ -1261,7 +1271,7 @@ cdef class SIMonotonicDimension(SIDimension):
     def count(self):
         """Get the count of the dimension."""
         if self._c_dimension != NULL:
-            coords_ref = SIMonotonicDimensionGetCoordinates(self._monotonic_dimension)
+            coords_ref = SIMonotonicDimensionCopyCoordinates(self._monotonic_dimension)
             if coords_ref != NULL:
                 return OCArrayGetCount(coords_ref)
         return 0
