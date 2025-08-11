@@ -48,6 +48,8 @@ cdef extern from "RMNLibrary.h":
     bint DimensionSetApplicationMetaData(DimensionRef dim, OCDictionaryRef dict, OCStringRef *outError)
     OCIndex DimensionGetCount(DimensionRef dim)
     OCDictionaryRef DimensionCopyAsDictionary(DimensionRef dim)
+    DimensionIsQuantitative(DimensionRef dim)
+    OCStringRef DimensionCreateAxisLabel(DimensionRef dim, OCIndex index)
 
     # LabeledDimension - Discrete labeled coordinate systems
     LabeledDimensionRef LabeledDimensionCreate(OCStringRef label, OCStringRef description,
@@ -91,6 +93,8 @@ cdef extern from "RMNLibrary.h":
     bint SILinearDimensionSetComplexFFT(SILinearDimensionRef dim, bint fft)
     SIDimensionRef SILinearDimensionGetReciprocal(SILinearDimensionRef dim)
     bint SILinearDimensionSetReciprocal(SILinearDimensionRef dim, SIDimensionRef rec, OCStringRef *outError)
+    OCArrayRef SILinearDimensionCreateCoordinates(SILinearDimensionRef dim)
+    OCArrayRef SILinearDimensionCreateAbsoluteCoordinates(SILinearDimensionRef dim)
 
     # SIMonotonicDimension - Monotonic coordinate systems
     SIMonotonicDimensionRef SIMonotonicDimensionCreate(OCStringRef label, OCStringRef description,
@@ -100,6 +104,7 @@ cdef extern from "RMNLibrary.h":
                                                        SIDimensionRef reciprocal, OCStringRef *outError)
     OCArrayRef SIMonotonicDimensionGetCoordinates(SIMonotonicDimensionRef dim)
     bint SIMonotonicDimensionSetCoordinates(SIMonotonicDimensionRef dim, OCArrayRef coords)
+    OCArrayRef SIMonotonicDimensionCreateAbsoluteCoordinates(SIMonotonicDimensionRef dim)
     SIDimensionRef SIMonotonicDimensionGetReciprocal(SIMonotonicDimensionRef dim)
     bint SIMonotonicDimensionSetReciprocal(SIMonotonicDimensionRef dim, SIDimensionRef rec, OCStringRef *outError)
 

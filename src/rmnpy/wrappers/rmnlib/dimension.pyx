@@ -202,6 +202,25 @@ cdef class BaseDimension:
         """Check if dimension is quantitative (not labeled)."""
         return self.type != "labeled"
 
+    def axis_label(self, index):
+        """Get formatted axis label using C API."""
+        cdef OCStringRef c_label
+
+        if self._c_dimension is NULL:
+            raise RuntimeError("Cannot get axis label: C dimension is NULL")
+
+        # Call the C API function
+        c_label = DimensionCreateAxisLabel(self._c_dimension, <OCIndex>index)
+        if c_label is NULL:
+            raise RuntimeError("Failed to create axis label")
+
+        try:
+            # Convert OCStringRef to Python string using helper
+            return ocstring_to_pystring(<uint64_t>c_label)
+        finally:
+            # Release the C string
+            OCRelease(c_label)
+
     def to_dict(self):
         """Convert to dictionary."""
         # Use C API as single source of truth
@@ -410,14 +429,6 @@ cdef class LabeledDimension(BaseDimension):
             description=self.description,
             application=self.application
         )
-
-    @property
-    def axis_label(self):
-        """Get axis label for labeled dimensions."""
-        if self.label:
-            return self.label
-        else:
-            return "categories"
 
     def to_dict(self):
         """Convert to dictionary."""
@@ -672,14 +683,35 @@ cdef class SIDimension(BaseDimension):
     @property
     def absolute_coordinates(self) -> np.ndarray:
         """Get absolute coordinates along the dimension."""
+        # Dispatch to appropriate C API function based on dimension type
+        if self._c_dimension != NULL:
+            dim_type = self.type
+            coords_ref = NULL
+
+            if dim_type == "linear":
+                coords_ref = SILinearDimensionCreateAbsoluteCoordinates(<SILinearDimensionRef>self._si_dimension)
+            elif dim_type == "monotonic":
+                coords_ref = SIMonotonicDimensionCreateAbsoluteCoordinates(<SIMonotonicDimensionRef>self._si_dimension)
+
+            if coords_ref != NULL:
+                try:
+                    # Convert OCArray to Python list using helper function
+                    coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
+                    if coords_list:
+                        return np.array(coords_list, dtype=np.float64)
+                finally:
+                    # Release the coordinate array returned by the C API
+                    OCRelease(<OCTypeRef>coords_ref)
+
+        # Fallback to manual calculation for unknown types or errors
         coords = self.coordinates
         origin_offset_val = self.origin_offset
 
-        if origin_offset_val is None:
+        if origin_offset_val is None or origin_offset_val == 0.0:
             return coords
 
         # Convert Scalar coordinates to numeric values and add origin offset
-        if isinstance(coords[0], Scalar):
+        if len(coords) > 0 and isinstance(coords[0], Scalar):
             numeric_coords = np.array([float(coord.value) for coord in coords])
         else:
             numeric_coords = coords
@@ -693,14 +725,36 @@ cdef class SIDimension(BaseDimension):
         return numeric_coords + origin_offset_numeric
 
     @property
-    def axis_label(self):
-        """Get formatted axis label."""
-        if self.label:
-            return self.label
-        elif hasattr(self, 'quantity_name') and self.quantity_name:
-            return f"{self.quantity_name} / arbitrary unit"
-        else:
-            return f"{self.type} / arbitrary unit"
+    def coordinates(self) -> np.ndarray:
+        """Get coordinates along the dimension."""
+        # Dispatch to appropriate C API function based on dimension type
+        if self._c_dimension != NULL:
+            dim_type = self.type
+            coords_ref = NULL
+
+            if dim_type == "linear":
+                coords_ref = SILinearDimensionCreateCoordinates(<SILinearDimensionRef>self._si_dimension)
+            elif dim_type == "monotonic":
+                coords_ref = SIMonotonicDimensionGetCoordinates(<SIMonotonicDimensionRef>self._si_dimension)
+
+            if coords_ref != NULL:
+                try:
+                    # Convert OCArray to Python list using helper function
+                    coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
+                    if coords_list:
+                        return np.array(coords_list, dtype=np.float64)
+                finally:
+                    # Release the coordinate array returned by the C API (only if it's a created array, not a getter)
+                    if dim_type == "linear":
+                        OCRelease(<OCTypeRef>coords_ref)
+                    # For monotonic dimensions, GetCoordinates returns a reference that shouldn't be released
+
+        return np.array([])
+
+    @property
+    def coords(self) -> np.ndarray:
+        """Alias for coordinates."""
+        return self.coordinates
 
     @property
     def quantity_name(self):
@@ -989,30 +1043,23 @@ cdef class SILinearDimension(SIDimension):
         cdef SIScalarRef increment_ref = NULL
         cdef Scalar scalar_obj = None
 
-        try:
-            # Handle both existing Scalar objects and string values
-            if isinstance(value, Scalar):
-                # For existing Scalar objects, store reference to prevent GC
-                scalar_obj = value
-                increment_ref = scalar_obj.get_c_scalar()
-                OCRetain(<void*>increment_ref)
-            else:
-                # For strings and other values, use helper function
-                scalar_obj = Scalar(str(value))
-                increment_ref = scalar_obj.get_c_scalar()
-                OCRetain(<void*>increment_ref)
+        # Handle both existing Scalar objects and string values
+        if isinstance(value, Scalar):
+            # For existing Scalar objects, store reference to prevent GC
+            scalar_obj = value
+            increment_ref = scalar_obj.get_c_scalar()
+        else:
+            # For strings and other values, use helper function
+            scalar_obj = Scalar(str(value))
+            increment_ref = scalar_obj.get_c_scalar()
 
-            if increment_ref == NULL:
-                raise RMNError("Failed to convert increment value to SIScalar")
+        if increment_ref == NULL:
+            raise RMNError("Failed to convert increment value to SIScalar")
 
-            # Set the increment using C API
-            if not SILinearDimensionSetIncrement(self._linear_dimension, increment_ref):
-                raise RMNError("Failed to set increment")
+        # Set the increment using C API
+        if not SILinearDimensionSetIncrement(self._linear_dimension, increment_ref):
+            raise RMNError("Failed to set increment")
 
-        finally:
-            # Release our reference since C API copies the scalar
-            if increment_ref != NULL:
-                OCRelease(<void*>increment_ref)
 
     @property
     def count(self):
@@ -1030,37 +1077,6 @@ cdef class SILinearDimension(SIDimension):
         # Update C dimension object only
         if not SILinearDimensionSetCount(self._linear_dimension, value):
             raise RMNError("Failed to set count")
-
-    @property
-    def coordinates(self) -> np.ndarray:
-        """Get linear coordinates."""
-        # For linear dimensions, coordinates are calculated from count and increment
-        # Get both from C API
-        if self._c_dimension != NULL:
-            count = SILinearDimensionGetCount(self._linear_dimension)
-            increment_ref = SILinearDimensionGetIncrement(self._linear_dimension)
-
-            if increment_ref != NULL:
-                # Extract increment value directly without creating Scalar wrapper to avoid memory issues
-                increment_val = SIScalarDoubleValue(increment_ref)
-                coords = np.arange(count, dtype=np.float64) * increment_val
-
-                # Add coordinates offset if present - coordinates_offset property returns float directly
-                try:
-                    offset_val = self.coordinates_offset
-                    if offset_val is not None and offset_val != 0.0:
-                        coords += offset_val
-                except:
-                    pass
-
-                return coords
-
-        return np.array([])
-
-    @property
-    def coords(self) -> np.ndarray:
-        """Alias for coordinates."""
-        return self.coordinates
 
     @property
     def complex_fft(self):
@@ -1258,29 +1274,6 @@ cdef class SIMonotonicDimension(SIDimension):
             raise ValueError(f"Cannot set count to {value}, only have {len(current_coords)} coordinates")
         # Truncate coordinates to the specified count
         self.coordinates = current_coords[:value]
-
-    @property
-    def coordinates(self) -> np.ndarray:
-        """Get monotonic coordinates."""
-        if self._c_dimension != NULL:
-            coords_ref = SIMonotonicDimensionGetCoordinates(self._monotonic_dimension)
-            if coords_ref != NULL:
-                coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
-                if coords_list:
-                    return np.array(coords_list, dtype=np.float64)
-        return np.array([])
-
-    @coordinates.setter
-    def coordinates(self, value):
-        """Set new coordinates for the dimension."""
-        # This would require recreating the dimension since coordinates are fundamental
-        # For now, raise AttributeError to match test expectations
-        raise AttributeError("attribute 'coordinates' of 'rmnpy.wrappers.rmnlib.dimension.SIMonotonicDimension' objects is not writable")
-
-    @property
-    def coords(self) -> np.ndarray:
-        """Alias for coordinates."""
-        return self.coordinates
 
     def copy(self):
         """Create a copy of the dimension."""
