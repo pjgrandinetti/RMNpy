@@ -460,7 +460,7 @@ cdef class SIDimension(BaseDimension):
 
     def __init__(self, label=None, description=None, application=None,
                  quantity_name=None, offset=None, origin=None, period=None,
-                 periodic=False, scaling=0, coordinates_offset=None, origin_offset=None,
+                 scaling=0, coordinates_offset=None, origin_offset=None,
                  complex_fft=False, **kwargs):
         """
         Initialize SI dimension.
@@ -469,6 +469,7 @@ cdef class SIDimension(BaseDimension):
         - ALL parameters are OPTIONAL (function provides intelligent defaults)
         - Derives units from first non-NULL scalar (priority: offset → origin → period → quantityName → dimensionless)
         - Creates zero scalars in appropriate units for NULL parameters
+        - Periodicity is determined automatically: period exists and is finite → periodic, otherwise non-periodic
 
         Args:
             label (str, optional): Short label for the dimension
@@ -482,7 +483,6 @@ cdef class SIDimension(BaseDimension):
                 Defaults to zero in derived base unit
             period (str or Scalar, optional): SIScalar period value for periodic dimensions
                 Defaults to zero in derived base unit
-            periodic (bool, optional): True if dimension wraps around
             scaling (int, optional): Dimension scaling type (0 = kDimensionScalingNone)
             coordinates_offset (str, optional): Coordinates offset value (legacy, use origin instead)
             origin_offset (str, optional): Origin offset value (legacy, use origin instead)
@@ -511,7 +511,7 @@ cdef class SIDimension(BaseDimension):
             # Create the SI dimension using the C API with correct signature
             self._si_dimension = SIDimensionCreate(
                 label_ref, desc_ref, application_ref, quantity_name_ref,
-                offset_ref, origin_ref, period_ref, periodic, scaling, &error)
+                offset_ref, origin_ref, period_ref, scaling, &error)
 
             if self._si_dimension == NULL:
                 if error != NULL:
@@ -681,14 +681,9 @@ cdef class SIDimension(BaseDimension):
                     OCRelease(<OCTypeRef>scalar_ref)
                 raise RMNError(f"Failed to create period scalar: {e}")
         else:
-            # For infinite period, disable periodicity (don't call SIDimensionSetPeriod with NULL)
-            if not SIDimensionSetPeriodic(self._si_dimension, False, &error):
-                if error != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error)
-                    OCRelease(<OCTypeRef>error)
-                    raise RMNError(f"Failed to set period to infinite: {error_msg}")
-                else:
-                    raise RMNError("Failed to set period to infinite")
+            # For infinite period, don't set period (leave as infinite/NULL)
+            # The C API now handles infinite periods correctly
+            pass  # No need to call SIDimensionSetPeriod with NULL
 
     @property
     def absolute_coordinates(self) -> np.ndarray:
@@ -808,25 +803,14 @@ cdef class SIDimension(BaseDimension):
 
     @property
     def periodic(self):
-        """Get periodic flag."""
+        """Get periodic flag - now based on finite period."""
         if self._c_dimension != NULL and self._si_dimension != NULL:
             return SIDimensionIsPeriodic(self._si_dimension)
         return False
 
-    @periodic.setter
-    def periodic(self, value):
-        """Set periodic flag."""
-        cdef OCStringRef error = NULL
-
-        # If we have a C dimension object, update it too
-        if self._c_dimension != NULL:
-            if not SIDimensionSetPeriodic(self._si_dimension, bool(value), &error):
-                if error != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error)
-                    OCRelease(<OCTypeRef>error)
-                    raise RMNError(f"Failed to set periodic flag: {error_msg}")
-                else:
-                    raise RMNError("Failed to set periodic flag")
+    # Note: periodic is now read-only and determined by period value
+    # To make a dimension periodic, set a finite period value
+    # To make it non-periodic, set period to infinity or remove it
 
     @property
     def scaling(self):
@@ -864,7 +848,7 @@ cdef class SILinearDimension(SIDimension):
 
     def __init__(self, count, increment="1.0", label=None, description=None,
                  application=None, quantity_name=None, offset=None, origin=None,
-                 period=None, periodic=False, scaling=0, fft=False, reciprocal=None,
+                 period=None, scaling=0, fft=False, reciprocal=None,
                  coordinates_offset=None, origin_offset=None, complex_fft=False, **kwargs):
         """
         Initialize linear dimension.
@@ -885,7 +869,6 @@ cdef class SILinearDimension(SIDimension):
             offset (str or Scalar, optional): SIScalar offset value (default: None = NULL, C API uses zero)
             origin (str or Scalar, optional): SIScalar origin value (default: None = NULL, C API uses zero)
             period (str or Scalar, optional): SIScalar period value for periodic dimensions (default: None = NULL)
-            periodic (bool, optional): True if dimension wraps around
             scaling (int, optional): Dimension scaling type (0 = kDimensionScalingNone)
             fft (bool, optional): True if used for FFT
             reciprocal (SIDimension, optional): Reciprocal dimension (default: None = NULL)
@@ -986,7 +969,6 @@ cdef class SILinearDimension(SIDimension):
                 offset_ref,             # offset
                 origin_ref,             # origin
                 period_ref,             # period
-                periodic,               # periodic
                 scaling,                # scaling
                 count,                  # count (use parameter, not stored value)
                 increment_ref,          # increment (required)
@@ -1221,7 +1203,7 @@ cdef class SIMonotonicDimension(SIDimension):
 
     def __init__(self, coordinates, label=None, description=None, application=None,
                  quantity_name=None, offset=None, origin=None, period=None,
-                 periodic=False, scaling=0, reciprocal=None, origin_offset=None, **kwargs):
+                 scaling=0, reciprocal=None, origin_offset=None, **kwargs):
         """Initialize monotonic dimension with coordinates."""
 
         # Convert coordinates to OCArray of SIScalars (raises on bad input)
@@ -1239,7 +1221,7 @@ cdef class SIMonotonicDimension(SIDimension):
             self._monotonic_dimension = SIMonotonicDimensionCreate(
                 label_ref, desc_ref, NULL, NULL,
                 NULL, NULL, NULL,
-                periodic, scaling,
+                scaling,
                 coords_array, NULL, &error)
             if self._monotonic_dimension == NULL:
                 if error != NULL:

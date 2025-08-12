@@ -975,8 +975,9 @@ class TestScalarEdgeCases:
         numerator = Scalar("10.0", "m")
         zero_denominator = Scalar("0.0", "s")
 
-        with pytest.raises((ZeroDivisionError, RMNError)):
-            numerator / zero_denominator
+        result = numerator / zero_denominator
+        assert result.value == float("inf"), "Division by zero should return infinity"
+        assert str(result.unit) == "m/s", "Unit should be correctly computed"
 
     def test_zero_power_operations(self) -> None:
         """Test operations involving zero power."""

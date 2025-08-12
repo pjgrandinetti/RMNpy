@@ -63,7 +63,7 @@ cdef extern from "RMNLibrary.h":
     SIDimensionRef SIDimensionCreate(OCStringRef label, OCStringRef description,
                                      OCDictionaryRef metadata, OCStringRef quantityName,
                                      SIScalarRef offset, SIScalarRef origin, SIScalarRef period,
-                                     bint periodic, dimensionScaling scaling, OCStringRef *outError)
+                                     dimensionScaling scaling, OCStringRef *outError)
     OCStringRef SIDimensionCopyQuantityName(SIDimensionRef dim)
     bint SIDimensionSetQuantityName(SIDimensionRef dim, OCStringRef name, OCStringRef *outError)
     SIScalarRef SIDimensionCopyCoordinatesOffset(SIDimensionRef dim)
@@ -73,7 +73,6 @@ cdef extern from "RMNLibrary.h":
     SIScalarRef SIDimensionCopyPeriod(SIDimensionRef dim)
     bint SIDimensionSetPeriod(SIDimensionRef dim, SIScalarRef val, OCStringRef *outError)
     bint SIDimensionIsPeriodic(SIDimensionRef dim)
-    bint SIDimensionSetPeriodic(SIDimensionRef dim, bint flag, OCStringRef *outError)
     dimensionScaling SIDimensionGetScaling(SIDimensionRef dim)
     bint SIDimensionSetScaling(SIDimensionRef dim, dimensionScaling scaling)
 
@@ -81,7 +80,7 @@ cdef extern from "RMNLibrary.h":
     SILinearDimensionRef SILinearDimensionCreate(OCStringRef label, OCStringRef description,
                                                  OCDictionaryRef metadata, OCStringRef quantityName,
                                                  SIScalarRef offset, SIScalarRef origin, SIScalarRef period,
-                                                 bint periodic, dimensionScaling scaling, OCIndex count,
+                                                 dimensionScaling scaling, OCIndex count,
                                                  SIScalarRef increment, bint fft, SIDimensionRef reciprocal,
                                                  OCStringRef *outError)
     OCIndex SILinearDimensionGetCount(SILinearDimensionRef dim)
@@ -100,7 +99,7 @@ cdef extern from "RMNLibrary.h":
     SIMonotonicDimensionRef SIMonotonicDimensionCreate(OCStringRef label, OCStringRef description,
                                                        OCDictionaryRef metadata, OCStringRef quantityName,
                                                        SIScalarRef offset, SIScalarRef origin, SIScalarRef period,
-                                                       bint periodic, dimensionScaling scaling, OCArrayRef coordinates,
+                                                       dimensionScaling scaling, OCArrayRef coordinates,
                                                        SIDimensionRef reciprocal, OCStringRef *outError)
     OCArrayRef SIMonotonicDimensionCopyCoordinates(SIMonotonicDimensionRef dim)
     bint SIMonotonicDimensionSetCoordinates(SIMonotonicDimensionRef dim, OCArrayRef coords)

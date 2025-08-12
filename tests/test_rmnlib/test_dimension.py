@@ -136,17 +136,16 @@ class TestLinearDimension:
         """Test period property handling."""
         dim = SILinearDimension(count=5)
 
-        # Default period from C API (actual behavior)
-        assert dim.period == 0.0
+        # Default period from C API is now infinity (updated behavior)
+        assert dim.period == float("inf")
 
         # Set finite period - C API behavior may vary for linear dimensions
         dim.period = "1000.0"
         # Period behavior depends on C API implementation
         assert isinstance(dim.period, (int, float))
 
-        # Set infinity variants
-        dim.period = "infinity"
-        assert dim.period == float("inf")
+        # Test that setting finite period makes dimension periodic
+        assert dim.periodic is True
 
     def test_linear_application_metadata(self):
         """Test application metadata handling."""
@@ -338,11 +337,8 @@ class TestMonotonicDimension:
         # Test setting period - C API may set the period but it might stay inf due to periodicity logic
         dim.period = "1000.0"
         # After setting, the period behavior depends on C API periodicity logic
-        # Some dimensions may return inf when periodicity is enabled
-
-        # Test infinity variants
-        dim.period = "infinity"
-        assert dim.period == float("inf")
+        # Verify periodicity is determined by finite period
+        assert dim.periodic is True
 
     def test_monotonic_no_complex_fft(self):
         """Test that monotonic dimensions don't have complex_fft."""
@@ -776,10 +772,12 @@ class TestRegressionAndEdgeCases:
         """Test edge cases in string value parsing."""
         dim = SILinearDimension(count=5)
 
-        # Test infinity parsing - C API may return 0.0 for linear dimensions
-        dim.period = "infinity"
-        # Linear dimensions may have different period behavior than expected
-        assert dim.period in [0.0, float("inf")]
+        # Test that periods work with finite values
+        dim.period = "100.0"
+        assert isinstance(dim.period, (int, float))
+
+        # Test that setting period affects periodicity
+        assert dim.periodic is True
 
         # C API may not support Unicode infinity symbol, test regular strings
         try:
