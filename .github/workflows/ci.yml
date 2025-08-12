@@ -129,7 +129,7 @@ jobs:
         curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/${LIB_FILE} -o rmnlib-lib.zip
         curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-headers.zip -o rmnlib-headers.zip
         unzip -o -j -q rmnlib-lib.zip -d lib/
-        unzip -o -j -q rmnlib-headers.zip -d include/RMNLib/
+        unzip -o -q rmnlib-headers.zip -d include/
         rm rmnlib-lib.zip rmnlib-headers.zip
       shell: bash
 
