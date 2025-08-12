@@ -153,6 +153,11 @@ cdef class BaseDimension:
         return 0
 
     @property
+    def size(self):
+        """Alias for count property (csdmpy compatibility)."""
+        return self.count
+
+    @property
     def application(self):
         """Get application metadata."""
         cdef OCDictionaryRef application_ref
@@ -252,6 +257,30 @@ cdef class BaseDimension:
     def dict(self):
         """Alias for to_dict() method (csdmpy compatibility)."""
         return self.to_dict()
+
+    @property
+    def data_structure(self):
+        """JSON serialized string of dimension object (csdmpy compatibility)."""
+        import json
+        return json.dumps(self.to_dict(), ensure_ascii=False, sort_keys=False, indent=2)
+
+    def __eq__(self, other):
+        """Compare dimensions for equality using OCTypes C API."""
+        if not isinstance(other, BaseDimension):
+            return False
+
+        cdef BaseDimension other_dim = <BaseDimension>other
+
+        # Use OCTypes C API for robust comparison
+        if self._c_dimension != NULL and other_dim._c_dimension != NULL:
+            return OCTypeEqual(<OCTypeRef>self._c_dimension, <OCTypeRef>other_dim._c_dimension)
+
+        # Both NULL - equal
+        if self._c_dimension == NULL and other_dim._c_dimension == NULL:
+            return True
+
+        # One NULL, one not - not equal
+        return False
 
     def __repr__(self):
         """String representation."""
@@ -546,15 +575,18 @@ cdef class SIDimension(BaseDimension):
 
     def copy(self):
         """Create a copy of the dimension."""
-        return SIDimension(
-            label=self.label,
-            description=self.description,
-            application=self.application,
-            # Get current values from C API, not stored Python values
-            offset=self.coordinates_offset,
-            origin=self.origin_offset,
-            period=self.period
-        )
+        if self._c_dimension == NULL:
+            raise RMNError("Cannot copy null dimension")
+
+        # Use OCTypes deep copy functionality
+        cdef void *copied_dimension = OCTypeDeepCopy(self._c_dimension)
+        if copied_dimension == NULL:
+            raise RMNError("Failed to create dimension copy")
+
+        # Create a new SIDimension instance wrapping the copied C object
+        cdef SIDimension result = SIDimension.__new__(SIDimension)
+        result._c_dimension = <SIDimensionRef>copied_dimension
+        return result
 
     @property
     def coordinates_offset(self):
@@ -562,10 +594,9 @@ cdef class SIDimension(BaseDimension):
         if self._c_dimension != NULL and self._si_dimension != NULL:
             offset_ref = SIDimensionCopyCoordinatesOffset(self._si_dimension)
             if offset_ref != NULL:
-                # Extract value directly without creating Scalar wrapper to avoid memory issues
-                value = SIScalarDoubleValue(offset_ref)
-                return value
-        return 0.0  # Default to 0
+                # Return Scalar object for CSDMPY compatibility
+                return Scalar._from_ref(offset_ref)
+        return None
 
     @coordinates_offset.setter
     def coordinates_offset(self, value):
@@ -589,14 +620,14 @@ cdef class SIDimension(BaseDimension):
 
     @property
     def origin_offset(self):
-        """Get origin offset."""
+        """Get origin offset as Scalar object."""
         if self._c_dimension != NULL and self._si_dimension != NULL:
             origin_ref = SIDimensionCopyOriginOffset(self._si_dimension)
             if origin_ref != NULL:
-                # Extract value directly without creating Scalar wrapper to avoid memory issues
-                value = SIScalarDoubleValue(origin_ref)
-                return value
-        return 0.0  # Default to 0 instead of None
+                # Return Scalar object for API consistency
+                return Scalar._from_ref(origin_ref)
+        # Return zero scalar as default
+        return Scalar("0.0")
 
     @origin_offset.setter
     def origin_offset(self, value):
@@ -623,15 +654,19 @@ cdef class SIDimension(BaseDimension):
         if self._c_dimension != NULL and self._si_dimension != NULL:
             period_ref = SIDimensionCopyPeriod(self._si_dimension)
             if period_ref != NULL:
-                # Extract value directly without creating Scalar wrapper to avoid memory issues
-                value = SIScalarDoubleValue(period_ref)
-                # Check for nan and infinity
-                if value != value:  # nan check
-                    return float("inf")  # treat nan as infinite
-                elif value == float("inf") or value == float("-inf"):
-                    return float("inf")  # treat inf as infinite
-                else:
-                    return value
+                try:
+                    # Extract value directly without creating Scalar wrapper to avoid memory issues
+                    value = SIScalarDoubleValue(period_ref)
+                    # Check for nan and infinity
+                    if value != value:  # nan check
+                        return float("inf")  # treat nan as infinite
+                    elif value == float("inf") or value == float("-inf"):
+                        return float("inf")  # treat inf as infinite
+                    else:
+                        return value
+                finally:
+                    # Clean up the copied scalar
+                    OCRelease(period_ref)
             else:
                 # NULL period means infinity in SITypes
                 return float("inf")
@@ -1024,9 +1059,8 @@ cdef class SILinearDimension(SIDimension):
         if self._c_dimension != NULL:
             increment_ref = SILinearDimensionCopyIncrement(self._linear_dimension)
             if increment_ref != NULL:
-                # Extract value directly without creating Scalar wrapper to avoid memory issues
-                value = SIScalarDoubleValue(increment_ref)
-                return value
+                # Return Scalar object for CSDMPY compatibility
+                return Scalar._from_ref(increment_ref)
         return None
 
     @increment.setter
@@ -1162,28 +1196,25 @@ cdef class SILinearDimension(SIDimension):
         if self._c_dimension != NULL:
             reciprocal_increment_ref = SILinearDimensionCreateReciprocalIncrement(self._linear_dimension)
             if reciprocal_increment_ref != NULL:
-                # Create Scalar wrapper from the C SIScalarRef using constructor to avoid memory issues
-                value = SIScalarDoubleValue(reciprocal_increment_ref)
-                return Scalar(str(value))
+                # Create Scalar wrapper directly from the C reference
+                return Scalar._from_ref(reciprocal_increment_ref)
         return None
 
     def copy(self):
         """Create a copy of the dimension."""
-        # Get increment as string value to avoid constructor type mismatch
-        increment_value = self.increment
-        increment_str = str(increment_value) if increment_value is not None else None
+        if self._c_dimension == NULL:
+            raise RMNError("Cannot copy null dimension")
 
-        return SILinearDimension(
-            count=self.count,
-            increment=increment_str,  # Pass as string to match constructor expectations
-            coordinates_offset=self.coordinates_offset,
-            origin_offset=self.origin_offset,
-            label=self.label,
-            description=self.description,
-            application=self.application,
-            complex_fft=self.complex_fft,
-            period=self.period if self.period != float("inf") else None
-        )
+        # Use OCTypes deep copy functionality
+        cdef void *copied_dimension = OCTypeDeepCopy(self._c_dimension)
+        if copied_dimension == NULL:
+            raise RMNError("Failed to create dimension copy")
+
+        # Create a new SILinearDimension instance wrapping the copied C object
+        cdef SILinearDimension result = SILinearDimension.__new__(SILinearDimension)
+        result._c_dimension = <SIDimensionRef>copied_dimension
+        result._linear_dimension = <SILinearDimensionRef>copied_dimension
+        return result
 
 cdef class SIMonotonicDimension(SIDimension):
     """
@@ -1269,14 +1300,19 @@ cdef class SIMonotonicDimension(SIDimension):
 
     def copy(self):
         """Create a copy of the dimension."""
-        return SIMonotonicDimension(
-            coordinates=self.coordinates.tolist(),
-            origin_offset=self.origin_offset,
-            label=self.label,
-            description=self.description,
-            application=self.application,
-            period=self.period if self.period != float("inf") else None
-        )
+        if self._c_dimension == NULL:
+            raise RMNError("Cannot copy null dimension")
+
+        # Use OCTypes deep copy functionality
+        cdef void *copied_dimension = OCTypeDeepCopy(self._c_dimension)
+        if copied_dimension == NULL:
+            raise RMNError("Failed to create dimension copy")
+
+        # Create a new SIMonotonicDimension instance wrapping the copied C object
+        cdef SIMonotonicDimension result = SIMonotonicDimension.__new__(SIMonotonicDimension)
+        result._c_dimension = <SIDimensionRef>copied_dimension
+        result._monotonic_dimension = <SIMonotonicDimensionRef>copied_dimension
+        return result
 
     @property
     def reciprocal(self):

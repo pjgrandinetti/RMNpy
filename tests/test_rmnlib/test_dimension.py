@@ -35,7 +35,7 @@ class TestLinearDimension:
         assert dim.is_quantitative() is True
         assert dim.type == "linear"
         assert dim.count == 10
-        assert dim.increment == 10.0  # Numeric value extraction
+        assert dim.increment.value == 10.0  # Extract numeric value from Scalar
         assert dim.label == "test dimension"
         assert dim.description == "linear test dimension"
 
@@ -68,11 +68,11 @@ class TestLinearDimension:
         dim = SILinearDimension(count=10, increment="10.0 Hz")
 
         # Test getting increment
-        assert dim.increment == 10.0
+        assert dim.increment.value == 10.0
 
         # Test setting increment (as string, will be converted to Scalar internally)
         dim.increment = "20.0 Hz"
-        assert dim.increment == 20.0
+        assert dim.increment.value == 20.0
 
         # Coordinates should update
         coords = dim.coordinates
@@ -109,7 +109,7 @@ class TestLinearDimension:
 
         # Test setting origin offset
         dim.origin_offset = "2000.0"
-        assert dim.origin_offset == 2000.0
+        assert dim.origin_offset.value == 2000.0
 
     def test_linear_complex_fft_ordering(self):
         """Test complex FFT coordinate ordering."""
@@ -315,7 +315,7 @@ class TestMonotonicDimension:
         dim = SIMonotonicDimension(coordinates=coordinates, origin_offset="1000.0")
 
         # Test getting origin offset
-        assert dim.origin_offset == 1000.0
+        assert dim.origin_offset.value == 1000.0
 
         # Test absolute coordinates
         abs_coords = dim.absolute_coordinates
@@ -325,7 +325,7 @@ class TestMonotonicDimension:
 
         # Test setting origin offset
         dim.origin_offset = "2000.0"
-        assert dim.origin_offset == 2000.0
+        assert dim.origin_offset.value == 2000.0
 
     def test_monotonic_period_property(self):
         """Test period property for monotonic dimensions."""
@@ -808,7 +808,7 @@ class TestRegressionAndEdgeCases:
 
         # Copy should be unchanged
         assert copy.label == "original"
-        assert copy.increment == 2.0
+        assert copy.increment.value == 2.0
         assert copy.application == {"key": "original_value"}
 
 
