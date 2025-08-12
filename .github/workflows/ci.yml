@@ -50,7 +50,7 @@ jobs:
     - name: Install system dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
-        brew install cmake flex bison openblas lapack curl
+        brew install cmake flex bison openblas lapack curl libomp
 
     - name: Setup MSYS2 (Windows)
       if: matrix.os == 'windows-latest'
