@@ -8,10 +8,10 @@ from rmnpy._c_api.sitypes cimport SIUnitRef
 
 
 cdef class Unit:
-    cdef SIUnitRef _c_unit
+    cdef SIUnitRef _c_ref
 
     @staticmethod
-    cdef Unit _from_ref(SIUnitRef unit_ref)
+    cdef Unit _from_c_ref(SIUnitRef unit_ref)
 
     # Unit analysis methods
     cdef list _array_ref_to_unit_list(self, OCArrayRef array_ref)

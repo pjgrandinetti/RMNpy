@@ -11,8 +11,6 @@ from rmnpy._c_api.octypes cimport (
     OCArrayGetValueAtIndex,
     OCArrayRef,
     OCRelease,
-    OCStringCreateWithCString,
-    OCStringGetCString,
     OCStringRef,
     OCTypeRef,
 )
@@ -22,7 +20,7 @@ from rmnpy.exceptions import RMNError
 
 from rmnpy.wrappers.sitypes.dimensionality cimport Dimensionality
 
-from rmnpy.helpers.octypes import ocstring_to_pystring
+from rmnpy.helpers.octypes import ocarray_to_pylist, ocstring_to_pystring
 
 from libc.stdint cimport uint64_t, uintptr_t
 
@@ -56,7 +54,7 @@ cdef class Unit:
     """
 
     def __cinit__(self):
-        self._c_unit = NULL
+        self._c_ref = NULL
 
     def __init__(self, expression=None):
         """
@@ -72,46 +70,42 @@ cdef class Unit:
             >>> force = Unit("kg*m/s^2")
         """
         if expression is None:
-            # Empty constructor for internal use (e.g., _from_ref)
+            # Empty constructor for internal use (e.g., _from_c_ref)
             return
 
         if not isinstance(expression, str):
             raise TypeError("Expression must be a string")
 
-        # Check for empty string - raise error at Python level
-        if not expression.strip():
-            raise RMNError("Failed to parse unit expression '': Empty unit expression")
+        from rmnpy.helpers.octypes import ocstring_create_from_pystring
 
-        cdef bytes expr_bytes = expression.encode('utf-8')
-        cdef OCStringRef expr_string = OCStringCreateWithCString(expr_bytes)
-        cdef OCStringRef error_string = <OCStringRef>0
+        cdef OCStringRef expr_ocstr = <OCStringRef>ocstring_create_from_pystring(expression)
+        cdef OCStringRef error_ocstr = <OCStringRef>0
         cdef double unit_multiplier = 1.0
-        cdef SIUnitRef c_unit
+        cdef SIUnitRef c_ref
 
         try:
-            c_unit = SIUnitFromExpression(expr_string, &unit_multiplier, &error_string)
+            c_ref = SIUnitFromExpression(expr_ocstr, &unit_multiplier, &error_ocstr)
 
-            if c_unit == NULL:
-                if error_string != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error_string)
+            if c_ref == NULL:
+                if error_ocstr != NULL:
+                    error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
                     raise RMNError(f"Failed to parse unit expression '{expression}': {error_msg}")
                 else:
                     raise RMNError(f"Failed to parse unit expression '{expression}': Unknown error")
 
             # Validate that multiplier is exactly 1.0 - this is a safety check
-            # since we eliminated the parse() method based on this assumption
             if unit_multiplier != 1.0:
                 # Release the unit before raising error
-                OCRelease(<OCTypeRef>c_unit)
+                OCRelease(<OCTypeRef>c_ref)
                 raise RMNError(f"Unit expression '{expression}' returned unexpected multiplier {unit_multiplier}, expected 1.0")
 
             # Store the C reference
-            self._c_unit = c_unit
+            self._c_ref = c_ref
 
         finally:
-            OCRelease(<OCTypeRef>expr_string)
-            if error_string != <OCStringRef>0:
-                OCRelease(<OCTypeRef>error_string)
+            OCRelease(<OCTypeRef>expr_ocstr)
+            if error_ocstr != <OCStringRef>0:
+                OCRelease(<OCTypeRef>error_ocstr)
 
     def __dealloc__(self):
         # Units are static instances managed by SITypes library
@@ -119,11 +113,24 @@ cdef class Unit:
         pass
 
     @staticmethod
-    cdef Unit _from_ref(SIUnitRef unit_ref):
+    cdef Unit _from_c_ref(SIUnitRef unit_ref):
         """Create Unit wrapper from C reference (internal use)."""
         cdef Unit result = Unit()
-        result._c_unit = unit_ref
+        result._c_ref = unit_ref
         return result
+
+    cdef SIUnitRef get_c_ref(self):
+        """
+        Get the C unit reference for cross-module access.
+
+        This method is used internally for passing Unit objects
+        between different wrapper modules (e.g., to Scalar or other classes).
+        Since SIUnitRef are singletons, no memory management is needed.
+
+        Returns:
+            SIUnitRef: The underlying C reference (may be NULL)
+        """
+        return self._c_ref
 
     @classmethod
     def from_name(cls, name):
@@ -139,21 +146,22 @@ cdef class Unit:
         if not isinstance(name, str):
             raise TypeError("Name must be a string")
 
-        cdef bytes name_bytes = name.encode('utf-8')
-        cdef OCStringRef name_string = OCStringCreateWithCString(name_bytes)
-        cdef SIUnitRef c_unit
+        from rmnpy.helpers.octypes import ocstring_create_from_pystring
+
+        cdef OCStringRef name_ocstr = <OCStringRef>ocstring_create_from_pystring(name)
+        cdef SIUnitRef c_ref
 
         try:
-            c_unit = SIUnitFindWithName(name_string)
+            c_ref = SIUnitFindWithName(name_ocstr)
 
-            if c_unit == NULL:
+            if c_ref == NULL:
                 return None
 
-            # Create Python wrapper using _from_ref
-            return Unit._from_ref(c_unit)
+            # Create Python wrapper using _from_c_ref
+            return Unit._from_c_ref(c_ref)
 
         finally:
-            OCRelease(<OCTypeRef>name_string)
+            OCRelease(<OCTypeRef>name_ocstr)
 
     @classmethod
     def dimensionless(cls):
@@ -163,9 +171,9 @@ cdef class Unit:
         Returns:
             Unit: Dimensionless unit
         """
-        cdef SIUnitRef c_unit = SIUnitDimensionlessAndUnderived()
+        cdef SIUnitRef c_ref = SIUnitDimensionlessAndUnderived()
 
-        return Unit._from_ref(c_unit)
+        return Unit._from_c_ref(c_ref)
 
     @classmethod
     def for_dimensionality(cls, dimensionality):
@@ -181,77 +189,68 @@ cdef class Unit:
         if not isinstance(dimensionality, Dimensionality):
             raise TypeError("Expected Dimensionality object")
 
-        # Access the _dim_ref attribute using the proper cdef approach
+        # Access the _c_ref attribute using the proper cdef approach
         cdef Dimensionality dim_obj = <Dimensionality>dimensionality
-        cdef SIDimensionalityRef dim_ref = dim_obj._dim_ref
-        cdef SIUnitRef c_unit = SIUnitCoherentUnitFromDimensionality(dim_ref)
+        cdef SIDimensionalityRef dim_ref = dim_obj._c_ref
+        cdef SIUnitRef c_ref = SIUnitCoherentUnitFromDimensionality(dim_ref)
 
-        if c_unit == NULL:
+        if c_ref == NULL:
             return None
 
-        return Unit._from_ref(c_unit)
+        return Unit._from_c_ref(c_ref)
 
     # Properties
     @property
     def name(self):
         """Get the unit name (e.g., 'meter per second')."""
-        if self._c_unit == NULL:
-            return ""
 
-        cdef OCStringRef name_string = SIUnitCopyName(self._c_unit)
-        if name_string == NULL:
+        cdef OCStringRef name_ocstr = SIUnitCopyName(self._c_ref)
+        if name_ocstr == NULL:
             return ""
 
         try:
-            return ocstring_to_pystring(<uint64_t>name_string)
+            return ocstring_to_pystring(<uint64_t>name_ocstr)
         finally:
-            OCRelease(<OCTypeRef>name_string)
+            OCRelease(<OCTypeRef>name_ocstr)
 
     @property
     def plural(self):
         """Get the plural unit name (e.g., 'meters per second')."""
-        if self._c_unit == NULL:
-            return ""
-
-        cdef OCStringRef plural_string = SIUnitCopyPluralName(self._c_unit)
-        if plural_string == NULL:
+        cdef OCStringRef plural_ocstr = SIUnitCopyPluralName(self._c_ref)
+        if plural_ocstr == NULL:
             return ""
 
         try:
-            return ocstring_to_pystring(<uint64_t>plural_string)
+            return ocstring_to_pystring(<uint64_t>plural_ocstr)
         finally:
-            OCRelease(<OCTypeRef>plural_string)
+            OCRelease(<OCTypeRef>plural_ocstr)
 
     @property
     def symbol(self):
         """Get the symbol of this unit."""
-        if self._c_unit == NULL:
-            return ""
+        if self._c_ref == NULL:
+            raise RMNError("Cannot get symbol of NULL unit")
 
-        cdef OCStringRef symbol_string = SIUnitCopySymbol(self._c_unit)
-        if symbol_string == NULL:
-            return ""
+        cdef OCStringRef symbol_ocstr = SIUnitCopySymbol(self._c_ref)
+        if symbol_ocstr == NULL:
+            raise RMNError("Unit has no symbol - this indicates a corrupted or invalid unit")
 
         try:
-            return ocstring_to_pystring(<uint64_t>symbol_string)
+            return ocstring_to_pystring(<uint64_t>symbol_ocstr)
         finally:
-            OCRelease(<OCTypeRef>symbol_string)
+            OCRelease(<OCTypeRef>symbol_ocstr)
 
     @property
     def is_si_unit(self):
         """Check if this is an SI unit."""
-        if self._c_unit == NULL:
-            return False
 
-        return SIUnitIsSIUnit(self._c_unit)
+        return SIUnitIsSIUnit(self._c_ref)
 
     @property
     def is_coherent_unit(self):
         """Check if this is a coherent unit."""
-        if self._c_unit == NULL:
-            return False
 
-        return SIUnitIsCoherentUnit(self._c_unit)
+        return SIUnitIsCoherentUnit(self._c_ref)
 
     @property
     def is_coherent_si(self):
@@ -261,101 +260,65 @@ cdef class Unit:
     @property
     def is_cgs_unit(self):
         """Check if this is a CGS unit."""
-        if self._c_unit == NULL:
-            return False
 
-        return SIUnitIsCGSUnit(self._c_unit)
+        return SIUnitIsCGSUnit(self._c_ref)
 
     @property
     def is_imperial_unit(self):
         """Check if this is an Imperial unit."""
-        if self._c_unit == NULL:
-            return False
 
-        return SIUnitIsImperialUnit(self._c_unit)
+        return SIUnitIsImperialUnit(self._c_ref)
 
     @property
     def is_atomic_unit(self):
         """Check if this is an atomic unit."""
-        if self._c_unit == NULL:
-            return False
 
-        return SIUnitIsAtomicUnit(self._c_unit)
+        return SIUnitIsAtomicUnit(self._c_ref)
 
     @property
     def is_planck_unit(self):
         """Check if this is a Planck unit."""
-        if self._c_unit == NULL:
-            return False
 
-        return SIUnitIsPlanckUnit(self._c_unit)
+        return SIUnitIsPlanckUnit(self._c_ref)
 
     @property
     def is_constant(self):
         """Check if this unit represents a physical constant."""
-        if self._c_unit == NULL:
-            return False
 
-        return SIUnitIsConstant(self._c_unit)
+        return SIUnitIsConstant(self._c_ref)
 
     @property
     def dimensionality(self):
         """Get the dimensionality of this unit."""
-        if self._c_unit == <SIUnitRef>0:
-            return None
+        if self._c_ref == NULL:
+            raise RMNError("Cannot get dimensionality of NULL unit")
 
-        cdef SIDimensionalityRef c_dim = SIUnitGetDimensionality(self._c_unit)
-        if c_dim == <SIDimensionalityRef>0:
-            return None
+        cdef SIDimensionalityRef c_dim = SIUnitGetDimensionality(self._c_ref)
+        if c_dim == NULL:
+            raise RMNError("Unit has no dimensionality - this indicates a corrupted or invalid unit")
 
-        # Create Dimensionality wrapper using the proper _from_ref pattern
+        # Create Dimensionality wrapper using the proper _from_c_ref pattern
         # Note: SIUnitGetDimensionality does not transfer ownership, so we don't need to manage memory
-        return Dimensionality._from_ref(c_dim)
+        return Dimensionality._from_c_ref(c_dim)
 
     @property
     def scale_to_coherent_si(self):
         """Get the scale factor to convert to the coherent SI unit."""
-        if self._c_unit == NULL:
-            return 1.0
 
-        return SIUnitScaleToCoherentSIUnit(self._c_unit)
+        return SIUnitScaleToCoherentSIUnit(self._c_ref)
 
     @property
     def is_dimensionless(self):
         """Check if this unit is dimensionless."""
-        if self._c_unit == <SIUnitRef>0:
-            return False
 
-        return SIUnitIsDimensionless(self._c_unit)
+        return SIUnitIsDimensionless(self._c_ref)
 
     @property
     def is_derived(self):
         """Check if this is a derived unit."""
-        if self._c_unit == NULL:
-            return False
 
         # A unit is derived if its dimensionality is derived
         return self.dimensionality.is_derived
-
-
-    @property
-    def is_reduced(self):
-        """Check if this unit is reduced to lowest terms."""
-        if self._c_unit == NULL:
-            return False
-
-        # Since there's no direct function, we'll implement a basic check
-        # by comparing with the reduced version
-        cdef double multiplier = 1.0
-        cdef SIUnitRef reduced = SIUnitByReducing(self._c_unit, &multiplier)
-
-        if reduced == NULL:
-            return False
-
-        try:
-            return SIUnitEqual(self._c_unit, reduced)
-        finally:
-            OCRelease(<OCTypeRef>reduced)
 
     # Unit conversion methods
     def scale_to(self, other):
@@ -377,11 +340,13 @@ cdef class Unit:
         if not isinstance(other, Unit):
             raise TypeError("Can only get scale factor with another Unit")
 
-        # Check dimensional compatibility first
-        if not self.has_same_reduced_dimensionality(other):
+        cdef double conversion_factor = SIUnitConversion(self._c_ref, (<Unit>other)._c_ref)
+
+        # SIUnitConversion returns 0 if units are incompatible
+        if conversion_factor == 0.0:
             raise RMNError("Cannot convert between units with different dimensionalities")
 
-        return SIUnitConversion(self._c_unit, (<Unit>other)._c_unit)
+        return conversion_factor
 
     def nth_root(self, root):
         """
@@ -404,19 +369,19 @@ cdef class Unit:
 
         cdef uint8_t c_root = <uint8_t>root
         cdef double unit_multiplier = 1.0
-        cdef OCStringRef error_string = NULL
+        cdef OCStringRef error_ocstr = NULL
 
-        cdef SIUnitRef result = SIUnitByTakingNthRoot(self._c_unit, c_root,
-                                                     &unit_multiplier, &error_string)
+        cdef SIUnitRef result = SIUnitByTakingNthRoot(self._c_ref, c_root,
+                                                     &unit_multiplier, &error_ocstr)
 
         if result == NULL:
             error_msg = "Unknown error"
-            if error_string != NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>error_string)
-                OCRelease(<OCTypeRef>error_string)
+            if error_ocstr != NULL:
+                error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
+                OCRelease(<OCTypeRef>error_ocstr)
             raise RMNError(f"Unit root operation failed: {error_msg}")
 
-        return Unit._from_ref(result)
+        return Unit._from_c_ref(result)
 
     # Unit reduction and conversion methods
     def reduced(self):
@@ -428,12 +393,12 @@ cdef class Unit:
         """
         cdef double unit_multiplier = 1.0
 
-        cdef SIUnitRef result = SIUnitByReducing(self._c_unit, &unit_multiplier)
+        cdef SIUnitRef result = SIUnitByReducing(self._c_ref, &unit_multiplier)
 
         if result == NULL:
             raise RMNError("Unit reduction failed")
 
-        return Unit._from_ref(result)
+        return Unit._from_c_ref(result)
 
     def to_coherent_si(self):
         """
@@ -448,13 +413,13 @@ cdef class Unit:
             raise RMNError("Cannot get dimensionality for coherent SI conversion")
 
         cdef Dimensionality dim_obj = <Dimensionality>dim
-        cdef SIDimensionalityRef dim_ref = dim_obj._dim_ref
+        cdef SIDimensionalityRef dim_ref = dim_obj._c_ref
         cdef SIUnitRef result = SIUnitCoherentUnitFromDimensionality(dim_ref)
 
         if result == NULL:
             raise RMNError("Conversion to coherent SI unit failed")
 
-        return Unit._from_ref(result)
+        return Unit._from_c_ref(result)
 
     # Additional comparison method
     def is_equivalent(self, other):
@@ -482,39 +447,7 @@ cdef class Unit:
         if not isinstance(other, Unit):
             return False
 
-        return SIUnitAreEquivalentUnits(self._c_unit, (<Unit>other)._c_unit)
-
-    def has_same_reduced_dimensionality(self, other):
-        """
-        Check if this unit has the same reduced dimensionality as another unit.
-
-        This compares the reduced dimensionalities of both units to determine
-        if they represent the same physical quantity type after reduction.
-
-        Args:
-            other (Unit): Unit to compare reduced dimensionality with
-
-        Returns:
-            bool: True if units have the same reduced dimensionality
-
-        Examples:
-            >>> meter = Unit("m")
-            >>> kilometer = Unit("km")
-            >>> meter.has_same_reduced_dimensionality(kilometer)  # True - both reduce to length
-            >>>
-            >>> second = Unit("s")
-            >>> meter.has_same_reduced_dimensionality(second)     # False - length vs time
-        """
-        if not isinstance(other, Unit):
-            return False
-
-        # Compare reduced dimensionalities for physical compatibility
-        self_dim = self.dimensionality
-        other_dim = other.dimensionality
-        if self_dim is None or other_dim is None:
-            return self_dim is other_dim
-
-        return self_dim.reduced() == other_dim.reduced()
+        return SIUnitAreEquivalentUnits(self._c_ref, (<Unit>other)._c_ref)
 
     # Python operator overloading
     def __mul__(self, other):
@@ -523,19 +456,19 @@ cdef class Unit:
             raise TypeError("Can only multiply with another Unit")
 
         cdef double unit_multiplier = 1.0
-        cdef OCStringRef error_string = NULL
+        cdef OCStringRef error_ocstr = NULL
 
-        cdef SIUnitRef result = SIUnitByMultiplyingWithoutReducing(self._c_unit, (<Unit>other)._c_unit,
-                                                                  &unit_multiplier, &error_string)
+        cdef SIUnitRef result = SIUnitByMultiplyingWithoutReducing(self._c_ref, (<Unit>other)._c_ref,
+                                                                  &unit_multiplier, &error_ocstr)
 
         if result == NULL:
             error_msg = "Unknown error"
-            if error_string != NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>error_string)
-                OCRelease(<OCTypeRef>error_string)
+            if error_ocstr != NULL:
+                error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
+                OCRelease(<OCTypeRef>error_ocstr)
             raise RMNError(f"Unit multiplication failed: {error_msg}")
 
-        return Unit._from_ref(result)
+        return Unit._from_c_ref(result)
 
     def __truediv__(self, other):
         """Division operator (/) - divides without reducing to lowest terms."""
@@ -543,22 +476,22 @@ cdef class Unit:
             raise TypeError("Can only divide by another Unit")
 
         cdef double unit_multiplier = 1.0
-        cdef OCStringRef error_string = NULL
+        cdef OCStringRef error_ocstr = NULL
 
-        cdef SIUnitRef result = SIUnitByDividingWithoutReducing(self._c_unit, (<Unit>other)._c_unit,
-                                                               &unit_multiplier, &error_string)
+        cdef SIUnitRef result = SIUnitByDividingWithoutReducing(self._c_ref, (<Unit>other)._c_ref,
+                                                               &unit_multiplier, &error_ocstr)
 
-        if error_string != NULL:
+        if error_ocstr != NULL:
             try:
-                error_msg = ocstring_to_pystring(<uint64_t>error_string)
+                error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
             finally:
-                OCRelease(<OCTypeRef>error_string)
+                OCRelease(<OCTypeRef>error_ocstr)
             raise RMNError(f"Unit division failed: {error_msg}")
 
         if result == NULL:
             raise RMNError("Unit division failed")
 
-        return Unit._from_ref(result)
+        return Unit._from_c_ref(result)
 
     def __pow__(self, exponent):
         """Power operator (**) - raises to power without reducing to lowest terms."""
@@ -567,7 +500,7 @@ cdef class Unit:
 
         cdef double power = float(exponent)
         cdef double unit_multiplier = 1.0
-        cdef OCStringRef error_string = NULL
+        cdef OCStringRef error_ocstr = NULL
         cdef SIUnitRef result
         cdef uint8_t c_root
         cdef double root_candidate
@@ -576,19 +509,19 @@ cdef class Unit:
         if power == int(power):
             # Use integer power function
             unit_multiplier = 1.0
-            error_string = NULL
+            error_ocstr = NULL
 
-            result = SIUnitByRaisingToPowerWithoutReducing(self._c_unit, power,
-                                                          &unit_multiplier, &error_string)
+            result = SIUnitByRaisingToPowerWithoutReducing(self._c_ref, power,
+                                                          &unit_multiplier, &error_ocstr)
 
             if result == NULL:
                 error_msg = "Unknown error"
-                if error_string != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error_string)
-                    OCRelease(<OCTypeRef>error_string)
+                if error_ocstr != NULL:
+                    error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
+                    OCRelease(<OCTypeRef>error_ocstr)
                 raise RMNError(f"Unit power operation failed: {error_msg}")
 
-            return Unit._from_ref(result)
+            return Unit._from_c_ref(result)
 
         else:
             # Check if this is a valid integer root (1/n)
@@ -599,19 +532,19 @@ cdef class Unit:
                     # This is 1/n where n is a positive integer - use nth root
                     c_root = <uint8_t>round(root_candidate)
                     unit_multiplier = 1.0
-                    error_string = NULL
+                    error_ocstr = NULL
 
-                    result = SIUnitByTakingNthRoot(self._c_unit, c_root,
-                                                  &unit_multiplier, &error_string)
+                    result = SIUnitByTakingNthRoot(self._c_ref, c_root,
+                                                  &unit_multiplier, &error_ocstr)
 
                     if result == NULL:
                         error_msg = "Unknown error"
-                        if error_string != NULL:
-                            error_msg = ocstring_to_pystring(<uint64_t>error_string)
-                            OCRelease(<OCTypeRef>error_string)
+                        if error_ocstr != NULL:
+                            error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
+                            OCRelease(<OCTypeRef>error_ocstr)
                         raise RMNError(f"Unit root operation failed: {error_msg}")
 
-                    return Unit._from_ref(result)
+                    return Unit._from_c_ref(result)
 
             # Invalid fractional power
             raise RMNError(f"Cannot raise unit to fractional power {power}. Only integer powers and integer roots (like 0.5 for square root) are allowed.")
@@ -620,12 +553,12 @@ cdef class Unit:
         """Equality operator (==)."""
         if isinstance(other, Unit):
             # Simple pointer comparison since SIUnitRef are singletons
-            return self._c_unit == (<Unit>other)._c_unit
+            return self._c_ref == (<Unit>other)._c_ref
         elif isinstance(other, str):
             # Try to parse string as a unit and compare pointers
             try:
                 other_unit = Unit(other)
-                return self._c_unit == other_unit._c_unit
+                return self._c_ref == other_unit._c_ref
             except (RMNError, TypeError, ValueError):
                 # If parsing fails, units are not equal
                 return False
@@ -647,17 +580,17 @@ cdef class Unit:
         Returns:
             list[Unit]: List of equivalent units
         """
-        if self._c_unit == NULL:
-            return []
+        if self._c_ref == NULL:
+            raise RMNError("Cannot find equivalent units for NULL unit")
 
-        cdef OCArrayRef array_ref = SIUnitCreateArrayOfEquivalentUnits(self._c_unit)
-        if array_ref == NULL:
+        cdef OCArrayRef array_c_ref = SIUnitCreateArrayOfEquivalentUnits(self._c_ref)
+        if array_c_ref == NULL:
             return []
 
         try:
-            return self._array_ref_to_unit_list(array_ref)
+            return ocarray_to_pylist(<uint64_t>array_c_ref)
         finally:
-            OCRelease(<OCTypeRef>array_ref)
+            OCRelease(<OCTypeRef>array_c_ref)
 
     def find_convertible_units(self):
         """
@@ -666,15 +599,15 @@ cdef class Unit:
         Returns:
             list[Unit]: List of convertible units
         """
-        if self._c_unit == NULL:
-            return []
+        if self._c_ref == NULL:
+            raise RMNError("Cannot find convertible units for NULL unit")
 
-        cdef OCArrayRef array_ref = SIUnitCreateArrayOfConversionUnits(self._c_unit)
+        cdef OCArrayRef array_ref = SIUnitCreateArrayOfConversionUnits(self._c_ref)
         if array_ref == NULL:
             return []
 
         try:
-            return self._array_ref_to_unit_list(array_ref)
+            return ocarray_to_pylist(<uint64_t>array_ref)
         finally:
             OCRelease(<OCTypeRef>array_ref)
 
@@ -685,10 +618,10 @@ cdef class Unit:
         Returns:
             list[Unit]: List of units with same dimensionality
         """
-        if self._c_unit == NULL:
-            return []
+        if self._c_ref == NULL:
+            raise RMNError("Cannot find units with same dimensionality for NULL unit")
 
-        cdef SIDimensionalityRef dim_ref = SIUnitGetDimensionality(self._c_unit)
+        cdef SIDimensionalityRef dim_ref = SIUnitGetDimensionality(self._c_ref)
         if dim_ref == NULL:
             return []
 
@@ -697,7 +630,7 @@ cdef class Unit:
             return []
 
         try:
-            return self._array_ref_to_unit_list(array_ref)
+            return ocarray_to_pylist(<uint64_t>array_ref)
         finally:
             OCRelease(<OCTypeRef>array_ref)
 
@@ -708,10 +641,10 @@ cdef class Unit:
         Returns:
             list[Unit]: List of units with same reduced dimensionality
         """
-        if self._c_unit == NULL:
-            return []
+        if self._c_ref == NULL:
+            raise RMNError("Cannot find units with same reduced dimensionality for NULL unit")
 
-        cdef SIDimensionalityRef dim_ref = SIUnitGetDimensionality(self._c_unit)
+        cdef SIDimensionalityRef dim_ref = SIUnitGetDimensionality(self._c_ref)
         if dim_ref == NULL:
             return []
 
@@ -720,7 +653,7 @@ cdef class Unit:
             return []
 
         try:
-            return self._array_ref_to_unit_list(array_ref)
+            return ocarray_to_pylist(<uint64_t>array_ref)
         finally:
             OCRelease(<OCTypeRef>array_ref)
 
@@ -738,45 +671,22 @@ cdef class Unit:
         if not isinstance(quantity_name, str):
             raise TypeError("quantity_name must be a string")
 
-        cdef OCStringRef quantity_string = OCStringCreateWithCString(quantity_name.encode('utf-8'))
-        if quantity_string == NULL:
+        from rmnpy.helpers.octypes import ocstring_create_from_pystring
+
+        cdef OCStringRef quantity_ocstr = <OCStringRef>ocstring_create_from_pystring(quantity_name)
+        if quantity_ocstr == NULL:
             return []
 
-        cdef OCArrayRef array_ref = SIUnitCreateArrayOfUnitsForQuantity(quantity_string)
+        cdef OCArrayRef array_ref = SIUnitCreateArrayOfUnitsForQuantity(quantity_ocstr)
         cdef list result = []
 
         try:
             if array_ref != NULL:
-                result = Unit._array_ref_to_unit_list_static(array_ref)
+                result = ocarray_to_pylist(<uint64_t>array_ref)
         finally:
-            OCRelease(<OCTypeRef>quantity_string)
+            OCRelease(<OCTypeRef>quantity_ocstr)
             if array_ref != NULL:
                 OCRelease(<OCTypeRef>array_ref)
-
-        return result
-
-    cdef list _array_ref_to_unit_list(self, OCArrayRef array_ref):
-        """Convert OCArrayRef of units to Python list."""
-        return Unit._array_ref_to_unit_list_static(array_ref)
-
-    @staticmethod
-    cdef list _array_ref_to_unit_list_static(OCArrayRef array_ref):
-        """Convert OCArrayRef of units to Python list (static version)."""
-        if array_ref == NULL:
-            return []
-
-        cdef uint64_t count = OCArrayGetCount(array_ref)
-        cdef list result = []
-        cdef SIUnitRef unit_ref
-        cdef Unit unit_obj
-
-        for i in range(count):
-            unit_ref = <SIUnitRef>OCArrayGetValueAtIndex(array_ref, i)
-            if unit_ref != NULL:
-                # Create a new Unit object wrapping this SIUnitRef
-                unit_obj = Unit.__new__(Unit)
-                unit_obj._c_unit = unit_ref  # Direct assignment - SIUnitRef is immutable
-                result.append(unit_obj)
 
         return result
 
@@ -788,22 +698,50 @@ cdef class Unit:
         Returns:
             str: Unit symbol representation
         """
-        if self._c_unit == NULL:
-            return ""
+        if self._c_ref == NULL:
+            raise RMNError("Cannot get string representation of NULL unit")
 
         # Special case for dimensionless unit
-        if SIUnitIsDimensionless(self._c_unit):
+        if SIUnitIsDimensionless(self._c_ref):
             return "1"
 
-        cdef OCStringRef symbol_string = SIUnitCopySymbol(self._c_unit)
-        if symbol_string == NULL:
-            return ""
+        cdef OCStringRef symbol_ocstr = SIUnitCopySymbol(self._c_ref)
+        if symbol_ocstr == NULL:
+            raise RMNError("Unit has no symbol - this indicates a corrupted or invalid unit")
 
         try:
-            return ocstring_to_pystring(<uint64_t>symbol_string)
+            return ocstring_to_pystring(<uint64_t>symbol_ocstr)
         finally:
-            OCRelease(<OCTypeRef>symbol_string)
+            OCRelease(<OCTypeRef>symbol_ocstr)
 
     def __repr__(self):
         """Return a detailed string representation."""
         return f"Unit('{str(self)}')"
+
+
+# ====================================================================================
+# SIUnit Helper Functions
+# ====================================================================================
+
+def siunit_to_pyunit(uint64_t si_unit_ptr):
+    """
+    Convert an SIUnitRef to a Python Unit object.
+
+    Args:
+        si_unit_ptr (uint64_t): Pointer to SIUnitRef
+
+    Returns:
+        Unit: Python Unit object
+
+    Raises:
+        ValueError: If the SIUnitRef is NULL
+        RuntimeError: If Unit class is not available or conversion fails
+    """
+    cdef SIUnitRef si_unit = <SIUnitRef>si_unit_ptr
+
+    if si_unit == NULL:
+        raise ValueError("SIUnitRef is NULL")
+
+    # Use the Unit class's _from_c_ref method to create a proper Unit object
+    # No retention needed since SIUnitRef are singletons managed by SILibrary
+    return Unit._from_c_ref(si_unit)

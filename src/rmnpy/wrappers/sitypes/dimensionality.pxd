@@ -11,7 +11,7 @@ from rmnpy._c_api.sitypes cimport SIDimensionalityRef
 
 cdef class Dimensionality:
     """Cython interface for SIDimensionality wrapper."""
-    cdef SIDimensionalityRef _dim_ref
+    cdef SIDimensionalityRef _c_ref
 
     @staticmethod
-    cdef Dimensionality _from_ref(SIDimensionalityRef dim_ref)
+    cdef Dimensionality _from_c_ref(SIDimensionalityRef dim_ref)

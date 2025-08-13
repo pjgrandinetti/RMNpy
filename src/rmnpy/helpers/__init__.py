@@ -1,7 +1,5 @@
 """
-Helper functions for converting between # Directly import the Cython‐built helpers.
-from .octypes import (  # String conversion functions; Number conversion functions; Boolean conversion functions; Data/NumPy conversion functions; Array conversion functions; Dictionary conversion functions; Set conversion functions; Index array/set conversion functions
-    numpy_array_to_ocdata,on types and OCTypes.
+Helper functions for converting between Python types and OCTypes.
 
 These are used internally by the SITypes and RMNLib wrappers.
 They are not part of the public API.
@@ -10,66 +8,66 @@ They are not part of the public API.
 __all__ = [
     # String conversion functions
     "ocstring_to_pystring",
-    "pystring_to_ocstring",
-    "pystring_to_ocmutablestring",
+    "ocstring_create_from_pystring",
+    "ocmutablestring_create_from_pystring",
     # Number conversion functions
-    "pycomplex_to_ocnumber",
-    "pynumber_to_ocnumber",
+    "ocnumber_create_from_pycomplex",
+    "ocnumber_create_from_pynumber",
     "ocnumber_to_pynumber",
     # Boolean conversion functions
-    "pybool_to_ocboolean",
+    "ocboolean_from_pybool",
     "ocboolean_to_pybool",
     # Data/NumPy conversion functions
-    "numpy_array_to_ocdata",
+    "ocdata_create_from_numpy_array",
     "ocdata_to_numpy_array",
-    "numpy_array_to_ocmutabledata",
+    "ocmutabledata_create_from_numpy_array",
     # Array conversion functions
-    "pylist_to_ocarray",
+    "ocarray_create_from_pylist",
     "ocarray_to_pylist",
-    "pylist_to_ocmutablearray",
+    "ocmutablearray_create_from_pylist",
     # Dictionary conversion functions
-    "pydict_to_ocdict",
+    "ocdict_create_from_pydict",
     "ocdict_to_pydict",
-    "pydict_to_ocmutabledict",
+    "ocmutabledict_create_from_pydict",
     # Set conversion functions
-    "pyset_to_ocset",
+    "ocset_create_from_pyset",
     "ocset_to_pyset",
-    "pyset_to_ocmutableset",
+    "ocmutableset_create_from_pyset",
     # Index array/set conversion functions
-    "pylist_to_ocindexarray",
+    "ocindexarray_create_from_pylist",
     "ocindexarray_to_pylist",
-    "pyset_to_ocindexset",
+    "ocindexset_create_from_pyset",
     "ocindexset_to_pyset",
-    "pydict_to_ocindexpairset",
+    "ocindexpairset_create_from_pydict",
     "ocindexpairset_to_pydict",
 ]
 
 # Directly import the Cython‐built helpers.
-from .octypes import (  # String conversion functions; Number conversion functions; Boolean conversion functions; Data/NumPy conversion functions; Array conversion functions; Dictionary conversion functions; Set conversion functions; Index array/set conversion functions; Type introspection functions
-    numpy_array_to_ocdata,
-    numpy_array_to_ocmutabledata,
+from .octypes import (  # String conversion functions; Number conversion functions; Boolean conversion functions; Data/NumPy conversion functions; Array conversion functions; Dictionary conversion functions; Set conversion functions; Index array/set conversion functions
+    ocarray_create_from_pylist,
     ocarray_to_pylist,
+    ocboolean_from_pybool,
     ocboolean_to_pybool,
+    ocdata_create_from_numpy_array,
     ocdata_to_numpy_array,
+    ocdict_create_from_pydict,
     ocdict_to_pydict,
+    ocindexarray_create_from_pylist,
     ocindexarray_to_pylist,
+    ocindexpairset_create_from_pydict,
     ocindexpairset_to_pydict,
+    ocindexset_create_from_pyset,
     ocindexset_to_pyset,
+    ocmutablearray_create_from_pylist,
+    ocmutabledata_create_from_numpy_array,
+    ocmutabledict_create_from_pydict,
+    ocmutableset_create_from_pyset,
+    ocmutablestring_create_from_pystring,
+    ocnumber_create_from_pycomplex,
+    ocnumber_create_from_pynumber,
     ocnumber_to_pynumber,
+    ocset_create_from_pyset,
     ocset_to_pyset,
+    ocstring_create_from_pystring,
     ocstring_to_pystring,
-    pybool_to_ocboolean,
-    pycomplex_to_ocnumber,
-    pydict_to_ocdict,
-    pydict_to_ocindexpairset,
-    pydict_to_ocmutabledict,
-    pylist_to_ocarray,
-    pylist_to_ocindexarray,
-    pylist_to_ocmutablearray,
-    pynumber_to_ocnumber,
-    pyset_to_ocindexset,
-    pyset_to_ocmutableset,
-    pyset_to_ocset,
-    pystring_to_ocmutablestring,
-    pystring_to_ocstring,
 )

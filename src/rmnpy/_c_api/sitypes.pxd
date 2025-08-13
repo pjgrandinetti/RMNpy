@@ -75,6 +75,7 @@ cdef extern from "SITypes/SIDimensionality.h":
                                            int8_t temperature_exponent,
                                            int8_t amount_exponent,
                                            int8_t luminous_intensity_exponent)
+    bint SIDimensionalityCanBeReduced(SIDimensionalityRef theDim)
 
     # Operations
     SIDimensionalityRef SIDimensionalityDimensionless()
