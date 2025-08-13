@@ -233,7 +233,7 @@ def debug_array_elements(uint64_t oc_array_ptr):
         if type_id == OCStringGetTypeID():
             debug_info.append(f"    -> OCString")
             try:
-                py_value = ocstring_to_pystring(<uint64_t>item_ptr)
+                py_value = pystring_from_ocstring(<uint64_t>item_ptr)
                 debug_info.append(f"    -> Value: '{py_value}'")
             except Exception as e:
                 debug_info.append(f"    -> String conversion failed: {e}")
@@ -326,7 +326,7 @@ cdef uint64_t convert_python_to_octype(object item) except 0:
 
     # Handle built-in Python types
     if isinstance(item, str):
-        return pystring_to_ocstring(item)
+        return ocstring_create_with_pystring(item)
     elif isinstance(item, bool):  # Check bool before int (bool is subclass of int)
         return pybool_to_ocboolean(item)
     elif isinstance(item, (int, float, complex)):
@@ -371,7 +371,7 @@ cdef object convert_octype_to_python(const void* oc_ptr):
 
     # Handle known OCTypes
     if type_id == OCStringGetTypeID():
-        return ocstring_to_pystring(<uint64_t>oc_ptr)
+        return pystring_from_ocstring(<uint64_t>oc_ptr)
     elif type_id == OCNumberGetTypeID():
         return ocnumber_to_pynumber(<uint64_t>oc_ptr)
     elif type_id == OCBooleanGetTypeID():
@@ -406,15 +406,18 @@ cdef object convert_octype_to_python(const void* oc_ptr):
 # String Helper Functions
 # ====================================================================================
 
-def pystring_to_ocstring(py_string):
+def ocstring_create_with_pystring(py_string):
     """
-    Convert a Python string to an OCStringRef.
+    Create an OCStringRef from a Python string.
+
+    Following C API naming convention: functions with "Create" transfer ownership to caller.
+    The returned OCStringRef must be released with OCRelease().
 
     Args:
         py_string (str or None): Python string to convert, or None
 
     Returns:
-        uint64_t: OCTypes string reference (needs to be released), or 0 if py_string is None
+        uint64_t: OCTypes string reference (caller owns, needs OCRelease), or 0 if py_string is None
 
     Raises:
         RuntimeError: If string creation fails
@@ -435,9 +438,11 @@ def pystring_to_ocstring(py_string):
 
     return <uint64_t>oc_string
 
-def ocstring_to_pystring(uint64_t oc_string_ptr):
+def pystring_from_ocstring(uint64_t oc_string_ptr):
     """
-    Convert an OCStringRef to a Python string.
+    Extract a Python string from an OCStringRef.
+
+    This function does not affect ownership - the OCStringRef is not released.
 
     Args:
         oc_string_ptr (uint64_t): Pointer to OCStringRef
@@ -468,7 +473,7 @@ def pystring_to_ocmutablestring(str py_string):
     Returns:
         OCMutableStringRef: OCTypes mutable string reference (needs to be released)
     """
-    cdef uint64_t immutable_string_ptr = pystring_to_ocstring(py_string)
+    cdef uint64_t immutable_string_ptr = ocstring_create_with_pystring(py_string)
     cdef OCStringRef immutable_string = <OCStringRef>immutable_string_ptr
     cdef OCMutableStringRef mutable_string = OCStringCreateMutableCopy(immutable_string)
 
@@ -767,7 +772,7 @@ def pylist_to_ocarray(py_list):
             elif isinstance(item, set):
                 oc_item_ptr = pyset_to_ocset(item)
             elif isinstance(item, str):
-                oc_item_ptr = pystring_to_ocstring(item)
+                oc_item_ptr = ocstring_create_with_pystring(item)
             elif isinstance(item, bool):  # Check bool before int (bool is subclass of int)
                 oc_item_ptr = pybool_to_ocboolean(item)
             elif isinstance(item, (int, float, complex)):
@@ -833,7 +838,7 @@ def ocarray_to_pylist(uint64_t oc_array_ptr):
 
         # Handle known OCTypes directly
         if type_id == OCStringGetTypeID():
-            py_item = ocstring_to_pystring(<uint64_t>item_ptr)
+            py_item = pystring_from_ocstring(<uint64_t>item_ptr)
         elif type_id == OCNumberGetTypeID():
             py_item = ocnumber_to_pynumber(<uint64_t>item_ptr)
         elif type_id == OCBooleanGetTypeID():
@@ -958,7 +963,7 @@ def pydict_to_ocdict(py_dict):
                 str_key = key
             else:
                 str_key = str(key)  # Convert to string representation
-            oc_key_ptr = pystring_to_ocstring(str_key)
+            oc_key_ptr = ocstring_create_with_pystring(str_key)
 
             # Convert value
             # Handle collections explicitly to avoid circular dependencies
@@ -1051,7 +1056,7 @@ def ocdict_to_pydict(uint64_t oc_dict_ptr):
             if key_type_id != OCStringGetTypeID():
                 continue  # Skip non-string keys
 
-            py_key = ocstring_to_pystring(<uint64_t>keys[i])
+            py_key = pystring_from_ocstring(<uint64_t>keys[i])
 
             # Convert value using extensible converter that handles all OCTypes
             py_value = convert_octype_to_python(values[i])
@@ -1097,7 +1102,7 @@ def pydict_to_ocmutabledict(dict py_dict):
                 str_key = key
             else:
                 str_key = str(key)  # Convert to string representation
-            oc_key_ptr = pystring_to_ocstring(str_key)
+            oc_key_ptr = ocstring_create_with_pystring(str_key)
 
             # Convert value
             # Handle collections explicitly to avoid circular dependencies
@@ -1221,7 +1226,7 @@ def ocset_to_pyset(uint64_t oc_set_ptr):
 
         # Convert based on type (only hashable types for sets)
         if type_id == OCStringGetTypeID():
-            result.add(ocstring_to_pystring(<uint64_t>item_ptr))
+            result.add(pystring_from_ocstring(<uint64_t>item_ptr))
         elif type_id == OCNumberGetTypeID():
             result.add(ocnumber_to_pynumber(<uint64_t>item_ptr))
         elif type_id == OCBooleanGetTypeID():

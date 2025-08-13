@@ -9,8 +9,8 @@ They are not part of the public API.
 
 __all__ = [
     # String conversion functions
-    "ocstring_to_pystring",
-    "pystring_to_ocstring",
+    "pystring_from_ocstring",
+    "ocstring_create_with_pystring",
     "pystring_to_ocmutablestring",
     # Number conversion functions
     "pycomplex_to_ocnumber",
@@ -57,7 +57,7 @@ from .octypes import (  # String conversion functions; Number conversion functio
     ocindexset_to_pyset,
     ocnumber_to_pynumber,
     ocset_to_pyset,
-    ocstring_to_pystring,
+    ocstring_create_with_pystring,
     pybool_to_ocboolean,
     pycomplex_to_ocnumber,
     pydict_to_ocdict,
@@ -70,6 +70,6 @@ from .octypes import (  # String conversion functions; Number conversion functio
     pyset_to_ocindexset,
     pyset_to_ocmutableset,
     pyset_to_ocset,
+    pystring_from_ocstring,
     pystring_to_ocmutablestring,
-    pystring_to_ocstring,
 )

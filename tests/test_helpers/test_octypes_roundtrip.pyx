@@ -21,7 +21,7 @@ from rmnpy.helpers.octypes import (
     ocindexset_to_pyset,
     ocnumber_to_pynumber,
     ocset_to_pyset,
-    ocstring_to_pystring,
+    ocstring_create_with_pystring,
     pybool_to_ocboolean,
     pydict_to_ocdict,
     pydict_to_ocindexpairset,
@@ -33,8 +33,8 @@ from rmnpy.helpers.octypes import (
     pyset_to_ocindexset,
     pyset_to_ocmutableset,
     pyset_to_ocset,
+    pystring_from_ocstring,
     pystring_to_ocmutablestring,
-    pystring_to_ocstring,
 )
 
 
@@ -51,11 +51,11 @@ def test_string_roundtrip():
 
     for original in original_strings:
         # Convert to OCString
-        oc_string_ptr = pystring_to_ocstring(original)
+        oc_string_ptr = ocstring_create_with_pystring(original)
         assert oc_string_ptr != 0, f"Failed to create OCString for: {original}"
 
         # Convert back to Python string
-        converted = ocstring_to_pystring(oc_string_ptr)
+        converted = pystring_from_ocstring(oc_string_ptr)
 
         # Clean up
 
@@ -284,11 +284,11 @@ def test_memory_management():
     """Test that memory management works correctly."""
     # Test basic string creation (memory handled internally)
     original = "Test String"
-    oc_string_ptr = pystring_to_ocstring(original)
+    oc_string_ptr = ocstring_create_with_pystring(original)
     assert oc_string_ptr != 0, "Failed to create OCString"
 
     # Test conversion back to Python
-    converted = ocstring_to_pystring(oc_string_ptr)
+    converted = pystring_from_ocstring(oc_string_ptr)
     assert converted == original, "String roundtrip failed"
 
     # Note: Memory management is handled automatically
@@ -313,8 +313,8 @@ def test_type_preservation():
 
     for original, expected_type in test_cases:
         if expected_type == str:
-            oc_ptr = pystring_to_ocstring(original)
-            converted = ocstring_to_pystring(oc_ptr)
+            oc_ptr = ocstring_create_with_pystring(original)
+            converted = pystring_from_ocstring(oc_ptr)
         elif expected_type in (int, float, complex):
             oc_ptr = pynumber_to_ocnumber(original)
             converted = ocnumber_to_pynumber(oc_ptr)
@@ -346,7 +346,7 @@ def test_error_handling():
     """Test that error conditions are handled properly."""
     # Test NULL pointer handling
     with pytest.raises(ValueError, match="OCStringRef is NULL"):
-        ocstring_to_pystring(0)
+        pystring_from_ocstring(0)
 
     with pytest.raises(ValueError, match="OCNumberRef is NULL"):
         ocnumber_to_pynumber(0)
@@ -364,8 +364,8 @@ def test_error_handling():
 def test_edge_cases():
     """Test edge cases and boundary conditions."""
     # Empty string
-    oc_string_ptr = pystring_to_ocstring("")
-    converted = ocstring_to_pystring(oc_string_ptr)
+    oc_string_ptr = ocstring_create_with_pystring("")
+    converted = pystring_from_ocstring(oc_string_ptr)
     assert converted == ""
 
     # Zero
@@ -741,7 +741,7 @@ def test_mutable_string_creation():
         assert oc_mutable_string_ptr != 0, f"Failed to create OCMutableString for: {original}"
 
         # Convert back via regular string interface to verify content
-        converted = ocstring_to_pystring(oc_mutable_string_ptr)
+        converted = pystring_from_ocstring(oc_mutable_string_ptr)
 
         # Clean up
 
@@ -777,7 +777,7 @@ def test_mutable_data_creation():
 def test_extensible_collections():
     """Test that collections can handle arbitrary OCTypes (simulated)."""
     # Create some OCTypes to use as values
-    string_ptr = pystring_to_ocstring("test_string")
+    string_ptr = ocstring_create_with_pystring("test_string")
     number_ptr = pynumber_to_ocnumber(42)
     bool_ptr = pybool_to_ocboolean(True)
     data_ptr = numpy_array_to_ocdata(np.array([1, 2, 3], dtype=np.int32))

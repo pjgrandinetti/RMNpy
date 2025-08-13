@@ -22,7 +22,7 @@ from rmnpy.exceptions import RMNError
 
 from rmnpy.wrappers.sitypes.dimensionality cimport Dimensionality
 
-from rmnpy.helpers.octypes import ocstring_to_pystring
+from rmnpy.helpers.octypes import pystring_from_ocstring
 
 from libc.stdint cimport uint64_t, uintptr_t
 
@@ -93,7 +93,7 @@ cdef class Unit:
 
             if c_unit == NULL:
                 if error_string != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error_string)
+                    error_msg = pystring_from_ocstring(<uint64_t>error_string)
                     raise RMNError(f"Failed to parse unit expression '{expression}': {error_msg}")
                 else:
                     raise RMNError(f"Failed to parse unit expression '{expression}': Unknown error")
@@ -203,7 +203,7 @@ cdef class Unit:
             return ""
 
         try:
-            return ocstring_to_pystring(<uint64_t>name_string)
+            return pystring_from_ocstring(<uint64_t>name_string)
         finally:
             OCRelease(<OCTypeRef>name_string)
 
@@ -218,7 +218,7 @@ cdef class Unit:
             return ""
 
         try:
-            return ocstring_to_pystring(<uint64_t>plural_string)
+            return pystring_from_ocstring(<uint64_t>plural_string)
         finally:
             OCRelease(<OCTypeRef>plural_string)
 
@@ -233,7 +233,7 @@ cdef class Unit:
             return ""
 
         try:
-            return ocstring_to_pystring(<uint64_t>symbol_string)
+            return pystring_from_ocstring(<uint64_t>symbol_string)
         finally:
             OCRelease(<OCTypeRef>symbol_string)
 
@@ -412,7 +412,7 @@ cdef class Unit:
         if result == NULL:
             error_msg = "Unknown error"
             if error_string != NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>error_string)
+                error_msg = pystring_from_ocstring(<uint64_t>error_string)
                 OCRelease(<OCTypeRef>error_string)
             raise RMNError(f"Unit root operation failed: {error_msg}")
 
@@ -531,7 +531,7 @@ cdef class Unit:
         if result == NULL:
             error_msg = "Unknown error"
             if error_string != NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>error_string)
+                error_msg = pystring_from_ocstring(<uint64_t>error_string)
                 OCRelease(<OCTypeRef>error_string)
             raise RMNError(f"Unit multiplication failed: {error_msg}")
 
@@ -550,7 +550,7 @@ cdef class Unit:
 
         if error_string != NULL:
             try:
-                error_msg = ocstring_to_pystring(<uint64_t>error_string)
+                error_msg = pystring_from_ocstring(<uint64_t>error_string)
             finally:
                 OCRelease(<OCTypeRef>error_string)
             raise RMNError(f"Unit division failed: {error_msg}")
@@ -584,7 +584,7 @@ cdef class Unit:
             if result == NULL:
                 error_msg = "Unknown error"
                 if error_string != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error_string)
+                    error_msg = pystring_from_ocstring(<uint64_t>error_string)
                     OCRelease(<OCTypeRef>error_string)
                 raise RMNError(f"Unit power operation failed: {error_msg}")
 
@@ -607,7 +607,7 @@ cdef class Unit:
                     if result == NULL:
                         error_msg = "Unknown error"
                         if error_string != NULL:
-                            error_msg = ocstring_to_pystring(<uint64_t>error_string)
+                            error_msg = pystring_from_ocstring(<uint64_t>error_string)
                             OCRelease(<OCTypeRef>error_string)
                         raise RMNError(f"Unit root operation failed: {error_msg}")
 
@@ -800,7 +800,7 @@ cdef class Unit:
             return ""
 
         try:
-            return ocstring_to_pystring(<uint64_t>symbol_string)
+            return pystring_from_ocstring(<uint64_t>symbol_string)
         finally:
             OCRelease(<OCTypeRef>symbol_string)
 
