@@ -9,4 +9,4 @@ nbsphinx>=0.8.0
 
 # Build dependencies for Cython extensions
 Cython
-numpy>=1.21,<2
+numpy>=1.21,<3
