@@ -3,20 +3,13 @@
 RMNpy SIDimensionality Wrapper - Phase 2A Complete Implementation
 
 Full-featured wrapper for SIDimensionality providing comprehensive dimensional analysis capabilities.
-This implementation includes a        if self._c_ref == NULL:
-            return False
-
-        return SIDimensionalityIsDimensionless(self._c_ref)sse        if self._c_ref == NULL or (<Dimensionality>other)._c_ref == NULL:
-            raise RMNError("Cannot multiply dimensionalities with NULL references")
-
-        cdef OCStringRef error_ocstr = NULL
-        cdef SIDimensionalityRef result = SIDimensionalityByMultiplying(
-            self._c_ref, (<Dimensionality>other)._c_ref, &error_ocstr)methods for scientific computing applications.
+This implementation includes all methods for scientific computing applications.
 """
 
 from rmnpy._c_api.octypes cimport (
     OCRelease,
     OCStringRef,
+    OCTypeRef,
 )
 from rmnpy._c_api.sitypes cimport *
 
@@ -92,7 +85,7 @@ cdef class Dimensionality:
 
             if error_ocstr != NULL:
                 error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-                OCRelease(error_ocstr)
+                OCRelease(<OCTypeRef>error_ocstr)
                 raise RMNError(f"Failed to parse dimensionality expression '{expression}': {error_msg}")
 
             if c_ref == NULL:
@@ -102,7 +95,7 @@ cdef class Dimensionality:
             self._c_ref = c_ref
 
         finally:
-            OCRelease(expr_ocstr)
+            OCRelease(<OCTypeRef>expr_ocstr)
 
     @staticmethod
     def for_quantity(quantity_constant):
@@ -150,7 +143,7 @@ cdef class Dimensionality:
 
             if error_ocstr != NULL:
                 error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-                OCRelease(error_ocstr)
+                OCRelease(<OCTypeRef>error_ocstr)
                 raise RMNError(f"Unknown quantity constant: {error_msg}")
 
             if c_ref == NULL:
@@ -164,7 +157,7 @@ cdef class Dimensionality:
             raise RMNError(f"Invalid quantity constant: {e}")
         finally:
             # Always clean up the quantity string
-            OCRelease(quantity_ocstr)
+            OCRelease(<OCTypeRef>quantity_ocstr)
 
     @staticmethod
     def dimensionless():
@@ -325,7 +318,7 @@ cdef class Dimensionality:
 
         if error_ocstr != NULL:
             error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-            OCRelease(error_ocstr)
+            OCRelease(<OCTypeRef>error_ocstr)
             raise RMNError(f"Dimensionality root operation failed: {error_msg}")
 
         if result == NULL:
@@ -360,7 +353,7 @@ cdef class Dimensionality:
         try:
             return ocstring_to_pystring(<uint64_t>symbol_str)
         finally:
-            OCRelease(symbol_str)
+            OCRelease(<OCTypeRef>symbol_str)
 
     def __repr__(self):
         """Detailed string representation."""
@@ -399,7 +392,7 @@ cdef class Dimensionality:
 
         if error_ocstr != NULL:
             error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-            OCRelease(error_ocstr)
+            OCRelease(<OCTypeRef>error_ocstr)
             raise RMNError(f"Dimensionality multiplication failed: {error_msg}")
 
         if result == NULL:
@@ -434,7 +427,7 @@ cdef class Dimensionality:
 
         if error_ocstr != NULL:
             error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-            OCRelease(error_ocstr)
+            OCRelease(<OCTypeRef>error_ocstr)
             raise RMNError(f"Dimensionality power operation failed: {error_msg}")
 
         if result == NULL:

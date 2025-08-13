@@ -701,10 +701,6 @@ cdef class Unit:
         if self._c_ref == NULL:
             raise RMNError("Cannot get string representation of NULL unit")
 
-        # Special case for dimensionless unit
-        if SIUnitIsDimensionless(self._c_ref):
-            return "1"
-
         cdef OCStringRef symbol_ocstr = SIUnitCopySymbol(self._c_ref)
         if symbol_ocstr == NULL:
             raise RMNError("Unit has no symbol - this indicates a corrupted or invalid unit")

@@ -12,7 +12,6 @@ comprehensive arithmetic operations with automatic unit handling and dimensional
 from rmnpy._c_api.octypes cimport (
     OCComparisonResult,
     OCRelease,
-    OCStringCreateWithCString,
     OCStringGetCString,
     OCStringRef,
     OCTypeRef,
@@ -31,7 +30,7 @@ from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
 from rmnpy.wrappers.sitypes.unit cimport Unit
 
-from rmnpy.helpers.octypes import pystring_from_ocstring
+from rmnpy.helpers.octypes import ocstring_create_from_pystring, pystring_from_ocstring
 from rmnpy.wrappers.sitypes.unit import Unit
 
 from libc.stdint cimport uint8_t, uint64_t, uintptr_t
@@ -67,22 +66,22 @@ cdef class Scalar:
     """
 
     def __cinit__(self):
-        self._c_scalar = NULL
+        self._c_ref = NULL
 
     def __dealloc__(self):
-        if self._c_scalar != NULL:
-            OCRelease(<OCTypeRef>self._c_scalar)
+        if self._c_ref != NULL:
+            OCRelease(<OCTypeRef>self._c_ref)
 
     @staticmethod
     cdef Scalar _from_c_ref(SIScalarRef scalar_ref):
         """Create Scalar wrapper from C reference (internal use)."""
         cdef Scalar result = Scalar.__new__(Scalar)
-        result._c_scalar = scalar_ref
+        result._c_ref = scalar_ref
         return result
 
-    cdef SIScalarRef get_c_scalar(self):
+    cdef SIScalarRef get_c_ref(self):
         """Get the C scalar reference for cross-module access."""
-        return self._c_scalar
+        return self._c_ref
 
     def __init__(self, value=1.0, expression=None):
         """
@@ -115,7 +114,7 @@ cdef class Scalar:
             Decimal, and Fraction. The underlying SITypes library handles
             dimensional analysis and unit validation automatically.
         """
-        if self._c_scalar != NULL:
+        if self._c_ref != NULL:
             return  # Already initialized by _from_c_ref
 
         # Handle single argument cases
@@ -150,26 +149,24 @@ cdef class Scalar:
             raise TypeError("Expression must be a string")
 
         # Create base scalar from expression
-        cdef bytes expr_bytes = expression.encode('utf-8')
-        cdef OCStringRef expr_ref = OCStringCreateWithCString(expr_bytes)
-        cdef OCStringRef error_string = NULL
+        cdef OCStringRef expr_ocstr = <OCStringRef>ocstring_create_from_pystring(expression)
+        cdef OCStringRef error_ocstr = NULL
         cdef SIScalarRef base_scalar
         cdef SIScalarRef result
 
         try:
-            base_scalar = SIScalarCreateFromExpression(expr_ref, &error_string)
+            base_scalar = SIScalarCreateFromExpression(expr_ocstr, &error_ocstr)
 
             if base_scalar == NULL:
-                if error_string != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error_string)
-                    OCRelease(<OCTypeRef>error_string)
+                if error_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
                     raise RMNError(f"Failed to parse scalar expression '{expression}': {error_msg}")
                 else:
                     raise RMNError(f"Failed to parse scalar expression '{expression}'")
 
             # If value is 1.0, use base scalar directly
             if value == 1.0:
-                self._c_scalar = base_scalar
+                self._c_ref = base_scalar
             else:
                 # Multiply by the value
                 if isinstance(value, complex):
@@ -183,36 +180,32 @@ cdef class Scalar:
                 if result == NULL:
                     raise RMNError("Failed to multiply scalar by value")
 
-                self._c_scalar = result
+                self._c_ref = result
 
         finally:
-            OCRelease(<OCTypeRef>expr_ref)
+            OCRelease(<OCTypeRef>expr_ocstr)
+            if error_ocstr != NULL:
+                OCRelease(<OCTypeRef>error_ocstr)
 
     # Properties
     @property
     def value(self):
         """Get the numeric value in the current unit (not coherent SI units)."""
-        if self._c_scalar == NULL:
-            return 0.0
-
         # Get the value directly from the C function
         # SIScalarDoubleValue returns the value in the current unit
         # (unlike SIScalarDoubleValueInCoherentUnit which always gives the SI base unit value)
 
         # Check if the scalar contains a complex number using C function
-        if SIScalarIsComplex(self._c_scalar):
-            return SIScalarDoubleComplexValue(self._c_scalar)
+        if SIScalarIsComplex(self._c_ref):
+            return SIScalarDoubleComplexValue(self._c_ref)
         else:
             # Use the appropriate C function that returns the value in the current unit
-            return SIScalarDoubleValue(self._c_scalar)
+            return SIScalarDoubleValue(self._c_ref)
 
     @property
     def unit(self):
         """Get the unit of the scalar."""
-        if self._c_scalar == NULL:
-            return None
-
-        cdef SIUnitRef c_unit = SIQuantityGetUnit(<SIQuantityRef>self._c_scalar)
+        cdef SIUnitRef c_unit = SIQuantityGetUnit(<SIQuantityRef>self._c_ref)
         if c_unit == NULL:
             return None
 
@@ -221,10 +214,7 @@ cdef class Scalar:
     @property
     def dimensionality(self):
         """Get the dimensionality of the scalar."""
-        if self._c_scalar == NULL:
-            return None
-
-        cdef SIDimensionalityRef c_dim = SIQuantityGetUnitDimensionality(<SIQuantityRef>self._c_scalar)
+        cdef SIDimensionalityRef c_dim = SIQuantityGetUnitDimensionality(<SIQuantityRef>self._c_ref)
         if c_dim == NULL:
             return None
 
@@ -233,45 +223,32 @@ cdef class Scalar:
     @property
     def is_real(self):
         """Check if the scalar is a real number."""
-        if self._c_scalar == NULL:
-            return True
-        return SIScalarIsReal(self._c_scalar)
+        return SIScalarIsReal(self._c_ref)
 
     @property
     def is_complex(self):
         """Check if the scalar has a non-zero imaginary component."""
-        if self._c_scalar == NULL:
-            return False
-        return SIScalarIsComplex(self._c_scalar)
+        return SIScalarIsComplex(self._c_ref)
 
     @property
     def is_imaginary(self):
         """Check if the scalar is purely imaginary."""
-        if self._c_scalar == NULL:
-            return False
-        return SIScalarIsImaginary(self._c_scalar)
+        return SIScalarIsImaginary(self._c_ref)
 
     @property
     def is_zero(self):
         """Check if the scalar value is exactly zero."""
-        if self._c_scalar == NULL:
-            return True
-        return SIScalarIsZero(self._c_scalar)
+        return SIScalarIsZero(self._c_ref)
 
     @property
     def is_infinite(self):
         """Check if the scalar value is infinite."""
-        if self._c_scalar == NULL:
-            return False
-        return SIScalarIsInfinite(self._c_scalar)
+        return SIScalarIsInfinite(self._c_ref)
 
     @property
     def magnitude(self):
         """Get the magnitude (absolute value) of the scalar as a Scalar with same unit."""
-        if self._c_scalar == NULL:
-            raise RMNError("Cannot get magnitude of null scalar")
-
-        cdef SIScalarRef result = SIScalarCreateByTakingComplexPart(self._c_scalar, kSIMagnitudePart)
+        cdef SIScalarRef result = SIScalarCreateByTakingComplexPart(self._c_ref, kSIMagnitudePart)
         if result == NULL:
             raise RMNError("Failed to get magnitude")
 
@@ -280,10 +257,7 @@ cdef class Scalar:
     @property
     def argument(self):
         """Get the argument (phase angle) of the scalar in radians as a dimensionless Scalar."""
-        if self._c_scalar == NULL:
-            raise RMNError("Cannot get argument of null scalar")
-
-        cdef SIScalarRef result = SIScalarCreateByTakingComplexPart(self._c_scalar, kSIArgumentPart)
+        cdef SIScalarRef result = SIScalarCreateByTakingComplexPart(self._c_ref, kSIArgumentPart)
         if result == NULL:
             raise RMNError("Failed to get argument")
 
@@ -297,10 +271,7 @@ cdef class Scalar:
     @property
     def real(self):
         """Get the real part of the scalar as a Scalar with same unit."""
-        if self._c_scalar == NULL:
-            raise RMNError("Cannot get real part of null scalar")
-
-        cdef SIScalarRef result = SIScalarCreateByTakingComplexPart(self._c_scalar, kSIRealPart)
+        cdef SIScalarRef result = SIScalarCreateByTakingComplexPart(self._c_ref, kSIRealPart)
         if result == NULL:
             raise RMNError("Failed to get real part")
 
@@ -309,10 +280,7 @@ cdef class Scalar:
     @property
     def imag(self):
         """Get the imaginary part of the scalar as a Scalar with same unit."""
-        if self._c_scalar == NULL:
-            raise RMNError("Cannot get imaginary part of null scalar")
-
-        cdef SIScalarRef result = SIScalarCreateByTakingComplexPart(self._c_scalar, kSIImaginaryPart)
+        cdef SIScalarRef result = SIScalarCreateByTakingComplexPart(self._c_ref, kSIImaginaryPart)
         if result == NULL:
             raise RMNError("Failed to get imaginary part")
 
@@ -335,66 +303,40 @@ cdef class Scalar:
             >>> speed = Scalar(60, "mph")
             >>> speed_mps = speed.to("m/s")  # 26.8224 m/s
         """
-        if self._c_scalar == NULL:
-            raise ValueError("Cannot convert NULL scalar")
-
-        cdef OCStringRef error_string = NULL
+        cdef OCStringRef error_ocstr = NULL
         cdef SIScalarRef result
         cdef bytes unit_bytes
-        cdef OCStringRef unit_str
+        cdef OCStringRef unit_ocstr
         cdef Unit unit_obj
 
         if isinstance(new_unit, str):
             # Use string-based conversion that creates a new immutable scalar
-            unit_bytes = new_unit.encode('utf-8')
-            unit_str = OCStringCreateWithCString(unit_bytes)
+            unit_ocstr = <OCStringRef>ocstring_create_from_pystring(new_unit)
 
             try:
-                result = SIScalarCreateByConvertingToUnitWithString(self._c_scalar, unit_str, &error_string)
+                result = SIScalarCreateByConvertingToUnitWithString(self._c_ref, unit_ocstr, &error_ocstr)
             finally:
-                OCRelease(<OCTypeRef>unit_str)
+                OCRelease(<OCTypeRef>unit_ocstr)
 
         elif isinstance(new_unit, Unit):
             # Use Unit object directly with immutable conversion
             unit_obj = <Unit>new_unit
-            result = SIScalarCreateByConvertingToUnit(self._c_scalar, unit_obj._c_ref, &error_string)
-
-            if result == NULL:
-                if error_string != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error_string)
-                    OCRelease(<OCTypeRef>error_string)
-                    raise ValueError(f"Unit conversion failed: {error_msg}")
-                else:
-                    raise ValueError("Unit conversion failed: incompatible dimensions")
+            result = SIScalarCreateByConvertingToUnit(self._c_ref, unit_obj._c_ref, &error_ocstr)
         else:
             raise TypeError("Unit must be a string or Unit object")
 
-        if result == NULL:
-            raise ValueError("Unit conversion failed")
-
-        return Scalar._from_c_ref(result)
-
-    def can_convert_to(self, new_unit):
-        """
-        Check if this scalar can be converted to the specified unit.
-
-        Args:
-            new_unit (str or Unit): Target unit to check compatibility with
-
-        Returns:
-            bool: True if conversion is possible, False otherwise
-
-        Examples:
-            >>> distance = Scalar(1000, "m")
-            >>> distance.can_convert_to("km")  # True - same dimensionality
-            >>> distance.can_convert_to("s")   # False - different dimensionality
-        """
         try:
-            # Attempt conversion to check compatibility
-            self.to(new_unit)
-            return True
-        except (ValueError, RMNError, TypeError):
-            return False
+            if result == NULL:
+                if error_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                    raise ValueError(f"Unit conversion failed: {error_msg}")
+                else:
+                    raise ValueError("Unit conversion failed: incompatible dimensions")
+
+            return Scalar._from_c_ref(result)
+        finally:
+            if error_ocstr != NULL:
+                OCRelease(<OCTypeRef>error_ocstr)
 
     def to_coherent_si(self):
         """
@@ -407,18 +349,21 @@ cdef class Scalar:
             >>> force = Scalar(1000, "g*m/s^2")  # Non-coherent
             >>> force_si = force.to_coherent_si()  # 1.0 kg*m/s^2 (Newton)
         """
-        cdef OCStringRef error_string = NULL
-        cdef SIScalarRef result = SIScalarCreateByConvertingToCoherentUnit(self._c_scalar, &error_string)
+        cdef OCStringRef error_ocstr = NULL
+        cdef SIScalarRef result = SIScalarCreateByConvertingToCoherentUnit(self._c_ref, &error_ocstr)
 
-        if result == NULL:
-            if error_string != NULL:
-                error_msg = pystring_from_ocstring(<uint64_t>error_string)
-                OCRelease(<OCTypeRef>error_string)
-                raise RMNError(f"Coherent SI conversion failed: {error_msg}")
-            else:
-                raise RMNError("Coherent SI conversion failed")
+        try:
+            if result == NULL:
+                if error_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                    raise RMNError(f"Coherent SI conversion failed: {error_msg}")
+                else:
+                    raise RMNError("Coherent SI conversion failed")
 
-        return Scalar._from_c_ref(result)
+            return Scalar._from_c_ref(result)
+        finally:
+            if error_ocstr != NULL:
+                OCRelease(<OCTypeRef>error_ocstr)
 
     def reduced(self):
         """
@@ -434,7 +379,7 @@ cdef class Scalar:
             >>> s = Scalar(1.0, "m*s/m")  # Non-reduced unit
             >>> s_reduced = s.reduced()   # 1.0 s (reduced unit)
         """
-        cdef SIScalarRef result = SIScalarCreateByReducingUnit(self._c_scalar)
+        cdef SIScalarRef result = SIScalarCreateByReducingUnit(self._c_ref)
 
         if result == NULL:
             raise RMNError("Scalar unit reduction failed")
@@ -457,18 +402,21 @@ cdef class Scalar:
             raise ValueError("Root must be a positive integer")
 
         cdef uint8_t c_root = <uint8_t>root
-        cdef OCStringRef error_string = NULL
-        cdef SIScalarRef result = SIScalarCreateByTakingNthRoot(self._c_scalar, c_root, &error_string)
+        cdef OCStringRef error_ocstr = NULL
+        cdef SIScalarRef result = SIScalarCreateByTakingNthRoot(self._c_ref, c_root, &error_ocstr)
 
-        if result == NULL:
-            if error_string != NULL:
-                error_msg = pystring_from_ocstring(<uint64_t>error_string)
-                OCRelease(<OCTypeRef>error_string)
-                raise RMNError(f"Root operation failed: {error_msg}")
-            else:
-                raise RMNError("Root operation failed")
+        try:
+            if result == NULL:
+                if error_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                    raise RMNError(f"Root operation failed: {error_msg}")
+                else:
+                    raise RMNError("Root operation failed")
 
-        return Scalar._from_c_ref(result)
+            return Scalar._from_c_ref(result)
+        finally:
+            if error_ocstr != NULL:
+                OCRelease(<OCTypeRef>error_ocstr)
 
     # Python operator overloading
     def __add__(self, other):
@@ -480,13 +428,13 @@ cdef class Scalar:
             else:
                 raise TypeError("Can only add with another Scalar or numeric value")
 
-        cdef OCStringRef error_string = NULL
-        cdef SIScalarRef result = SIScalarCreateByAdding(self._c_scalar, (<Scalar>other)._c_scalar, &error_string)
+        cdef OCStringRef error_ocstr = NULL
+        cdef SIScalarRef result = SIScalarCreateByAdding(self._c_ref, (<Scalar>other)._c_ref, &error_ocstr)
 
         if result == NULL:
-            if error_string != NULL:
-                error_msg = pystring_from_ocstring(<uint64_t>error_string)
-                OCRelease(<OCTypeRef>error_string)
+            if error_ocstr != NULL:
+                error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                OCRelease(<OCTypeRef>error_ocstr)
                 raise RMNError(f"Addition failed: {error_msg}")
             else:
                 raise RMNError("Addition failed - likely dimensional mismatch")
@@ -507,18 +455,21 @@ cdef class Scalar:
             else:
                 raise TypeError("Can only subtract another Scalar or numeric value")
 
-        cdef OCStringRef error_string = NULL
-        cdef SIScalarRef result = SIScalarCreateBySubtracting(self._c_scalar, (<Scalar>other)._c_scalar, &error_string)
+        cdef OCStringRef error_ocstr = NULL
+        cdef SIScalarRef result = SIScalarCreateBySubtracting(self._c_ref, (<Scalar>other)._c_ref, &error_ocstr)
 
-        if result == NULL:
-            if error_string != NULL:
-                error_msg = pystring_from_ocstring(<uint64_t>error_string)
-                OCRelease(<OCTypeRef>error_string)
-                raise RMNError(f"Subtraction failed: {error_msg}")
-            else:
-                raise RMNError("Subtraction failed - likely dimensional mismatch")
+        try:
+            if result == NULL:
+                if error_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                    raise RMNError(f"Subtraction failed: {error_msg}")
+                else:
+                    raise RMNError("Subtraction failed - likely dimensional mismatch")
 
-        return Scalar._from_c_ref(result)
+            return Scalar._from_c_ref(result)
+        finally:
+            if error_ocstr != NULL:
+                OCRelease(<OCTypeRef>error_ocstr)
 
     def __rsub__(self, other):
         """Reverse subtraction operator (-)."""
@@ -532,33 +483,36 @@ cdef class Scalar:
     def __mul__(self, other):
         """Multiplication operator (*)."""
         cdef SIScalarRef result
-        cdef OCStringRef error_string
+        cdef OCStringRef error_ocstr
 
         if isinstance(other, Scalar):
             # Multiply by another scalar
-            error_string = NULL
-            result = SIScalarCreateByMultiplying(self._c_scalar, (<Scalar>other)._c_scalar, &error_string)
+            error_ocstr = NULL
+            result = SIScalarCreateByMultiplying(self._c_ref, (<Scalar>other)._c_ref, &error_ocstr)
 
-            if result == NULL:
-                if error_string != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error_string)
-                    OCRelease(<OCTypeRef>error_string)
-                    raise RMNError(f"Multiplication failed: {error_msg}")
-                else:
-                    raise RMNError("Multiplication failed")
+            try:
+                if result == NULL:
+                    if error_ocstr != NULL:
+                        error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                        raise RMNError(f"Multiplication failed: {error_msg}")
+                    else:
+                        raise RMNError("Multiplication failed")
 
-            return Scalar._from_c_ref(result)
+                return Scalar._from_c_ref(result)
+            finally:
+                if error_ocstr != NULL:
+                    OCRelease(<OCTypeRef>error_ocstr)
         elif isinstance(other, (int, float)):
             # Multiply by dimensionless real constant
             result = SIScalarCreateByMultiplyingByDimensionlessRealConstant(
-                self._c_scalar, float(other))
+                self._c_ref, float(other))
             if result == NULL:
                 raise RMNError("Failed to multiply by dimensionless constant")
             return Scalar._from_c_ref(result)
         elif isinstance(other, complex):
             # Multiply by dimensionless complex constant
             result = SIScalarCreateByMultiplyingByDimensionlessComplexConstant(
-                self._c_scalar, other)
+                self._c_ref, other)
             if result == NULL:
                 raise RMNError("Failed to multiply by dimensionless complex constant")
             return Scalar._from_c_ref(result)
@@ -568,7 +522,7 @@ cdef class Scalar:
                 # Convert to float and multiply
                 float_value = float(other)
                 result = SIScalarCreateByMultiplyingByDimensionlessRealConstant(
-                    self._c_scalar, float_value)
+                    self._c_ref, float_value)
                 if result == NULL:
                     raise RMNError("Failed to multiply by dimensionless constant")
                 return Scalar._from_c_ref(result)
@@ -583,28 +537,31 @@ cdef class Scalar:
     def __truediv__(self, other):
         """Division operator (/)."""
         cdef SIScalarRef result
-        cdef OCStringRef error_string
+        cdef OCStringRef error_ocstr
 
         if isinstance(other, Scalar):
             # Divide by another scalar
-            error_string = NULL
-            result = SIScalarCreateByDividing(self._c_scalar, (<Scalar>other)._c_scalar, &error_string)
+            error_ocstr = NULL
+            result = SIScalarCreateByDividing(self._c_ref, (<Scalar>other)._c_ref, &error_ocstr)
 
-            if result == NULL:
-                if error_string != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error_string)
-                    OCRelease(<OCTypeRef>error_string)
-                    raise RMNError(f"Division failed: {error_msg}")
-                else:
-                    raise RMNError("Division failed")
+            try:
+                if result == NULL:
+                    if error_ocstr != NULL:
+                        error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                        raise RMNError(f"Division failed: {error_msg}")
+                    else:
+                        raise RMNError("Division failed")
 
-            return Scalar._from_c_ref(result)
+                return Scalar._from_c_ref(result)
+            finally:
+                if error_ocstr != NULL:
+                    OCRelease(<OCTypeRef>error_ocstr)
         elif isinstance(other, (int, float)):
             # Divide by dimensionless real constant (multiply by 1/constant)
             if other == 0:
                 raise ZeroDivisionError("Cannot divide by zero")
             result = SIScalarCreateByMultiplyingByDimensionlessRealConstant(
-                self._c_scalar, 1.0 / float(other))
+                self._c_ref, 1.0 / float(other))
             if result == NULL:
                 raise RMNError("Failed to divide by dimensionless constant")
             return Scalar._from_c_ref(result)
@@ -613,7 +570,7 @@ cdef class Scalar:
             if other == 0:
                 raise ZeroDivisionError("Cannot divide by zero")
             result = SIScalarCreateByMultiplyingByDimensionlessComplexConstant(
-                self._c_scalar, 1.0 / other)
+                self._c_ref, 1.0 / other)
             if result == NULL:
                 raise RMNError("Failed to divide by dimensionless complex constant")
             return Scalar._from_c_ref(result)
@@ -636,24 +593,27 @@ cdef class Scalar:
 
         cdef int power
         cdef uint8_t root
-        cdef OCStringRef error_string = NULL
+        cdef OCStringRef error_ocstr = NULL
         cdef SIScalarRef result
 
         # Check if exponent is an integer or can be treated as one
         if isinstance(exponent, int) or (isinstance(exponent, float) and exponent.is_integer()):
             # Use integer power function
             power = int(exponent)
-            result = SIScalarCreateByRaisingToPower(self._c_scalar, power, &error_string)
+            result = SIScalarCreateByRaisingToPower(self._c_ref, power, &error_ocstr)
 
-            if result == NULL:
-                if error_string != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error_string)
-                    OCRelease(<OCTypeRef>error_string)
-                    raise RMNError(f"Power operation failed: {error_msg}")
-                else:
-                    raise RMNError("Power operation failed")
+            try:
+                if result == NULL:
+                    if error_ocstr != NULL:
+                        error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                        raise RMNError(f"Power operation failed: {error_msg}")
+                    else:
+                        raise RMNError("Power operation failed")
 
-            return Scalar._from_c_ref(result)
+                return Scalar._from_c_ref(result)
+            finally:
+                if error_ocstr != NULL:
+                    OCRelease(<OCTypeRef>error_ocstr)
 
         # Check if it's a simple fractional power (1/n)
         elif isinstance(exponent, float):
@@ -662,17 +622,20 @@ cdef class Scalar:
                 root_value = int(1.0 / exponent)
                 if root_value > 0 and root_value <= 255:  # uint8_t range
                     root = <uint8_t>root_value
-                    result = SIScalarCreateByTakingNthRoot(self._c_scalar, root, &error_string)
+                    result = SIScalarCreateByTakingNthRoot(self._c_ref, root, &error_ocstr)
 
-                    if result == NULL:
-                        if error_string != NULL:
-                            error_msg = pystring_from_ocstring(<uint64_t>error_string)
-                            OCRelease(<OCTypeRef>error_string)
-                            raise RMNError(f"Nth root operation failed: {error_msg}")
-                        else:
-                            raise RMNError("Nth root operation failed")
+                    try:
+                        if result == NULL:
+                            if error_ocstr != NULL:
+                                error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                                raise RMNError(f"Nth root operation failed: {error_msg}")
+                            else:
+                                raise RMNError("Nth root operation failed")
 
-                    return Scalar._from_c_ref(result)
+                        return Scalar._from_c_ref(result)
+                    finally:
+                        if error_ocstr != NULL:
+                            OCRelease(<OCTypeRef>error_ocstr)
 
             # Reject other fractional powers
             raise RMNError(f"Fractional power {exponent} is not supported. Only integer powers and simple roots (like 0.5, 0.333...) are allowed.")
@@ -689,7 +652,7 @@ cdef class Scalar:
         cdef OCComparisonResult result
         if isinstance(other, Scalar):
             try:
-                result = SIScalarCompare(self._c_scalar, (<Scalar>other)._c_scalar)
+                result = SIScalarCompare(self._c_ref, (<Scalar>other)._c_ref)
 
                 if result == kOCCompareEqualTo:
                     return True
@@ -705,7 +668,7 @@ cdef class Scalar:
             # Try to parse string as a scalar and compare
             try:
                 other_scalar = Scalar(other)
-                result = SIScalarCompare(self._c_scalar, other_scalar._c_scalar)
+                result = SIScalarCompare(self._c_ref, other_scalar._c_ref)
 
                 if result == kOCCompareEqualTo:
                     return True
@@ -726,7 +689,7 @@ cdef class Scalar:
         if not isinstance(other, Scalar):
             return True
         try:
-            result = SIScalarCompare(self._c_scalar, (<Scalar>other)._c_scalar)
+            result = SIScalarCompare(self._c_ref, (<Scalar>other)._c_ref)
 
             if result == kOCCompareEqualTo:
                 return False
@@ -749,7 +712,7 @@ cdef class Scalar:
         if not isinstance(other, Scalar):
             return NotImplemented
         try:
-            result = SIScalarCompare(self._c_scalar, (<Scalar>other)._c_scalar)
+            result = SIScalarCompare(self._c_ref, (<Scalar>other)._c_ref)
             if result == kOCCompareLessThan:
                 return True
             elif result in (kOCCompareEqualTo, kOCCompareGreaterThan):
@@ -769,7 +732,7 @@ cdef class Scalar:
         if not isinstance(other, Scalar):
             return NotImplemented
         try:
-            result = SIScalarCompare(self._c_scalar, (<Scalar>other)._c_scalar)
+            result = SIScalarCompare(self._c_ref, (<Scalar>other)._c_ref)
             if result in (kOCCompareLessThan, kOCCompareEqualTo):
                 return True
             elif result == kOCCompareGreaterThan:
@@ -789,7 +752,7 @@ cdef class Scalar:
         if not isinstance(other, Scalar):
             return NotImplemented
         try:
-            result = SIScalarCompare(self._c_scalar, (<Scalar>other)._c_scalar)
+            result = SIScalarCompare(self._c_ref, (<Scalar>other)._c_ref)
             if result == kOCCompareGreaterThan:
                 return True
             elif result in (kOCCompareEqualTo, kOCCompareLessThan):
@@ -809,7 +772,7 @@ cdef class Scalar:
         if not isinstance(other, Scalar):
             return NotImplemented
         try:
-            result = SIScalarCompare(self._c_scalar, (<Scalar>other)._c_scalar)
+            result = SIScalarCompare(self._c_ref, (<Scalar>other)._c_ref)
             if result in (kOCCompareGreaterThan, kOCCompareEqualTo):
                 return True
             elif result == kOCCompareLessThan:
@@ -836,9 +799,6 @@ cdef class Scalar:
         Raises:
             TypeError: If scalar is complex, infinite, or NaN
         """
-        if self._c_scalar == NULL:
-            return hash(0)
-
         if self.is_complex:
             raise TypeError("Complex scalars are not hashable")
 
@@ -853,20 +813,17 @@ cdef class Scalar:
         try:
             coherent = self.to_coherent_si()
             # Hash based on coherent SI value and unit string
-            unit_str = str(coherent.unit)
-            return hash((coherent.value, unit_str))
+            unit_ocstr = str(coherent.unit)
+            return hash((coherent.value, unit_ocstr))
         except:
             # Fallback to current value and unit
-            unit_str = str(self.unit)
-            return hash((value, unit_str))
+            unit_ocstr = str(self.unit)
+            return hash((value, unit_ocstr))
 
     # String representation
     def __str__(self):
         """Return a string representation of the scalar with value and unit."""
-        if self._c_scalar == NULL:
-            return "Scalar(0)"
-
-        cdef OCStringRef str_ref = SIScalarCreateStringValue(self._c_scalar)
+        cdef OCStringRef str_ref = SIScalarCreateStringValue(self._c_ref)
         if str_ref == NULL:
             return f"Scalar({self.value})"
 
@@ -884,13 +841,13 @@ cdef class Scalar:
 # SIScalar Helper Functions
 # ====================================================================================
 
-def siscalar_create_from_py_number(py_number, str unit_string="1"):
+def siscalar_create_from_py_number(py_number, str unit_ocstring="1"):
     """
     Convert a Python number to an SIScalarRef.
 
     Args:
         py_number: Python number (int, float, complex)
-        unit_string (str): Unit string expression (default: "1" for dimensionless)
+        unit_ocstring (str): Unit string expression (default: "1" for dimensionless)
 
     Returns:
         uint64_t: SIScalarRef as integer pointer (needs to be released)
@@ -900,15 +857,15 @@ def siscalar_create_from_py_number(py_number, str unit_string="1"):
         TypeError: If number type is unsupported
     """
     cdef OCStringRef unit_oc_string = NULL
-    cdef OCStringRef error_string = NULL
+    cdef OCStringRef error_ocstr = NULL
     cdef SIScalarRef si_scalar = NULL
     cdef double complex c_complex
 
     try:
         # Create unit string
-        unit_oc_string = OCStringCreateWithCString(unit_string.encode('utf-8'))
+        unit_oc_string = <OCStringRef>ocstring_create_from_pystring(unit_ocstring)
         if unit_oc_string == NULL:
-            raise RuntimeError(f"Failed to create unit string: {unit_string}")
+            raise RuntimeError(f"Failed to create unit string: {unit_ocstring}")
 
         # Create scalar based on number type
         if isinstance(py_number, bool):
@@ -968,12 +925,12 @@ def siscalar_create_from_pyscalar(object py_scalar):
 
         # Convert unit to string representation
         if hasattr(py_unit, '__str__'):
-            unit_str = str(py_unit)
+            unit_ocstr = str(py_unit)
         else:
-            unit_str = "1"  # fallback to dimensionless
+            unit_ocstr = "1"  # fallback to dimensionless
 
         # Use the number-to-scalar conversion
-        return siscalar_create_from_py_number(py_value, unit_str)
+        return siscalar_create_from_py_number(py_value, unit_ocstr)
 
     except Exception as e:
         raise RuntimeError(f"Failed to convert Scalar to SIScalar: {e}")
@@ -996,7 +953,7 @@ def siscalar_create_from_pynumber_expression(py_number, str expression="1"):
         RuntimeError: If scalar creation fails
     """
     cdef OCStringRef expr_string = NULL
-    cdef OCStringRef error_string = NULL
+    cdef OCStringRef error_ocstr = NULL
     cdef SIScalarRef si_scalar = NULL
 
     try:
@@ -1016,20 +973,20 @@ def siscalar_create_from_pynumber_expression(py_number, str expression="1"):
             full_expr = f"{py_number} * {expression}"
 
         # Create expression string
-        expr_string = OCStringCreateWithCString(full_expr.encode('utf-8'))
+        expr_string = <OCStringRef>ocstring_create_from_pystring(full_expr)
         if expr_string == NULL:
             raise RuntimeError(f"Failed to create expression string: {full_expr}")
 
         # Parse the expression to create scalar
-        si_scalar = SIScalarCreateFromExpression(expr_string, &error_string)
+        si_scalar = SIScalarCreateFromExpression(expr_string, &error_ocstr)
 
         if si_scalar == NULL:
             error_msg = "Unknown error"
-            if error_string != NULL:
-                error_c_str = OCStringGetCString(error_string)
+            if error_ocstr != NULL:
+                error_c_str = OCStringGetCString(error_ocstr)
                 if error_c_str != NULL:
                     error_msg = error_c_str.decode('utf-8')
-                OCRelease(<const void*>error_string)
+                OCRelease(<const void*>error_ocstr)
             raise RuntimeError(f"Failed to create SIScalar from expression '{full_expr}': {error_msg}")
 
         return <uint64_t>si_scalar
@@ -1085,50 +1042,8 @@ def siscalar_to_pynumber(uint64_t si_scalar_ptr):
     except Exception as e:
         raise RuntimeError(f"Failed to extract value from SIScalar: {e}")
 
-def siscalar_to_pytuple(uint64_t si_scalar_ptr):
-    """
-    Convert an SIScalarRef to a Python (value, unit_string) tuple.
 
-    Args:
-        si_scalar_ptr (uint64_t): Pointer to SIScalarRef
-
-    Returns:
-        tuple: (number, unit_string) where number is int/float/complex and unit_string is str
-
-    Raises:
-        ValueError: If the SIScalarRef is NULL
-        RuntimeError: If value or unit extraction fails
-    """
-    cdef SIScalarRef si_scalar = <SIScalarRef>si_scalar_ptr
-    cdef OCStringRef unit_string
-    cdef const char* unit_c_str
-
-    if si_scalar == NULL:
-        raise ValueError("SIScalarRef is NULL")
-
-    try:
-        # Extract the numeric value
-        py_value = siscalar_to_pynumber(si_scalar_ptr)
-
-        # Extract the unit string
-        unit_string = SIScalarCopyUnitSymbol(si_scalar)
-        if unit_string != NULL:
-            unit_c_str = OCStringGetCString(unit_string)
-            if unit_c_str != NULL:
-                py_unit_string = unit_c_str.decode('utf-8')
-                # SITypes uses space " " for dimensionless units - keep it as is
-            else:
-                py_unit_string = " "  # fallback to SITypes dimensionless representation
-            OCRelease(<const void*>unit_string)
-        else:
-            py_unit_string = " "  # fallback for dimensionless
-
-        return (py_value, py_unit_string)
-
-    except Exception as e:
-        raise RuntimeError(f"Failed to extract value and unit from SIScalar: {e}")
-
-def siscalar_to_pyscalar(uint64_t si_scalar_ptr):
+def siscalar_to_scalar(uint64_t si_scalar_ptr):
     """
     Convert an SIScalarRef to a Python numeric value.
 
@@ -1153,133 +1068,3 @@ def siscalar_to_pyscalar(uint64_t si_scalar_ptr):
 
     # Return numeric value directly - this is what coordinate arrays need
     return siscalar_to_pynumber(si_scalar_ptr)
-
-def siscalar_ocarray_create_from_py_list(list py_list, str unit_expression="1"):
-    """
-    Convert a Python list of numbers to an OCArrayRef containing SIScalarRef objects.
-
-    This function is specifically designed for creating coordinate arrays for SITypes
-    functions like SIMonotonicDimensionCreate that expect OCArrayRef with SIScalarRef elements.
-
-    Args:
-        py_list (list): Python list of numbers
-        unit_expression (str): Unit expression for all scalars (default: "1" for dimensionless)
-
-    Returns:
-        uint64_t: OCArrayRef containing SIScalarRef objects (needs to be released)
-
-    Raises:
-        RuntimeError: If array creation fails
-        TypeError: If list contains unsupported types
-    """
-    from rmnpy._c_api.octypes cimport (
-        OCArrayAppendValue,
-        OCArrayCreateCopy,
-        OCArrayCreateMutable,
-        OCArrayRef,
-        OCMutableArrayRef,
-        kOCTypeArrayCallBacks,
-    )
-
-    cdef OCMutableArrayRef mutable_array = OCArrayCreateMutable(0, &kOCTypeArrayCallBacks)
-    cdef uint64_t si_scalar_ptr = 0
-
-    if mutable_array == NULL:
-        raise RuntimeError("Failed to create OCMutableArray for SIScalar objects")
-
-    # Add each element to the array as an SIScalar
-    for item in py_list:
-        si_scalar_ptr = 0
-
-        try:
-            # Convert to SIScalar using expression method (more robust)
-            si_scalar_ptr = siscalar_create_from_pynumber_expression(item, unit_expression)
-
-            # Add to array
-            OCArrayAppendValue(mutable_array, <const void*>si_scalar_ptr)
-
-            # Release our reference (array retains it with proper callbacks)
-            OCRelease(<const void*>si_scalar_ptr)
-
-        except Exception as e:
-            if si_scalar_ptr != 0:
-                OCRelease(<const void*>si_scalar_ptr)
-            OCRelease(<const void*>mutable_array)
-            raise RuntimeError(f"Failed to convert list item {item} to SIScalar: {e}")
-
-    # Create immutable copy
-    cdef OCArrayRef immutable_array = OCArrayCreateCopy(<OCArrayRef>mutable_array)
-    OCRelease(<const void*>mutable_array)
-
-    if immutable_array == NULL:
-        raise RuntimeError("Failed to create immutable OCArray copy for SIScalar objects")
-
-    return <uint64_t>immutable_array
-
-def siscalar_ocarray_create_from_py_coordinate_list(list coordinates):
-    """
-    Convert a list of coordinate values (numbers or Scalars) to an OCArrayRef of SIScalarRef objects.
-
-    This function is specifically designed for coordinate arrays in dimension constructors.
-    It handles both plain numbers (converted to dimensionless SIScalars) and existing Scalar objects.
-
-    Args:
-        coordinates (list): List of coordinate values (numbers or Scalar objects)
-
-    Returns:
-        uint64_t: OCArrayRef containing SIScalarRef objects (needs to be released)
-
-    Raises:
-        RuntimeError: If array creation fails
-        TypeError: If list contains unsupported types
-    """
-    from rmnpy._c_api.octypes cimport (
-        OCArrayAppendValue,
-        OCArrayCreateCopy,
-        OCArrayCreateMutable,
-        OCArrayRef,
-        OCMutableArrayRef,
-        kOCTypeArrayCallBacks,
-    )
-
-    cdef OCMutableArrayRef mutable_array = OCArrayCreateMutable(0, &kOCTypeArrayCallBacks)
-    cdef uint64_t si_scalar_ptr = 0
-
-    if mutable_array == NULL:
-        raise RuntimeError("Failed to create OCMutableArray for coordinate SIScalars")
-
-    # Add each coordinate to the array as an SIScalar
-    for coord in coordinates:
-        si_scalar_ptr = 0
-
-        try:
-            # Check if it's already a Scalar object (has value and unit attributes)
-            if hasattr(coord, 'value') and hasattr(coord, 'unit'):
-                # Convert Scalar object to SIScalar
-                si_scalar_ptr = siscalar_create_from_pyscalar(coord)
-            elif isinstance(coord, (int, float, complex)):
-                # Convert plain number to dimensionless SIScalar using expression method
-                si_scalar_ptr = siscalar_create_from_pynumber_expression(coord, "1")
-            else:
-                raise TypeError(f"Unsupported coordinate type: {type(coord)}. Expected number or Scalar object.")
-
-            # Add to array
-            OCArrayAppendValue(mutable_array, <const void*>si_scalar_ptr)
-
-            # Release our reference (array retains it with proper callbacks)
-            OCRelease(<const void*>si_scalar_ptr)
-
-        except Exception as e:
-            if si_scalar_ptr != 0:
-                OCRelease(<const void*>si_scalar_ptr)
-            OCRelease(<const void*>mutable_array)
-            raise RuntimeError(f"Failed to convert coordinate {coord} to SIScalar: {e}")
-
-    # Create immutable copy
-    cdef OCArrayRef immutable_array = OCArrayCreateCopy(<OCArrayRef>mutable_array)
-    OCRelease(<const void*>mutable_array)
-
-    if immutable_array == NULL:
-        raise RuntimeError("Failed to create immutable OCArray copy for coordinate SIScalars")
-
-    return <uint64_t>immutable_array

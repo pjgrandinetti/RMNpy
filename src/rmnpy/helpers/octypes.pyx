@@ -36,8 +36,7 @@ from rmnpy.wrappers.sitypes.dimensionality import sidimensionality_to_dimensiona
 # These are needed for convert_python_to_octype to handle SITypes objects
 from rmnpy.wrappers.sitypes.scalar import (
     siscalar_create_from_pyscalar,
-    siscalar_to_pyscalar,
-    siscalar_to_pytuple,
+    siscalar_to_scalar,
 )
 from rmnpy.wrappers.sitypes.unit import siunit_to_pyunit
 
@@ -162,7 +161,7 @@ cdef object convert_octype_to_python(const void* oc_ptr):
     elif type_id == OCIndexPairSetGetTypeID():
         return ocindexpairset_to_pydict(<uint64_t>oc_ptr)
     elif type_id == SIScalarGetTypeID():
-        return siscalar_to_pyscalar(<uint64_t>oc_ptr)
+        return siscalar_to_scalar(<uint64_t>oc_ptr)
     elif type_id == SIUnitGetTypeID():
         return siunit_to_pyunit(<uint64_t>oc_ptr)
     elif type_id == SIDimensionalityGetTypeID():
@@ -625,7 +624,7 @@ def ocarray_to_pylist(uint64_t oc_array_ptr):
         elif type_id == OCIndexPairSetGetTypeID():
             py_item = ocindexpairset_to_pydict(<uint64_t>item_ptr)
         elif type_id == SIScalarGetTypeID():
-            py_item = siscalar_to_pyscalar(<uint64_t>item_ptr)
+            py_item = siscalar_to_scalar(<uint64_t>item_ptr)
         elif type_id == SIUnitGetTypeID():
             py_item = siunit_to_pyunit(<uint64_t>item_ptr)
         elif type_id == SIDimensionalityGetTypeID():
@@ -998,7 +997,7 @@ def ocset_to_pyset(uint64_t oc_set_ptr):
             result.add(ocboolean_to_pybool(<uint64_t>item_ptr))
         elif type_id == SIScalarGetTypeID():
             # Convert SIScalar to Scalar object (if hashable)
-            scalar_obj = siscalar_to_pyscalar(<uint64_t>item_ptr)
+            scalar_obj = siscalar_to_scalar(<uint64_t>item_ptr)
             try:
                 result.add(scalar_obj)
             except TypeError:

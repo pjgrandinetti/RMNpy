@@ -528,9 +528,9 @@ cdef class SIDimension(BaseDimension):
         # Convert application metadata (None → NULL)
         cdef OCDictionaryRef application_ref = <OCDictionaryRef><uint64_t>pydict_to_ocdict(application)
         cdef OCStringRef quantity_name_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(quantity_name)
-        cdef SIScalarRef offset_ref = Scalar(offset).get_c_scalar() if offset is not None else NULL
-        cdef SIScalarRef origin_ref = Scalar(origin).get_c_scalar() if origin is not None else NULL
-        cdef SIScalarRef period_ref = Scalar(period).get_c_scalar() if period is not None else NULL
+        cdef SIScalarRef offset_ref = Scalar(offset).get_c_ref() if offset is not None else NULL
+        cdef SIScalarRef origin_ref = Scalar(origin).get_c_ref() if origin is not None else NULL
+        cdef SIScalarRef period_ref = Scalar(period).get_c_ref() if period is not None else NULL
         cdef OCStringRef error = NULL
         cdef object offset_scalar = None
         cdef object origin_scalar = None
@@ -610,7 +610,7 @@ cdef class SIDimension(BaseDimension):
         # Convert value to SIScalarRef and update C dimension object
         # Let Scalar constructor handle dimensionless units automatically
         cdef Scalar scalar_obj = Scalar(str(value))
-        if not SIDimensionSetCoordinatesOffset(self._si_dimension, scalar_obj.get_c_scalar(), &error):
+        if not SIDimensionSetCoordinatesOffset(self._si_dimension, scalar_obj.get_c_ref(), &error):
             if error != NULL:
                 error_msg = pystring_from_ocstring(<uint64_t>error)
                 OCRelease(<OCTypeRef>error)
@@ -640,7 +640,7 @@ cdef class SIDimension(BaseDimension):
 
         # Convert value to SIScalarRef - use simple approach
         cdef Scalar scalar_obj = Scalar(str(value))
-        if not SIDimensionSetOriginOffset(self._si_dimension, scalar_obj.get_c_scalar(), &error):
+        if not SIDimensionSetOriginOffset(self._si_dimension, scalar_obj.get_c_ref(), &error):
             if error != NULL:
                 error_msg = pystring_from_ocstring(<uint64_t>error)
                 OCRelease(<OCTypeRef>error)
@@ -696,7 +696,7 @@ cdef class SIDimension(BaseDimension):
                 else:
                     scalar_obj = Scalar(str(value))
 
-                scalar_ref = scalar_obj.get_c_scalar()
+                scalar_ref = scalar_obj.get_c_ref()
 
                 # Retain the scalar reference before passing to API
                 OCRetain(<OCTypeRef>scalar_ref)
@@ -953,7 +953,7 @@ cdef class SILinearDimension(SIDimension):
         if increment is not None:
             if isinstance(increment, Scalar):
                 # Get the reference and retain it (since C API will copy it)
-                increment_ref = (<Scalar>increment).get_c_scalar()
+                increment_ref = (<Scalar>increment).get_c_ref()
                 increment_ref = <SIScalarRef>OCRetain(<OCTypeRef>increment_ref)
             else:
                 # For strings, use direct conversion
@@ -961,21 +961,21 @@ cdef class SILinearDimension(SIDimension):
 
         if offset is not None:
             if isinstance(offset, Scalar):
-                offset_ref = (<Scalar>offset).get_c_scalar()
+                offset_ref = (<Scalar>offset).get_c_ref()
                 offset_ref = <SIScalarRef>OCRetain(<OCTypeRef>offset_ref)
             else:
                 offset_ref = <SIScalarRef><uint64_t>pynumber_to_siscalar_expression(1.0, str(offset))
 
         if origin is not None:
             if isinstance(origin, Scalar):
-                origin_ref = (<Scalar>origin).get_c_scalar()
+                origin_ref = (<Scalar>origin).get_c_ref()
                 origin_ref = <SIScalarRef>OCRetain(<OCTypeRef>origin_ref)
             else:
                 origin_ref = <SIScalarRef><uint64_t>pynumber_to_siscalar_expression(1.0, str(origin))
 
         if period is not None:
             if isinstance(period, Scalar):
-                period_ref = (<Scalar>period).get_c_scalar()
+                period_ref = (<Scalar>period).get_c_ref()
                 period_ref = <SIScalarRef>OCRetain(<OCTypeRef>period_ref)
             else:
                 period_ref = <SIScalarRef><uint64_t>pynumber_to_siscalar_expression(1.0, str(period))
@@ -1073,11 +1073,11 @@ cdef class SILinearDimension(SIDimension):
         if isinstance(value, Scalar):
             # For existing Scalar objects, store reference to prevent GC
             scalar_obj = value
-            increment_ref = scalar_obj.get_c_scalar()
+            increment_ref = scalar_obj.get_c_ref()
         else:
             # For strings and other values, use helper function
             scalar_obj = Scalar(str(value))
-            increment_ref = scalar_obj.get_c_scalar()
+            increment_ref = scalar_obj.get_c_ref()
 
         if increment_ref == NULL:
             raise RMNError("Failed to convert increment value to SIScalar")
