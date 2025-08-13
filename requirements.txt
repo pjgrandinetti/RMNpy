@@ -7,7 +7,7 @@ charset-normalizer==3.4.2
 colorama @ file:///home/conda/feedstock_root/build_artifacts/colorama_1733218098505/work
 coverage==7.9.2
 Cython==3.1.2
-docutils==0.21.2
+docutils==0.22
 exceptiongroup @ file:///home/conda/feedstock_root/build_artifacts/exceptiongroup_1746947292760/work
 idna==3.10
 imagesize==1.4.1
