@@ -37,14 +37,14 @@ from rmnpy.helpers.octypes import (
     ocarray_to_pylist,
     ocdict_to_pydict,
     ocnumber_to_pynumber,
-    ocstring_to_pystring,
+    ocstring_create_with_pystring,
     py_list_to_siscalar_ocarray,
     pydict_to_ocdict,
     pylist_to_ocarray,
     pynumber_to_ocnumber,
     pynumber_to_siscalar_expression,
     pyscalar_to_siscalar,
-    pystring_to_ocstring,
+    pystring_from_ocstring,
 )
 
 
@@ -77,7 +77,7 @@ cdef class BaseDimension:
         if self._c_dimension != NULL:
             type_ref = DimensionGetType(self._c_dimension)
             if type_ref != NULL:
-                return ocstring_to_pystring(<uint64_t>type_ref)
+                return pystring_from_ocstring(<uint64_t>type_ref)
         # Fallback for subclasses that override this property
         raise NotImplementedError("Subclasses must implement type property")
 
@@ -87,7 +87,7 @@ cdef class BaseDimension:
         if self._c_dimension != NULL:
             desc_ref = DimensionCopyDescription(self._c_dimension)
             if desc_ref != NULL:
-                return ocstring_to_pystring(<uint64_t>desc_ref)
+                return pystring_from_ocstring(<uint64_t>desc_ref)
         return ""
 
     @description.setter
@@ -101,11 +101,11 @@ cdef class BaseDimension:
 
         # Update C dimension object only - single source of truth
         if self._c_dimension != NULL:
-            desc_ptr = pystring_to_ocstring(value)
+            desc_ptr = ocstring_create_with_pystring(value)
             try:
                 if not DimensionSetDescription(self._c_dimension, <OCStringRef>desc_ptr, &error):
                     if error != NULL:
-                        error_msg = ocstring_to_pystring(<uint64_t>error)
+                        error_msg = pystring_from_ocstring(<uint64_t>error)
                         OCRelease(<OCTypeRef>error)
                         raise RMNError(f"Failed to set description: {error_msg}")
                     else:
@@ -119,7 +119,7 @@ cdef class BaseDimension:
         if self._c_dimension != NULL:
             label_ref = DimensionCopyLabel(self._c_dimension)
             if label_ref != NULL:
-                return ocstring_to_pystring(<uint64_t>label_ref)
+                return pystring_from_ocstring(<uint64_t>label_ref)
         return ""
 
     @label.setter
@@ -133,11 +133,11 @@ cdef class BaseDimension:
 
         # Update C dimension object only - single source of truth
         if self._c_dimension != NULL:
-            label_ptr = pystring_to_ocstring(value)
+            label_ptr = ocstring_create_with_pystring(value)
             try:
                 if not DimensionSetLabel(self._c_dimension, <OCStringRef>label_ptr, &error):
                     if error != NULL:
-                        error_msg = ocstring_to_pystring(<uint64_t>error)
+                        error_msg = pystring_from_ocstring(<uint64_t>error)
                         OCRelease(<OCTypeRef>error)
                         raise RMNError(f"Failed to set label: {error_msg}")
                     else:
@@ -184,7 +184,7 @@ cdef class BaseDimension:
                 # Set empty metadata (NULL)
                 if not DimensionSetApplicationMetaData(self._c_dimension, NULL, &error):
                     if error != NULL:
-                        error_msg = ocstring_to_pystring(<uint64_t>error)
+                        error_msg = pystring_from_ocstring(<uint64_t>error)
                         OCRelease(<OCTypeRef>error)
                         raise RMNError(f"Failed to clear metadata: {error_msg}")
                     else:
@@ -195,7 +195,7 @@ cdef class BaseDimension:
                 try:
                     if not DimensionSetApplicationMetaData(self._c_dimension, <OCDictionaryRef>dict_ptr, &error):
                         if error != NULL:
-                            error_msg = ocstring_to_pystring(<uint64_t>error)
+                            error_msg = pystring_from_ocstring(<uint64_t>error)
                             OCRelease(<OCTypeRef>error)
                             raise RMNError(f"Failed to set metadata: {error_msg}")
                         else:
@@ -231,7 +231,7 @@ cdef class BaseDimension:
 
         try:
             # Convert OCStringRef to Python string using helper
-            return ocstring_to_pystring(<uint64_t>c_label)
+            return pystring_from_ocstring(<uint64_t>c_label)
         finally:
             # Release the C string
             OCRelease(c_label)
@@ -345,8 +345,8 @@ cdef class LabeledDimension(BaseDimension):
             ... )
         """
         cdef OCArrayRef labels_array = <OCArrayRef><uint64_t>pylist_to_ocarray(labels)
-        cdef OCStringRef label_ref = <OCStringRef><uint64_t>pystring_to_ocstring(label)
-        cdef OCStringRef desc_ref = <OCStringRef><uint64_t>pystring_to_ocstring(description)
+        cdef OCStringRef label_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(label)
+        cdef OCStringRef desc_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(description)
         cdef OCDictionaryRef application_ref = <OCDictionaryRef><uint64_t>pydict_to_ocdict(application)
         cdef OCStringRef error = NULL
 
@@ -356,7 +356,7 @@ cdef class LabeledDimension(BaseDimension):
                 label_ref, desc_ref, application_ref, labels_array, &error)
             if self._labeled_dimension == NULL:
                 if error != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error)
+                    error_msg = pystring_from_ocstring(<uint64_t>error)
                     raise RMNError(f"Failed to create labeled dimension: {error_msg}")
                 else:
                     raise RMNError("Failed to create labeled dimension")
@@ -377,7 +377,7 @@ cdef class LabeledDimension(BaseDimension):
         if self._c_dimension != NULL:
             type_ref = DimensionGetType(self._c_dimension)
             if type_ref != NULL:
-                return ocstring_to_pystring(<uint64_t>type_ref)
+                return pystring_from_ocstring(<uint64_t>type_ref)
         return 'labeled'  # Fallback
 
     @property
@@ -425,7 +425,7 @@ cdef class LabeledDimension(BaseDimension):
             try:
                 if not LabeledDimensionSetCoordinateLabels(self._labeled_dimension, labels_array, &error):
                     if error != NULL:
-                        error_msg = ocstring_to_pystring(<uint64_t>error)
+                        error_msg = pystring_from_ocstring(<uint64_t>error)
                         OCRelease(<OCTypeRef>error)
                         raise RMNError(f"Failed to set coordinate labels: {error_msg}")
                     else:
@@ -445,7 +445,7 @@ cdef class LabeledDimension(BaseDimension):
         # Update C dimension object - single source of truth
         if self._c_dimension != NULL:
             try:
-                label_ref = <OCStringRef><uint64_t>pystring_to_ocstring(str(label))
+                label_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(str(label))
                 if not LabeledDimensionSetCoordinateLabelAtIndex(self._labeled_dimension, index, label_ref):
                     raise RMNError(f"Failed to set coordinate label at index {index}")
             finally:
@@ -523,11 +523,11 @@ cdef class SIDimension(BaseDimension):
             This class provides common SI dimension functionality and default parameter handling.
         """
         # Create C dimension using the C API
-        cdef OCStringRef label_ref = <OCStringRef><uint64_t>pystring_to_ocstring(label)
-        cdef OCStringRef desc_ref = <OCStringRef><uint64_t>pystring_to_ocstring(description)
+        cdef OCStringRef label_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(label)
+        cdef OCStringRef desc_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(description)
         # Convert application metadata (None → NULL)
         cdef OCDictionaryRef application_ref = <OCDictionaryRef><uint64_t>pydict_to_ocdict(application)
-        cdef OCStringRef quantity_name_ref = <OCStringRef><uint64_t>pystring_to_ocstring(quantity_name)
+        cdef OCStringRef quantity_name_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(quantity_name)
         cdef SIScalarRef offset_ref = Scalar(offset).get_c_scalar() if offset is not None else NULL
         cdef SIScalarRef origin_ref = Scalar(origin).get_c_scalar() if origin is not None else NULL
         cdef SIScalarRef period_ref = Scalar(period).get_c_scalar() if period is not None else NULL
@@ -544,7 +544,7 @@ cdef class SIDimension(BaseDimension):
 
             if self._si_dimension == NULL:
                 if error != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error)
+                    error_msg = pystring_from_ocstring(<uint64_t>error)
                     raise RMNError(f"Failed to create SI dimension: {error_msg}")
                 else:
                     raise RMNError("Failed to create SI dimension")
@@ -570,7 +570,7 @@ cdef class SIDimension(BaseDimension):
         if self._c_dimension != NULL:
             type_ref = DimensionGetType(self._c_dimension)
             if type_ref != NULL:
-                return ocstring_to_pystring(<uint64_t>type_ref)
+                return pystring_from_ocstring(<uint64_t>type_ref)
         return 'si'  # Fallback
 
     def copy(self):
@@ -612,7 +612,7 @@ cdef class SIDimension(BaseDimension):
         cdef Scalar scalar_obj = Scalar(str(value))
         if not SIDimensionSetCoordinatesOffset(self._si_dimension, scalar_obj.get_c_scalar(), &error):
             if error != NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>error)
+                error_msg = pystring_from_ocstring(<uint64_t>error)
                 OCRelease(<OCTypeRef>error)
                 raise RMNError(f"Failed to set coordinates offset: {error_msg}")
             else:
@@ -642,7 +642,7 @@ cdef class SIDimension(BaseDimension):
         cdef Scalar scalar_obj = Scalar(str(value))
         if not SIDimensionSetOriginOffset(self._si_dimension, scalar_obj.get_c_scalar(), &error):
             if error != NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>error)
+                error_msg = pystring_from_ocstring(<uint64_t>error)
                 OCRelease(<OCTypeRef>error)
                 raise RMNError(f"Failed to set origin offset: {error_msg}")
             else:
@@ -705,7 +705,7 @@ cdef class SIDimension(BaseDimension):
                     # Release our retained reference on failure
                     OCRelease(<OCTypeRef>scalar_ref)
                     if error != NULL:
-                        error_msg = ocstring_to_pystring(<uint64_t>error)
+                        error_msg = pystring_from_ocstring(<uint64_t>error)
                         OCRelease(<OCTypeRef>error)
                         raise RMNError(f"Failed to set period: {error_msg}")
                     else:
@@ -802,7 +802,7 @@ cdef class SIDimension(BaseDimension):
         if self._c_dimension != NULL and self._si_dimension != NULL:
             quantity_ref = SIDimensionCopyQuantityName(self._si_dimension)
             if quantity_ref != NULL:
-                return ocstring_to_pystring(<uint64_t>quantity_ref)
+                return pystring_from_ocstring(<uint64_t>quantity_ref)
         return "dimensionless"  # Default fallback
 
     @quantity_name.setter
@@ -814,11 +814,11 @@ cdef class SIDimension(BaseDimension):
         # If we have a C dimension object, update it too
         if self._c_dimension != NULL:
             if value is not None and value != "":
-                quantity_name_ref = <OCStringRef><uint64_t>pystring_to_ocstring(str(value))
+                quantity_name_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(str(value))
                 try:
                     if not SIDimensionSetQuantityName(self._si_dimension, quantity_name_ref, &error):
                         if error != NULL:
-                            error_msg = ocstring_to_pystring(<uint64_t>error)
+                            error_msg = pystring_from_ocstring(<uint64_t>error)
                             OCRelease(<OCTypeRef>error)
                             raise RMNError(f"Failed to set quantity name: {error_msg}")
                         else:
@@ -830,7 +830,7 @@ cdef class SIDimension(BaseDimension):
                 # Set NULL for no quantity name
                 if not SIDimensionSetQuantityName(self._si_dimension, NULL, &error):
                     if error != NULL:
-                        error_msg = ocstring_to_pystring(<uint64_t>error)
+                        error_msg = pystring_from_ocstring(<uint64_t>error)
                         OCRelease(<OCTypeRef>error)
                         raise RMNError(f"Failed to clear quantity name: {error_msg}")
                     else:
@@ -931,11 +931,11 @@ cdef class SILinearDimension(SIDimension):
         """
         # Create C dimension using the C API
         cdef OCStringRef error = NULL
-        cdef OCStringRef label_ref = <OCStringRef><uint64_t>pystring_to_ocstring(label)
-        cdef OCStringRef desc_ref = <OCStringRef><uint64_t>pystring_to_ocstring(description)
+        cdef OCStringRef label_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(label)
+        cdef OCStringRef desc_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(description)
         # Convert application metadata (None → NULL)
         cdef OCDictionaryRef application_ref = <OCDictionaryRef><uint64_t>pydict_to_ocdict(application)
-        cdef OCStringRef quantity_name_ref = <OCStringRef><uint64_t>pystring_to_ocstring(quantity_name)
+        cdef OCStringRef quantity_name_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(quantity_name)
 
         # Handle parameter aliases
         if coordinates_offset is not None:
@@ -1014,7 +1014,7 @@ cdef class SILinearDimension(SIDimension):
 
             if self._linear_dimension == NULL:
                 if error != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error)
+                    error_msg = pystring_from_ocstring(<uint64_t>error)
                     raise RMNError(f"Failed to create linear dimension: {error_msg}")
                 else:
                     raise RMNError("Failed to create linear dimension")
@@ -1050,7 +1050,7 @@ cdef class SILinearDimension(SIDimension):
         if self._c_dimension != NULL:
             type_ref = DimensionGetType(self._c_dimension)
             if type_ref != NULL:
-                return ocstring_to_pystring(<uint64_t>type_ref)
+                return pystring_from_ocstring(<uint64_t>type_ref)
         return 'linear'  # Fallback
 
     @property
@@ -1126,7 +1126,7 @@ cdef class SILinearDimension(SIDimension):
         if type_ref == NULL:
             return None
 
-        type_str = ocstring_to_pystring(<uint64_t>type_ref)
+        type_str = pystring_from_ocstring(<uint64_t>type_ref)
 
         if type_str == "linear":
             # Create SILinearDimension wrapper
@@ -1185,7 +1185,7 @@ cdef class SILinearDimension(SIDimension):
 
         if not SILinearDimensionSetReciprocal(self._linear_dimension, reciprocal_ref, &error):
             if error != NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>error)
+                error_msg = pystring_from_ocstring(<uint64_t>error)
                 OCRelease(<OCTypeRef>error)
                 raise RMNError(f"Failed to set reciprocal dimension: {error_msg}")
             else:
@@ -1240,8 +1240,8 @@ cdef class SIMonotonicDimension(SIDimension):
         # Convert coordinates to OCArray of SIScalars (raises on bad input)
         cdef OCStringRef error = NULL
         cdef OCArrayRef coords_array = <OCArrayRef><uint64_t>py_list_to_siscalar_ocarray(coordinates, "1")
-        cdef OCStringRef label_ref = <OCStringRef><uint64_t>pystring_to_ocstring(label)
-        cdef OCStringRef desc_ref = <OCStringRef><uint64_t>pystring_to_ocstring(description)
+        cdef OCStringRef label_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(label)
+        cdef OCStringRef desc_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(description)
 
         # Handle origin_offset alias
         if origin_offset is not None:
@@ -1256,7 +1256,7 @@ cdef class SIMonotonicDimension(SIDimension):
                 coords_array, NULL, &error)
             if self._monotonic_dimension == NULL:
                 if error != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error)
+                    error_msg = pystring_from_ocstring(<uint64_t>error)
                     raise RMNError(f"Failed to create monotonic dimension: {error_msg}")
                 else:
                     raise RMNError("Failed to create monotonic dimension")
