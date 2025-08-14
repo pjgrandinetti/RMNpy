@@ -155,11 +155,20 @@ class CustomBuildExt(build_ext):
         lib_dir = base_dir / "lib"
         include_dir = base_dir / "include"
 
+        # Determine library extension based on platform
+        system = platform.system()
+        if system == "Windows":
+            lib_ext = ".dll"
+        elif system == "Darwin":  # macOS
+            lib_ext = ".dylib"
+        else:  # Linux and other Unix-like systems
+            lib_ext = ".so"
+
         # Required library files
         required_libs = [
-            lib_dir / "libOCTypes.dylib",
-            lib_dir / "libSITypes.dylib",
-            lib_dir / "libRMN.dylib",
+            lib_dir / f"libOCTypes{lib_ext}",
+            lib_dir / f"libSITypes{lib_ext}",
+            lib_dir / f"libRMN{lib_ext}",
         ]
 
         # Required header directories
