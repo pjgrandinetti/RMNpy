@@ -175,7 +175,7 @@ testpaths = [
     "tests/test_helpers",      # OCTypes helpers first (foundational)
     "tests/test_sitypes",      # SITypes second (depends on OCTypes)
     "tests/test_rmnlib",       # RMNLib last (depends on both OCTypes and SITypes)
-    "tests/test_math",         # General math utilities
+    "tests/test_math.py",      # General math utilities (file, not directory)
 ]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]

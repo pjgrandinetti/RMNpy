@@ -346,12 +346,14 @@ class TestScalarUnitOperations:
         second_scalar = Scalar("10.0", "s")
 
         # Same reduced dimensionality should be compatible (both are length units)
-        compatible = meter_scalar.unit.has_same_reduced_dimensionality(km_scalar.unit)
+        compatible = meter_scalar.unit.dimensionality.has_same_reduced_dimensionality(
+            km_scalar.unit.dimensionality
+        )
         assert compatible is True
 
         # Different reduced dimensionality should not be compatible (length vs time)
-        incompatible = meter_scalar.unit.has_same_reduced_dimensionality(
-            second_scalar.unit
+        incompatible = meter_scalar.unit.dimensionality.has_same_reduced_dimensionality(
+            second_scalar.unit.dimensionality
         )
         assert incompatible is False
 
@@ -363,14 +365,18 @@ class TestScalarUnitOperations:
         )  # This is pressure, different dimensionality
 
         # Both velocity units should have same reduced dimensionality
-        velocity_compatible = velocity1.unit.has_same_reduced_dimensionality(
-            velocity2.unit
+        velocity_compatible = (
+            velocity1.unit.dimensionality.has_same_reduced_dimensionality(
+                velocity2.unit.dimensionality
+            )
         )
         assert velocity_compatible is True
 
         # Velocity and pressure should have different reduced dimensionality
-        velocity_pressure_incompatible = velocity1.unit.has_same_reduced_dimensionality(
-            force_per_area.unit
+        velocity_pressure_incompatible = (
+            velocity1.unit.dimensionality.has_same_reduced_dimensionality(
+                force_per_area.unit.dimensionality
+            )
         )
         assert velocity_pressure_incompatible is False
 

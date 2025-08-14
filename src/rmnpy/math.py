@@ -227,10 +227,11 @@ def atan2(y_scalar: Scalar, x_scalar: Scalar) -> Scalar:
     # Extract dimensionless values (the ratio y/x will be dimensionless)
     # But we need the actual values to pass to atan2, not the scalar ratio
     # Convert both scalars to a common unit first
-    if not y_scalar.can_convert_to(x_scalar.unit):
+    try:
+        y_converted = y_scalar.to(x_scalar.unit)
+    except (ValueError, RMNError):
         raise ValueError("atan2 requires compatible units for y and x coordinates")
 
-    y_converted = y_scalar.to(x_scalar.unit)
     y_value = y_converted.value
     x_value = x_scalar.value
 

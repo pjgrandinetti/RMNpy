@@ -46,7 +46,7 @@ class TestTrigonometricFunctions:
         """Test sine with degree inputs."""
         result = sin(Scalar(90, "°"))
         assert abs(result.value - 1.0) < 1e-10
-        assert str(result.unit) == "1"  # dimensionless
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = sin(Scalar(30, "°"))
         assert abs(result.value - 0.5) < 1e-10
@@ -108,7 +108,7 @@ class TestTrigonometricFunctions:
         """Test arcsine function."""
         result = asin(Scalar(1.0))
         assert abs(result.value - math.pi / 2) < 1e-10
-        assert str(result.unit) == "1"  # angles are dimensionless in SI
+        assert str(result.unit) == "rad"  # angles in radians
 
         result = asin(Scalar(0.5))
         assert abs(result.value - math.pi / 6) < 1e-10
@@ -120,7 +120,7 @@ class TestTrigonometricFunctions:
         """Test arccosine function."""
         result = acos(Scalar(1.0))
         assert abs(result.value - 0.0) < 1e-10
-        assert str(result.unit) == "1"  # angles are dimensionless in SI
+        assert str(result.unit) == "rad"  # angles in radians
 
         result = acos(Scalar(0.0))
         assert abs(result.value - math.pi / 2) < 1e-10
@@ -132,7 +132,7 @@ class TestTrigonometricFunctions:
         """Test arctangent function."""
         result = atan(Scalar(1.0))
         assert abs(result.value - math.pi / 4) < 1e-10
-        assert str(result.unit) == "1"  # angles are dimensionless in SI
+        assert str(result.unit) == "rad"  # angles in radians
 
         result = atan(Scalar(0.0))
         assert abs(result.value - 0.0) < 1e-10
@@ -142,7 +142,7 @@ class TestTrigonometricFunctions:
         # Test with same units
         result = atan2(Scalar(1, "m"), Scalar(1, "m"))
         assert abs(result.value - math.pi / 4) < 1e-10
-        assert str(result.unit) == "1"  # angles are dimensionless in SI
+        assert str(result.unit) == "rad"  # angles in radians
 
         # Test with different units but same dimensionality
         result = atan2(Scalar(1000, "mm"), Scalar(1, "m"))
@@ -182,7 +182,7 @@ class TestHyperbolicFunctions:
         """Test hyperbolic sine."""
         result = sinh(Scalar(0.0))
         assert abs(result.value - 0.0) < 1e-10
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = sinh(Scalar(1.0))
         assert abs(result.value - math.sinh(1.0)) < 1e-10
@@ -191,7 +191,7 @@ class TestHyperbolicFunctions:
         """Test hyperbolic cosine."""
         result = cosh(Scalar(0.0))
         assert abs(result.value - 1.0) < 1e-10
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = cosh(Scalar(1.0))
         assert abs(result.value - math.cosh(1.0)) < 1e-10
@@ -200,7 +200,7 @@ class TestHyperbolicFunctions:
         """Test hyperbolic tangent."""
         result = tanh(Scalar(0.0))
         assert abs(result.value - 0.0) < 1e-10
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = tanh(Scalar(1.0))
         assert abs(result.value - math.tanh(1.0)) < 1e-10
@@ -209,7 +209,7 @@ class TestHyperbolicFunctions:
         """Test inverse hyperbolic sine."""
         result = asinh(Scalar(0.0))
         assert abs(result.value - 0.0) < 1e-10
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = asinh(Scalar(1.0))
         assert abs(result.value - math.asinh(1.0)) < 1e-10
@@ -218,7 +218,7 @@ class TestHyperbolicFunctions:
         """Test inverse hyperbolic cosine."""
         result = acosh(Scalar(1.0))
         assert abs(result.value - 0.0) < 1e-10
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = acosh(Scalar(2.0))
         assert abs(result.value - math.acosh(2.0)) < 1e-10
@@ -227,7 +227,7 @@ class TestHyperbolicFunctions:
         """Test inverse hyperbolic tangent."""
         result = atanh(Scalar(0.0))
         assert abs(result.value - 0.0) < 1e-10
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = atanh(Scalar(0.5))
         assert abs(result.value - math.atanh(0.5)) < 1e-10
@@ -262,7 +262,7 @@ class TestExponentialLogarithmicFunctions:
         """Test exponential function."""
         result = exp(Scalar(0.0))
         assert abs(result.value - 1.0) < 1e-10
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = exp(Scalar(1.0))
         assert abs(result.value - math.e) < 1e-10
@@ -282,7 +282,7 @@ class TestExponentialLogarithmicFunctions:
         """Test natural logarithm."""
         result = log(Scalar(1.0))
         assert abs(result.value - 0.0) < 1e-10
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = log(Scalar(math.e))
         assert abs(result.value - 1.0) < 1e-10
@@ -294,7 +294,7 @@ class TestExponentialLogarithmicFunctions:
         """Test base-10 logarithm."""
         result = log10(Scalar(1.0))
         assert abs(result.value - 0.0) < 1e-10
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = log10(Scalar(10.0))
         assert abs(result.value - 1.0) < 1e-10
@@ -306,7 +306,7 @@ class TestExponentialLogarithmicFunctions:
         """Test base-2 logarithm."""
         result = log2(Scalar(1.0))
         assert abs(result.value - 0.0) < 1e-10
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = log2(Scalar(2.0))
         assert abs(result.value - 1.0) < 1e-10
@@ -341,7 +341,7 @@ class TestPowerFunctions:
         """Test square root function."""
         result = sqrt(Scalar(4.0))
         assert abs(result.value - 2.0) < 1e-10
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = sqrt(Scalar(9.0))
         assert abs(result.value - 3.0) < 1e-10
@@ -355,7 +355,7 @@ class TestPowerFunctions:
         """Test cube root function."""
         result = cbrt(Scalar(8.0))
         assert abs(result.value - 2.0) < 1e-10
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = cbrt(Scalar(27.0))
         assert abs(result.value - 3.0) < 1e-10
@@ -369,7 +369,7 @@ class TestPowerFunctions:
         """Test power function."""
         result = pow(Scalar(2.0), 3)
         assert abs(result.value - 8.0) < 1e-10
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = pow(Scalar(4.0), 0.5)
         assert abs(result.value - 2.0) < 1e-10
@@ -379,9 +379,10 @@ class TestPowerFunctions:
         assert abs(result.value - 8.0) < 1e-10
         # Check that units are volume units (may be kL, m^3, etc.)
         expected_m3 = Scalar(1, "m^3")
-        assert result.can_convert_to(
-            expected_m3.unit
-        ), f"Expected volume unit, got {result.unit}"
+        try:
+            result.to(expected_m3.unit)  # If this doesn't throw, they're compatible
+        except (ValueError, Exception):
+            assert False, f"Expected volume unit, got {result.unit}"
 
 
 class TestConstants:
@@ -390,17 +391,17 @@ class TestConstants:
     def test_pi_constant(self):
         """Test pi constant."""
         assert abs(pi.value - math.pi) < 1e-10
-        assert str(pi.unit) == "1"  # angles are dimensionless in SI
+        assert str(pi.unit) == "rad"  # pi is in radians
 
     def test_e_constant(self):
         """Test e constant."""
         assert abs(e.value - math.e) < 1e-10
-        assert str(e.unit) == "1"  # dimensionless
+        assert str(e.unit) == " "  # dimensionless (API changed to single space)
 
     def test_tau_constant(self):
         """Test tau constant."""
         assert abs(tau.value - (2 * math.pi)) < 1e-10
-        assert str(tau.unit) == "1"  # angles are dimensionless in SI
+        assert str(tau.unit) == "rad"  # tau is in radians
 
     def test_constants_in_calculations(self):
         """Test using constants in calculations."""
@@ -466,18 +467,18 @@ class TestEdgeCases:
         """Test that output units are consistent."""
         # Trig functions should return dimensionless
         result = sin(Scalar(45, "°"))
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
-        # Inverse trig functions should return dimensionless (angles are dimensionless in SI)
+        # Inverse trig functions should return angles in radians
         result = asin(Scalar(0.5))
-        assert str(result.unit) == "1"
+        assert str(result.unit) == "rad"
 
         # Exp/log functions should return dimensionless
         result = exp(Scalar(1.0))
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
         result = log(Scalar(2.0))
-        assert str(result.unit) == "1"
+        assert str(result.unit) == " "  # dimensionless (API changed to single space)
 
     def test_mixed_unit_angles(self):
         """Test trigonometric functions with various angular units."""

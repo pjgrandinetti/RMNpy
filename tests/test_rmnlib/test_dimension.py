@@ -12,7 +12,6 @@ import json
 import numpy as np
 import pytest
 
-from rmnpy.exceptions import RMNError
 from rmnpy.wrappers.rmnlib.dimension import (
     LabeledDimension,
     SILinearDimension,
@@ -230,14 +229,13 @@ class TestLinearDimension:
             # C API returning NaN is valid behavior for some cases
             pass
 
-        # Test reciprocal property (if set) - newer API throws exception for NULL
-        try:
-            reciprocal = dim.reciprocal
-            if reciprocal is not None:
-                assert hasattr(reciprocal, "_si_dimension")
-        except RMNError:
-            # C API returns NULL for uninitialized reciprocal - this is expected
-            pass
+        # Test reciprocal property - now auto-generated
+        reciprocal = dim.reciprocal
+        if reciprocal is not None:
+            # Should be a SIDimension wrapper from C API
+            from rmnpy.wrappers.rmnlib.dimension import SIDimension
+
+            assert isinstance(reciprocal, SIDimension)
 
         # Test setting reciprocal dimension
         recip_dim = SILinearDimension(count=5, increment="0.5 Hz")
@@ -248,19 +246,12 @@ class TestLinearDimension:
         """Test reciprocal property for linear dimensions."""
         dim = SILinearDimension(count=5, increment="2.0 Hz")
 
-        # Initially should be None (C API behavior) - newer API throws exception
-        try:
-            reciprocal = dim.reciprocal
-            assert reciprocal is None
-        except RMNError:
-            # C API returns NULL for uninitialized reciprocal - this is expected
-            pass
+        # Reciprocal should now be auto-generated (not None)
+        reciprocal = dim.reciprocal
+        assert reciprocal is not None
+        from rmnpy.wrappers.rmnlib.dimension import SIDimension
 
-        # Test setting reciprocal dimension
-        recip_dim = SILinearDimension(count=5, increment="0.5 Hz")
-        dim.reciprocal = recip_dim
-        # C API may not immediately return the set value
-        # This is valid thin wrapper behavior
+        assert isinstance(reciprocal, SIDimension)  # Should be SIDimension wrapper
 
 
 class TestMonotonicDimension:
@@ -310,15 +301,15 @@ class TestMonotonicDimension:
             _ = dim.increment
 
     def test_monotonic_no_coordinates_offset(self):
-        """Test that monotonic dimensions don't have coordinates_offset."""
+        """Test coordinates_offset behavior for monotonic dimensions."""
         dim = SIMonotonicDimension(coordinates=[0, 1, 4, 9])
 
-        # Should raise AttributeError for coordinates_offset
-        with pytest.raises(AttributeError):
-            _ = dim.coordinates_offset
+        # coordinates_offset should exist and return Scalar('0') for monotonic dimensions
+        assert str(dim.coordinates_offset) == "0"
 
-        with pytest.raises(AttributeError):
-            dim.coordinates_offset = "1.0"
+        # coordinates_offset should be settable on monotonic dimensions
+        dim.coordinates_offset = "1.0"
+        assert str(dim.coordinates_offset) == "1"
 
     def test_monotonic_origin_offset(self):
         """Test origin offset for monotonic dimensions."""
@@ -360,14 +351,14 @@ class TestMonotonicDimension:
             _ = dim.complex_fft
 
     def test_monotonic_count_immutable(self):
-        """Test that count cannot be set to exceed coordinates."""
+        """Test that count cannot be modified."""
         coordinates = [1, 2, 3, 4, 5]
         dim = SIMonotonicDimension(coordinates=coordinates)
 
         assert dim.count == 5
 
-        # Should not be able to increase count beyond coordinates
-        with pytest.raises(ValueError):
+        # Count should be read-only
+        with pytest.raises(AttributeError):
             dim.count = 6
 
     def test_monotonic_coordinates_modification(self):
@@ -384,8 +375,12 @@ class TestMonotonicDimension:
         """Test reciprocal property for monotonic dimensions."""
         dim = SIMonotonicDimension(coordinates=[1, 2, 4])
 
-        # Initially should be None
-        assert dim.reciprocal is None
+        # Reciprocal should now be auto-generated (not None)
+        reciprocal = dim.reciprocal
+        assert reciprocal is not None
+        from rmnpy.wrappers.rmnlib.dimension import SIDimension
+
+        assert isinstance(reciprocal, SIDimension)  # Should be SIDimension wrapper
 
         # Test setting reciprocal dimension
         recip_dim = SIMonotonicDimension(coordinates=[1.0, 0.5, 0.25])
@@ -464,8 +459,8 @@ class TestLabeledDimension:
         with pytest.raises(AttributeError):
             _ = dim.origin_offset
 
-        with pytest.raises(AttributeError):
-            _ = dim.absolute_coordinates
+        # absolute_coordinates exists for labeled dimensions and returns labels
+        assert list(dim.absolute_coordinates) == ["A", "B", "C"]
 
         with pytest.raises(AttributeError):
             _ = dim.complex_fft
@@ -529,7 +524,9 @@ class TestDimensionProperties:
 
     def test_description_property(self):
         """Test description property access and modification."""
-        dim = SILinearDimension(count=5, description="initial description")
+        dim = SILinearDimension(
+            count=5, increment="1.0", description="initial description"
+        )
 
         assert dim.description == "initial description"
 
@@ -543,7 +540,7 @@ class TestDimensionProperties:
 
     def test_label_property(self):
         """Test label property access and modification."""
-        dim = SILinearDimension(count=5, label="initial label")
+        dim = SILinearDimension(count=5, increment="1.0", label="initial label")
 
         assert dim.label == "initial label"
 
@@ -557,7 +554,7 @@ class TestDimensionProperties:
 
     def test_application_property(self):
         """Test application metadata property."""
-        dim = SILinearDimension(count=5)
+        dim = SILinearDimension(count=5, increment="1.0")
 
         # Initial should be None or empty dict
         app = dim.application
@@ -575,7 +572,7 @@ class TestDimensionProperties:
     def test_count_property(self):
         """Test count property."""
         # Linear dimension
-        linear_dim = SILinearDimension(count=10)
+        linear_dim = SILinearDimension(count=10, increment="1.0")
         assert linear_dim.count == 10
 
         linear_dim.count = 15
@@ -592,7 +589,7 @@ class TestDimensionProperties:
     def test_type_property_immutable(self):
         """Test that type property is read-only."""
         dims = [
-            SILinearDimension(count=5),
+            SILinearDimension(count=5, increment="1.0"),
             SIMonotonicDimension(coordinates=[1, 2, 3]),
             LabeledDimension(labels=["A", "B"]),
         ]
@@ -606,7 +603,7 @@ class TestDimensionProperties:
     def test_is_quantitative_method(self):
         """Test is_quantitative method."""
         # Quantitative dimensions
-        assert SILinearDimension(count=5).is_quantitative() is True
+        assert SILinearDimension(count=5, increment="1.0").is_quantitative() is True
         assert SIMonotonicDimension(coordinates=[1, 2]).is_quantitative() is True
 
         # Non-quantitative dimension
@@ -636,7 +633,9 @@ class TestDimensionMethods:
 
         assert isinstance(monotonic_dict, dict)
         assert monotonic_dict["type"] == "monotonic"
-        assert monotonic_dict["count"] == 3
+        assert (
+            len(monotonic_dict["coordinates"]) == 3
+        )  # Count can be derived from coordinates
 
         # Labeled dimension
         labeled_dim = LabeledDimension(
@@ -646,11 +645,11 @@ class TestDimensionMethods:
 
         assert isinstance(labeled_dict, dict)
         assert labeled_dict["type"] == "labeled"
-        assert labeled_dict["count"] == 3
+        assert len(labeled_dict["labels"]) == 3  # Count can be derived from labels
 
     def test_to_dict_alias(self):
         """Test to_dict() alias method."""
-        dim = SILinearDimension(count=5)
+        dim = SILinearDimension(count=5, increment="1.0")
 
         dict_result = dim.dict()
         to_dict_result = dim.to_dict()
@@ -659,7 +658,7 @@ class TestDimensionMethods:
 
     def test_data_structure_property(self):
         """Test data_structure JSON property (if implemented)."""
-        dim = SILinearDimension(count=5, label="test")
+        dim = SILinearDimension(count=5, increment="1.0", label="test")
 
         # Should return JSON string (if implemented)
         if hasattr(dim, "data_structure"):
@@ -689,7 +688,7 @@ class TestErrorHandling:
 
     def test_property_type_validation(self):
         """Test property type validation."""
-        dim = SILinearDimension(count=5)
+        dim = SILinearDimension(count=5, increment="1.0")
 
         # Description type validation
         with pytest.raises(TypeError):
@@ -718,7 +717,6 @@ class TestErrorHandling:
             "increment",
             "coordinates_offset",
             "origin_offset",
-            "absolute_coordinates",
             "complex_fft",
             "period",
         ]
@@ -727,13 +725,22 @@ class TestErrorHandling:
             with pytest.raises(AttributeError):
                 getattr(labeled, attr)
 
+        # absolute_coordinates exists for labeled dimensions and returns labels
+        assert list(labeled.absolute_coordinates) == ["A", "B"]
+
         # Monotonic dimension should not have linear-specific properties
         monotonic = SIMonotonicDimension(coordinates=[1, 2, 3])
-        linear_only_attrs = ["increment", "coordinates_offset", "complex_fft"]
+        linear_only_attrs = [
+            "increment",
+            "complex_fft",
+        ]  # coordinates_offset exists on monotonic
 
         for attr in linear_only_attrs:
             with pytest.raises(AttributeError):
                 getattr(monotonic, attr)
+
+        # coordinates_offset exists on monotonic dimensions but behaves differently
+        assert str(monotonic.coordinates_offset) == "0"
 
 
 class TestRegressionAndEdgeCases:
@@ -781,7 +788,7 @@ class TestRegressionAndEdgeCases:
 
     def test_string_parsing_edge_cases(self):
         """Test edge cases in string value parsing."""
-        dim = SILinearDimension(count=5)
+        dim = SILinearDimension(count=5, increment="1.0")
 
         # Test that periods work with finite values
         dim.period = "100.0"
