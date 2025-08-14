@@ -237,6 +237,7 @@ def get_extensions() -> list[Extension]:
         # The issue: MinGW linker prefers libXXX.a over libXXX.dll.a
         # Solution: Temporarily hide static libraries during linking
         import glob
+        import os  # Import os here for Windows-specific operations
         import shutil
 
         static_libs_to_hide = []
