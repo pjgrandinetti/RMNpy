@@ -262,6 +262,13 @@ def get_extensions() -> list[Extension]:
             ]
         )
 
+        # Add MinGW library directories
+        library_dirs.extend(
+            [
+                f"{mingw_prefix}/lib",  # MinGW libraries
+            ]
+        )
+
         # Add external dependencies required by RMNLib on Windows
         # These are needed because the static libraries don't include external deps
         # For MSYS2 MinGW64, use the actual library names from the installation
