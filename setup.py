@@ -232,9 +232,13 @@ def get_extensions() -> list[Extension]:
 
     # Add runtime library directory for shared libraries
     # This tells the dynamic linker where to find .dylib/.so files at runtime
+    # Note: runtime_library_dirs is not supported on Windows
     import os
 
-    runtime_library_dirs = [os.path.abspath("lib")]
+    # Only set runtime_library_dirs on Unix-like systems (Linux/macOS)
+    runtime_library_dirs = (
+        [] if platform.system() == "Windows" else [os.path.abspath("lib")]
+    )
 
     # Common compiler/linker options (platform-specific)
     extra_link_args: list[str] = []
