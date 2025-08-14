@@ -280,6 +280,17 @@ def get_extensions() -> list[Extension]:
             # Use library names without the lib prefix and .dll.a suffix
             libraries = ["RMN", "SITypes", "OCTypes"]
 
+            # ALSO: Add explicit import library paths to force MinGW to use them
+            # This is the most reliable way to ensure the correct libraries are used
+            explicit_lib_paths = []
+            for lib_path in dll_libs_found:
+                abs_path = os.path.abspath(lib_path)
+                explicit_lib_paths.append(abs_path)
+                print(f"Windows: Will explicitly link: {abs_path}")
+
+            # Store these for use in extra_link_args later
+            globals()["_explicit_dll_libs"] = explicit_lib_paths
+
             # Also hide static libraries to force use of import libraries
             static_libs_to_hide = []
             try:
@@ -349,6 +360,16 @@ def get_extensions() -> list[Extension]:
                 "-Wl,--disable-auto-image-base",  # Prevent address conflicts
             ]
         )
+
+        # Add explicit paths to DLL import libraries if available
+        explicit_dll_libs = globals().get("_explicit_dll_libs", [])
+        if explicit_dll_libs:
+            print(
+                f"Windows: Adding {len(explicit_dll_libs)} explicit library paths to linker args"
+            )
+            for lib_path in explicit_dll_libs:
+                extra_link_args.append(lib_path)
+                print(f"Windows: Added explicit linker arg: {lib_path}")
         # Add MSYS2/MinGW64 specific include directories for dependencies
         # These are needed for RMNLib which depends on BLAS/LAPACK headers
         mingw_prefix = os.environ.get("MSYSTEM_PREFIX", "/mingw64")
