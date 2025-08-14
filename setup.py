@@ -126,8 +126,30 @@ class CustomBuildExt(build_ext):
             self.compiler = compiler
             print("Forced MinGW compiler on Windows")
 
-        # Continue with normal build
-        super().build_extensions()
+        try:
+            # Continue with normal build
+            super().build_extensions()
+        finally:
+            # Always restore hidden static libraries on Windows
+            if platform.system() == "Windows":
+                self._restore_hidden_libraries()
+
+    def _restore_hidden_libraries(self) -> None:
+        """Restore hidden static libraries on Windows after build."""
+        try:
+            hidden_libs = globals().get("_hidden_static_libs", [])
+            if hidden_libs:
+                import shutil
+
+                print(f"Windows: Restoring {len(hidden_libs)} hidden static libraries")
+                for original_path, backup_path in hidden_libs:
+                    if os.path.exists(backup_path):
+                        shutil.move(backup_path, original_path)
+                        print(f"Windows: Restored {original_path}")
+                # Clear the global variable
+                globals()["_hidden_static_libs"] = []
+        except Exception as e:
+            print(f"Windows: Error restoring hidden libraries: {e}")
 
     def run(self) -> None:
         """Check dependencies before building extensions."""
@@ -240,30 +262,52 @@ def get_extensions() -> list[Extension]:
         import os  # Import os here for Windows-specific operations
         import shutil
 
-        static_libs_to_hide = []
-        try:
-            # Find all static libraries in lib/ directory
-            static_libs = glob.glob("lib/lib*.a")
-            # Filter out the .dll.a import libraries
-            static_libs = [lib for lib in static_libs if not lib.endswith(".dll.a")]
+        # On Windows, explicitly use DLL import libraries to avoid undefined references
+        # Check for and verify DLL import libraries exist
+        expected_libs = ["libRMN.dll.a", "libSITypes.dll.a", "libOCTypes.dll.a"]
+        dll_libs_found = []
 
-            print(f"Windows: Found static libraries to hide: {static_libs}")
+        for lib in expected_libs:
+            lib_path = os.path.join("lib", lib)
+            if os.path.exists(lib_path):
+                dll_libs_found.append(lib_path)
+                print(f"Windows: Found DLL import library: {lib_path}")
+            else:
+                print(f"Windows: WARNING - Missing DLL import library: {lib_path}")
 
-            # Temporarily rename static libraries so MinGW will use .dll.a import libraries
-            for static_lib in static_libs:
-                backup_name = static_lib + ".backup"
-                if os.path.exists(static_lib) and not os.path.exists(backup_name):
-                    shutil.move(static_lib, backup_name)
-                    static_libs_to_hide.append((static_lib, backup_name))
-                    print(f"Windows: Temporarily hiding {static_lib}")
+        if len(dll_libs_found) == len(expected_libs):
+            print("Windows: All DLL import libraries found, using explicit linking")
+            # Use library names without the lib prefix and .dll.a suffix
+            libraries = ["RMN", "SITypes", "OCTypes"]
 
-        except Exception as e:
-            print(f"Windows: Error managing static libraries: {e}")
+            # Also hide static libraries to force use of import libraries
+            static_libs_to_hide = []
+            try:
+                # Find all static libraries in lib/ directory
+                static_libs = glob.glob("lib/lib*.a")
+                # Filter out the .dll.a import libraries
+                static_libs = [lib for lib in static_libs if not lib.endswith(".dll.a")]
 
-        # Store the list for restoration later (if needed)
-        globals()["_hidden_static_libs"] = static_libs_to_hide
+                print(f"Windows: Found static libraries to hide: {static_libs}")
 
-        libraries = ["RMN", "SITypes", "OCTypes"]
+                # Temporarily rename static libraries so MinGW will use .dll.a import libraries
+                for static_lib in static_libs:
+                    backup_name = static_lib + ".backup"
+                    if os.path.exists(static_lib) and not os.path.exists(backup_name):
+                        shutil.move(static_lib, backup_name)
+                        static_libs_to_hide.append((static_lib, backup_name))
+                        print(f"Windows: Temporarily hiding {static_lib}")
+
+            except Exception as e:
+                print(f"Windows: Error managing static libraries: {e}")
+
+            # Store the list for restoration later (if needed)
+            globals()["_hidden_static_libs"] = static_libs_to_hide
+        else:
+            print(
+                "Windows: ERROR - Not all DLL import libraries found, falling back to standard linking"
+            )
+            libraries = ["RMN", "SITypes", "OCTypes"]
     else:
         # On Unix-like systems, library order matters for static linking
         # RMN depends on OCTypes/SITypes, so list RMN first
