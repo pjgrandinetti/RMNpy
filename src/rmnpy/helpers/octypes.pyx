@@ -31,64 +31,70 @@ from rmnpy._c_api.sitypes cimport *
 import cython
 import numpy as np
 
-from rmnpy.wrappers.sitypes.dimensionality import sidimensionality_to_dimensionality
+# Import moved inside functions to avoid circular import
+# from rmnpy.wrappers.sitypes.dimensionality import sidimensionality_to_dimensionality
 
-# Import SITypes helper functions for the generic conversion function
-# These are needed for convert_python_to_octype to handle SITypes objects
-from rmnpy.wrappers.sitypes.scalar import (
-    siscalar_create_from_pyscalar,
-    siscalar_to_scalar,
-)
-from rmnpy.wrappers.sitypes.unit import siunit_to_pyunit
+# Comment out imports that create circular dependencies
+# from rmnpy.wrappers.sitypes.scalar import (
+#     siscalar_create_from_pyscalar,
+#     siscalar_to_scalar,
+# )
+# from rmnpy.wrappers.sitypes.unit import siunit_to_pyunit
 
-# Import Scalar class for proper SIScalar conversion
-# Use duck typing instead of isinstance for better Cython performance and robustness
-try:
-    from rmnpy.wrappers.sitypes.scalar import Scalar
-    SCALAR_AVAILABLE = True
-    SCALAR_CLASS = Scalar  # Keep reference for _from_c_ref calls
-except ImportError:
-    SCALAR_AVAILABLE = False
-    SCALAR_CLASS = None
+# Comment out to avoid circular imports - use lazy imports instead
+# try:
+#     from rmnpy.wrappers.sitypes.scalar import Scalar
+#     SCALAR_AVAILABLE = True
+#     SCALAR_CLASS = Scalar  # Keep reference for _from_c_ref calls
+# except ImportError:
+#     SCALAR_AVAILABLE = False
+#     SCALAR_CLASS = None
 
 # Import Unit class for proper SIUnit conversion
-try:
-    from rmnpy.wrappers.sitypes.unit import Unit
-    UNIT_AVAILABLE = True
-    UNIT_CLASS = Unit  # Keep reference for _from_c_ref calls
-except ImportError:
-    UNIT_AVAILABLE = False
-    UNIT_CLASS = None
+# try:
+#     from rmnpy.wrappers.sitypes.unit import Unit
+#     UNIT_AVAILABLE = True
+#     UNIT_CLASS = Unit  # Keep reference for _from_c_ref calls
+# except ImportError:
+#     UNIT_AVAILABLE = False
+#     UNIT_CLASS = None
 
 # Import Dimensionality class for proper SIDimensionality conversion
-try:
-    from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
-    DIMENSIONALITY_AVAILABLE = True
-    DIMENSIONALITY_CLASS = Dimensionality  # Keep reference for _from_c_ref calls
-except ImportError:
-    DIMENSIONALITY_AVAILABLE = False
-    DIMENSIONALITY_CLASS = None
+# try:
+#     from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
+#     DIMENSIONALITY_AVAILABLE = True
+#     DIMENSIONALITY_CLASS = Dimensionality  # Keep reference for _from_c_ref calls
+# except ImportError:
+#     DIMENSIONALITY_AVAILABLE = False
+#     DIMENSIONALITY_CLASS = None
+
+# Set constants for availability flags
+DIMENSION_AVAILABLE = False
+DIMENSION_CLASSES = {}
+SCALAR_AVAILABLE = False
+UNIT_AVAILABLE = False
+DIMENSIONALITY_AVAILABLE = False
 
 # Import Dimension classes for proper RMNLib Dimension conversion
-try:
-    from rmnpy.wrappers.rmnlib.dimension import (
-        BaseDimension,
-        LabeledDimension,
-        SIDimension,
-        SILinearDimension,
-        SIMonotonicDimension,
-    )
-    DIMENSION_AVAILABLE = True
-    DIMENSION_CLASSES = {
-        'BaseDimension': BaseDimension,
-        'LabeledDimension': LabeledDimension,
-        'SIDimension': SIDimension,
-        'SILinearDimension': SILinearDimension,
-        'SIMonotonicDimension': SIMonotonicDimension,
-    }
-except ImportError:
-    DIMENSION_AVAILABLE = False
-    DIMENSION_CLASSES = {}
+# try:
+#     from rmnpy.wrappers.rmnlib.dimension import (
+#         BaseDimension,
+#         LabeledDimension,
+#         SIDimension,
+#         SILinearDimension,
+#         SIMonotonicDimension,
+#     )
+#     DIMENSION_AVAILABLE = True
+#     DIMENSION_CLASSES = {
+#         'BaseDimension': BaseDimension,
+#         'LabeledDimension': LabeledDimension,
+#         'SIDimension': SIDimension,
+#         'SILinearDimension': SILinearDimension,
+#         'SIMonotonicDimension': SIMonotonicDimension,
+#     }
+# except ImportError:
+#     DIMENSION_AVAILABLE = False
+#     DIMENSION_CLASSES = {}
 
 # ====================================================================================
 # Internal Helper Functions
@@ -129,6 +135,7 @@ cdef uint64_t convert_python_to_octype(object item) except 0:
     # and to avoid circular import issues with dynamically imported classes
     elif hasattr(item, 'value') and hasattr(item, 'unit'):
         # This looks like a Scalar object - convert to SIScalar
+        from rmnpy.wrappers.sitypes.scalar import siscalar_create_from_pyscalar
         return siscalar_create_from_pyscalar(item)
     # Handle Unit objects from RMNpy wrappers using duck typing
     elif hasattr(item, '_c_ref') and hasattr(item, 'name'):
@@ -187,10 +194,16 @@ cdef object convert_octype_to_python(const void* oc_ptr):
     elif type_id == OCIndexPairSetGetTypeID():
         return ocindexpairset_to_pydict(<uint64_t>oc_ptr)
     elif type_id == SIScalarGetTypeID():
+        from rmnpy.wrappers.sitypes.scalar import siscalar_to_scalar
         return siscalar_to_scalar(<uint64_t>oc_ptr)
     elif type_id == SIUnitGetTypeID():
+        from rmnpy.wrappers.sitypes.unit import siunit_to_pyunit
         return siunit_to_pyunit(<uint64_t>oc_ptr)
     elif type_id == SIDimensionalityGetTypeID():
+        # Use lazy import to avoid circular import
+        from rmnpy.wrappers.sitypes.dimensionality import (
+            sidimensionality_to_dimensionality,
+        )
         return sidimensionality_to_dimensionality(<uint64_t>oc_ptr)
     # Handle RMNLib Dimension types
     elif type_id == DimensionGetTypeID():
@@ -661,10 +674,16 @@ def ocarray_to_pylist(uint64_t oc_array_ptr):
         elif type_id == OCIndexPairSetGetTypeID():
             py_item = ocindexpairset_to_pydict(<uint64_t>item_ptr)
         elif type_id == SIScalarGetTypeID():
+            from rmnpy.wrappers.sitypes.scalar import siscalar_to_scalar
             py_item = siscalar_to_scalar(<uint64_t>item_ptr)
         elif type_id == SIUnitGetTypeID():
+            from rmnpy.wrappers.sitypes.unit import siunit_to_pyunit
             py_item = siunit_to_pyunit(<uint64_t>item_ptr)
         elif type_id == SIDimensionalityGetTypeID():
+            # Use lazy import to avoid circular import
+            from rmnpy.wrappers.sitypes.dimensionality import (
+                sidimensionality_to_dimensionality,
+            )
             py_item = sidimensionality_to_dimensionality(<uint64_t>item_ptr)
         # Handle RMNLib Dimension types
         elif type_id == DimensionGetTypeID():
@@ -1045,10 +1064,12 @@ def ocset_to_pyset(uint64_t oc_set_ptr):
             result.add(ocboolean_to_pybool(<uint64_t>item_ptr))
         elif type_id == SIScalarGetTypeID():
             # Convert SIScalar to Scalar object
+            from rmnpy.wrappers.sitypes.scalar import siscalar_to_scalar
             scalar_obj = siscalar_to_scalar(<uint64_t>item_ptr)
             result.add(scalar_obj)
         elif type_id == SIUnitGetTypeID():
             # Convert SIUnit to Unit object (if hashable)
+            from rmnpy.wrappers.sitypes.unit import siunit_to_pyunit
             unit_obj = siunit_to_pyunit(<uint64_t>item_ptr)
             try:
                 result.add(unit_obj)
@@ -1058,6 +1079,10 @@ def ocset_to_pyset(uint64_t oc_set_ptr):
                 result.add(f"SIUnit({<uint64_t>item_ptr})")
         elif type_id == SIDimensionalityGetTypeID():
             # Convert SIDimensionality to Dimensionality object (if hashable)
+            # Use lazy import to avoid circular import
+            from rmnpy.wrappers.sitypes.dimensionality import (
+                sidimensionality_to_dimensionality,
+            )
             dim_obj = sidimensionality_to_dimensionality(<uint64_t>item_ptr)
             try:
                 result.add(dim_obj)

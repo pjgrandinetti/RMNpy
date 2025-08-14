@@ -15,7 +15,7 @@ __all__ = [
     "ocnumber_create_from_pynumber",
     "ocnumber_to_pynumber",
     # Boolean conversion functions
-    "ocboolean_from_pybool",
+    "pybool_to_ocboolean",
     "ocboolean_to_pybool",
     # Data/NumPy conversion functions
     "ocdata_create_from_numpy_array",
@@ -46,7 +46,6 @@ __all__ = [
 from .octypes import (  # String conversion functions; Number conversion functions; Boolean conversion functions; Data/NumPy conversion functions; Array conversion functions; Dictionary conversion functions; Set conversion functions; Index array/set conversion functions
     ocarray_create_from_pylist,
     ocarray_to_pylist,
-    ocboolean_from_pybool,
     ocboolean_to_pybool,
     ocdata_create_from_numpy_array,
     ocdata_to_numpy_array,
@@ -70,4 +69,5 @@ from .octypes import (  # String conversion functions; Number conversion functio
     ocset_to_pyset,
     ocstring_create_from_pystring,
     ocstring_to_pystring,
+    pybool_to_ocboolean,
 )

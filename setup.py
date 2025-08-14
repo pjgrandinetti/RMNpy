@@ -157,9 +157,9 @@ class CustomBuildExt(build_ext):
 
         # Required library files
         required_libs = [
-            lib_dir / "libOCTypes.a",
-            lib_dir / "libSITypes.a",
-            lib_dir / "libRMN.a",
+            lib_dir / "libOCTypes.dylib",
+            lib_dir / "libSITypes.dylib",
+            lib_dir / "libRMN.dylib",
         ]
 
         # Required header directories

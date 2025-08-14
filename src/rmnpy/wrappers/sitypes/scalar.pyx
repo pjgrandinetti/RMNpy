@@ -30,12 +30,46 @@ from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
 from rmnpy.wrappers.sitypes.unit cimport Unit
 
-from rmnpy.helpers.octypes import ocstring_create_from_pystring, pystring_from_ocstring
+from rmnpy.helpers.octypes import ocstring_create_from_pystring, ocstring_to_pystring
 from rmnpy.wrappers.sitypes.unit import Unit
 
 from libc.stdint cimport uint8_t, uint64_t, uintptr_t
 
 import cmath
+
+
+# Helper function for converting various input types to SIScalarRef
+cdef SIScalarRef convert_to_siscalar_ref(value) except NULL:
+    """
+    Convert various input types to SIScalarRef.
+
+    Accepts:
+    - Scalar objects: Returns their C reference (borrowed, caller should copy if needed)
+    - str: Creates Scalar from string expression
+    - numeric types (int, float, complex): Creates dimensionless Scalar
+
+    Returns:
+        SIScalarRef: C reference to scalar (caller owns reference and must release)
+
+    Raises:
+        TypeError: If input type is not supported
+        RMNError: If scalar creation fails
+    """
+    cdef Scalar temp_scalar
+
+    if isinstance(value, Scalar):
+        # Return copy of the C reference so caller owns it
+        return SIScalarCreateCopy((<Scalar>value)._c_ref)
+    elif isinstance(value, str):
+        # Create Scalar from string, then return copy of its reference
+        temp_scalar = Scalar(value)
+        return SIScalarCreateCopy(temp_scalar._c_ref)
+    elif isinstance(value, (int, float, complex)):
+        # Create dimensionless Scalar from numeric value, then return copy
+        temp_scalar = Scalar(value)
+        return SIScalarCreateCopy(temp_scalar._c_ref)
+    else:
+        raise TypeError(f"Cannot convert {type(value)} to Scalar. Expected Scalar, str, or numeric type.")
 
 
 cdef class Scalar:
@@ -166,7 +200,7 @@ cdef class Scalar:
 
             if base_scalar == NULL:
                 if error_ocstr != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                    error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
                     raise RMNError(f"Failed to parse scalar expression '{expression}': {error_msg}")
                 else:
                     raise RMNError(f"Failed to parse scalar expression '{expression}'")
@@ -335,7 +369,7 @@ cdef class Scalar:
         try:
             if result == NULL:
                 if error_ocstr != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                    error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
                     raise ValueError(f"Unit conversion failed: {error_msg}")
                 else:
                     raise ValueError("Unit conversion failed: incompatible dimensions")
@@ -362,7 +396,7 @@ cdef class Scalar:
         try:
             if result == NULL:
                 if error_ocstr != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                    error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
                     raise RMNError(f"Coherent SI conversion failed: {error_msg}")
                 else:
                     raise RMNError("Coherent SI conversion failed")
@@ -415,7 +449,7 @@ cdef class Scalar:
         try:
             if result == NULL:
                 if error_ocstr != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                    error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
                     raise RMNError(f"Root operation failed: {error_msg}")
                 else:
                     raise RMNError("Root operation failed")
@@ -440,7 +474,7 @@ cdef class Scalar:
 
         if result == NULL:
             if error_ocstr != NULL:
-                error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
                 OCRelease(<OCTypeRef>error_ocstr)
                 raise RMNError(f"Addition failed: {error_msg}")
             else:
@@ -468,7 +502,7 @@ cdef class Scalar:
         try:
             if result == NULL:
                 if error_ocstr != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                    error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
                     raise RMNError(f"Subtraction failed: {error_msg}")
                 else:
                     raise RMNError("Subtraction failed - likely dimensional mismatch")
@@ -500,7 +534,7 @@ cdef class Scalar:
             try:
                 if result == NULL:
                     if error_ocstr != NULL:
-                        error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                        error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
                         raise RMNError(f"Multiplication failed: {error_msg}")
                     else:
                         raise RMNError("Multiplication failed")
@@ -554,7 +588,7 @@ cdef class Scalar:
             try:
                 if result == NULL:
                     if error_ocstr != NULL:
-                        error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                        error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
                         raise RMNError(f"Division failed: {error_msg}")
                     else:
                         raise RMNError("Division failed")
@@ -612,7 +646,7 @@ cdef class Scalar:
             try:
                 if result == NULL:
                     if error_ocstr != NULL:
-                        error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                        error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
                         raise RMNError(f"Power operation failed: {error_msg}")
                     else:
                         raise RMNError("Power operation failed")
@@ -634,7 +668,7 @@ cdef class Scalar:
                     try:
                         if result == NULL:
                             if error_ocstr != NULL:
-                                error_msg = pystring_from_ocstring(<uint64_t>error_ocstr)
+                                error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
                                 raise RMNError(f"Nth root operation failed: {error_msg}")
                             else:
                                 raise RMNError("Nth root operation failed")
@@ -835,7 +869,7 @@ cdef class Scalar:
             return f"Scalar({self.value})"
 
         try:
-            return pystring_from_ocstring(<uint64_t>str_ref)
+            return ocstring_to_pystring(<uint64_t>str_ref)
         finally:
             OCRelease(<OCTypeRef>str_ref)
 

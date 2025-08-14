@@ -9,6 +9,10 @@ the Scalar class from scalar.pyx.
 from rmnpy._c_api.sitypes cimport SIScalarRef
 
 
+# Helper function declaration
+cdef SIScalarRef convert_to_siscalar_ref(value) except NULL
+
+
 cdef class Scalar:
     """Cython interface for SIScalar wrapper."""
     cdef SIScalarRef _c_ref
