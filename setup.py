@@ -228,7 +228,9 @@ def get_extensions() -> list[Extension]:
 
     # Common library directories and libraries
     library_dirs = ["lib"]
-    libraries = ["OCTypes", "SITypes", "RMN"]
+    # Library order matters for static linking: dependents before dependencies
+    # RMN depends on OCTypes/SITypes, so list RMN first
+    libraries = ["RMN", "SITypes", "OCTypes"]
 
     # Add runtime library directory for shared libraries
     # This tells the dynamic linker where to find .dylib/.so files at runtime
