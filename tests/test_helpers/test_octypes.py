@@ -16,17 +16,17 @@ def test_basic_memory_functions():
 
     # Test that we can import and use basic OCTypes functions
     from rmnpy.helpers.octypes import (
+        ocstring_create_from_pystring,
         ocstring_to_pystring,
-        pystring_to_ocstring,
     )
 
     # Test basic string roundtrip
     original_str = "Hello, OCTypes!"
-    oc_string_ptr = pystring_to_ocstring(original_str)
+    oc_string_ptr = ocstring_create_from_pystring(original_str)
     assert oc_string_ptr != 0, "Failed to create OCString"
 
     converted_str = ocstring_to_pystring(oc_string_ptr)
-    # Note: OCString created by pystring_to_ocstring is automatically managed
+    # Note: OCString created by ocstring_create_from_pystring is automatically managed
 
     assert converted_str == original_str, "String roundtrip failed"
 
@@ -196,13 +196,13 @@ def test_library_linking():
 
     # Test that we can import and use basic OCTypes functions
     from rmnpy.helpers.octypes import (
+        ocstring_create_from_pystring,
         ocstring_to_pystring,
-        pystring_to_ocstring,
     )
 
     # Test basic string roundtrip
     original_str = "Hello, OCTypes!"
-    oc_string_ptr = pystring_to_ocstring(original_str)
+    oc_string_ptr = ocstring_create_from_pystring(original_str)
     assert oc_string_ptr != 0, "Failed to create OCString"
 
     converted_str = ocstring_to_pystring(oc_string_ptr)
@@ -215,14 +215,14 @@ def test_type_ids():
     """Test that type IDs are returned correctly."""
 
     from rmnpy.helpers.octypes import (
+        ocnumber_create_from_pynumber,
+        ocstring_create_from_pystring,
         pybool_to_ocboolean,
-        pynumber_to_ocnumber,
-        pystring_to_ocstring,
     )
 
     # Create different OCTypes and verify they have different pointers
-    oc_string = pystring_to_ocstring("test")
-    oc_number = pynumber_to_ocnumber(42)
+    oc_string = ocstring_create_from_pystring("test")
+    oc_number = ocnumber_create_from_pynumber(42)
     oc_bool = pybool_to_ocboolean(True)
 
     assert oc_string != 0, "Failed to create OCString"
@@ -241,11 +241,11 @@ def test_memory_management():
     """Test basic memory management (simplified - no retain count checking)."""
 
     from rmnpy.helpers.octypes import (
-        pystring_to_ocstring,
+        ocstring_create_from_pystring,
     )
 
     # Create an OCString - memory management is handled internally
-    oc_string = pystring_to_ocstring("test")
+    oc_string = ocstring_create_from_pystring("test")
     assert oc_string != 0, "Failed to create OCString"
 
     # Note: Memory management is handled automatically by the Cython wrappers
