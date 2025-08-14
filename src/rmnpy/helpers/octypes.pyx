@@ -25,6 +25,7 @@ from libc.stdlib cimport free, malloc
 from libc.string cimport memcpy
 
 from rmnpy._c_api.octypes cimport *
+from rmnpy._c_api.rmnlib cimport *
 from rmnpy._c_api.sitypes cimport *
 
 import cython
@@ -67,6 +68,27 @@ try:
 except ImportError:
     DIMENSIONALITY_AVAILABLE = False
     DIMENSIONALITY_CLASS = None
+
+# Import Dimension classes for proper RMNLib Dimension conversion
+try:
+    from rmnpy.wrappers.rmnlib.dimension import (
+        BaseDimension,
+        LabeledDimension,
+        SIDimension,
+        SILinearDimension,
+        SIMonotonicDimension,
+    )
+    DIMENSION_AVAILABLE = True
+    DIMENSION_CLASSES = {
+        'BaseDimension': BaseDimension,
+        'LabeledDimension': LabeledDimension,
+        'SIDimension': SIDimension,
+        'SILinearDimension': SILinearDimension,
+        'SIMonotonicDimension': SIMonotonicDimension,
+    }
+except ImportError:
+    DIMENSION_AVAILABLE = False
+    DIMENSION_CLASSES = {}
 
 # ====================================================================================
 # Internal Helper Functions
@@ -113,8 +135,12 @@ cdef uint64_t convert_python_to_octype(object item) except 0:
         # This looks like a Unit object - get the C reference directly
         return <uint64_t>(<object>item)._c_ref
     # Handle Dimensionality objects from RMNpy wrappers using duck typing
-    elif hasattr(item, '_c_ref'):
+    elif hasattr(item, '_c_ref') and hasattr(item, 'dimensionality_string'):
         # This looks like a Dimensionality object - get the C reference directly
+        return <uint64_t>(<object>item)._c_ref
+    # Handle Dimension objects from RMNpy wrappers using duck typing
+    elif hasattr(item, '_c_ref') and hasattr(item, 'count'):
+        # This looks like a Dimension object - get the C reference directly
         return <uint64_t>(<object>item)._c_ref
     else:
         raise TypeError(f"Unsupported item type: {type(item)}. For collections, use specific conversion functions. For OCTypes from other libraries, pass as integer pointer.")
@@ -166,6 +192,17 @@ cdef object convert_octype_to_python(const void* oc_ptr):
         return siunit_to_pyunit(<uint64_t>oc_ptr)
     elif type_id == SIDimensionalityGetTypeID():
         return sidimensionality_to_dimensionality(<uint64_t>oc_ptr)
+    # Handle RMNLib Dimension types
+    elif type_id == DimensionGetTypeID():
+        return dimension_to_pydimension(<uint64_t>oc_ptr)
+    elif type_id == LabeledDimensionGetTypeID():
+        return dimension_to_pydimension(<uint64_t>oc_ptr)
+    elif type_id == SIDimensionGetTypeID():
+        return dimension_to_pydimension(<uint64_t>oc_ptr)
+    elif type_id == SILinearDimensionGetTypeID():
+        return dimension_to_pydimension(<uint64_t>oc_ptr)
+    elif type_id == SIMonotonicDimensionGetTypeID():
+        return dimension_to_pydimension(<uint64_t>oc_ptr)
     else:
         # Unknown OCType (could be from SITypes or other extensions)
         # Return as integer pointer for use by other libraries
@@ -629,6 +666,17 @@ def ocarray_to_pylist(uint64_t oc_array_ptr):
             py_item = siunit_to_pyunit(<uint64_t>item_ptr)
         elif type_id == SIDimensionalityGetTypeID():
             py_item = sidimensionality_to_dimensionality(<uint64_t>item_ptr)
+        # Handle RMNLib Dimension types
+        elif type_id == DimensionGetTypeID():
+            py_item = dimension_to_pydimension(<uint64_t>item_ptr)
+        elif type_id == LabeledDimensionGetTypeID():
+            py_item = dimension_to_pydimension(<uint64_t>item_ptr)
+        elif type_id == SIDimensionGetTypeID():
+            py_item = dimension_to_pydimension(<uint64_t>item_ptr)
+        elif type_id == SILinearDimensionGetTypeID():
+            py_item = dimension_to_pydimension(<uint64_t>item_ptr)
+        elif type_id == SIMonotonicDimensionGetTypeID():
+            py_item = dimension_to_pydimension(<uint64_t>item_ptr)
         else:
             # Unknown OCType - return as integer pointer
             py_item = <uint64_t>item_ptr
@@ -996,14 +1044,9 @@ def ocset_to_pyset(uint64_t oc_set_ptr):
         elif type_id == OCBooleanGetTypeID():
             result.add(ocboolean_to_pybool(<uint64_t>item_ptr))
         elif type_id == SIScalarGetTypeID():
-            # Convert SIScalar to Scalar object (if hashable)
+            # Convert SIScalar to Scalar object
             scalar_obj = siscalar_to_scalar(<uint64_t>item_ptr)
-            try:
-                result.add(scalar_obj)
-            except TypeError:
-                # If Scalar objects aren't hashable, fall back to tuple representation
-                tuple_repr = siscalar_to_pytuple(<uint64_t>item_ptr)
-                result.add(tuple_repr)
+            result.add(scalar_obj)
         elif type_id == SIUnitGetTypeID():
             # Convert SIUnit to Unit object (if hashable)
             unit_obj = siunit_to_pyunit(<uint64_t>item_ptr)
@@ -1346,6 +1389,68 @@ def ocmutabledata_create_from_numpy_array(object numpy_array):
     # The exact API for this might need verification
 
     return <uint64_t>oc_mutable_data
+
+# ====================================================================================
+# Dimension Helper Functions (RMNLib)
+# ====================================================================================
+
+def dimension_to_pydimension(uint64_t dimension_ptr):
+    """
+    Convert an RMNLib dimension pointer to the appropriate Python dimension object.
+
+    Args:
+        dimension_ptr (uint64_t): Pointer to RMNLib dimension reference
+
+    Returns:
+        BaseDimension subclass: Appropriate Python dimension wrapper
+
+    Raises:
+        ValueError: If dimension_ptr is NULL
+        RuntimeError: If dimension type is unknown
+    """
+    if dimension_ptr == 0:
+        raise ValueError("Dimension pointer is NULL")
+
+    if not DIMENSION_AVAILABLE:
+        # Fall back to returning the raw pointer if dimension classes not available
+        return dimension_ptr
+
+    cdef const void* dim_ptr = <const void*>dimension_ptr
+    cdef OCTypeID type_id = OCGetTypeID(dim_ptr)
+
+    # Determine the specific dimension type and create appropriate wrapper
+    if type_id == DimensionGetTypeID():
+        # Generic BaseDimension (shouldn't happen in practice, but handle it)
+        return DIMENSION_CLASSES['BaseDimension']._from_c_ref(dimension_ptr)
+    elif type_id == LabeledDimensionGetTypeID():
+        return DIMENSION_CLASSES['LabeledDimension']._from_c_ref(dimension_ptr)
+    elif type_id == SIDimensionGetTypeID():
+        return DIMENSION_CLASSES['SIDimension']._from_c_ref(dimension_ptr)
+    elif type_id == SILinearDimensionGetTypeID():
+        return DIMENSION_CLASSES['SILinearDimension']._from_c_ref(dimension_ptr)
+    elif type_id == SIMonotonicDimensionGetTypeID():
+        return DIMENSION_CLASSES['SIMonotonicDimension']._from_c_ref(dimension_ptr)
+    else:
+        # Unknown dimension type - fall back to raw pointer
+        return dimension_ptr
+
+def pydimension_to_dimension_ptr(object dimension_obj):
+    """
+    Extract the C dimension pointer from a Python dimension object.
+
+    Args:
+        dimension_obj: Python dimension object with _c_ref attribute
+
+    Returns:
+        uint64_t: C dimension pointer
+
+    Raises:
+        TypeError: If object doesn't have _c_ref attribute
+    """
+    if not hasattr(dimension_obj, '_c_ref'):
+        raise TypeError(f"Object {type(dimension_obj)} doesn't have _c_ref attribute")
+
+    return <uint64_t>dimension_obj._c_ref
 
 # ====================================================================================
 # End of File

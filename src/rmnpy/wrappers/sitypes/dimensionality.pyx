@@ -76,7 +76,7 @@ cdef class Dimensionality:
 
         from rmnpy.helpers.octypes import ocstring_create_from_pystring
 
-        cdef OCStringRef expr_ocstr = <OCStringRef>ocstring_create_from_pystring(expression)
+        cdef OCStringRef expr_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(expression)
         cdef OCStringRef error_ocstr = NULL
         cdef SIDimensionalityRef c_ref
 
@@ -128,7 +128,7 @@ cdef class Dimensionality:
         if isinstance(quantity_constant, str):
             # Convert Python string to OCStringRef
             from rmnpy.helpers.octypes import ocstring_create_from_pystring
-            quantity_ocstr = <OCStringRef>ocstring_create_from_pystring(quantity_constant)
+            quantity_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(quantity_constant)
         else:
             # Reject anything that's not a string
             raise TypeError(

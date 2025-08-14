@@ -78,7 +78,7 @@ cdef class Unit:
 
         from rmnpy.helpers.octypes import ocstring_create_from_pystring
 
-        cdef OCStringRef expr_ocstr = <OCStringRef>ocstring_create_from_pystring(expression)
+        cdef OCStringRef expr_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(expression)
         cdef OCStringRef error_ocstr = <OCStringRef>0
         cdef double unit_multiplier = 1.0
         cdef SIUnitRef c_ref
@@ -148,7 +148,7 @@ cdef class Unit:
 
         from rmnpy.helpers.octypes import ocstring_create_from_pystring
 
-        cdef OCStringRef name_ocstr = <OCStringRef>ocstring_create_from_pystring(name)
+        cdef OCStringRef name_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(name)
         cdef SIUnitRef c_ref
 
         try:
@@ -673,7 +673,7 @@ cdef class Unit:
 
         from rmnpy.helpers.octypes import ocstring_create_from_pystring
 
-        cdef OCStringRef quantity_ocstr = <OCStringRef>ocstring_create_from_pystring(quantity_name)
+        cdef OCStringRef quantity_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(quantity_name)
         if quantity_ocstr == NULL:
             return []
 

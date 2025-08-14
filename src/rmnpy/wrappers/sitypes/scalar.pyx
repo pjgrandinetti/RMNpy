@@ -74,9 +74,16 @@ cdef class Scalar:
 
     @staticmethod
     cdef Scalar _from_c_ref(SIScalarRef scalar_ref):
-        """Create Scalar wrapper from C reference (internal use)."""
+        """Create Scalar wrapper from C reference (internal use).
+
+        Creates a copy of the scalar reference, so caller retains ownership
+        of their original reference and can safely release it.
+        """
         cdef Scalar result = Scalar.__new__(Scalar)
-        result._c_ref = scalar_ref
+        cdef SIScalarRef copied_ref = SIScalarCreateCopy(scalar_ref)
+        if copied_ref == NULL:
+            raise RMNError("Failed to create copy of SIScalar")
+        result._c_ref = copied_ref
         return result
 
     cdef SIScalarRef get_c_ref(self):
@@ -149,7 +156,7 @@ cdef class Scalar:
             raise TypeError("Expression must be a string")
 
         # Create base scalar from expression
-        cdef OCStringRef expr_ocstr = <OCStringRef>ocstring_create_from_pystring(expression)
+        cdef OCStringRef expr_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(expression)
         cdef OCStringRef error_ocstr = NULL
         cdef SIScalarRef base_scalar
         cdef SIScalarRef result
@@ -311,7 +318,7 @@ cdef class Scalar:
 
         if isinstance(new_unit, str):
             # Use string-based conversion that creates a new immutable scalar
-            unit_ocstr = <OCStringRef>ocstring_create_from_pystring(new_unit)
+            unit_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(new_unit)
 
             try:
                 result = SIScalarCreateByConvertingToUnitWithString(self._c_ref, unit_ocstr, &error_ocstr)
@@ -863,7 +870,7 @@ def siscalar_create_from_py_number(py_number, str unit_ocstring="1"):
 
     try:
         # Create unit string
-        unit_oc_string = <OCStringRef>ocstring_create_from_pystring(unit_ocstring)
+        unit_oc_string = <OCStringRef><uint64_t>ocstring_create_from_pystring(unit_ocstring)
         if unit_oc_string == NULL:
             raise RuntimeError(f"Failed to create unit string: {unit_ocstring}")
 
@@ -973,7 +980,7 @@ def siscalar_create_from_pynumber_expression(py_number, str expression="1"):
             full_expr = f"{py_number} * {expression}"
 
         # Create expression string
-        expr_string = <OCStringRef>ocstring_create_from_pystring(full_expr)
+        expr_string = <OCStringRef><uint64_t>ocstring_create_from_pystring(full_expr)
         if expr_string == NULL:
             raise RuntimeError(f"Failed to create expression string: {full_expr}")
 

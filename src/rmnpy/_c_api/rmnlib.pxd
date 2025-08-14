@@ -345,6 +345,17 @@ cdef extern from "RMNLibrary.h":
     bint DatasetSetApplicationMetaData(DatasetRef dataset, OCDictionaryRef metadata, OCStringRef *outError)
 
     # ====================================================================================
+    # TypeID Functions for OCType Identification
+    # ====================================================================================
+
+    # Dimension TypeIDs for convert_octype_to_python function
+    OCTypeID DimensionGetTypeID()
+    OCTypeID LabeledDimensionGetTypeID()
+    OCTypeID SIDimensionGetTypeID()
+    OCTypeID SILinearDimensionGetTypeID()
+    OCTypeID SIMonotonicDimensionGetTypeID()
+
+    # ====================================================================================
     # Utility Functions and Metadata Handling
     # ====================================================================================
 
