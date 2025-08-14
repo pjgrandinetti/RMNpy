@@ -1206,9 +1206,9 @@ cdef class SIMonotonicDimension(SIDimension):
             ...     description='Acquisition time points'
             ... )
         """
-        # Convert coordinates to OCArray (simplified for now)
+        # Convert coordinates to OCArray of SIScalar objects (C API expects SIScalarRef, not OCNumbers)
         cdef OCStringRef err_ocstr = NULL
-        cdef OCArrayRef coords_array = <OCArrayRef><uint64_t>ocarray_create_from_pylist(coordinates)
+        cdef OCMutableArrayRef coords_array = OCArrayCreateMutable(0, &kOCTypeArrayCallBacks)
         cdef OCStringRef label_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(label)
         cdef OCStringRef desc_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(description)
         cdef OCDictionaryRef application_ocdict = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(application)
@@ -1217,6 +1217,17 @@ cdef class SIMonotonicDimension(SIDimension):
         cdef SIScalarRef origin_offset_sisclr = NULL
         cdef SIScalarRef period_sisclr = NULL
         cdef SIDimensionRef reciprocal_ref = NULL
+        cdef SIScalarRef coord_scalar = NULL
+
+        # Convert each coordinate to an SIScalar object using the helper function
+        for coord_value in coordinates:
+            coord_scalar = convert_to_siscalar_ref(coord_value)
+            if coord_scalar == NULL:
+                OCRelease(<OCTypeRef>coords_array)
+                raise RMNError(f"Failed to create SIScalar for coordinate value {coord_value}")
+
+            OCArrayAppendValue(coords_array, <const void*>coord_scalar)
+            OCRelease(<OCTypeRef>coord_scalar)  # Release our reference, array retains it
 
         # Validate scaling parameter
         if scaling is not None:
@@ -1276,7 +1287,7 @@ cdef class SIMonotonicDimension(SIDimension):
                 origin_offset_sisclr,     # origin (origin_offset)
                 period_sisclr,            # period
                 scaling,                  # scaling
-                coords_array,             # coordinates (REQUIRED)
+                <OCArrayRef>coords_array, # coordinates (REQUIRED)
                 reciprocal_ref,           # reciprocal
                 &err_ocstr                # outError
             )
