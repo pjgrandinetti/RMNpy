@@ -228,9 +228,45 @@ def get_extensions() -> list[Extension]:
 
     # Common library directories and libraries
     library_dirs = ["lib"]
-    # Library order matters for static linking: dependents before dependencies
-    # RMN depends on OCTypes/SITypes, so list RMN first
-    libraries = ["RMN", "SITypes", "OCTypes"]
+
+    # Library configuration depends on platform
+    if platform.system() == "Windows":
+        # On Windows with MinGW, we need to force linking against DLL import libraries
+        # instead of static libraries to avoid undefined reference errors.
+        #
+        # The issue: MinGW linker prefers libXXX.a over libXXX.dll.a
+        # Solution: Temporarily hide static libraries during linking
+        import glob
+        import shutil
+
+        static_libs_to_hide = []
+        try:
+            # Find all static libraries in lib/ directory
+            static_libs = glob.glob("lib/lib*.a")
+            # Filter out the .dll.a import libraries
+            static_libs = [lib for lib in static_libs if not lib.endswith(".dll.a")]
+
+            print(f"Windows: Found static libraries to hide: {static_libs}")
+
+            # Temporarily rename static libraries so MinGW will use .dll.a import libraries
+            for static_lib in static_libs:
+                backup_name = static_lib + ".backup"
+                if os.path.exists(static_lib) and not os.path.exists(backup_name):
+                    shutil.move(static_lib, backup_name)
+                    static_libs_to_hide.append((static_lib, backup_name))
+                    print(f"Windows: Temporarily hiding {static_lib}")
+
+        except Exception as e:
+            print(f"Windows: Error managing static libraries: {e}")
+
+        # Store the list for restoration later (if needed)
+        globals()["_hidden_static_libs"] = static_libs_to_hide
+
+        libraries = ["RMN", "SITypes", "OCTypes"]
+    else:
+        # On Unix-like systems, library order matters for static linking
+        # RMN depends on OCTypes/SITypes, so list RMN first
+        libraries = ["RMN", "SITypes", "OCTypes"]
 
     # Add runtime library directory for shared libraries
     # This tells the dynamic linker where to find .dylib/.so files at runtime
@@ -258,6 +294,16 @@ def get_extensions() -> list[Extension]:
             "-Wno-sign-compare",
             "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
         ]
+
+        # On Windows with MinGW, force linking to DLL import libraries instead of static libraries
+        # The .dll.a files are the import libraries for the DLLs
+        # This avoids undefined references when linking against static libraries
+        extra_link_args.extend(
+            [
+                "-Wl,--enable-auto-import",  # Allow auto-import from DLLs
+                "-Wl,--disable-auto-image-base",  # Prevent address conflicts
+            ]
+        )
         # Add MSYS2/MinGW64 specific include directories for dependencies
         # These are needed for RMNLib which depends on BLAS/LAPACK headers
         mingw_prefix = os.environ.get("MSYSTEM_PREFIX", "/mingw64")
