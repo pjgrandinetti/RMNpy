@@ -252,6 +252,16 @@ def get_extensions() -> list[Extension]:
             "-Wno-sign-compare",
             "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
         ]
+        # Add MSYS2/MinGW64 specific include directories for dependencies
+        # These are needed for RMNLib which depends on BLAS/LAPACK headers
+        mingw_prefix = os.environ.get("MSYSTEM_PREFIX", "/mingw64")
+        include_dirs.extend(
+            [
+                f"{mingw_prefix}/include/openblas",  # For cblas.h, lapacke.h
+                f"{mingw_prefix}/include",  # General MinGW headers
+            ]
+        )
+
         # Add external dependencies required by RMNLib on Windows
         # These are needed because the static libraries don't include external deps
         # For MSYS2 MinGW64, use the actual library names from the installation
