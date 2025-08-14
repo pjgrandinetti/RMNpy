@@ -277,8 +277,20 @@ def get_extensions() -> list[Extension]:
 
         if len(dll_libs_found) == len(expected_libs):
             print("Windows: All DLL import libraries found, using explicit linking")
-            # Use library names without the lib prefix and .dll.a suffix
-            libraries = ["RMN", "SITypes", "OCTypes"]
+            # DON'T use library names - they will cause MinGW to find static .a files
+            # Instead, we'll use ONLY explicit paths in extra_link_args
+            main_libraries = []  # Empty - we'll use explicit paths only
+
+            # But we still need external dependencies
+            external_libraries = [
+                "curl",
+                "openblas",
+                "lapack",
+                "gcc_s",
+                "winpthread",
+                "quadmath",
+                "gomp",
+            ]
 
             # ALSO: Add explicit import library paths to force MinGW to use them
             # This is the most reliable way to ensure the correct libraries are used
@@ -314,6 +326,9 @@ def get_extensions() -> list[Extension]:
 
             # Store the list for restoration later (if needed)
             globals()["_hidden_static_libs"] = static_libs_to_hide
+
+            # Set final libraries list to just external dependencies
+            libraries = external_libraries
         else:
             print(
                 "Windows: ERROR - Not all DLL import libraries found, falling back to standard linking"
@@ -390,11 +405,17 @@ def get_extensions() -> list[Extension]:
         # Add external dependencies required by RMNLib on Windows
         # These are needed because the static libraries don't include external deps
         # For MSYS2 MinGW64, use the actual library names from the installation
-        libraries.extend(["curl", "openblas", "lapack"])
+        if "external_libraries" in locals():
+            # We're using explicit library paths, so combine external deps with main libraries
+            libraries = external_libraries
+        else:
+            # Standard approach - extend the existing libraries list
+            libraries.extend(["curl", "openblas", "lapack"])
 
         # Add MinGW runtime libraries with correct library names
         # Note: In MSYS2 MinGW64, these are the correct linker names
-        libraries.extend(["gcc_s", "winpthread", "quadmath", "gomp"])
+        if "external_libraries" not in locals():
+            libraries.extend(["gcc_s", "winpthread", "quadmath", "gomp"])
 
         # Try to find the correct Fortran library name
         mingw_lib_dir = os.environ.get("MINGW_LIB_DIR")
