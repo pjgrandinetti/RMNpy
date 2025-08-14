@@ -48,7 +48,7 @@ cdef extern from "RMNLibrary.h":
     bint DimensionSetApplicationMetaData(DimensionRef dim, OCDictionaryRef dict, OCStringRef *outError)
     OCIndex DimensionGetCount(DimensionRef dim)
     OCDictionaryRef DimensionCopyAsDictionary(DimensionRef dim)
-    DimensionIsQuantitative(DimensionRef dim)
+    bint DimensionIsQuantitative(DimensionRef dim)
     OCStringRef DimensionCreateAxisLabel(DimensionRef dim, OCIndex index)
 
     # LabeledDimension - Discrete labeled coordinate systems

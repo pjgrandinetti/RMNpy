@@ -18,8 +18,6 @@ import numpy as np
 
 # Import Cython types
 
-from libc.stdint cimport uintptr_t
-
 # Import all C API declarations
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.rmnlib cimport *
@@ -43,7 +41,6 @@ from rmnpy.helpers.octypes import (
     pylist_to_ocarray,
     pynumber_to_ocnumber,
     pynumber_to_siscalar_expression,
-    pyscalar_to_siscalar,
     pystring_from_ocstring,
 )
 
@@ -60,97 +57,95 @@ cdef class BaseDimension:
     All properties are retrieved directly from the C API (single source of truth).
     No duplicate Python storage to avoid synchronization issues.
     """
-    cdef DimensionRef _c_dimension
+    cdef DimensionRef _c_ref
 
     def __cinit__(self):
         """Initialize C-level attributes."""
-        self._c_dimension = NULL
+        self._c_ref = NULL
 
     def __dealloc__(self):
         """Clean up C resources."""
-        if self._c_dimension != NULL:
-            OCRelease(self._c_dimension)
+        if self._c_ref != NULL:
+            OCRelease(self._c_ref)
 
     @property
     def type(self):
         """Get the type of the dimension."""
-        if self._c_dimension != NULL:
-            type_ref = DimensionGetType(self._c_dimension)
-            if type_ref != NULL:
-                return pystring_from_ocstring(<uint64_t>type_ref)
-        # Fallback for subclasses that override this property
-        raise NotImplementedError("Subclasses must implement type property")
+        type_ocstr = DimensionGetType(self._c_ref)
+        if type_ocstr != NULL:
+            return pystring_from_ocstring(<uint64_t>type_ocstr)
+        # If C API returns NULL, the dimension object is invalid/corrupted
+        raise RMNError("Invalid dimension: C API returned NULL type (dimension may be corrupted or uninitialized)")
 
     @property
     def description(self):
         """Get the description of the dimension."""
-        if self._c_dimension != NULL:
-            desc_ref = DimensionCopyDescription(self._c_dimension)
-            if desc_ref != NULL:
-                return pystring_from_ocstring(<uint64_t>desc_ref)
-        return ""
+        desc_ocstr = DimensionCopyDescription(self._c_ref)
+        if desc_ocstr == NULL:
+            raise RMNError("C API returned NULL description (dimension may be corrupted or uninitialized)")
+        try:
+            return pystring_from_ocstring(<uint64_t>desc_ocstr)
+        finally:
+            OCRelease(<OCTypeRef>desc_ocstr)
 
     @description.setter
     def description(self, value):
         """Set the description of the dimension."""
-        cdef OCStringRef error = NULL
-        cdef uint64_t desc_ptr
+        cdef OCStringRef err_ocstr = NULL
+        cdef OCStringRef desc_ptr
 
         if not isinstance(value, str):
             raise TypeError("Description must be a string")
 
-        # Update C dimension object only - single source of truth
-        if self._c_dimension != NULL:
-            desc_ptr = ocstring_create_with_pystring(value)
-            try:
-                if not DimensionSetDescription(self._c_dimension, <OCStringRef>desc_ptr, &error):
-                    if error != NULL:
-                        error_msg = pystring_from_ocstring(<uint64_t>error)
-                        OCRelease(<OCTypeRef>error)
-                        raise RMNError(f"Failed to set description: {error_msg}")
-                    else:
-                        raise RMNError("Failed to set description")
-            finally:
-                OCRelease(<OCTypeRef>desc_ptr)
+        desc_ptr = <OCStringRef><uint64_t>ocstring_create_with_pystring(value)
+        try:
+            if not DimensionSetDescription(self._c_ref, desc_ptr, &err_ocstr):
+                if err_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
+                    raise RMNError(f"Failed to set description: {error_msg}")
+                else:
+                    raise RMNError("Failed to set description")
+        finally:
+            OCRelease(<OCTypeRef>desc_ptr)
+            if err_ocstr != NULL:
+                OCRelease(<OCTypeRef>err_ocstr)
 
     @property
     def label(self):
         """Get the label of the dimension."""
-        if self._c_dimension != NULL:
-            label_ref = DimensionCopyLabel(self._c_dimension)
-            if label_ref != NULL:
-                return pystring_from_ocstring(<uint64_t>label_ref)
-        return ""
+        label_ocstr = DimensionCopyLabel(self._c_ref)
+        if label_ocstr == NULL:
+            raise RMNError("C API returned NULL label (dimension may be corrupted or uninitialized)")
+        try:
+            return pystring_from_ocstring(<uint64_t>label_ocstr)
+        finally:
+            OCRelease(<OCTypeRef>label_ocstr)
 
     @label.setter
     def label(self, value):
         """Set the label of the dimension."""
-        cdef OCStringRef error = NULL
-        cdef uint64_t label_ptr
+        cdef OCStringRef err_ocstr = NULL
+        cdef OCStringRef label_ocstr
 
         if not isinstance(value, str):
             raise TypeError("Label must be a string")
 
-        # Update C dimension object only - single source of truth
-        if self._c_dimension != NULL:
-            label_ptr = ocstring_create_with_pystring(value)
-            try:
-                if not DimensionSetLabel(self._c_dimension, <OCStringRef>label_ptr, &error):
-                    if error != NULL:
-                        error_msg = pystring_from_ocstring(<uint64_t>error)
-                        OCRelease(<OCTypeRef>error)
-                        raise RMNError(f"Failed to set label: {error_msg}")
-                    else:
-                        raise RMNError("Failed to set label")
-            finally:
-                OCRelease(<OCTypeRef>label_ptr)
+        label_ocstr = <OCStringRef><uint64_t>ocstring_create_with_pystring(value)
+        try:
+            if not DimensionSetLabel(self._c_ref, label_ocstr, &err_ocstr):
+                if err_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
+                    OCRelease(<OCTypeRef>err_ocstr)
+                    raise RMNError(f"Failed to set label: {error_msg}")
+                else:
+                    raise RMNError("Failed to set label")
+        finally:
+            OCRelease(<OCTypeRef>label_ocstr)
 
     @property
     def count(self):
         """Get the count of the dimension."""
-        if self._c_dimension != NULL:
-            return DimensionGetCount(self._c_dimension)
-        return 0
+        return DimensionGetCount(self._c_ref)
 
     @property
     def size(self):
@@ -162,97 +157,76 @@ cdef class BaseDimension:
         """Get application metadata."""
         cdef OCDictionaryRef application_ref
 
-        if self._c_dimension != NULL:
-            # Get metadata dictionary from C API - single source of truth
-            application_ref = DimensionGetApplicationMetaData(self._c_dimension)
-            if application_ref != NULL:
-                return ocdict_to_pydict(<uint64_t>application_ref)
-        return {}
+        # Get metadata dictionary from C API - single source of truth
+        application_ref = DimensionGetApplicationMetaData(self._c_ref)
+        if application_ref != NULL:
+            return ocdict_to_pydict(<uint64_t>application_ref)
+        raise RMNError("C API returned NULL application metadata (dimension may be corrupted or uninitialized)")
 
     @application.setter
     def application(self, value):
         """Set application metadata."""
-        cdef OCStringRef error = NULL
-        cdef uint64_t dict_ptr
+        cdef OCStringRef err_ocstr = NULL
+        cdef OCDictionaryRef dict_ptr
 
         if value is not None and not isinstance(value, dict):
             raise TypeError("Application metadata must be a dictionary or None")
 
-        # Update C dimension object only - single source of truth
-        if self._c_dimension != NULL:
-            if value is None or len(value) == 0:
-                # Set empty metadata (NULL)
-                if not DimensionSetApplicationMetaData(self._c_dimension, NULL, &error):
-                    if error != NULL:
-                        error_msg = pystring_from_ocstring(<uint64_t>error)
-                        OCRelease(<OCTypeRef>error)
-                        raise RMNError(f"Failed to clear metadata: {error_msg}")
+        if value is None or len(value) == 0:
+            if not DimensionSetApplicationMetaData(self._c_ref, NULL, &err_ocstr):
+                if err_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
+                    OCRelease(<OCTypeRef>err_ocstr)
+                    raise RMNError(f"Failed to clear metadata: {error_msg}")
+                else:
+                    raise RMNError("Failed to clear metadata")
+        else:
+            # Convert Python dict to OCDictionary and set
+            dict_ptr = <OCDictionaryRef><uint64_t>pydict_to_ocdict(value)
+            try:
+                if not DimensionSetApplicationMetaData(self._c_ref, dict_ptr, &err_ocstr):
+                    if err_ocstr != NULL:
+                        error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
+                        OCRelease(<OCTypeRef>err_ocstr)
+                        raise RMNError(f"Failed to set metadata: {error_msg}")
                     else:
-                        raise RMNError("Failed to clear metadata")
-            else:
-                # Convert Python dict to OCDictionary and set
-                dict_ptr = pydict_to_ocdict(value)
-                try:
-                    if not DimensionSetApplicationMetaData(self._c_dimension, <OCDictionaryRef>dict_ptr, &error):
-                        if error != NULL:
-                            error_msg = pystring_from_ocstring(<uint64_t>error)
-                            OCRelease(<OCTypeRef>error)
-                            raise RMNError(f"Failed to set metadata: {error_msg}")
-                        else:
-                            raise RMNError("Failed to set metadata")
-                finally:
-                    OCRelease(<OCTypeRef>dict_ptr)
+                        raise RMNError("Failed to set metadata")
+            finally:
+                OCRelease(<OCTypeRef>dict_ptr)
 
     def is_quantitative(self):
         """Check if dimension is quantitative (not labeled)."""
-        return self.type != "labeled"
-
-    @property
-    def axis_label(self):
-        """Get formatted axis label for plotting."""
-        if self.label:
-            return self.label
-        elif hasattr(self, 'quantity_name') and self.quantity_name != "dimensionless":
-            return self.quantity_name
-        else:
-            return f"{self.type} dimension"
+        return DimensionIsQuantitative(self._c_ref)
 
     def axis_label(self, index):
         """Get formatted axis label using C API."""
-        cdef OCStringRef c_label
-
-        if self._c_dimension is NULL:
-            raise RuntimeError("Cannot get axis label: C dimension is NULL")
+        cdef OCStringRef axis_label_ocstr
 
         # Call the C API function
-        c_label = DimensionCreateAxisLabel(self._c_dimension, <OCIndex>index)
-        if c_label is NULL:
-            raise RuntimeError("Failed to create axis label")
+        axis_label_ocstr = DimensionCreateAxisLabel(self._c_ref, <OCIndex>index)
+        if axis_label_ocstr is NULL:
+            raise RMNError("Failed to create axis label")
 
         try:
             # Convert OCStringRef to Python string using helper
-            return pystring_from_ocstring(<uint64_t>c_label)
+            return pystring_from_ocstring(<uint64_t>axis_label_ocstr)
         finally:
             # Release the C string
-            OCRelease(c_label)
+            OCRelease(<OCTypeRef>axis_label_ocstr)
 
     def to_dict(self):
         """Convert to dictionary."""
         # Use C API as single source of truth
-        if self._c_dimension != NULL:
-            dict_ref = DimensionCopyAsDictionary(self._c_dimension)
-            if dict_ref != NULL:
-                try:
-                    # Convert C dictionary to Python dict using helper
-                    return ocdict_to_pydict(<uint64_t>dict_ref)
-                finally:
-                    OCRelease(dict_ref)
+        dict_ref = DimensionCopyAsDictionary(self._c_ref)
+        if dict_ref != NULL:
+            try:
+                # Convert C dictionary to Python dict using helper
+                return ocdict_to_pydict(<uint64_t>dict_ref)
+            finally:
+                OCRelease(<OCTypeRef>dict_ref)
 
-        # Minimal fallback for dimensions without C objects
-        return {
-            'type': self.type,
-            'count': self.count,
-        }
+        # C API should never return NULL
+        raise RMNError("C API returned NULL dictionary representation (dimension may be corrupted or uninitialized)")
 
     def dict(self):
         """Alias for to_dict() method (csdmpy compatibility)."""
@@ -271,16 +245,8 @@ cdef class BaseDimension:
 
         cdef BaseDimension other_dim = <BaseDimension>other
 
-        # Use OCTypes C API for robust comparison
-        if self._c_dimension != NULL and other_dim._c_dimension != NULL:
-            return OCTypeEqual(<OCTypeRef>self._c_dimension, <OCTypeRef>other_dim._c_dimension)
-
-        # Both NULL - equal
-        if self._c_dimension == NULL and other_dim._c_dimension == NULL:
-            return True
-
-        # One NULL, one not - not equal
-        return False
+        # Trust OCTypes C API to handle all cases including NULL
+        return OCTypeEqual(<OCTypeRef>self._c_ref, <OCTypeRef>other_dim._c_ref)
 
     def __repr__(self):
         """String representation."""
@@ -302,7 +268,6 @@ cdef class LabeledDimension(BaseDimension):
         >>> dim.count
         3
     """
-    cdef LabeledDimensionRef _labeled_dimension
 
     def __init__(self, labels, label=None, description=None, application=None, **kwargs):
         """
@@ -344,55 +309,54 @@ cdef class LabeledDimension(BaseDimension):
             ...     application={'encoding': 'sRGB'}
             ... )
         """
-        cdef OCArrayRef labels_array = <OCArrayRef><uint64_t>pylist_to_ocarray(labels)
-        cdef OCStringRef label_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(label)
-        cdef OCStringRef desc_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(description)
+        cdef OCArrayRef labels_ocarray = <OCArrayRef><uint64_t>pylist_to_ocarray(labels)
+        cdef OCStringRef label_ocstr = <OCStringRef><uint64_t>ocstring_create_with_pystring(label)
+        cdef OCStringRef desc_ocstr = <OCStringRef><uint64_t>ocstring_create_with_pystring(description)
         cdef OCDictionaryRef application_ref = <OCDictionaryRef><uint64_t>pydict_to_ocdict(application)
-        cdef OCStringRef error = NULL
+        cdef OCStringRef err_ocstr = NULL
 
         try:
             # Create the labeled dimension (C API handles validation)
-            self._labeled_dimension = LabeledDimensionCreate(
-                label_ref, desc_ref, application_ref, labels_array, &error)
-            if self._labeled_dimension == NULL:
-                if error != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error)
+            self._c_ref = <DimensionRef>LabeledDimensionCreate(
+                label_ocstr, desc_ocstr, application_ref, labels_ocarray, &err_ocstr)
+            if self._c_ref == NULL:
+                if err_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
                     raise RMNError(f"Failed to create labeled dimension: {error_msg}")
                 else:
                     raise RMNError("Failed to create labeled dimension")
-            # Keep base reference
-            self._c_dimension = <DimensionRef>self._labeled_dimension
         finally:
-            OCRelease(<OCTypeRef>label_ref)
-            OCRelease(<OCTypeRef>desc_ref)
+            OCRelease(<OCTypeRef>label_ocstr)
+            OCRelease(<OCTypeRef>desc_ocstr)
             if application_ref != NULL:
                 OCRelease(<OCTypeRef>application_ref)
-            OCRelease(<OCTypeRef>labels_array)
-            if error != NULL:
-                OCRelease(<OCTypeRef>error)
+            OCRelease(<OCTypeRef>labels_ocarray)
+            if err_ocstr != NULL:
+                OCRelease(<OCTypeRef>err_ocstr)
 
     @property
     def type(self):
         """Get the type of the dimension."""
-        if self._c_dimension != NULL:
-            type_ref = DimensionGetType(self._c_dimension)
-            if type_ref != NULL:
-                return pystring_from_ocstring(<uint64_t>type_ref)
-        return 'labeled'  # Fallback
+        type_ref = DimensionGetType(self._c_ref)
+        if type_ref != NULL:
+            return pystring_from_ocstring(<uint64_t>type_ref)
+        raise RMNError("Invalid dimension: C API returned NULL type (dimension may be corrupted or uninitialized)")
 
     @property
     def coordinates(self) -> np.ndarray:
         """Get coordinates (labels) for this dimension."""
-        if self._c_dimension != NULL:
-            labels_ref = LabeledDimensionCopyCoordinateLabels(self._labeled_dimension)
-            if labels_ref != NULL:
+        labels_ref = LabeledDimensionCopyCoordinateLabels(<LabeledDimensionRef>self._c_ref)
+        if labels_ref != NULL:
+            try:
                 # Use helper function to convert OCArray to Python list
                 labels_list = ocarray_to_pylist(<uint64_t>labels_ref)
                 if labels_list:
                     return np.array(labels_list)
+            finally:
+                OCRelease(<OCTypeRef>labels_ref)
 
-        # Return empty array if no C object or no labels
-        return np.array([])
+        # C API should never return NULL
+        raise RMNError("C API returned NULL coordinate labels (dimension may be corrupted or uninitialized)")
 
     @property
     def coords(self) -> np.ndarray:
@@ -417,48 +381,50 @@ cdef class LabeledDimension(BaseDimension):
     @coordinate_labels.setter
     def coordinate_labels(self, value):
         """Set coordinate labels."""
-        cdef OCStringRef error = NULL
-        cdef OCArrayRef labels_array = <OCArrayRef><uint64_t>pylist_to_ocarray(value)
+        cdef OCStringRef err_ocstr = NULL
+        cdef OCArrayRef labels_ocarray = <OCArrayRef><uint64_t>pylist_to_ocarray(value)
+
+        if self._c_ref == NULL:
+            raise RMNError("Cannot set coordinate labels: dimension not properly initialized")
 
         # Update C dimension object - single source of truth
-        if self._c_dimension != NULL:
-            try:
-                if not LabeledDimensionSetCoordinateLabels(self._labeled_dimension, labels_array, &error):
-                    if error != NULL:
-                        error_msg = pystring_from_ocstring(<uint64_t>error)
-                        OCRelease(<OCTypeRef>error)
-                        raise RMNError(f"Failed to set coordinate labels: {error_msg}")
-                    else:
-                        raise RMNError("Failed to set coordinate labels")
-            finally:
-                OCRelease(<OCTypeRef>labels_array)
+        try:
+            if not LabeledDimensionSetCoordinateLabels(<LabeledDimensionRef>self._c_ref, labels_ocarray, &err_ocstr):
+                if err_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
+                    OCRelease(<OCTypeRef>err_ocstr)
+                    raise RMNError(f"Failed to set coordinate labels: {error_msg}")
+                else:
+                    raise RMNError("Failed to set coordinate labels")
+        finally:
+            OCRelease(<OCTypeRef>labels_ocarray)
 
     def set_coordinate_label_at_index(self, index, label):
         """Set coordinate label at specific index."""
-        cdef OCStringRef error = NULL
-        cdef OCStringRef label_ref = NULL
+        cdef OCStringRef err_ocstr = NULL
+        cdef OCStringRef label_ocstr = NULL
+
+        if self._c_ref == NULL:
+            raise RMNError("Cannot set coordinate label: dimension not properly initialized")
 
         # Validate index first using C API count
         if not (0 <= index < self.count):
             raise IndexError(f"Label index {index} out of range")
 
         # Update C dimension object - single source of truth
-        if self._c_dimension != NULL:
-            try:
-                label_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(str(label))
-                if not LabeledDimensionSetCoordinateLabelAtIndex(self._labeled_dimension, index, label_ref):
-                    raise RMNError(f"Failed to set coordinate label at index {index}")
-            finally:
-                if label_ref != NULL:
-                    OCRelease(<OCTypeRef>label_ref)
+        try:
+            label_ocstr = <OCStringRef><uint64_t>ocstring_create_with_pystring(str(label))
+            if not LabeledDimensionSetCoordinateLabelAtIndex(<LabeledDimensionRef>self._c_ref, index, label_ocstr):
+                raise RMNError(f"Failed to set coordinate label at index {index}")
+        finally:
+            if label_ocstr != NULL:
+                OCRelease(<OCTypeRef>label_ocstr)
 
     @property
     def count(self):
         """Get the count of the dimension."""
         # Use C API as single source of truth
-        if self._c_dimension != NULL:
-            return DimensionGetCount(self._c_dimension)
-        return 0
+        return DimensionGetCount(self._c_ref)
 
     def copy(self):
         """Create a copy of the dimension."""
@@ -523,15 +489,15 @@ cdef class SIDimension(BaseDimension):
             This class provides common SI dimension functionality and default parameter handling.
         """
         # Create C dimension using the C API
-        cdef OCStringRef label_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(label)
-        cdef OCStringRef desc_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(description)
+        cdef OCStringRef label_ocstr = <OCStringRef><uint64_t>ocstring_create_with_pystring(label)
+        cdef OCStringRef desc_ocstr = <OCStringRef><uint64_t>ocstring_create_with_pystring(description)
         # Convert application metadata (None → NULL)
         cdef OCDictionaryRef application_ref = <OCDictionaryRef><uint64_t>pydict_to_ocdict(application)
         cdef OCStringRef quantity_name_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(quantity_name)
         cdef SIScalarRef offset_ref = Scalar(offset).get_c_ref() if offset is not None else NULL
         cdef SIScalarRef origin_ref = Scalar(origin).get_c_ref() if origin is not None else NULL
         cdef SIScalarRef period_ref = Scalar(period).get_c_ref() if period is not None else NULL
-        cdef OCStringRef error = NULL
+        cdef OCStringRef err_ocstr = NULL
         cdef object offset_scalar = None
         cdef object origin_scalar = None
         cdef object period_scalar = None
@@ -539,81 +505,79 @@ cdef class SIDimension(BaseDimension):
         try:
             # Create the SI dimension using the C API with correct signature
             self._si_dimension = SIDimensionCreate(
-                label_ref, desc_ref, application_ref, quantity_name_ref,
-                offset_ref, origin_ref, period_ref, scaling, &error)
+                label_ocstr, desc_ocstr, application_ref, quantity_name_ref,
+                offset_ref, origin_ref, period_ref, scaling, &err_ocstr)
 
             if self._si_dimension == NULL:
-                if error != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error)
+                if err_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
                     raise RMNError(f"Failed to create SI dimension: {error_msg}")
                 else:
                     raise RMNError("Failed to create SI dimension")
 
             # Cast to base dimension reference
-            self._c_dimension = <DimensionRef>self._si_dimension
+            self._c_ref = <DimensionRef>self._si_dimension
 
         finally:
-            if label_ref != NULL:
-                OCRelease(<OCTypeRef>label_ref)
-            if desc_ref != NULL:
-                OCRelease(<OCTypeRef>desc_ref)
+            if label_ocstr != NULL:
+                OCRelease(<OCTypeRef>label_ocstr)
+            if desc_ocstr != NULL:
+                OCRelease(<OCTypeRef>desc_ocstr)
             if application_ref != NULL:
                 OCRelease(<OCTypeRef>application_ref)
             if quantity_name_ref != NULL:
                 OCRelease(<OCTypeRef>quantity_name_ref)
-            if error != NULL:
-                OCRelease(<OCTypeRef>error)
+            if err_ocstr != NULL:
+                OCRelease(<OCTypeRef>err_ocstr)
 
     @property
     def type(self):
         """Get the type of the dimension."""
-        if self._c_dimension != NULL:
-            type_ref = DimensionGetType(self._c_dimension)
-            if type_ref != NULL:
-                return pystring_from_ocstring(<uint64_t>type_ref)
-        return 'si'  # Fallback
+        type_ref = DimensionGetType(self._c_ref)
+        if type_ref != NULL:
+            return pystring_from_ocstring(<uint64_t>type_ref)
+        raise RMNError("Invalid dimension: C API returned NULL type (dimension may be corrupted or uninitialized)")
 
     def copy(self):
         """Create a copy of the dimension."""
-        if self._c_dimension == NULL:
+        if self._c_ref == NULL:
             raise RMNError("Cannot copy null dimension")
 
         # Use OCTypes deep copy functionality
-        cdef void *copied_dimension = OCTypeDeepCopy(self._c_dimension)
+        cdef void *copied_dimension = OCTypeDeepCopy(self._c_ref)
         if copied_dimension == NULL:
             raise RMNError("Failed to create dimension copy")
 
         # Create a new SIDimension instance wrapping the copied C object
         cdef SIDimension result = SIDimension.__new__(SIDimension)
-        result._c_dimension = <SIDimensionRef>copied_dimension
+        result._c_ref = <SIDimensionRef>copied_dimension
         return result
 
     @property
     def coordinates_offset(self):
         """Get coordinates offset."""
-        if self._c_dimension != NULL and self._si_dimension != NULL:
-            offset_ref = SIDimensionCopyCoordinatesOffset(self._si_dimension)
-            if offset_ref != NULL:
-                # Return Scalar object for CSDMPY compatibility
-                return Scalar._from_ref(offset_ref)
-        return None
+        offset_ref = SIDimensionCopyCoordinatesOffset(self._si_dimension)
+        if offset_ref != NULL:
+            # Return Scalar object for CSDMPY compatibility
+            return Scalar._from_c_ref(offset_ref)
+        raise RMNError("C API returned NULL coordinates offset (dimension may be corrupted or uninitialized)")
 
     @coordinates_offset.setter
     def coordinates_offset(self, value):
         """Set coordinates offset."""
-        cdef OCStringRef error = NULL
+        cdef OCStringRef err_ocstr = NULL
 
         # Ensure we have valid dimension pointers
-        if self._c_dimension == NULL or self._si_dimension == NULL:
+        if self._c_ref == NULL or self._si_dimension == NULL:
             raise RMNError("Cannot set coordinates offset: dimension not properly initialized")
 
         # Convert value to SIScalarRef and update C dimension object
         # Let Scalar constructor handle dimensionless units automatically
         cdef Scalar scalar_obj = Scalar(str(value))
-        if not SIDimensionSetCoordinatesOffset(self._si_dimension, scalar_obj.get_c_ref(), &error):
-            if error != NULL:
-                error_msg = pystring_from_ocstring(<uint64_t>error)
-                OCRelease(<OCTypeRef>error)
+        if not SIDimensionSetCoordinatesOffset(self._si_dimension, scalar_obj.get_c_ref(), &err_ocstr):
+            if err_ocstr != NULL:
+                error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
+                OCRelease(<OCTypeRef>err_ocstr)
                 raise RMNError(f"Failed to set coordinates offset: {error_msg}")
             else:
                 raise RMNError("Failed to set coordinates offset")
@@ -621,29 +585,28 @@ cdef class SIDimension(BaseDimension):
     @property
     def origin_offset(self):
         """Get origin offset as Scalar object."""
-        if self._c_dimension != NULL and self._si_dimension != NULL:
-            origin_ref = SIDimensionCopyOriginOffset(self._si_dimension)
-            if origin_ref != NULL:
-                # Return Scalar object for API consistency
-                return Scalar._from_ref(origin_ref)
-        # Return zero scalar as default
-        return Scalar("0.0")
+        origin_ref = SIDimensionCopyOriginOffset(self._si_dimension)
+        if origin_ref != NULL:
+            # Return Scalar object for API consistency
+            return Scalar._from_c_ref(origin_ref)
+        # C API should never return NULL
+        raise RMNError("C API returned NULL origin offset (dimension may be corrupted or uninitialized)")
 
     @origin_offset.setter
     def origin_offset(self, value):
         """Set origin offset."""
-        cdef OCStringRef error = NULL
+        cdef OCStringRef err_ocstr = NULL
 
         # Ensure we have valid dimension pointers
-        if self._c_dimension == NULL or self._si_dimension == NULL:
+        if self._c_ref == NULL or self._si_dimension == NULL:
             raise RMNError("Cannot set origin offset: dimension not properly initialized")
 
         # Convert value to SIScalarRef - use simple approach
         cdef Scalar scalar_obj = Scalar(str(value))
-        if not SIDimensionSetOriginOffset(self._si_dimension, scalar_obj.get_c_ref(), &error):
-            if error != NULL:
-                error_msg = pystring_from_ocstring(<uint64_t>error)
-                OCRelease(<OCTypeRef>error)
+        if not SIDimensionSetOriginOffset(self._si_dimension, scalar_obj.get_c_ref(), &err_ocstr):
+            if err_ocstr != NULL:
+                error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
+                OCRelease(<OCTypeRef>err_ocstr)
                 raise RMNError(f"Failed to set origin offset: {error_msg}")
             else:
                 raise RMNError("Failed to set origin offset")
@@ -651,35 +614,33 @@ cdef class SIDimension(BaseDimension):
     @property
     def period(self):
         """Get the period."""
-        if self._c_dimension != NULL and self._si_dimension != NULL:
-            period_ref = SIDimensionCopyPeriod(self._si_dimension)
-            if period_ref != NULL:
-                try:
-                    # Extract value directly without creating Scalar wrapper to avoid memory issues
-                    value = SIScalarDoubleValue(period_ref)
-                    # Check for nan and infinity
-                    if value != value:  # nan check
-                        return float("inf")  # treat nan as infinite
-                    elif value == float("inf") or value == float("-inf"):
-                        return float("inf")  # treat inf as infinite
-                    else:
-                        return value
-                finally:
-                    # Clean up the copied scalar
-                    OCRelease(period_ref)
-            else:
-                # NULL period means infinity in SITypes
-                return float("inf")
-        return float("inf")  # Default to infinity
+        period_ref = SIDimensionCopyPeriod(self._si_dimension)
+        if period_ref != NULL:
+            try:
+                # Extract value directly without creating Scalar wrapper to avoid memory issues
+                value = SIScalarDoubleValue(period_ref)
+                # Check for nan and infinity
+                if value != value:  # nan check
+                    return float("inf")  # treat nan as infinite
+                elif value == float("inf") or value == float("-inf"):
+                    return float("inf")  # treat inf as infinite
+                else:
+                    return value
+            finally:
+                # Clean up the copied scalar
+                OCRelease(<OCTypeRef>period_ref)
+        else:
+            # C API should never return NULL
+            raise RMNError("C API returned NULL period (dimension may be corrupted or uninitialized)")
 
     @period.setter
     def period(self, value):
         """Set the period."""
-        cdef OCStringRef error = NULL
+        cdef OCStringRef err_ocstr = NULL
         cdef SIScalarRef scalar_ref = NULL
 
         # Ensure we have valid dimension pointers
-        if self._c_dimension == NULL or self._si_dimension == NULL:
+        if self._c_ref == NULL or self._si_dimension == NULL:
             raise RMNError("Cannot set period: dimension not properly initialized")
 
         # Handle special string values for infinity
@@ -701,12 +662,12 @@ cdef class SIDimension(BaseDimension):
                 # Retain the scalar reference before passing to API
                 OCRetain(<OCTypeRef>scalar_ref)
 
-                if not SIDimensionSetPeriod(self._si_dimension, scalar_ref, &error):
+                if not SIDimensionSetPeriod(self._si_dimension, scalar_ref, &err_ocstr):
                     # Release our retained reference on failure
                     OCRelease(<OCTypeRef>scalar_ref)
-                    if error != NULL:
-                        error_msg = pystring_from_ocstring(<uint64_t>error)
-                        OCRelease(<OCTypeRef>error)
+                    if err_ocstr != NULL:
+                        error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
+                        OCRelease(<OCTypeRef>err_ocstr)
                         raise RMNError(f"Failed to set period: {error_msg}")
                     else:
                         raise RMNError("Failed to set period")
@@ -724,72 +685,51 @@ cdef class SIDimension(BaseDimension):
     def absolute_coordinates(self) -> np.ndarray:
         """Get absolute coordinates along the dimension."""
         # Dispatch to appropriate C API function based on dimension type
-        if self._c_dimension != NULL:
-            dim_type = self.type
-            coords_ref = NULL
+        dim_type = self.type
+        coords_ref = NULL
 
-            if dim_type == "linear":
-                coords_ref = SILinearDimensionCreateAbsoluteCoordinates(<SILinearDimensionRef>self._si_dimension)
-            elif dim_type == "monotonic":
-                coords_ref = SIMonotonicDimensionCreateAbsoluteCoordinates(<SIMonotonicDimensionRef>self._si_dimension)
+        if dim_type == "linear":
+            coords_ref = SILinearDimensionCreateAbsoluteCoordinates(<SILinearDimensionRef>self._si_dimension)
+        elif dim_type == "monotonic":
+            coords_ref = SIMonotonicDimensionCreateAbsoluteCoordinates(<SIMonotonicDimensionRef>self._si_dimension)
 
-            if coords_ref != NULL:
-                try:
-                    # Convert OCArray to Python list using helper function
-                    coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
-                    if coords_list:
-                        return np.array(coords_list, dtype=np.float64)
-                finally:
-                    # Release the coordinate array returned by the C API
-                    OCRelease(<OCTypeRef>coords_ref)
+        if coords_ref != NULL:
+            try:
+                # Convert OCArray to Python list using helper function
+                coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
+                if coords_list:
+                    return np.array(coords_list, dtype=np.float64)
+            finally:
+                # Release the coordinate array returned by the C API
+                OCRelease(<OCTypeRef>coords_ref)
 
-        # Fallback to manual calculation for unknown types or errors
-        coords = self.coordinates
-        origin_offset_val = self.origin_offset
-
-        if origin_offset_val is None or origin_offset_val == 0.0:
-            return coords
-
-        # Convert Scalar coordinates to numeric values and add origin offset
-        if len(coords) > 0 and isinstance(coords[0], Scalar):
-            numeric_coords = np.array([float(coord.value) for coord in coords])
-        else:
-            numeric_coords = coords
-
-        # Convert origin offset to numeric value
-        if isinstance(origin_offset_val, Scalar):
-            origin_offset_numeric = float(origin_offset_val.value)
-        else:
-            origin_offset_numeric = float(origin_offset_val)
-
-        return numeric_coords + origin_offset_numeric
+        # C API should never return NULL
+        raise RMNError("C API returned NULL absolute coordinates (dimension may be corrupted or uninitialized)")
 
     @property
     def coordinates(self) -> np.ndarray:
         """Get coordinates along the dimension."""
         # Dispatch to appropriate C API function based on dimension type
-        if self._c_dimension != NULL:
-            dim_type = self.type
-            coords_ref = NULL
+        dim_type = self.type
+        coords_ref = NULL
 
-            if dim_type == "linear":
-                coords_ref = SILinearDimensionCreateCoordinates(<SILinearDimensionRef>self._si_dimension)
-            elif dim_type == "monotonic":
-                coords_ref = SIMonotonicDimensionCopyCoordinates(<SIMonotonicDimensionRef>self._si_dimension)
+        if dim_type == "linear":
+            coords_ref = SILinearDimensionCreateCoordinates(<SILinearDimensionRef>self._si_dimension)
+        elif dim_type == "monotonic":
+            coords_ref = SIMonotonicDimensionCopyCoordinates(<SIMonotonicDimensionRef>self._si_dimension)
 
-            if coords_ref != NULL:
-                try:
-                    # Convert OCArray to Python list using helper function
-                    coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
-                    if coords_list:
-                        return np.array(coords_list, dtype=np.float64)
-                finally:
-                    # Release the coordinate array returned by the C API (only if it's a created array, not a getter)
-                    if dim_type == "linear":
-                        OCRelease(<OCTypeRef>coords_ref)
-                    # For monotonic dimensions, GetCoordinates returns a reference that shouldn't be released
+        if coords_ref != NULL:
+            try:
+                # Convert OCArray to Python list using helper function
+                coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
+                if coords_list:
+                    return np.array(coords_list, dtype=np.float64)
+            finally:
+                # Release the coordinate array - both Create and Copy methods need release
+                OCRelease(<OCTypeRef>coords_ref)
 
-        return np.array([])
+        # C API should never return NULL
+        raise RMNError("C API returned NULL coordinates (dimension may be corrupted or uninitialized)")
 
     @property
     def coords(self) -> np.ndarray:
@@ -799,49 +739,52 @@ cdef class SIDimension(BaseDimension):
     @property
     def quantity_name(self):
         """Get quantity name for physical quantities."""
-        if self._c_dimension != NULL and self._si_dimension != NULL:
-            quantity_ref = SIDimensionCopyQuantityName(self._si_dimension)
-            if quantity_ref != NULL:
+        quantity_ref = SIDimensionCopyQuantityName(self._si_dimension)
+        if quantity_ref != NULL:
+            try:
                 return pystring_from_ocstring(<uint64_t>quantity_ref)
-        return "dimensionless"  # Default fallback
+            finally:
+                OCRelease(<OCTypeRef>quantity_ref)
+        # C API should never return NULL
+        raise RMNError("C API returned NULL quantity name (dimension may be corrupted or uninitialized)")
 
     @quantity_name.setter
     def quantity_name(self, value):
         """Set quantity name for physical quantities."""
-        cdef OCStringRef error = NULL
+        cdef OCStringRef err_ocstr = NULL
         cdef OCStringRef quantity_name_ref = NULL
 
+        if self._c_ref == NULL:
+            raise RMNError("Cannot set quantity name: dimension not properly initialized")
+
         # If we have a C dimension object, update it too
-        if self._c_dimension != NULL:
-            if value is not None and value != "":
-                quantity_name_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(str(value))
-                try:
-                    if not SIDimensionSetQuantityName(self._si_dimension, quantity_name_ref, &error):
-                        if error != NULL:
-                            error_msg = pystring_from_ocstring(<uint64_t>error)
-                            OCRelease(<OCTypeRef>error)
-                            raise RMNError(f"Failed to set quantity name: {error_msg}")
-                        else:
-                            raise RMNError("Failed to set quantity name")
-                finally:
-                    if quantity_name_ref != NULL:
-                        OCRelease(<OCTypeRef>quantity_name_ref)
-            else:
-                # Set NULL for no quantity name
-                if not SIDimensionSetQuantityName(self._si_dimension, NULL, &error):
-                    if error != NULL:
-                        error_msg = pystring_from_ocstring(<uint64_t>error)
-                        OCRelease(<OCTypeRef>error)
-                        raise RMNError(f"Failed to clear quantity name: {error_msg}")
+        if value is not None and value != "":
+            quantity_name_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(str(value))
+            try:
+                if not SIDimensionSetQuantityName(self._si_dimension, quantity_name_ref, &err_ocstr):
+                    if err_ocstr != NULL:
+                        error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
+                        OCRelease(<OCTypeRef>err_ocstr)
+                        raise RMNError(f"Failed to set quantity name: {error_msg}")
                     else:
-                        raise RMNError("Failed to clear quantity name")
+                        raise RMNError("Failed to set quantity name")
+            finally:
+                if quantity_name_ref != NULL:
+                    OCRelease(<OCTypeRef>quantity_name_ref)
+        else:
+            # Set NULL for no quantity name
+            if not SIDimensionSetQuantityName(self._si_dimension, NULL, &err_ocstr):
+                if err_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
+                    OCRelease(<OCTypeRef>err_ocstr)
+                    raise RMNError(f"Failed to clear quantity name: {error_msg}")
+                else:
+                    raise RMNError("Failed to clear quantity name")
 
     @property
     def periodic(self):
         """Get periodic flag - now based on finite period."""
-        if self._c_dimension != NULL and self._si_dimension != NULL:
-            return SIDimensionIsPeriodic(self._si_dimension)
-        return False
+        return SIDimensionIsPeriodic(self._si_dimension)
 
     # Note: periodic is now read-only and determined by period value
     # To make a dimension periodic, set a finite period value
@@ -856,12 +799,14 @@ cdef class SIDimension(BaseDimension):
     @scaling.setter
     def scaling(self, value):
         """Set scaling type."""
-        cdef OCStringRef error = NULL
+        cdef OCStringRef err_ocstr = NULL
+
+        if self._c_ref == NULL:
+            raise RMNError("Cannot set scaling: dimension not properly initialized")
 
         # If we have a C dimension object, update it too
-        if self._c_dimension != NULL:
-            if not SIDimensionSetScaling(self._si_dimension, int(value)):
-                raise RMNError("Failed to set scaling")
+        if not SIDimensionSetScaling(self._si_dimension, int(value)):
+            raise RMNError("Failed to set scaling")
 
 cdef class SILinearDimension(SIDimension):
     """
@@ -930,9 +875,9 @@ cdef class SILinearDimension(SIDimension):
             ... )
         """
         # Create C dimension using the C API
-        cdef OCStringRef error = NULL
-        cdef OCStringRef label_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(label)
-        cdef OCStringRef desc_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(description)
+        cdef OCStringRef err_ocstr = NULL
+        cdef OCStringRef label_ocstr = <OCStringRef><uint64_t>ocstring_create_with_pystring(label)
+        cdef OCStringRef desc_ocstr = <OCStringRef><uint64_t>ocstring_create_with_pystring(description)
         # Convert application metadata (None → NULL)
         cdef OCDictionaryRef application_ref = <OCDictionaryRef><uint64_t>pydict_to_ocdict(application)
         cdef OCStringRef quantity_name_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(quantity_name)
@@ -997,8 +942,8 @@ cdef class SILinearDimension(SIDimension):
 
             # Let C API handle validation and error reporting
             self._linear_dimension = SILinearDimensionCreate(
-                label_ref,              # label
-                desc_ref,               # description
+                label_ocstr,              # label
+                desc_ocstr,               # description
                 application_ref,        # metadata
                 quantity_name_ref,      # quantityName
                 offset_ref,             # offset
@@ -1009,25 +954,25 @@ cdef class SILinearDimension(SIDimension):
                 increment_ref,          # increment (required)
                 fft or complex_fft,     # fft (use parameter, not stored value)
                 reciprocal_ref,         # reciprocal
-                &error                  # error
+                &err_ocstr              # err_ocstr
             )
 
             if self._linear_dimension == NULL:
-                if error != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error)
+                if err_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
                     raise RMNError(f"Failed to create linear dimension: {error_msg}")
                 else:
                     raise RMNError("Failed to create linear dimension")
 
             # Cast to base dimension references
-            self._c_dimension = <DimensionRef>self._linear_dimension
+            self._c_ref = <DimensionRef>self._linear_dimension
             self._si_dimension = <SIDimensionRef>self._linear_dimension
 
         finally:
-            if label_ref != NULL:
-                OCRelease(<OCTypeRef>label_ref)
-            if desc_ref != NULL:
-                OCRelease(<OCTypeRef>desc_ref)
+            if label_ocstr != NULL:
+                OCRelease(<OCTypeRef>label_ocstr)
+            if desc_ocstr != NULL:
+                OCRelease(<OCTypeRef>desc_ocstr)
             if quantity_name_ref != NULL:
                 OCRelease(<OCTypeRef>quantity_name_ref)
             if application_ref != NULL:
@@ -1041,33 +986,34 @@ cdef class SILinearDimension(SIDimension):
                 OCRelease(<OCTypeRef>origin_ref)
             if period_ref != NULL:
                 OCRelease(<OCTypeRef>period_ref)
-            if error != NULL:
-                OCRelease(<OCTypeRef>error)
+            if err_ocstr != NULL:
+                OCRelease(<OCTypeRef>err_ocstr)
 
     @property
     def type(self):
         """Get the type of the dimension."""
-        if self._c_dimension != NULL:
-            type_ref = DimensionGetType(self._c_dimension)
-            if type_ref != NULL:
-                return pystring_from_ocstring(<uint64_t>type_ref)
-        return 'linear'  # Fallback
+        type_ref = DimensionGetType(self._c_ref)
+        if type_ref != NULL:
+            return pystring_from_ocstring(<uint64_t>type_ref)
+        raise RMNError("Invalid dimension: C API returned NULL type (dimension may be corrupted or uninitialized)")
 
     @property
     def increment(self):
         """Get the increment of the dimension."""
-        if self._c_dimension != NULL:
-            increment_ref = SILinearDimensionCopyIncrement(self._linear_dimension)
-            if increment_ref != NULL:
-                # Return Scalar object for CSDMPY compatibility
-                return Scalar._from_ref(increment_ref)
-        return None
+        increment_ref = SILinearDimensionCopyIncrement(self._linear_dimension)
+        if increment_ref != NULL:
+            # Return Scalar object for CSDMPY compatibility
+            return Scalar._from_c_ref(increment_ref)
+        raise RMNError("C API returned NULL increment (dimension may be corrupted or uninitialized)")
 
     @increment.setter
     def increment(self, value):
         """Set the increment of the dimension."""
         cdef SIScalarRef increment_ref = NULL
         cdef Scalar scalar_obj = None
+
+        if self._c_ref == NULL:
+            raise RMNError("Cannot set increment: dimension not properly initialized")
 
         # Handle both existing Scalar objects and string values
         if isinstance(value, Scalar):
@@ -1090,13 +1036,14 @@ cdef class SILinearDimension(SIDimension):
     @property
     def count(self):
         """Get the count of the dimension."""
-        if self._c_dimension != NULL:
-            return SILinearDimensionGetCount(self._linear_dimension)
-        return 0
+        return SILinearDimensionGetCount(self._linear_dimension)
 
     @count.setter
     def count(self, value):
         """Set the count of the dimension."""
+        if self._c_ref == NULL:
+            raise RMNError("Cannot set count: dimension not properly initialized")
+
         if not isinstance(value, int) or value <= 0:
             raise TypeError("Count must be a positive integer")
 
@@ -1112,6 +1059,9 @@ cdef class SILinearDimension(SIDimension):
     @complex_fft.setter
     def complex_fft(self, value):
         """Set complex FFT flag."""
+        if self._c_ref == NULL:
+            raise RMNError("Cannot set complex FFT flag: dimension not properly initialized")
+
         # Update C dimension object only
         if not SILinearDimensionSetComplexFFT(self._linear_dimension, bool(value)):
             raise RMNError("Failed to set complex FFT flag")
@@ -1119,12 +1069,12 @@ cdef class SILinearDimension(SIDimension):
     cdef object _create_dimension_wrapper_from_ref(self, SIDimensionRef dim_ref):
         """Create a Python dimension wrapper from a C SIDimensionRef."""
         if dim_ref == NULL:
-            return None
+            raise RMNError("Cannot create wrapper from NULL dimension reference")
 
         # Get the type of the dimension to determine which wrapper to create
         cdef OCStringRef type_ref = DimensionGetType(<DimensionRef>dim_ref)
         if type_ref == NULL:
-            return None
+            raise RMNError("C API returned NULL type for dimension reference")
 
         type_str = pystring_from_ocstring(<uint64_t>type_ref)
 
@@ -1133,7 +1083,7 @@ cdef class SILinearDimension(SIDimension):
             wrapper = SILinearDimension.__new__(SILinearDimension)
             (<SILinearDimension>wrapper)._linear_dimension = <SILinearDimensionRef>dim_ref
             (<SILinearDimension>wrapper)._si_dimension = dim_ref
-            (<SILinearDimension>wrapper)._c_dimension = <DimensionRef>dim_ref
+            (<SILinearDimension>wrapper)._c_ref = <DimensionRef>dim_ref
             OCRetain(<OCTypeRef>dim_ref)  # Retain the reference
             return wrapper
         elif type_str == "monotonic":
@@ -1141,14 +1091,14 @@ cdef class SILinearDimension(SIDimension):
             wrapper = SIMonotonicDimension.__new__(SIMonotonicDimension)
             (<SIMonotonicDimension>wrapper)._monotonic_dimension = <SIMonotonicDimensionRef>dim_ref
             (<SIMonotonicDimension>wrapper)._si_dimension = dim_ref
-            (<SIMonotonicDimension>wrapper)._c_dimension = <DimensionRef>dim_ref
+            (<SIMonotonicDimension>wrapper)._c_ref = <DimensionRef>dim_ref
             OCRetain(<OCTypeRef>dim_ref)  # Retain the reference
             return wrapper
         else:
             # Generic SIDimension wrapper for unknown types
             wrapper = SIDimension.__new__(SIDimension)
             (<SIDimension>wrapper)._si_dimension = dim_ref
-            (<SIDimension>wrapper)._c_dimension = <DimensionRef>dim_ref
+            (<SIDimension>wrapper)._c_ref = <DimensionRef>dim_ref
             OCRetain(<OCTypeRef>dim_ref)  # Retain the reference
             return wrapper
 
@@ -1159,18 +1109,17 @@ cdef class SILinearDimension(SIDimension):
             return self._reciprocal
 
         # Try to get from C API if we don't have a cached value
-        if self._c_dimension != NULL:
-            reciprocal_ref = SILinearDimensionCopyReciprocal(self._linear_dimension)
-            if reciprocal_ref != NULL:
-                # Create and cache the wrapper
-                self._reciprocal = self._create_dimension_wrapper_from_ref(reciprocal_ref)
-                return self._reciprocal
-        return None
+        reciprocal_ref = SILinearDimensionCopyReciprocal(self._linear_dimension)
+        if reciprocal_ref != NULL:
+            # Create and cache the wrapper
+            self._reciprocal = self._create_dimension_wrapper_from_ref(reciprocal_ref)
+            return self._reciprocal
+        raise RMNError("C API returned NULL reciprocal dimension (dimension may be corrupted or uninitialized)")
 
     @reciprocal.setter
     def reciprocal(self, value):
         """Set reciprocal dimension."""
-        cdef OCStringRef error = NULL
+        cdef OCStringRef err_ocstr = NULL
         cdef SIDimensionRef reciprocal_ref = NULL
 
         # Clear cache since we're setting a new value
@@ -1183,36 +1132,35 @@ cdef class SILinearDimension(SIDimension):
             else:
                 reciprocal_ref = NULL
 
-        if not SILinearDimensionSetReciprocal(self._linear_dimension, reciprocal_ref, &error):
-            if error != NULL:
-                error_msg = pystring_from_ocstring(<uint64_t>error)
-                OCRelease(<OCTypeRef>error)
+        if not SILinearDimensionSetReciprocal(self._linear_dimension, reciprocal_ref, &err_ocstr):
+            if err_ocstr != NULL:
+                error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
+                OCRelease(<OCTypeRef>err_ocstr)
                 raise RMNError(f"Failed to set reciprocal dimension: {error_msg}")
             else:
                 raise RMNError("Failed to set reciprocal dimension")
 
     def reciprocal_increment(self):
         """Get reciprocal increment."""
-        if self._c_dimension != NULL:
-            reciprocal_increment_ref = SILinearDimensionCreateReciprocalIncrement(self._linear_dimension)
-            if reciprocal_increment_ref != NULL:
-                # Create Scalar wrapper directly from the C reference
-                return Scalar._from_ref(reciprocal_increment_ref)
-        return None
+        reciprocal_increment_ref = SILinearDimensionCreateReciprocalIncrement(self._linear_dimension)
+        if reciprocal_increment_ref != NULL:
+            # Create Scalar wrapper directly from the C reference
+            return Scalar._from_c_ref(reciprocal_increment_ref)
+        raise RMNError("C API returned NULL reciprocal increment (dimension may be corrupted or uninitialized)")
 
     def copy(self):
         """Create a copy of the dimension."""
-        if self._c_dimension == NULL:
+        if self._c_ref == NULL:
             raise RMNError("Cannot copy null dimension")
 
         # Use OCTypes deep copy functionality
-        cdef void *copied_dimension = OCTypeDeepCopy(self._c_dimension)
+        cdef void *copied_dimension = OCTypeDeepCopy(self._c_ref)
         if copied_dimension == NULL:
             raise RMNError("Failed to create dimension copy")
 
         # Create a new SILinearDimension instance wrapping the copied C object
         cdef SILinearDimension result = SILinearDimension.__new__(SILinearDimension)
-        result._c_dimension = <SIDimensionRef>copied_dimension
+        result._c_ref = <SIDimensionRef>copied_dimension
         result._linear_dimension = <SILinearDimensionRef>copied_dimension
         return result
 
@@ -1238,10 +1186,10 @@ cdef class SIMonotonicDimension(SIDimension):
         """Initialize monotonic dimension with coordinates."""
 
         # Convert coordinates to OCArray of SIScalars (raises on bad input)
-        cdef OCStringRef error = NULL
+        cdef OCStringRef err_ocstr = NULL
         cdef OCArrayRef coords_array = <OCArrayRef><uint64_t>py_list_to_siscalar_ocarray(coordinates, "1")
-        cdef OCStringRef label_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(label)
-        cdef OCStringRef desc_ref = <OCStringRef><uint64_t>ocstring_create_with_pystring(description)
+        cdef OCStringRef label_ocstr = <OCStringRef><uint64_t>ocstring_create_with_pystring(label)
+        cdef OCStringRef desc_ocstr = <OCStringRef><uint64_t>ocstring_create_with_pystring(description)
 
         # Handle origin_offset alias
         if origin_offset is not None:
@@ -1250,18 +1198,18 @@ cdef class SIMonotonicDimension(SIDimension):
         try:
             # Create dimension - let C API handle all validation
             self._monotonic_dimension = SIMonotonicDimensionCreate(
-                label_ref, desc_ref, NULL, NULL,
+                label_ocstr, desc_ocstr, NULL, NULL,
                 NULL, NULL, NULL,
                 scaling,
-                coords_array, NULL, &error)
+                coords_array, NULL, &err_ocstr)
             if self._monotonic_dimension == NULL:
-                if error != NULL:
-                    error_msg = pystring_from_ocstring(<uint64_t>error)
+                if err_ocstr != NULL:
+                    error_msg = pystring_from_ocstring(<uint64_t>err_ocstr)
                     raise RMNError(f"Failed to create monotonic dimension: {error_msg}")
                 else:
                     raise RMNError("Failed to create monotonic dimension")
             # Cast to base dimension reference
-            self._c_dimension = <DimensionRef>self._monotonic_dimension
+            self._c_ref = <DimensionRef>self._monotonic_dimension
             # Set the SIDimension reference for inherited properties
             self._si_dimension = <SIDimensionRef>self._monotonic_dimension
 
@@ -1269,29 +1217,37 @@ cdef class SIMonotonicDimension(SIDimension):
             if origin is not None:
                 self.origin_offset = origin
         finally:
-            OCRelease(<OCTypeRef>label_ref)
-            OCRelease(<OCTypeRef>desc_ref)
+            OCRelease(<OCTypeRef>label_ocstr)
+            OCRelease(<OCTypeRef>desc_ocstr)
             OCRelease(<OCTypeRef>coords_array)
-            if error != NULL:
-                OCRelease(<OCTypeRef>error)
+            if err_ocstr != NULL:
+                OCRelease(<OCTypeRef>err_ocstr)
 
     @property
     def type(self):
         """Get the type of the dimension."""
-        return 'monotonic'
+        type_ref = DimensionGetType(self._c_ref)
+        if type_ref != NULL:
+            return pystring_from_ocstring(<uint64_t>type_ref)
+        raise RMNError("Invalid dimension: C API returned NULL type (dimension may be corrupted or uninitialized)")
 
     @property
     def count(self):
         """Get the count of the dimension."""
-        if self._c_dimension != NULL:
-            coords_ref = SIMonotonicDimensionCopyCoordinates(self._monotonic_dimension)
-            if coords_ref != NULL:
+        coords_ref = SIMonotonicDimensionCopyCoordinates(self._monotonic_dimension)
+        if coords_ref != NULL:
+            try:
                 return OCArrayGetCount(coords_ref)
-        return 0
+            finally:
+                OCRelease(<OCTypeRef>coords_ref)
+        raise RMNError("C API returned NULL coordinates for count calculation (dimension may be corrupted or uninitialized)")
 
     @count.setter
     def count(self, value):
         """Set the count by truncating coordinates."""
+        if self._c_ref == NULL:
+            raise RMNError("Cannot set count: dimension not properly initialized")
+
         current_coords = self.coordinates
         if value > len(current_coords):
             raise ValueError(f"Cannot set count to {value}, only have {len(current_coords)} coordinates")
@@ -1300,29 +1256,32 @@ cdef class SIMonotonicDimension(SIDimension):
 
     def copy(self):
         """Create a copy of the dimension."""
-        if self._c_dimension == NULL:
+        if self._c_ref == NULL:
             raise RMNError("Cannot copy null dimension")
 
         # Use OCTypes deep copy functionality
-        cdef void *copied_dimension = OCTypeDeepCopy(self._c_dimension)
+        cdef void *copied_dimension = OCTypeDeepCopy(self._c_ref)
         if copied_dimension == NULL:
             raise RMNError("Failed to create dimension copy")
 
         # Create a new SIMonotonicDimension instance wrapping the copied C object
         cdef SIMonotonicDimension result = SIMonotonicDimension.__new__(SIMonotonicDimension)
-        result._c_dimension = <SIDimensionRef>copied_dimension
+        result._c_ref = <SIDimensionRef>copied_dimension
         result._monotonic_dimension = <SIMonotonicDimensionRef>copied_dimension
         return result
 
     @property
     def reciprocal(self):
         """Get reciprocal dimension."""
-        # Monotonic dimensions don't typically have reciprocals
-        return None
+        # Monotonic dimensions don't typically have reciprocals, but C API should never return NULL
+        raise RMNError("Reciprocal dimensions not supported for monotonic dimensions")
 
     @reciprocal.setter
     def reciprocal(self, value):
         """Set reciprocal dimension."""
+        if self._c_ref == NULL:
+            raise RMNError("Cannot set reciprocal: dimension not properly initialized")
+
         # For monotonic dimensions, this is typically not supported
         pass
 
