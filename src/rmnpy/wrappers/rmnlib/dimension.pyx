@@ -595,36 +595,15 @@ cdef class SIDimension(BaseDimension):
 
         # Convert coordinates_offset parameter to SIScalar if provided
         if coordinates_offset is not None:
-            if isinstance(coordinates_offset, Scalar):
-                coordinates_offset_sisclr = (<Scalar>coordinates_offset).get_c_ref()
-            elif isinstance(coordinates_offset, str):
-                # Convert string to Scalar, then get c_ref
-                coordinates_offset_scalar = Scalar(coordinates_offset)
-                coordinates_offset_sisclr = coordinates_offset_scalar.get_c_ref()
-            else:
-                raise TypeError(f"coordinates_offset must be a string or Scalar, got {type(coordinates_offset)}")
+            coordinates_offset_sisclr = convert_to_siscalar_ref(coordinates_offset)
 
         # Convert origin_offset parameter to SIScalar if provided
         if origin_offset is not None:
-            if isinstance(origin_offset, Scalar):
-                origin_offset_sisclr = (<Scalar>origin_offset).get_c_ref()
-            elif isinstance(origin_offset, str):
-                # Convert string to Scalar, then get c_ref
-                origin_offset_scalar = Scalar(origin_offset)
-                origin_offset_sisclr = origin_offset_scalar.get_c_ref()
-            else:
-                raise TypeError(f"origin_offset must be a string or Scalar, got {type(origin_offset)}")
+            origin_offset_sisclr = convert_to_siscalar_ref(origin_offset)
 
         # Convert period parameter to SIScalar if provided
         if period is not None:
-            if isinstance(period, Scalar):
-                period_sisclr = (<Scalar>period).get_c_ref()
-            elif isinstance(period, str):
-                # Convert string to Scalar, then get c_ref
-                period_scalar = Scalar(period)
-                period_sisclr = period_scalar.get_c_ref()
-            else:
-                raise TypeError(f"period must be a string or Scalar, got {type(period)}")
+            period_sisclr = convert_to_siscalar_ref(period)
 
         try:
             si_dimension = SIDimensionCreate(
@@ -680,14 +659,7 @@ cdef class SIDimension(BaseDimension):
             raise RMNError("Cannot set coordinates offset: dimension not properly initialized")
 
         # Handle both Scalar objects and strings like in __init__
-        if isinstance(value, Scalar):
-            coordinates_offset_sisclr = (<Scalar>value).get_c_ref()
-        elif isinstance(value, str):
-            # Convert string to Scalar, then get c_ref
-            coordinates_offset_scalar = Scalar(value)
-            coordinates_offset_sisclr = coordinates_offset_scalar.get_c_ref()
-        else:
-            raise TypeError(f"coordinates_offset must be a string or Scalar, got {type(value)}")
+        coordinates_offset_sisclr = convert_to_siscalar_ref(value)
 
         if not SIDimensionSetCoordinatesOffset(<SIDimensionRef>self._c_ref, coordinates_offset_sisclr, &err_ocstr):
             if err_ocstr != NULL:
@@ -720,14 +692,7 @@ cdef class SIDimension(BaseDimension):
             raise RMNError("Cannot set origin offset: dimension not properly initialized")
 
         # Handle both Scalar objects and strings like in __init__
-        if isinstance(value, Scalar):
-            origin_offset_sisclr = (<Scalar>value).get_c_ref()
-        elif isinstance(value, str):
-            # Convert string to Scalar, then get c_ref
-            origin_offset_scalar = Scalar(value)
-            origin_offset_sisclr = origin_offset_scalar.get_c_ref()
-        else:
-            raise TypeError(f"origin_offset must be a string or Scalar, got {type(value)}")
+        origin_offset_sisclr = convert_to_siscalar_ref(value)
 
         if not SIDimensionSetOriginOffset(<SIDimensionRef>self._c_ref, origin_offset_sisclr, &err_ocstr):
             if err_ocstr != NULL:
@@ -791,14 +756,7 @@ cdef class SIDimension(BaseDimension):
             return
 
         # Handle both Scalar objects and strings like in __init__
-        if isinstance(value, Scalar):
-            period_sisclr = (<Scalar>value).get_c_ref()
-        elif isinstance(value, str):
-            # Convert string to Scalar, then get c_ref
-            period_scalar = Scalar(value)
-            period_sisclr = period_scalar.get_c_ref()
-        else:
-            raise TypeError(f"period must be a string or Scalar, got {type(value)}")
+        period_sisclr = convert_to_siscalar_ref(value)
 
         if not SIDimensionSetPeriod(<SIDimensionRef>self._c_ref, period_sisclr, &err_ocstr):
             if err_ocstr != NULL:
@@ -1059,18 +1017,11 @@ cdef class SILinearDimension(SIDimension):
     def increment(self, value):
         """Set the increment of the dimension."""
         cdef SIScalarRef increment_sisclr = NULL
-        cdef Scalar scalar_obj = None
 
         if self._c_ref == NULL:
             raise RMNError("Cannot set increment: dimension not properly initialized")
 
-        if isinstance(value, Scalar):
-            # For existing Scalar objects, store reference to prevent GC
-            scalar_obj = value
-            increment_sisclr = scalar_obj.get_c_ref()
-        else:
-            scalar_obj = Scalar(str(value))
-            increment_sisclr = scalar_obj.get_c_ref()
+        increment_sisclr = convert_to_siscalar_ref(value)
 
         if increment_sisclr == NULL:
             raise RMNError("Failed to convert increment value to SIScalar")
@@ -1241,33 +1192,15 @@ cdef class SIMonotonicDimension(SIDimension):
 
         # Convert coordinates_offset parameter to SIScalar if provided
         if coordinates_offset is not None:
-            if isinstance(coordinates_offset, Scalar):
-                coordinates_offset_sisclr = (<Scalar>coordinates_offset).get_c_ref()
-            elif isinstance(coordinates_offset, str):
-                coordinates_offset_scalar = Scalar(coordinates_offset)
-                coordinates_offset_sisclr = coordinates_offset_scalar.get_c_ref()
-            else:
-                raise TypeError(f"coordinates_offset must be a string or Scalar, got {type(coordinates_offset)}")
+            coordinates_offset_sisclr = convert_to_siscalar_ref(coordinates_offset)
 
         # Convert origin_offset parameter to SIScalar if provided
         if origin_offset is not None:
-            if isinstance(origin_offset, Scalar):
-                origin_offset_sisclr = (<Scalar>origin_offset).get_c_ref()
-            elif isinstance(origin_offset, str):
-                origin_offset_scalar = Scalar(origin_offset)
-                origin_offset_sisclr = origin_offset_scalar.get_c_ref()
-            else:
-                raise TypeError(f"origin_offset must be a string or Scalar, got {type(origin_offset)}")
+            origin_offset_sisclr = convert_to_siscalar_ref(origin_offset)
 
         # Convert period parameter to SIScalar if provided
         if period is not None:
-            if isinstance(period, Scalar):
-                period_sisclr = (<Scalar>period).get_c_ref()
-            elif isinstance(period, str):
-                period_scalar = Scalar(period)
-                period_sisclr = period_scalar.get_c_ref()
-            else:
-                raise TypeError(f"period must be a string or Scalar, got {type(period)}")
+            period_sisclr = convert_to_siscalar_ref(period)
 
         # Convert reciprocal parameter to SIDimensionRef if provided
         if reciprocal is not None:
