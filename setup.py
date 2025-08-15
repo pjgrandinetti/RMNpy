@@ -259,13 +259,37 @@ def get_extensions() -> list[Extension]:
     # Add platform-specific include directories
     if platform.system() == "Windows":
         # Add OpenBLAS include directory for CBLAS headers on Windows/MinGW
-        msystem = os.environ.get("MSYSTEM", "").lower()
-        if msystem == "mingw64":
-            # MSYS2 MinGW64 OpenBLAS headers location
-            include_dirs.append("/mingw64/include/openblas")
-        elif msystem == "mingw32":
-            # MSYS2 MinGW32 OpenBLAS headers location
-            include_dirs.append("/mingw32/include/openblas")
+        msystem = os.environ.get("MSYSTEM", "").upper()
+        print(f"[setup.py] MSYSTEM environment variable: {msystem}")
+
+        # Try multiple potential OpenBLAS header locations for robustness
+        potential_openblas_paths = []
+        if msystem == "MINGW64":
+            potential_openblas_paths = [
+                "/mingw64/include/openblas",
+                "D:/a/_temp/msys64/mingw64/include/openblas",
+            ]
+        elif msystem == "MINGW32":
+            potential_openblas_paths = [
+                "/mingw32/include/openblas",
+                "D:/a/_temp/msys64/mingw32/include/openblas",
+            ]
+        else:
+            # Fallback - try both architectures
+            potential_openblas_paths = [
+                "/mingw64/include/openblas",
+                "/mingw32/include/openblas",
+            ]
+
+        for path in potential_openblas_paths:
+            if os.path.exists(path):
+                print(f"[setup.py] Adding OpenBLAS include path: {path}")
+                include_dirs.append(path)
+                break
+        else:
+            print(
+                f"[setup.py] Warning: OpenBLAS headers not found in expected locations: {potential_openblas_paths}"
+            )
 
     # Common library directories and libraries
     library_dirs = ["lib"]
