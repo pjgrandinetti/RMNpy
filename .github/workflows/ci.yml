@@ -163,11 +163,30 @@ jobs:
         python -c "import numpy; print('Numpy version: ' + numpy.__version__)"
         echo "✓ Numpy import successful"
 
-        echo "Building C extensions..."
-        python setup.py build_ext --inplace
+        echo "Building C extensions (first attempt - dynamic/import library mode)..."
+        if python setup.py build_ext --inplace; then
+            echo "✓ Dynamic linking build succeeded"
+            BUILD_SUCCESS=true
+        else
+            echo "⚠ Dynamic linking build failed, trying static library fallback..."
+            BUILD_SUCCESS=false
+        fi
+
+        if [ "$BUILD_SUCCESS" = false ]; then
+            echo "=== Attempting static library fallback ==="
+            export RMNPY_WINDOWS_STATIC_ONLY=1
+            echo "Building C extensions with static libraries..."
+            python setup.py build_ext --inplace
+            echo "✓ Static linking build succeeded"
+        fi
 
         echo "Installing package with --no-build-isolation..."
-        python -m pip install --no-build-isolation -e .
+        if [ "$BUILD_SUCCESS" = true ]; then
+            python -m pip install --no-build-isolation -e .
+        else
+            echo "Installing with static library environment..."
+            RMNPY_WINDOWS_STATIC_ONLY=1 python -m pip install --no-build-isolation -e .
+        fi
 
     - name: Generate constants (Linux/macOS)
       if: runner.os != 'Windows'
