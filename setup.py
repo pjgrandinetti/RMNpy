@@ -111,6 +111,10 @@ def generate_si_constants() -> None:
         print("Build will continue with existing constants file if available")
 
 
+# Generate SI constants before defining extensions (required for constants extension)
+generate_si_constants()
+
+
 class CustomBuildExt(build_ext):
     """Custom build extension that handles library dependencies and forces MinGW on Windows."""
 
@@ -408,6 +412,29 @@ def get_extensions() -> list[Extension]:
             )
         ]
     )
+
+    # Phase 4: Constants module (only if constants.pyx exists)
+    constants_file = Path(__file__).parent / "src" / "rmnpy" / "constants.pyx"
+    if constants_file.exists():
+        extensions.extend(
+            [
+                Extension(
+                    "rmnpy.constants",
+                    sources=["src/rmnpy/constants.pyx"],
+                    include_dirs=include_dirs,
+                    library_dirs=library_dirs,
+                    libraries=libraries,
+                    language="c",
+                    extra_compile_args=extra_compile_args,
+                    extra_link_args=extra_link_args,
+                    define_macros=define_macros,
+                )
+            ]
+        )
+    else:
+        print(
+            f"[WARNING] constants.pyx not found at {constants_file} - skipping constants extension"
+        )
 
     return extensions
 
