@@ -304,6 +304,16 @@ def get_extensions() -> list[Extension]:
                                     out = subprocess.check_output(
                                         cmd, stderr=subprocess.STDOUT
                                     )
+                                    # Save raw dump for diagnostics
+                                    try:
+                                        debug_dump_path = os.path.join(
+                                            "lib",
+                                            f"{os.path.basename(dll_file_path)}.raw_objdump.txt",
+                                        )
+                                        with open(debug_dump_path, "wb") as rdf:
+                                            rdf.write(out)
+                                    except Exception:
+                                        pass
                                     return out.split(b"\n")
                                 except (
                                     subprocess.CalledProcessError,
@@ -388,6 +398,21 @@ def get_extensions() -> list[Extension]:
                                     f"Windows: Warning - no exported symbols found in {dll_file_path}"
                                 )
 
+                            # For diagnostics, also write the parsed def file so CI can inspect it
+                            try:
+                                with open(def_path, "w") as df:
+                                    df.write(
+                                        f"LIBRARY {os.path.basename(dll_file_path)}\n"
+                                    )
+                                    df.write("\nEXPORTS\n")
+                                    for s in syms:
+                                        df.write(f"{s}\n")
+                                print(
+                                    f"Windows: Wrote generated .def to {def_path} for diagnostics"
+                                )
+                            except Exception:
+                                pass
+
                             with open(def_path, "w") as df:
                                 df.write(
                                     f"LIBRARY        {os.path.basename(dll_file_path)}\n"
@@ -410,6 +435,23 @@ def get_extensions() -> list[Extension]:
                                 capture_output=True,
                                 text=True,
                             )
+
+                            # Save dlltool output for CI diagnostics regardless of success
+                            try:
+                                dlltool_log = os.path.join(
+                                    "lib", f"{os.path.basename(dll_path)}.dlltool.log"
+                                )
+                                with open(dlltool_log, "w") as lf:
+                                    lf.write(
+                                        f"CMD: dlltool -d {temp_def} -l {temp_import_lib}\n"
+                                    )
+                                    lf.write("STDOUT:\n")
+                                    lf.write(result.stdout or "")
+                                    lf.write("\nSTDERR:\n")
+                                    lf.write(result.stderr or "")
+                                print(f"Windows: Saved dlltool log to {dlltool_log}")
+                            except Exception:
+                                pass
 
                             if result.returncode == 0 and os.path.exists(
                                 temp_import_lib
