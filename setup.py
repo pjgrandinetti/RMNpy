@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Setup script for RMNpy - Python bindings for OCTypes, SITypes, and RMNLib."""
+# Version with automatic import library generation for Windows DLLs - commit 452219ad
 
 import os
 import platform
