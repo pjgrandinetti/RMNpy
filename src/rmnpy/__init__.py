@@ -6,6 +6,14 @@ This package provides:
 - wrappers: High-level Python interfaces for SITypes and RMNLib
 """
 
+# Setup Windows DLL paths before importing any C extensions
+import sys
+
+if sys.platform == "win32":
+    from .dll_loader import setup_dll_paths
+
+    setup_dll_paths()
+
 __version__ = "0.1.0"
 __author__ = "Philip Grandinetti"
 __email__ = "grandinetti.1@osu.edu"

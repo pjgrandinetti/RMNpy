@@ -156,6 +156,41 @@ jobs:
         echo "✓ Libraries downloaded and ready for Python build"
       shell: bash
 
+    - name: Create Windows Bridge DLL
+      if: runner.os == 'Windows'
+      shell: msys2 {0}
+      run: |
+        echo "=== Creating Windows Bridge DLL ==="
+        echo "Available static libraries:"
+        ls -la lib/*.a || echo "No .a files found"
+
+        if [ -f lib/libOCTypes.a ] && [ -f lib/libSITypes.a ] && [ -f lib/libRMN.a ]; then
+          echo "✓ Found all required static libraries"
+          echo "Creating bridge DLL..."
+
+          x86_64-w64-mingw32-gcc -shared -o lib/rmnstack_bridge.dll \
+            -Wl,--out-implib,lib/rmnstack_bridge.dll.a \
+            -Wl,--export-all-symbols \
+            lib/libRMN.a lib/libSITypes.a lib/libOCTypes.a \
+            -lopenblas -llapack -lcurl -lgcc_s -lwinpthread -lquadmath -lgomp -lm
+
+          if [ -f lib/rmnstack_bridge.dll ]; then
+            echo "✓ Successfully created bridge DLL"
+            echo "✓ Bridge DLL size: $(wc -c < lib/rmnstack_bridge.dll) bytes"
+            echo "✓ Import library size: $(wc -c < lib/rmnstack_bridge.dll.a) bytes"
+            echo "Checking exports (first 50)..."
+            objdump -p lib/rmnstack_bridge.dll | sed -n '/Export Table/,$p' | head -n 50 | tail -n 45 || true
+          else
+            echo "✗ Bridge DLL creation failed"
+            exit 1
+          fi
+        else
+          echo "✗ Missing required static libraries for bridge DLL"
+          echo "Available files in lib/:"
+          ls -la lib/
+          exit 1
+        fi
+
     - name: Install build tools (Linux/macOS)
       if: runner.os != 'Windows'
       run: |
@@ -185,6 +220,16 @@ jobs:
         echo "Installing package with --no-build-isolation..."
         python -m pip install --no-build-isolation -e .
 
+        echo "Checking if bridge DLL was copied to package..."
+        if [ -f src/rmnpy/rmnstack_bridge.dll ]; then
+          echo "✓ Bridge DLL found in package directory"
+          echo "  Size: $(wc -c < src/rmnpy/rmnstack_bridge.dll) bytes"
+        else
+          echo "✗ Bridge DLL not found in package directory"
+          echo "Available files in src/rmnpy/:"
+          ls -la src/rmnpy/ | grep "\.dll\|\.so\|\.pyd" || echo "No library files found"
+        fi
+
     - name: Generate constants (Linux/macOS)
       if: runner.os != 'Windows'
       run: |
@@ -210,9 +255,7 @@ jobs:
         echo "✓ Numpy import successful"
 
         echo "Testing RMNpy import..."
-        python -c "import rmnpy; print('RMNpy imported successfully')"
-        echo "✓ RMNpy import successful"
-
+        python -c "import sys; import rmnpy; print('RMNpy imported successfully'); print('Version:', rmnpy.__version__)"
         echo "✓ All import tests passed"
 
     - name: Run test suite (Linux/macOS)

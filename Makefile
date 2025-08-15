@@ -1,6 +1,6 @@
 # Makefile for RMNpy - provides library synchronization with local or GitHub sources
 
-.PHONY: synclib clean-libs help download-libs rebuild clean clean-all generate-constants
+.PHONY: synclib clean-libs help download-libs rebuild clean clean-all generate-constants bridge
 
 # Default help target
 help:
@@ -9,6 +9,7 @@ help:
 	@echo "Available targets:"
 	@echo "  synclib      - Copy SHARED libraries/headers from local ../directories (fixes type registry)"
 	@echo "  download-libs - Download OCTypes, SITypes, and RMNLib libraries/headers from GitHub releases"
+	@echo "  bridge       - Create Windows bridge DLL from static libraries (MSYS2/MinGW64)"
 	@echo "  clean-libs   - Remove lib/ and include/ directories"
 	@echo "  clean        - Remove generated C files and build artifacts"
 	@echo "  clean-all    - Remove all generated files and libraries"
@@ -181,3 +182,32 @@ status:
 	@echo ""
 	@echo "To download from GitHub releases:"
 	@echo "  make download-libs"
+
+# Windows Bridge DLL creation (WindowsPlan.md implementation)
+bridge:
+	@echo "Creating Windows bridge DLL from static libraries..."
+	@if [ ! -f lib/libOCTypes.a ] || [ ! -f lib/libSITypes.a ] || [ ! -f lib/libRMN.a ]; then \
+		echo "  ✗ Required static libraries not found in lib/"; \
+		echo "    Make sure lib/libOCTypes.a, lib/libSITypes.a, and lib/libRMN.a exist"; \
+		echo "    Run 'make download-libs' or 'make synclib' first"; \
+		exit 1; \
+	fi
+	@echo "  ✓ Found required static libraries"
+	@mkdir -p lib
+	@echo "  Creating bridge DLL: lib/rmnstack_bridge.dll"
+	@x86_64-w64-mingw32-gcc -shared -o lib/rmnstack_bridge.dll \
+		-Wl,--out-implib,lib/rmnstack_bridge.dll.a \
+		-Wl,--export-all-symbols \
+		lib/libRMN.a lib/libSITypes.a lib/libOCTypes.a \
+		-lopenblas -llapack -lcurl -lgcc_s -lwinpthread -lquadmath -lgomp -lm || \
+		(echo "  ✗ Bridge DLL creation failed. Make sure you're in MSYS2 MINGW64 environment"; exit 1)
+	@if [ -f lib/rmnstack_bridge.dll ]; then \
+		echo "  ✓ Successfully created lib/rmnstack_bridge.dll"; \
+		echo "  ✓ Successfully created lib/rmnstack_bridge.dll.a (import library)"; \
+		echo "  Checking exports..."; \
+		objdump -p lib/rmnstack_bridge.dll | sed -n '/Export Table/,$$p' | head -n 20 || true; \
+		echo "  Bridge DLL is ready for Python extensions"; \
+	else \
+		echo "  ✗ Bridge DLL creation failed"; \
+		exit 1; \
+	fi

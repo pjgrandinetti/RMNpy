@@ -133,6 +133,30 @@ class CustomBuildExt(build_ext):
         # Continue with normal build
         super().build_extensions()
 
+        # Copy Windows bridge DLL to package directory for runtime access
+        self._copy_windows_dll()
+
+    def _copy_windows_dll(self) -> None:
+        """Copy Windows bridge DLL to package directory for runtime access."""
+        if platform.system() != "Windows":
+            return
+
+        lib_dir = Path(__file__).parent / "lib"
+        src_rmnpy_dir = Path(__file__).parent / "src" / "rmnpy"
+
+        bridge_dll_path = lib_dir / "rmnstack_bridge.dll"
+
+        if bridge_dll_path.exists():
+            import shutil
+
+            dest_dll_path = src_rmnpy_dir / "rmnstack_bridge.dll"
+            print(f"[setup.py] Copying bridge DLL to package: {dest_dll_path}")
+            shutil.copy2(bridge_dll_path, dest_dll_path)
+            print("[setup.py] Bridge DLL copied for runtime access")
+        else:
+            print(f"[setup.py] Warning: Bridge DLL not found at {bridge_dll_path}")
+            print("[setup.py] Runtime may require DLL to be in system PATH")
+
     def run(self) -> None:
         """Check dependencies before building extensions."""
         # Generate SI constants before building
@@ -242,6 +266,71 @@ class CustomBuildExt(build_ext):
         return True
 
 
+def _fallback_windows_linking(lib_dir: Path) -> list[str]:
+    """Fallback to individual library linking when bridge DLL fails."""
+    windows_libraries = []
+
+    for lib_name in ["OCTypes", "SITypes", "RMN"]:
+        dll_a_path = lib_dir / f"lib{lib_name}.dll.a"
+        dll_path = lib_dir / f"lib{lib_name}.dll"
+
+        if dll_a_path.exists():
+            # Use import library if available
+            windows_libraries.append(lib_name)
+            print(f"[setup.py] Using existing import library for {lib_name}")
+        elif dll_path.exists():
+            # Generate import library from DLL using gendef + dlltool
+            print(f"[setup.py] Generating import library for {lib_name} from DLL")
+            try:
+                # Generate .def file from DLL
+                def_file = lib_dir / f"lib{lib_name}.def"
+                subprocess.run(
+                    ["gendef", str(dll_path)],
+                    cwd=str(lib_dir),
+                    check=True,
+                    capture_output=True,
+                )
+
+                # Generate import library from .def file
+                subprocess.run(
+                    [
+                        "dlltool",
+                        "-d",
+                        str(def_file),
+                        "-D",
+                        str(dll_path),
+                        "-l",
+                        str(dll_a_path),
+                    ],
+                    check=True,
+                    capture_output=True,
+                )
+
+                windows_libraries.append(lib_name)
+                print(
+                    f"[setup.py] Successfully generated import library for {lib_name}"
+                )
+
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                print(
+                    f"[setup.py] Failed to generate import library for {lib_name}: {e}"
+                )
+                # Fallback: try direct DLL linking (may work with some MinGW versions)
+                windows_libraries.append(str(dll_path.absolute()))
+                print(f"[setup.py] Using direct DLL path for {lib_name}: {dll_path}")
+        else:
+            # Fallback to library name (original behavior)
+            windows_libraries.append(lib_name)
+            print(f"[setup.py] Using library name fallback for {lib_name}")
+
+    # Add external dependencies required by RMNLib on Windows
+    windows_libraries.extend(["curl", "openblas", "lapack"])
+    # Add MinGW runtime libraries
+    windows_libraries.extend(["gcc_s", "winpthread", "quadmath", "gomp"])
+
+    return windows_libraries
+
+
 def get_extensions() -> list[Extension]:
     """Build list of Cython extensions for the project."""
 
@@ -310,72 +399,111 @@ def get_extensions() -> list[Extension]:
             "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
         ]
 
-        # Handle missing import libraries on Windows by generating them from DLLs
+        # Windows Bridge DLL Strategy (WindowsPlan.md implementation)
         lib_dir = Path(__file__).parent / "lib"
-        windows_libraries = []
+        bridge_dll_path = lib_dir / "rmnstack_bridge.dll"
+        bridge_implib_path = lib_dir / "rmnstack_bridge.dll.a"
 
-        for lib_name in ["OCTypes", "SITypes", "RMN"]:
-            dll_a_path = lib_dir / f"lib{lib_name}.dll.a"
-            dll_path = lib_dir / f"lib{lib_name}.dll"
+        # Check if bridge DLL exists, if not try to create it
+        if bridge_implib_path.exists() and bridge_dll_path.exists():
+            print("[setup.py] Using existing bridge DLL for Windows build")
+            # Use only the bridge import library
+            extra_link_args.extend(
+                [
+                    "-Wl,--enable-auto-import",
+                    "-Wl,--disable-auto-image-base",
+                    str(bridge_implib_path.absolute()),
+                ]
+            )
+            # Only external system libraries needed
+            libraries = [
+                "curl",
+                "openblas",
+                "lapack",
+                "gcc_s",
+                "winpthread",
+                "quadmath",
+                "gomp",
+                "m",
+            ]
+            print(f"[setup.py] Bridge DLL linking configured: {bridge_implib_path}")
 
-            if dll_a_path.exists():
-                # Use import library if available
-                windows_libraries.append(lib_name)
-                print(f"[setup.py] Using existing import library for {lib_name}")
-            elif dll_path.exists():
-                # Generate import library from DLL using gendef + dlltool
-                print(f"[setup.py] Generating import library for {lib_name} from DLL")
+        else:
+            print("[setup.py] Bridge DLL not found, attempting to create it...")
+            # Check if we have the static libraries to create bridge
+            static_libs = [
+                lib_dir / "libOCTypes.a",
+                lib_dir / "libSITypes.a",
+                lib_dir / "libRMN.a",
+            ]
+
+            if all(lib.exists() for lib in static_libs):
+                print("[setup.py] Found static libraries, creating bridge DLL...")
                 try:
-                    # Generate .def file from DLL
-                    def_file = lib_dir / f"lib{lib_name}.def"
-                    subprocess.run(
-                        ["gendef", str(dll_path)],
-                        cwd=str(lib_dir),
-                        check=True,
-                        capture_output=True,
-                    )
-
-                    # Generate import library from .def file
+                    # Create bridge DLL using the same command as in Makefile
                     subprocess.run(
                         [
-                            "dlltool",
-                            "-d",
-                            str(def_file),
-                            "-D",
-                            str(dll_path),
-                            "-l",
-                            str(dll_a_path),
+                            "x86_64-w64-mingw32-gcc",
+                            "-shared",
+                            "-o",
+                            str(bridge_dll_path),
+                            "-Wl,--out-implib," + str(bridge_implib_path),
+                            "-Wl,--export-all-symbols",
+                            str(lib_dir / "libRMN.a"),
+                            str(lib_dir / "libSITypes.a"),
+                            str(lib_dir / "libOCTypes.a"),
+                            "-lopenblas",
+                            "-llapack",
+                            "-lcurl",
+                            "-lgcc_s",
+                            "-lwinpthread",
+                            "-lquadmath",
+                            "-lgomp",
+                            "-lm",
                         ],
                         check=True,
                         capture_output=True,
+                        text=True,
                     )
 
-                    windows_libraries.append(lib_name)
                     print(
-                        f"[setup.py] Successfully generated import library for {lib_name}"
+                        f"[setup.py] Successfully created bridge DLL: {bridge_dll_path}"
+                    )
+                    print(
+                        f"[setup.py] Successfully created import library: {bridge_implib_path}"
                     )
 
-                except (subprocess.CalledProcessError, FileNotFoundError) as e:
-                    print(
-                        f"[setup.py] Failed to generate import library for {lib_name}: {e}"
+                    # Now use the bridge
+                    extra_link_args.extend(
+                        [
+                            "-Wl,--enable-auto-import",
+                            "-Wl,--disable-auto-image-base",
+                            str(bridge_implib_path.absolute()),
+                        ]
                     )
-                    # Fallback: try direct DLL linking (may work with some MinGW versions)
-                    windows_libraries.append(str(dll_path.absolute()))
-                    print(
-                        f"[setup.py] Using direct DLL path for {lib_name}: {dll_path}"
-                    )
+                    libraries = [
+                        "curl",
+                        "openblas",
+                        "lapack",
+                        "gcc_s",
+                        "winpthread",
+                        "quadmath",
+                        "gomp",
+                        "m",
+                    ]
+
+                except subprocess.CalledProcessError as e:
+                    print(f"[setup.py] Failed to create bridge DLL: {e}")
+                    print(f"[setup.py] stderr: {e.stderr}")
+                    print("[setup.py] Falling back to individual library linking...")
+                    # Fallback to original behavior
+                    libraries = _fallback_windows_linking(lib_dir)
             else:
-                # Fallback to library name (original behavior)
-                windows_libraries.append(lib_name)
-                print(f"[setup.py] Using library name fallback for {lib_name}")
+                missing = [str(lib) for lib in static_libs if not lib.exists()]
+                print(f"[setup.py] Missing static libraries: {missing}")
+                print("[setup.py] Falling back to individual library linking...")
+                libraries = _fallback_windows_linking(lib_dir)
 
-        # Replace the OCTypes/SITypes/RMN libraries with our resolved list
-        libraries = windows_libraries
-
-        # Add external dependencies required by RMNLib on Windows
-        libraries.extend(["curl", "openblas", "lapack"])
-        # Add MinGW runtime libraries
-        libraries.extend(["gcc_s", "winpthread", "quadmath", "gomp"])
         # Add SIZEOF_VOID_P=8 for x86_64 to prevent Cython's division by zero error
         define_macros.append(("SIZEOF_VOID_P", "8"))
         print("Configured for MinGW/GCC compiler on Windows")

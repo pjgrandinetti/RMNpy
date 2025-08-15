@@ -97,6 +97,9 @@ where = ["src"]
 [tool.setuptools.package-dir]
 "" = "src"
 
+[tool.setuptools.package-data]
+"rmnpy" = ["*.dll"]  # Include DLL files on Windows
+
 # Build configuration for extensions
 [tool.cython]
 language_level = 3

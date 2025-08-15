@@ -45,11 +45,11 @@ def setup_dll_paths() -> None:
         # Add DLL directories (including subdirectories for extension modules)
         base_dir = Path(__file__).parent  # Package directory
         dll_dirs = [
-            base_dir,
+            base_dir,  # Package directory (where bridge DLL should be)
             base_dir / "helpers",  # Helper extensions
             base_dir / "wrappers" / "sitypes",  # SITypes extensions
             base_dir / "wrappers" / "rmnlib",  # RMNLib extensions
-            base_dir.parent.parent.parent / "lib",  # lib directory
+            base_dir.parent.parent / "lib",  # lib directory (project root/lib)
             Path(r"D:\a\_temp\msys64\mingw64\bin"),  # MinGW bin (CI environment)
         ]
         # Add Python installation directories for runtime DLL resolution
@@ -127,6 +127,33 @@ def setup_dll_paths() -> None:
                 _logger.warning(f"Python DLL not found at {py_dll}")
         except Exception as e:
             _logger.error(f"Failed to load Python DLL: {e}")
+
+        # Load the Windows Bridge DLL if available (WindowsPlan.md implementation)
+        bridge_dll_name = "rmnstack_bridge.dll"
+        bridge_dll_paths = [
+            base_dir / bridge_dll_name,  # Package directory
+            base_dir.parent.parent / "lib" / bridge_dll_name,  # Project lib directory
+        ]
+
+        bridge_loaded = False
+        for bridge_path in bridge_dll_paths:
+            if bridge_path.exists():
+                try:
+                    _logger.info(f"Loading bridge DLL: {bridge_path}")
+                    import ctypes
+
+                    handle = ctypes.CDLL(str(bridge_path))
+                    _logger.info(f"Successfully loaded bridge DLL, handle: {handle}")
+                    bridge_loaded = True
+                    break
+                except Exception as e:
+                    _logger.error(f"Failed to load bridge DLL from {bridge_path}: {e}")
+
+        if not bridge_loaded:
+            _logger.warning(
+                f"Bridge DLL ({bridge_dll_name}) not found in expected locations"
+            )
+            _logger.warning("Extensions will link against individual libraries")
 
         # Explicitly preload ONLY essential MinGW runtime DLLs to avoid conflicts
         # Reduced set to minimize DLL loading conflicts during pytest
