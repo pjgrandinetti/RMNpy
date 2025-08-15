@@ -14,8 +14,8 @@ import pytest
 
 from rmnpy.wrappers.rmnlib.dimension import (
     LabeledDimension,
-    SILinearDimension,
-    SIMonotonicDimension,
+    LinearDimension,
+    MonotonicDimension,
 )
 
 
@@ -25,7 +25,7 @@ class TestLinearDimension:
     def test_linear_dimension_creation(self):
         """Test basic linear dimension creation with proper C API requirements."""
         # C API requires: count ≥ 2, increment must be real SIScalar with units
-        dim = SILinearDimension(
+        dim = LinearDimension(
             count=10,  # Must be ≥ 2
             increment="10.0 Hz",  # String will be converted to Scalar internally - units required
             label="test dimension",
@@ -42,7 +42,7 @@ class TestLinearDimension:
     def test_linear_coordinates_generation(self):
         """Test coordinate generation for linear dimensions."""
         # Use string values - will be converted to Scalar objects internally
-        dim = SILinearDimension(
+        dim = LinearDimension(
             count=10,
             increment="10.0 Hz",
             origin="5.0 Hz",  # Use origin instead of coordinates_offset
@@ -58,14 +58,14 @@ class TestLinearDimension:
 
     def test_linear_type_immutable(self):
         """Test that dimension type cannot be changed."""
-        dim = SILinearDimension(count=5, increment="1.0 Hz")
+        dim = LinearDimension(count=5, increment="1.0 Hz")
 
         with pytest.raises(AttributeError):
             dim.type = "monotonic"
 
     def test_linear_increment_modification(self):
         """Test increment property modification."""
-        dim = SILinearDimension(count=10, increment="10.0 Hz")
+        dim = LinearDimension(count=10, increment="10.0 Hz")
 
         # Test getting increment
         assert dim.increment.value == 10.0
@@ -81,7 +81,7 @@ class TestLinearDimension:
 
     def test_linear_count_modification(self):
         """Test count property modification."""
-        dim = SILinearDimension(count=10, increment="20.0 Hz", origin="5.0 Hz")
+        dim = LinearDimension(count=10, increment="20.0 Hz", origin="5.0 Hz")
 
         assert dim.count == 10
 
@@ -96,7 +96,7 @@ class TestLinearDimension:
 
     def test_linear_origin_offset(self):
         """Test origin offset for absolute coordinates."""
-        dim = SILinearDimension(
+        dim = LinearDimension(
             count=5, increment="10.0", coordinates_offset="5.0", origin_offset="1000.0"
         )
 
@@ -113,7 +113,7 @@ class TestLinearDimension:
 
     def test_linear_complex_fft_ordering(self):
         """Test complex FFT coordinate ordering."""
-        dim = SILinearDimension(count=10, increment="20.0", coordinates_offset="5.0")
+        dim = LinearDimension(count=10, increment="20.0", coordinates_offset="5.0")
 
         # Default should be False
         assert dim.complex_fft is False
@@ -134,7 +134,7 @@ class TestLinearDimension:
 
     def test_linear_period_property(self):
         """Test period property handling."""
-        dim = SILinearDimension(count=5, increment="1.0 Hz")
+        dim = LinearDimension(count=5, increment="1.0 Hz")
 
         # Default period from C API is now infinity (updated behavior)
         assert dim.period == float("inf")
@@ -149,7 +149,7 @@ class TestLinearDimension:
 
     def test_linear_application_metadata(self):
         """Test application metadata handling."""
-        dim = SILinearDimension(count=5, increment="1.0", application={})
+        dim = LinearDimension(count=5, increment="1.0", application={})
 
         # Default should be empty dict or None
         app = dim.application
@@ -167,7 +167,7 @@ class TestLinearDimension:
 
     def test_linear_coordinates_immutable(self):
         """Test that coordinates cannot be set directly."""
-        dim = SILinearDimension(count=5, increment="2.0")
+        dim = LinearDimension(count=5, increment="2.0")
 
         # Should raise error trying to set coordinates directly
         with pytest.raises(AttributeError):
@@ -179,18 +179,18 @@ class TestLinearDimension:
     def test_linear_axis_label(self):
         """Test axis label formatting."""
         # With label - axis_label is a method that takes an index
-        dim = SILinearDimension(count=5, increment="1.0 Hz", label="frequency")
+        dim = LinearDimension(count=5, increment="1.0 Hz", label="frequency")
         axis_label = dim.axis_label(0)  # Pass index parameter
         assert isinstance(axis_label, str)
 
         # Without label (should use quantity_name if available)
-        dim2 = SILinearDimension(count=5, increment="1.0 Hz")
+        dim2 = LinearDimension(count=5, increment="1.0 Hz")
         axis_label2 = dim2.axis_label(0)  # Pass index parameter
         assert isinstance(axis_label2, str)
 
     def test_linear_copy_method(self):
         """Test copying linear dimensions."""
-        dim = SILinearDimension(
+        dim = LinearDimension(
             count=10,
             increment="5.0",
             coordinates_offset="10.0",
@@ -217,7 +217,7 @@ class TestLinearDimension:
 
     def test_linear_reciprocal_methods(self):
         """Test reciprocal methods for linear dimensions."""
-        dim = SILinearDimension(count=5, increment="2.0 Hz")
+        dim = LinearDimension(count=5, increment="2.0 Hz")
 
         # Test reciprocal increment method - C API may return NaN which causes parse error
         try:
@@ -238,13 +238,13 @@ class TestLinearDimension:
             assert isinstance(reciprocal, SIDimension)
 
         # Test setting reciprocal dimension
-        recip_dim = SILinearDimension(count=5, increment="0.5 Hz")
+        recip_dim = LinearDimension(count=5, increment="0.5 Hz")
         dim.reciprocal = recip_dim
         # C API thin wrapper behavior - may not reflect changes immediately
 
     def test_linear_reciprocal_property(self):
         """Test reciprocal property for linear dimensions."""
-        dim = SILinearDimension(count=5, increment="2.0 Hz")
+        dim = LinearDimension(count=5, increment="2.0 Hz")
 
         # Reciprocal should now be auto-generated (not None)
         reciprocal = dim.reciprocal
@@ -262,7 +262,7 @@ class TestMonotonicDimension:
         # C API requires: coordinates ≥ 2, each coordinate will be converted to SIScalar
         coordinates = [1.0, 100.0, 1000.0, 1000000.0, 2.36518262e15]
 
-        dim = SIMonotonicDimension(
+        dim = MonotonicDimension(
             coordinates=coordinates, description="Far far away.", label="distance"
         )
 
@@ -277,7 +277,7 @@ class TestMonotonicDimension:
         # Use numeric values - will be converted to SIScalar internally
         coordinates = [0, 1, 3, 7, 15, 31]
 
-        dim = SIMonotonicDimension(coordinates=coordinates)
+        dim = MonotonicDimension(coordinates=coordinates)
 
         # Test coordinates property - should extract numeric values
         coords = dim.coordinates
@@ -294,7 +294,7 @@ class TestMonotonicDimension:
         """Test that monotonic dimensions don't have increment."""
         # Use minimum required coordinates (≥2)
         coordinates = [0, 1, 4, 9]
-        dim = SIMonotonicDimension(coordinates=coordinates)
+        dim = MonotonicDimension(coordinates=coordinates)
 
         # Should raise AttributeError for increment
         with pytest.raises(AttributeError):
@@ -302,7 +302,7 @@ class TestMonotonicDimension:
 
     def test_monotonic_no_coordinates_offset(self):
         """Test coordinates_offset behavior for monotonic dimensions."""
-        dim = SIMonotonicDimension(coordinates=[0, 1, 4, 9])
+        dim = MonotonicDimension(coordinates=[0, 1, 4, 9])
 
         # coordinates_offset should exist and return Scalar('0') for monotonic dimensions
         assert str(dim.coordinates_offset) == "0"
@@ -314,7 +314,7 @@ class TestMonotonicDimension:
     def test_monotonic_origin_offset(self):
         """Test origin offset for monotonic dimensions."""
         coordinates = [1, 10, 100]
-        dim = SIMonotonicDimension(coordinates=coordinates, origin_offset="1000.0")
+        dim = MonotonicDimension(coordinates=coordinates, origin_offset="1000.0")
 
         # Test getting origin offset
         assert dim.origin_offset.value == 1000.0
@@ -331,7 +331,7 @@ class TestMonotonicDimension:
 
     def test_monotonic_period_property(self):
         """Test period property for monotonic dimensions."""
-        dim = SIMonotonicDimension(coordinates=[1, 2, 4])
+        dim = MonotonicDimension(coordinates=[1, 2, 4])
 
         # Default should be infinity
         assert dim.period == float("inf")
@@ -344,7 +344,7 @@ class TestMonotonicDimension:
 
     def test_monotonic_no_complex_fft(self):
         """Test that monotonic dimensions don't have complex_fft."""
-        dim = SIMonotonicDimension(coordinates=[0, 1, 4])
+        dim = MonotonicDimension(coordinates=[0, 1, 4])
 
         # Should raise AttributeError for complex_fft (linear dimension only)
         with pytest.raises(AttributeError):
@@ -353,7 +353,7 @@ class TestMonotonicDimension:
     def test_monotonic_count_immutable(self):
         """Test that count cannot be modified."""
         coordinates = [1, 2, 3, 4, 5]
-        dim = SIMonotonicDimension(coordinates=coordinates)
+        dim = MonotonicDimension(coordinates=coordinates)
 
         assert dim.count == 5
 
@@ -363,7 +363,7 @@ class TestMonotonicDimension:
 
     def test_monotonic_coordinates_modification(self):
         """Test coordinates access (read-only in thin wrapper)."""
-        dim = SIMonotonicDimension(coordinates=[1, 2, 3])
+        dim = MonotonicDimension(coordinates=[1, 2, 3])
 
         # Coordinates should be accessible for reading
         coords = dim.coordinates
@@ -373,7 +373,7 @@ class TestMonotonicDimension:
 
     def test_monotonic_reciprocal_property(self):
         """Test reciprocal property for monotonic dimensions."""
-        dim = SIMonotonicDimension(coordinates=[1, 2, 4])
+        dim = MonotonicDimension(coordinates=[1, 2, 4])
 
         # Reciprocal should now be auto-generated (not None)
         reciprocal = dim.reciprocal
@@ -383,14 +383,14 @@ class TestMonotonicDimension:
         assert isinstance(reciprocal, SIDimension)  # Should be SIDimension wrapper
 
         # Test setting reciprocal dimension
-        recip_dim = SIMonotonicDimension(coordinates=[1.0, 0.5, 0.25])
+        recip_dim = MonotonicDimension(coordinates=[1.0, 0.5, 0.25])
         dim.reciprocal = recip_dim
         # C API may not immediately return the set value (thin wrapper behavior)
 
     def test_monotonic_copy_method(self):
         """Test copying monotonic dimensions."""
         coordinates = [0, 1, 3, 7]
-        dim = SIMonotonicDimension(
+        dim = MonotonicDimension(
             coordinates=coordinates,
             label="test",
             description="test description",
@@ -524,7 +524,7 @@ class TestDimensionProperties:
 
     def test_description_property(self):
         """Test description property access and modification."""
-        dim = SILinearDimension(
+        dim = LinearDimension(
             count=5, increment="1.0", description="initial description"
         )
 
@@ -540,7 +540,7 @@ class TestDimensionProperties:
 
     def test_label_property(self):
         """Test label property access and modification."""
-        dim = SILinearDimension(count=5, increment="1.0", label="initial label")
+        dim = LinearDimension(count=5, increment="1.0", label="initial label")
 
         assert dim.label == "initial label"
 
@@ -554,7 +554,7 @@ class TestDimensionProperties:
 
     def test_application_property(self):
         """Test application metadata property."""
-        dim = SILinearDimension(count=5, increment="1.0")
+        dim = LinearDimension(count=5, increment="1.0")
 
         # Initial should be None or empty dict
         app = dim.application
@@ -572,14 +572,14 @@ class TestDimensionProperties:
     def test_count_property(self):
         """Test count property."""
         # Linear dimension
-        linear_dim = SILinearDimension(count=10, increment="1.0")
+        linear_dim = LinearDimension(count=10, increment="1.0")
         assert linear_dim.count == 10
 
         linear_dim.count = 15
         assert linear_dim.count == 15
 
         # Monotonic dimension
-        monotonic_dim = SIMonotonicDimension(coordinates=[1, 2, 3, 4])
+        monotonic_dim = MonotonicDimension(coordinates=[1, 2, 3, 4])
         assert monotonic_dim.count == 4
 
         # Labeled dimension
@@ -589,8 +589,8 @@ class TestDimensionProperties:
     def test_type_property_immutable(self):
         """Test that type property is read-only."""
         dims = [
-            SILinearDimension(count=5, increment="1.0"),
-            SIMonotonicDimension(coordinates=[1, 2, 3]),
+            LinearDimension(count=5, increment="1.0"),
+            MonotonicDimension(coordinates=[1, 2, 3]),
             LabeledDimension(labels=["A", "B"]),
         ]
 
@@ -603,8 +603,8 @@ class TestDimensionProperties:
     def test_is_quantitative_method(self):
         """Test is_quantitative method."""
         # Quantitative dimensions
-        assert SILinearDimension(count=5, increment="1.0").is_quantitative() is True
-        assert SIMonotonicDimension(coordinates=[1, 2]).is_quantitative() is True
+        assert LinearDimension(count=5, increment="1.0").is_quantitative() is True
+        assert MonotonicDimension(coordinates=[1, 2]).is_quantitative() is True
 
         # Non-quantitative dimension
         assert LabeledDimension(labels=["A", "B"]).is_quantitative() is False
@@ -616,7 +616,7 @@ class TestDimensionMethods:
     def test_dict_method(self):
         """Test dict() method for all dimension types."""
         # Linear dimension
-        linear_dim = SILinearDimension(
+        linear_dim = LinearDimension(
             count=10, increment="5.0", label="frequency", description="test linear"
         )
         linear_dict = linear_dim.dict()
@@ -626,7 +626,7 @@ class TestDimensionMethods:
         assert linear_dict["count"] == 10
 
         # Monotonic dimension
-        monotonic_dim = SIMonotonicDimension(
+        monotonic_dim = MonotonicDimension(
             coordinates=[1, 4, 9], description="test monotonic"
         )
         monotonic_dict = monotonic_dim.dict()
@@ -649,7 +649,7 @@ class TestDimensionMethods:
 
     def test_to_dict_alias(self):
         """Test to_dict() alias method."""
-        dim = SILinearDimension(count=5, increment="1.0")
+        dim = LinearDimension(count=5, increment="1.0")
 
         dict_result = dim.dict()
         to_dict_result = dim.to_dict()
@@ -658,7 +658,7 @@ class TestDimensionMethods:
 
     def test_data_structure_property(self):
         """Test data_structure JSON property (if implemented)."""
-        dim = SILinearDimension(count=5, increment="1.0", label="test")
+        dim = LinearDimension(count=5, increment="1.0", label="test")
 
         # Should return JSON string (if implemented)
         if hasattr(dim, "data_structure"):
@@ -680,7 +680,7 @@ class TestErrorHandling:
 
         # Monotonic without coordinates
         with pytest.raises(RMNError):
-            SIMonotonicDimension(coordinates=[])
+            MonotonicDimension(coordinates=[])
 
         # Labeled without labels
         with pytest.raises(RMNError):
@@ -688,7 +688,7 @@ class TestErrorHandling:
 
     def test_property_type_validation(self):
         """Test property type validation."""
-        dim = SILinearDimension(count=5, increment="1.0")
+        dim = LinearDimension(count=5, increment="1.0")
 
         # Description type validation
         with pytest.raises(TypeError):
@@ -729,7 +729,7 @@ class TestErrorHandling:
         assert list(labeled.absolute_coordinates) == ["A", "B"]
 
         # Monotonic dimension should not have linear-specific properties
-        monotonic = SIMonotonicDimension(coordinates=[1, 2, 3])
+        monotonic = MonotonicDimension(coordinates=[1, 2, 3])
         linear_only_attrs = [
             "increment",
             "complex_fft",
@@ -750,24 +750,24 @@ class TestRegressionAndEdgeCases:
         """Test handling of zero and negative coordinates."""
         # Test with zeros
         coords_with_zero = [0, 1, 2]
-        dim = SIMonotonicDimension(coordinates=coords_with_zero)
+        dim = MonotonicDimension(coordinates=coords_with_zero)
         assert dim.count == 3
 
         # Test with negative coordinates
         coords_negative = [-2, -1, 0, 1, 2]
-        dim_neg = SIMonotonicDimension(coordinates=coords_negative)
+        dim_neg = MonotonicDimension(coordinates=coords_negative)
         assert dim_neg.count == 5
 
     def test_single_coordinate_dimension(self):
         """Test dimensions with minimum coordinate requirements."""
         # C API requires minimum 2 coordinates - test with exactly 2
         coords_two = [42.0, 43.0]
-        dim = SIMonotonicDimension(coordinates=coords_two)
+        dim = MonotonicDimension(coordinates=coords_two)
         assert dim.count == 2
         np.testing.assert_array_equal(dim.coordinates, coords_two)
 
         # Minimum 2 coordinates linear dimension
-        linear_dim = SILinearDimension(count=2, increment="5.0")
+        linear_dim = LinearDimension(count=2, increment="5.0")
         assert linear_dim.count == 2
         assert len(linear_dim.coordinates) == 2
 
@@ -779,7 +779,7 @@ class TestRegressionAndEdgeCases:
     def test_large_dimension_count(self):
         """Test dimensions with large counts."""
         # Large linear dimension
-        large_dim = SILinearDimension(count=10000, increment="0.1")
+        large_dim = LinearDimension(count=10000, increment="0.1")
         assert large_dim.count == 10000
         coords = large_dim.coordinates
         assert len(coords) == 10000
@@ -788,7 +788,7 @@ class TestRegressionAndEdgeCases:
 
     def test_string_parsing_edge_cases(self):
         """Test edge cases in string value parsing."""
-        dim = SILinearDimension(count=5, increment="1.0")
+        dim = LinearDimension(count=5, increment="1.0")
 
         # Test that periods work with finite values
         dim.period = "100.0"
@@ -810,7 +810,7 @@ class TestRegressionAndEdgeCases:
 
     def test_copy_independence(self):
         """Test that copied dimensions are truly independent."""
-        original = SILinearDimension(
+        original = LinearDimension(
             count=5,
             increment="2.0",
             label="original",
@@ -834,28 +834,28 @@ class TestCAPIValidation:
     """Test C API input validation requirements."""
 
     def test_linear_dimension_count_validation(self):
-        """Test that SILinearDimension requires count ≥ 2."""
+        """Test that LinearDimension requires count ≥ 2."""
         # Valid: count = 2 (minimum)
-        dim = SILinearDimension(count=2, increment="1.0 Hz")
+        dim = LinearDimension(count=2, increment="1.0 Hz")
         assert dim.count == 2
 
         # Invalid: count < 2 should fail with RMNError from C API
         from rmnpy.exceptions import RMNError
 
         with pytest.raises(RMNError):
-            SILinearDimension(count=1, increment="1.0 Hz")
+            LinearDimension(count=1, increment="1.0 Hz")
 
     def test_linear_dimension_increment_validation(self):
-        """Test that SILinearDimension requires valid increment."""
+        """Test that LinearDimension requires valid increment."""
         # Valid: string increment (converted to SIScalar internally)
-        dim = SILinearDimension(count=5, increment="10.0 Hz")
+        dim = LinearDimension(count=5, increment="10.0 Hz")
         assert dim.count == 5
 
         # Invalid: None increment should fail with RMNError from C API
         from rmnpy.exceptions import RMNError
 
         with pytest.raises(RMNError):
-            SILinearDimension(count=5, increment=None)
+            LinearDimension(count=5, increment=None)
 
     def test_labeled_dimension_labels_validation(self):
         """Test that LabeledDimension requires ≥ 2 labels."""
@@ -876,20 +876,20 @@ class TestCAPIValidation:
             LabeledDimension(labels=["A"])  # Only 1 label
 
     def test_monotonic_dimension_coordinates_validation(self):
-        """Test that SIMonotonicDimension requires ≥ 2 coordinates."""
+        """Test that MonotonicDimension requires ≥ 2 coordinates."""
         # Valid: ≥ 2 coordinates
         coords = [1.0, 2.0]  # Will be converted to SIScalars internally
-        dim = SIMonotonicDimension(coordinates=coords)
+        dim = MonotonicDimension(coordinates=coords)
         assert dim.count == 2
 
         # Invalid: < 2 coordinates should fail with RMNError from C API
         from rmnpy.exceptions import RMNError
 
         with pytest.raises(RMNError):
-            SIMonotonicDimension(coordinates=[])
+            MonotonicDimension(coordinates=[])
 
         with pytest.raises(RMNError):
-            SIMonotonicDimension(coordinates=[1.0])  # Only 1 coordinate
+            MonotonicDimension(coordinates=[1.0])  # Only 1 coordinate
 
 
 if __name__ == "__main__":

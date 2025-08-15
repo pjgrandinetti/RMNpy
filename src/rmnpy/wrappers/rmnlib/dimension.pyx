@@ -6,8 +6,8 @@ This module provides Python wrappers that mirror the C inheritance:
 - BaseDimension (abstract base for common functionality)
 - LabeledDimension (for discrete labeled coordinates)
 - SIDimension (base for quantitative coordinates with SI units)
-  - SILinearDimension (for linear coordinates with constant increment)
-  - SIMonotonicDimension (for monotonic coordinates with arbitrary spacing)
+  - LinearDimension (for linear coordinates with constant increment)
+  - MonotonicDimension (for monotonic coordinates with arbitrary spacing)
 
 Use the specific dimension classes directly for explicit dimension creation.
 """
@@ -371,12 +371,12 @@ cdef class BaseDimension:
             (<LabeledDimension>wrapper)._c_ref = dim_ref
             return wrapper
         elif type_str == "linear":
-            wrapper = SILinearDimension.__new__(SILinearDimension)
-            (<SILinearDimension>wrapper)._c_ref = dim_ref
+            wrapper = LinearDimension.__new__(LinearDimension)
+            (<LinearDimension>wrapper)._c_ref = dim_ref
             return wrapper
         elif type_str == "monotonic":
-            wrapper = SIMonotonicDimension.__new__(SIMonotonicDimension)
-            (<SIMonotonicDimension>wrapper)._c_ref = dim_ref
+            wrapper = MonotonicDimension.__new__(MonotonicDimension)
+            (<MonotonicDimension>wrapper)._c_ref = dim_ref
             return wrapper
         else:
             # Generic SIDimension wrapper for unknown types
@@ -571,7 +571,7 @@ cdef class SIDimension(BaseDimension):
             **kwargs: Additional keyword arguments (for compatibility)
 
         Note:
-            SIDimension is abstract - use SILinearDimension or SIMonotonicDimension instead.
+            SIDimension is abstract - use LinearDimension or MonotonicDimension instead.
             This class provides common SI dimension functionality and default parameter handling.
         """
         cdef OCStringRef label_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(label)
@@ -847,7 +847,7 @@ cdef class SIDimension(BaseDimension):
         if not SIDimensionSetScaling(<SIDimensionRef>self._c_ref, scaling_value):
             raise RMNError("Failed to set scaling")
 
-cdef class SILinearDimension(SIDimension):
+cdef class LinearDimension(SIDimension):
     """
     Linear dimension with constant increment.
 
@@ -855,7 +855,7 @@ cdef class SILinearDimension(SIDimension):
     time series or frequency sweeps with constant spacing.
 
     Examples:
-        >>> dim = SILinearDimension({'count': 5, 'increment': '2.0'})
+        >>> dim = LinearDimension({'count': 5, 'increment': '2.0'})
         >>> dim.coordinates
         array([0., 2., 4., 6., 8.])
         >>> dim.increment
@@ -898,10 +898,10 @@ cdef class SILinearDimension(SIDimension):
 
         Examples:
             # Basic linear dimension (count and increment required)
-            >>> dim = SILinearDimension(count=10, increment='1.0 Hz')
+            >>> dim = LinearDimension(count=10, increment='1.0 Hz')
 
             # With units and metadata
-            >>> dim = SILinearDimension(
+            >>> dim = LinearDimension(
             ...     count=100,
             ...     increment='10.0 kHz',
             ...     label='frequency',
@@ -1103,7 +1103,7 @@ cdef class SILinearDimension(SIDimension):
         finally:
             OCRelease(<OCTypeRef>reciprocal_increment_sisclr)
 
-cdef class SIMonotonicDimension(SIDimension):
+cdef class MonotonicDimension(SIDimension):
     """
     Monotonic dimension with arbitrary coordinate spacing.
 
@@ -1111,7 +1111,7 @@ cdef class SIMonotonicDimension(SIDimension):
     but maintain a monotonic (increasing or decreasing) order.
 
     Examples:
-        >>> dim = SIMonotonicDimension({'coordinates': [1.0, 2.5, 4.0, 7.0]})
+        >>> dim = MonotonicDimension({'coordinates': [1.0, 2.5, 4.0, 7.0]})
         >>> dim.coordinates
         array([1. , 2.5, 4. , 7. ])
         >>> dim.count
@@ -1148,10 +1148,10 @@ cdef class SIMonotonicDimension(SIDimension):
 
         Examples:
             # Basic monotonic dimension (coordinates required)
-            >>> dim = SIMonotonicDimension([1.0, 2.5, 4.0, 7.0])
+            >>> dim = MonotonicDimension([1.0, 2.5, 4.0, 7.0])
 
             # With metadata
-            >>> dim = SIMonotonicDimension(
+            >>> dim = MonotonicDimension(
             ...     [0.0, 1.5, 3.2, 5.1, 8.0],
             ...     label='time',
             ...     description='Acquisition time points'
