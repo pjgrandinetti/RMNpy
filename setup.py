@@ -406,74 +406,17 @@ def get_extensions() -> list[Extension]:
 
         # Check if bridge DLL exists, if not try to create it
         if bridge_implib_path.exists() and bridge_dll_path.exists():
-            print("[setup.py] Using existing bridge DLL for Windows build")
-            # Use only the bridge import library
-            extra_link_args.extend(
-                [
-                    "-Wl,--enable-auto-import",
-                    "-Wl,--disable-auto-image-base",
-                    str(bridge_implib_path.absolute()),
-                ]
-            )
-            # Only external system libraries needed
-            libraries = [
-                "curl",
-                "openblas",
-                "lapack",
-                "gcc_s",
-                "winpthread",
-                "quadmath",
-                "gomp",
-                "m",
-            ]
-            print(f"[setup.py] Bridge DLL linking configured: {bridge_implib_path}")
-
-        else:
-            print("[setup.py] Bridge DLL not found, attempting to create it...")
-            # Check if we have the static libraries to create bridge
-            static_libs = [
-                lib_dir / "libOCTypes.a",
-                lib_dir / "libSITypes.a",
-                lib_dir / "libRMN.a",
-            ]
-
-            if all(lib.exists() for lib in static_libs):
-                print("[setup.py] Found static libraries, creating bridge DLL...")
-                try:
-                    # Create bridge DLL using the same command as in Makefile
-                    subprocess.run(
-                        [
-                            "x86_64-w64-mingw32-gcc",
-                            "-shared",
-                            "-o",
-                            str(bridge_dll_path),
-                            "-Wl,--out-implib," + str(bridge_implib_path),
-                            "-Wl,--export-all-symbols",
-                            str(lib_dir / "libRMN.a"),
-                            str(lib_dir / "libSITypes.a"),
-                            str(lib_dir / "libOCTypes.a"),
-                            "-lopenblas",
-                            "-llapack",
-                            "-lcurl",
-                            "-lgcc_s",
-                            "-lwinpthread",
-                            "-lquadmath",
-                            "-lgomp",
-                            "-lm",
-                        ],
-                        check=True,
-                        capture_output=True,
-                        text=True,
-                    )
-
+            # Check if import library is suspiciously small (no exports case)
+            try:
+                if bridge_implib_path.stat().st_size < 4096:
                     print(
-                        f"[setup.py] Successfully created bridge DLL: {bridge_dll_path}"
+                        "[setup.py] Existing bridge import lib is too small; will rebuild"
                     )
-                    print(
-                        f"[setup.py] Successfully created import library: {bridge_implib_path}"
-                    )
-
-                    # Now use the bridge
+                    bridge_implib_path.unlink(missing_ok=True)
+                    bridge_dll_path.unlink(missing_ok=True)
+                else:
+                    print("[setup.py] Using existing bridge DLL for Windows build")
+                    # Use only the bridge import library
                     extra_link_args.extend(
                         [
                             "-Wl,--enable-auto-import",
@@ -481,6 +424,7 @@ def get_extensions() -> list[Extension]:
                             str(bridge_implib_path.absolute()),
                         ]
                     )
+                    # Only external system libraries needed
                     libraries = [
                         "curl",
                         "openblas",
@@ -491,18 +435,133 @@ def get_extensions() -> list[Extension]:
                         "gomp",
                         "m",
                     ]
+                    print(
+                        f"[setup.py] Bridge DLL linking configured: {bridge_implib_path}"
+                    )
+                    # Continue to build extensions with bridge linking
+            except Exception as e:
+                print(f"[setup.py] Bridge size check warning: {e}")
+                # Continue to rebuild if size check fails
 
-                except subprocess.CalledProcessError as e:
-                    print(f"[setup.py] Failed to create bridge DLL: {e}")
-                    print(f"[setup.py] stderr: {e.stderr}")
-                    print("[setup.py] Falling back to individual library linking...")
-                    # Fallback to original behavior
-                    libraries = _fallback_windows_linking(lib_dir)
-            else:
-                missing = [str(lib) for lib in static_libs if not lib.exists()]
-                print(f"[setup.py] Missing static libraries: {missing}")
+        # If we reach here, we need to create/rebuild the bridge DLL
+        print(
+            "[setup.py] Bridge DLL not found or needs rebuilding, attempting to create it..."
+        )
+        # Check if we have the static libraries to create bridge
+        static_libs = [
+            lib_dir / "libOCTypes.a",
+            lib_dir / "libSITypes.a",
+            lib_dir / "libRMN.a",
+        ]
+
+        if all(lib.exists() for lib in static_libs):
+            print("[setup.py] Found static libraries, creating bridge DLL...")
+            try:
+                # Create bridge DLL using the same command as in Makefile
+                subprocess.run(
+                    [
+                        "x86_64-w64-mingw32-gcc",
+                        "-shared",
+                        "-o",
+                        str(bridge_dll_path),
+                        "-Wl,--out-implib," + str(bridge_implib_path),
+                        "-Wl,--whole-archive",
+                        str(lib_dir / "libRMN.a"),
+                        str(lib_dir / "libSITypes.a"),
+                        str(lib_dir / "libOCTypes.a"),
+                        "-Wl,--no-whole-archive",
+                        "-Wl,--export-all-symbols",
+                        "-lopenblas",
+                        "-llapack",
+                        "-lcurl",
+                        "-lgcc_s",
+                        "-lwinpthread",
+                        "-lquadmath",
+                        "-lgomp",
+                        "-lm",
+                    ],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+
+                print(f"[setup.py] Successfully created bridge DLL: {bridge_dll_path}")
+                print(
+                    f"[setup.py] Successfully created import library: {bridge_implib_path}"
+                )
+
+                # Verify that the import library has reasonable size (contains exports)
+                try:
+                    if (
+                        bridge_implib_path.exists()
+                        and bridge_implib_path.stat().st_size < 4096
+                    ):
+                        print(
+                            "[setup.py] Bridge import lib is too small; rebuilding with --whole-archive"
+                        )
+                        bridge_implib_path.unlink(missing_ok=True)
+                        bridge_dll_path.unlink(missing_ok=True)
+                        # Re-run the same subprocess.run(...) block above
+                        subprocess.run(
+                            [
+                                "x86_64-w64-mingw32-gcc",
+                                "-shared",
+                                "-o",
+                                str(bridge_dll_path),
+                                "-Wl,--out-implib," + str(bridge_implib_path),
+                                "-Wl,--whole-archive",
+                                str(lib_dir / "libRMN.a"),
+                                str(lib_dir / "libSITypes.a"),
+                                str(lib_dir / "libOCTypes.a"),
+                                "-Wl,--no-whole-archive",
+                                "-Wl,--export-all-symbols",
+                                "-lopenblas",
+                                "-llapack",
+                                "-lcurl",
+                                "-lgcc_s",
+                                "-lwinpthread",
+                                "-lquadmath",
+                                "-lgomp",
+                                "-lm",
+                            ],
+                            check=True,
+                            capture_output=True,
+                            text=True,
+                        )
+                        print("[setup.py] Bridge DLL rebuilt successfully")
+                except Exception as e:
+                    print(f"[setup.py] Bridge size check warning: {e}")
+
+                # Now use the bridge
+                extra_link_args.extend(
+                    [
+                        "-Wl,--enable-auto-import",
+                        "-Wl,--disable-auto-image-base",
+                        str(bridge_implib_path.absolute()),
+                    ]
+                )
+                libraries = [
+                    "curl",
+                    "openblas",
+                    "lapack",
+                    "gcc_s",
+                    "winpthread",
+                    "quadmath",
+                    "gomp",
+                    "m",
+                ]
+
+            except subprocess.CalledProcessError as e:
+                print(f"[setup.py] Failed to create bridge DLL: {e}")
+                print(f"[setup.py] stderr: {e.stderr}")
                 print("[setup.py] Falling back to individual library linking...")
+                # Fallback to original behavior
                 libraries = _fallback_windows_linking(lib_dir)
+        else:
+            missing = [str(lib) for lib in static_libs if not lib.exists()]
+            print(f"[setup.py] Missing static libraries: {missing}")
+            print("[setup.py] Falling back to individual library linking...")
+            libraries = _fallback_windows_linking(lib_dir)
 
         # Add SIZEOF_VOID_P=8 for x86_64 to prevent Cython's division by zero error
         define_macros.append(("SIZEOF_VOID_P", "8"))

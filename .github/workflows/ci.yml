@@ -166,12 +166,21 @@ jobs:
 
         if [ -f lib/libOCTypes.a ] && [ -f lib/libSITypes.a ] && [ -f lib/libRMN.a ]; then
           echo "✓ Found all required static libraries"
+
+          # Clean up any existing small/bad bridge DLL
+          if [ -f lib/rmnstack_bridge.dll.a ] && [ $(wc -c < lib/rmnstack_bridge.dll.a) -lt 4096 ]; then
+            echo "Removing existing small bridge DLL (likely empty exports)"
+            rm -f lib/rmnstack_bridge.dll lib/rmnstack_bridge.dll.a
+          fi
+
           echo "Creating bridge DLL..."
 
           x86_64-w64-mingw32-gcc -shared -o lib/rmnstack_bridge.dll \
             -Wl,--out-implib,lib/rmnstack_bridge.dll.a \
+            -Wl,--whole-archive \
+              lib/libRMN.a lib/libSITypes.a lib/libOCTypes.a \
+            -Wl,--no-whole-archive \
             -Wl,--export-all-symbols \
-            lib/libRMN.a lib/libSITypes.a lib/libOCTypes.a \
             -lopenblas -llapack -lcurl -lgcc_s -lwinpthread -lquadmath -lgomp -lm
 
           if [ -f lib/rmnstack_bridge.dll ]; then
