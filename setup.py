@@ -178,6 +178,15 @@ class CustomBuildExt(build_ext):
             include_dir / "RMNLib",
         ]
 
+        # Debug: list all files in lib directory
+        print(f"Checking library directory: {lib_dir}")
+        if lib_dir.exists():
+            all_files = list(lib_dir.iterdir())
+            print(f"Available files in lib/: {[f.name for f in all_files]}")
+        else:
+            print(f"[X] Library directory does not exist: {lib_dir}")
+            return False
+
         # Check libraries
         for lib_file in required_libs:
             if not lib_file.exists():
@@ -279,9 +288,38 @@ def get_extensions() -> list[Extension]:
         # Add SIZEOF_VOID_P=8 for x86_64 to prevent Cython's division by zero error
         define_macros.append(("SIZEOF_VOID_P", "8"))
         print("Configured for MinGW/GCC compiler on Windows")
-    else:
-        # GCC/Clang flags on Unix-like systems
+    elif platform.system() == "Darwin":  # macOS
+        # macOS-specific configuration
         extra_compile_args = ["-std=c99", "-Wno-unused-function"]
+
+        # Add RPATH for finding shared libraries at runtime
+        # Get the absolute path to the lib directory
+        lib_dir = Path(__file__).parent / "lib"
+        lib_dir_abs = str(lib_dir.absolute())
+
+        # Add runtime library search paths
+        extra_link_args.extend(
+            [
+                f"-Wl,-rpath,{lib_dir_abs}",  # Local lib directory
+                "-Wl,-rpath,@loader_path/../../../lib",  # Relative path from extension to lib
+                "-Wl,-rpath,@loader_path/../../../../lib",  # Alternative relative path
+            ]
+        )
+
+        print(f"Configured macOS RPATH for library directory: {lib_dir_abs}")
+    else:
+        # Linux and other Unix-like systems
+        extra_compile_args = ["-std=c99", "-Wno-unused-function"]
+
+        # Add RPATH for Linux as well
+        lib_dir = Path(__file__).parent / "lib"
+        lib_dir_abs = str(lib_dir.absolute())
+        extra_link_args.extend(
+            [
+                f"-Wl,-rpath,{lib_dir_abs}",  # Local lib directory
+                "-Wl,-rpath,$ORIGIN/../../../lib",  # Relative path from extension to lib
+            ]
+        )
 
     # Build extensions list
     extensions = []
