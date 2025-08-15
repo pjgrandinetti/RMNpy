@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rmnpy"
 version = "0.1.0"
-description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries"
+description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -26,18 +26,25 @@ keywords = [
     "nmr",
     "spectroscopy",
     "physics",
-    "chemistry"
+    "chemistry",
+    "c-extensions",
+    "cython"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: C",
     "Programming Language :: Cython",
     "Topic :: Scientific/Engineering",
@@ -83,9 +90,11 @@ all = [
 [project.urls]
 Homepage = "https://github.com/pjgrandinetti/RMNpy"
 Documentation = "https://rmnpy.readthedocs.io"
-Repository = "https://github.com/pjgrandinetti/RMNpy.git"
+Repository = "https://github.com/pjgrandinetti/RMNpy"
+"Source Code" = "https://github.com/pjgrandinetti/RMNpy"
 "Bug Reports" = "https://github.com/pjgrandinetti/RMNpy/issues"
-Changelog = "https://github.com/pjgrandinetti/RMNpy/blob/main/CHANGELOG.md"
+"Changelog" = "https://github.com/pjgrandinetti/RMNpy/blob/master/CHANGELOG.md"
+"CI/CD" = "https://github.com/pjgrandinetti/RMNpy/actions"
 
 [tool.setuptools]
 zip-safe = false

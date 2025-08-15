@@ -49,6 +49,10 @@ pip install -e .
 pip install rmnpy
 ```
 
+**Platform Support:**
+- **Linux/macOS**: Python 3.8-3.12
+- **Windows**: Python 3.12 only (requires MSYS2 environment)
+
 ### Windows (MSYS2/Mingw-w64 Python)
 
 To install RMNpy with C99-based Cython extensions on Windows you must use the MSYS2 MINGW64 Python runtime:
