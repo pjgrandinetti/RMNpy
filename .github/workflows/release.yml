@@ -63,6 +63,8 @@ jobs:
           mingw-w64-x86_64-openblas
           mingw-w64-x86_64-lapack
           mingw-w64-x86_64-openmp
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-ninja
 
     # Download dependencies (same as CI workflow)
     - name: Download OCTypes from GitHub releases
@@ -241,7 +243,7 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
-        packages_dir: dist/
+        packages-dir: dist/
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
