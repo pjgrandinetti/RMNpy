@@ -256,47 +256,42 @@ def get_extensions() -> list[Extension]:
 
     # Library configuration depends on platform
     if platform.system() == "Windows":
-        # Environment variable to force all-static linking as fallback
-        force_static = os.environ.get("RMNPY_WINDOWS_STATIC_ONLY", "").lower() in (
-            "1",
-            "true",
-            "yes",
-        )
+        # On Windows with MinGW, focus on ensuring all libraries have proper import libraries
+        # This avoids mixing static and import libraries which causes symbol resolution issues
+        import glob
+        import os  # Import os here for Windows-specific operations
+        import shutil
 
-        if force_static:
-            print(
-                "Windows: RMNPY_WINDOWS_STATIC_ONLY enabled - using all static libraries"
-            )
-            # Use static libraries directly, avoiding import library complexity
-            libraries = ["RMN", "SITypes", "OCTypes"]
-            external_libraries = []
+        print("Windows: Ensuring consistent import library generation for all DLLs")
 
-            # Verify all static libraries exist
-            for lib in libraries:
-                static_path = os.path.join("lib", f"lib{lib}.a")
-                if not os.path.exists(static_path):
-                    raise FileNotFoundError(f"Static library not found: {static_path}")
-                print(f"Windows: Verified static library: {static_path}")
-
-        else:
-            # Normal dynamic/import library approach (existing logic)
-            print("Windows: Using dynamic/import library approach")
-
-            # On Windows with MinGW, we need to force linking against DLL import libraries
-            # instead of static libraries to avoid undefined reference errors.
-            #
-            # The issue: MinGW linker prefers libXXX.a over libXXX.dll.a
-            # Solution: Temporarily hide static libraries during linking
-            import glob
-            import os  # Import os here for Windows-specific operations
-            import shutil
-
-            # On Windows, check what type of libraries we have for each dependency
-            # Some might have .dll.a import libraries, others might just have DLLs
-            lib_info = {}
+        # Strategy: Generate import libraries for ALL DLLs using our toolchain
+        # This ensures compatibility and avoids pre-built import library issues
+        lib_info = {}
         main_libs = ["RMN", "SITypes", "OCTypes"]
 
+        # First, attempt to generate consistent import libraries for all DLLs
+        print("Windows: Generating consistent import libraries for all DLLs...")
+
         for lib_name in main_libs:
+            dll_path = os.path.join("lib", f"lib{lib_name}.dll")
+            consistent_import_lib = os.path.join("lib", f"lib{lib_name}.dll.a.rebuilt")
+
+            if os.path.exists(dll_path):
+                print(
+                    f"Windows: Generating import library for {lib_name} from {dll_path}"
+                )
+                # This will use the existing _dump_table and import library generation logic
+                # but generate a new .dll.a.rebuilt file for consistency
+                lib_info[lib_name] = {"type": "dll_to_rebuild", "path": dll_path}
+            else:
+                print(f"Windows: No DLL found for {lib_name}, this will cause issues")
+                # We could still try to use existing import library as fallback
+                dll_a_path = os.path.join("lib", f"lib{lib_name}.dll.a")
+                if os.path.exists(dll_a_path):
+                    print(
+                        f"Windows: Using existing import library as fallback: {dll_a_path}"
+                    )
+                    lib_info[lib_name] = {"type": "dll_import", "path": dll_a_path}
             dll_a_path = os.path.join("lib", f"lib{lib_name}.dll.a")
             dll_path = os.path.join("lib", f"lib{lib_name}.dll")
             static_path = os.path.join("lib", f"lib{lib_name}.a")
