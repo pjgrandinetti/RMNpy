@@ -428,50 +428,115 @@ def get_extensions() -> list[Extension]:
                         # Create a temporary .def file next to libs so paths are simple
                         temp_def = os.path.join("lib", f"lib{lib_name}.def")
                         try:
+                            # Generate a .def and inspect it before calling dlltool. If the
+                            # generated .def contains no exports, prefer the static .a
+                            # archive (if available) rather than creating an empty
+                            # import library which will not resolve symbols.
                             _generate_def_from_dump(dll_path, temp_def)
-                            # Call dlltool with the generated def file to create import library
-                            result = subprocess.run(
-                                ["dlltool", "-d", temp_def, "-l", temp_import_lib],
-                                capture_output=True,
-                                text=True,
-                            )
 
-                            # Save dlltool output for CI diagnostics regardless of success
+                            # Count exported symbols in the generated def file
+                            def_has_exports = False
                             try:
-                                dlltool_log = os.path.join(
-                                    "lib", f"{os.path.basename(dll_path)}.dlltool.log"
-                                )
-                                with open(dlltool_log, "w") as lf:
-                                    lf.write(
-                                        f"CMD: dlltool -d {temp_def} -l {temp_import_lib}\n"
-                                    )
-                                    lf.write("STDOUT:\n")
-                                    lf.write(result.stdout or "")
-                                    lf.write("\nSTDERR:\n")
-                                    lf.write(result.stderr or "")
-                                print(f"Windows: Saved dlltool log to {dlltool_log}")
+                                with open(temp_def, "r") as df:
+                                    in_exports = False
+                                    for line in df:
+                                        line = line.strip()
+                                        if not line:
+                                            continue
+                                        if line.upper().startswith("EXPORTS"):
+                                            in_exports = True
+                                            continue
+                                        if in_exports and not line.startswith(";"):
+                                            # non-comment export line found
+                                            def_has_exports = True
+                                            break
                             except Exception:
-                                pass
+                                # If we can't read the def, assume no exports (safe fallback)
+                                def_has_exports = False
 
-                            if result.returncode == 0 and os.path.exists(
-                                temp_import_lib
-                            ):
-                                lib_info[lib_name] = {
-                                    "type": "generated_import",
-                                    "path": temp_import_lib,
-                                }
-                                print(
-                                    f"Windows: Successfully created import library: {temp_import_lib}"
-                                )
+                            if not def_has_exports:
+                                # Prefer static .a if it's available, otherwise fall back to dll_only
+                                static_path = os.path.join("lib", f"lib{lib_name}.a")
+                                if os.path.exists(static_path):
+                                    lib_info[lib_name] = {
+                                        "type": "static",
+                                        "path": static_path,
+                                    }
+                                    print(
+                                        f"Windows: Generated .def for {dll_path} contained no exports; falling back to static {static_path}"
+                                    )
+                                else:
+                                    lib_info[lib_name] = {
+                                        "type": "dll_only",
+                                        "path": dll_path,
+                                    }
+                                    print(
+                                        f"Windows: Generated .def for {dll_path} contained no exports and no static .a found; will attempt direct DLL linking"
+                                    )
+                                # Keep the generated .def for CI diagnostics; do not call dlltool
+                                # Remove temp_def only later in cleanup section
                             else:
-                                print(
-                                    f"Windows: Failed to create import library for {lib_name}: {result.stderr} {result.stdout}"
+                                # Call dlltool with the generated def file to create import library
+                                result = subprocess.run(
+                                    ["dlltool", "-d", temp_def, "-l", temp_import_lib],
+                                    capture_output=True,
+                                    text=True,
                                 )
-                                # Fall back to direct DLL linking (may not work)
-                                lib_info[lib_name] = {
-                                    "type": "dll_only",
-                                    "path": dll_path,
-                                }
+
+                                # Save dlltool output for CI diagnostics regardless of success
+                                try:
+                                    dlltool_log = os.path.join(
+                                        "lib",
+                                        f"{os.path.basename(dll_path)}.dlltool.log",
+                                    )
+                                    with open(dlltool_log, "w") as lf:
+                                        lf.write(
+                                            f"CMD: dlltool -d {temp_def} -l {temp_import_lib}\n"
+                                        )
+                                        lf.write("STDOUT:\n")
+                                        lf.write(result.stdout or "")
+                                        lf.write("\nSTDERR:\n")
+                                        lf.write(result.stderr or "")
+                                    print(
+                                        f"Windows: Saved dlltool log to {dlltool_log}"
+                                    )
+                                except Exception:
+                                    pass
+
+                                if result.returncode == 0 and os.path.exists(
+                                    temp_import_lib
+                                ):
+                                    lib_info[lib_name] = {
+                                        "type": "generated_import",
+                                        "path": temp_import_lib,
+                                    }
+                                    print(
+                                        f"Windows: Successfully created import library: {temp_import_lib}"
+                                    )
+                                else:
+                                    print(
+                                        f"Windows: Failed to create import library for {lib_name}: {result.stderr} {result.stdout}"
+                                    )
+                                    # Fall back to static .a if available, else dll_only
+                                    static_path = os.path.join(
+                                        "lib", f"lib{lib_name}.a"
+                                    )
+                                    if os.path.exists(static_path):
+                                        lib_info[lib_name] = {
+                                            "type": "static",
+                                            "path": static_path,
+                                        }
+                                        print(
+                                            f"Windows: Falling back to static library {static_path} after dlltool failure"
+                                        )
+                                    else:
+                                        lib_info[lib_name] = {
+                                            "type": "dll_only",
+                                            "path": dll_path,
+                                        }
+                                        print(
+                                            f"Windows: Fall back to direct DLL linking for {lib_name} (no static .a available)"
+                                        )
                         finally:
                             # Clean up generated .def if it exists
                             try:
