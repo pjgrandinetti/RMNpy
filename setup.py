@@ -276,8 +276,60 @@ def get_extensions() -> list[Extension]:
                 lib_info[lib_name] = {"type": "dll_import", "path": dll_a_path}
                 print(f"Windows: Found DLL import library: {dll_a_path}")
             elif os.path.exists(dll_path):
-                lib_info[lib_name] = {"type": "dll_only", "path": dll_path}
-                print(f"Windows: Found DLL only: {dll_path}")
+                # For DLLs without import libraries, create a temporary import library
+                temp_import_lib = f"lib/lib{lib_name}.dll.a.temp"
+                if not os.path.exists(temp_import_lib):
+                    print(f"Windows: Creating import library for {dll_path}")
+                    try:
+                        # Use dlltool (part of MinGW toolchain) to create import library from DLL
+                        import subprocess
+
+                        result = subprocess.run(
+                            [
+                                "dlltool",
+                                "-D",
+                                dll_path,  # Input DLL
+                                "-l",
+                                temp_import_lib,  # Output import library
+                                "-d",
+                                "/dev/null",  # No .def file needed
+                            ],
+                            capture_output=True,
+                            text=True,
+                        )
+
+                        if result.returncode == 0 and os.path.exists(temp_import_lib):
+                            lib_info[lib_name] = {
+                                "type": "generated_import",
+                                "path": temp_import_lib,
+                            }
+                            print(
+                                f"Windows: Successfully created import library: {temp_import_lib}"
+                            )
+                        else:
+                            print(
+                                f"Windows: Failed to create import library for {lib_name}: {result.stderr}"
+                            )
+                            # Fall back to direct DLL linking (may not work)
+                            lib_info[lib_name] = {"type": "dll_only", "path": dll_path}
+                    except FileNotFoundError:
+                        print(
+                            f"Windows: dlltool not found, cannot create import library for {lib_name}"
+                        )
+                        lib_info[lib_name] = {"type": "dll_only", "path": dll_path}
+                    except Exception as e:
+                        print(
+                            f"Windows: Error creating import library for {lib_name}: {e}"
+                        )
+                        lib_info[lib_name] = {"type": "dll_only", "path": dll_path}
+                else:
+                    lib_info[lib_name] = {
+                        "type": "generated_import",
+                        "path": temp_import_lib,
+                    }
+                    print(
+                        f"Windows: Using existing generated import library: {temp_import_lib}"
+                    )
             elif os.path.exists(static_path):
                 lib_info[lib_name] = {"type": "static", "path": static_path}
                 print(f"Windows: Found static library: {static_path}")
@@ -310,8 +362,8 @@ def get_extensions() -> list[Extension]:
             for lib_name in main_libs:
                 if lib_name in lib_info:
                     lib_data = lib_info[lib_name]
-                    if lib_data["type"] in ["dll_import", "dll_only"]:
-                        # Use the DLL import library or try to link against DLL directly
+                    if lib_data["type"] in ["dll_import", "generated_import"]:
+                        # Use the DLL import library (real or generated)
                         abs_path = os.path.abspath(lib_data["path"])
                         explicit_lib_paths.append(abs_path)
                         print(f"Windows: Will explicitly link: {abs_path}")
@@ -326,8 +378,19 @@ def get_extensions() -> list[Extension]:
                                 print(
                                     f"Windows: Temporarily hiding static {static_path}"
                                 )
+                    elif lib_data["type"] == "dll_only":
+                        # This shouldn't work with MinGW, but let's try
+                        print(
+                            f"Windows: WARNING - Attempting direct DLL linking for {lib_name} (may fail)"
+                        )
+                        # Don't add DLL to explicit paths, fall back to library name
+                        external_libraries.insert(
+                            0, lib_name
+                        )  # Add to front so it's found first
                     else:
                         # Fall back to library name for static linking
+                        print(f"Windows: Using static library for {lib_name}")
+                        external_libraries.insert(0, lib_name)
                         print(f"Windows: Using static library for {lib_name}")
 
         except Exception as e:
