@@ -24,15 +24,26 @@ except ImportError:
     def new_compiler(*args: Any, **kwargs: Any) -> Any:
         return None
 
-    def customize_compiler(*args: Any, **kwargs: Any) -> None:
-        pass
-
+    # Note: customize_compiler fallback is provided later to avoid redefinition
     def get_python_inc(*args: Any, **kwargs: Any) -> str:
         return sysconfig.get_path("include")
 
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+# Ensure customize_compiler is available; some environments provide it via
+# distutils.sysconfig while others may not. Provide a safe no-op fallback.
+try:
+    from distutils.sysconfig import customize_compiler  # type: ignore[import-untyped]
+except Exception:
+    # Only define a fallback if an earlier import/fallback didn't already define it
+    if "customize_compiler" not in globals():
+
+        def customize_compiler(*args, **kwargs):
+            """Fallback no-op if customize_compiler is unavailable."""
+            return None
+
 
 import numpy
 from Cython.Build import cythonize
