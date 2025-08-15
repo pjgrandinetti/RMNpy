@@ -278,9 +278,111 @@ def get_extensions() -> list[Extension]:
             if os.path.exists(dll_a_path):
                 lib_info[lib_name] = {"type": "dll_import", "path": dll_a_path}
                 print(f"Windows: Found DLL import library: {dll_a_path}")
+
+                # For OCTypes, verify the import library contains expected symbols
+                if lib_name == "OCTypes":
+                    try:
+                        # Try both nm and objdump to examine the import library
+                        result = None
+                        for cmd_set in [
+                            ["nm", dll_a_path],  # Try without -D flag first
+                            ["nm", "-D", dll_a_path],  # Dynamic symbols
+                            ["objdump", "-t", dll_a_path],  # Symbol table
+                        ]:
+                            try:
+                                result = subprocess.run(
+                                    cmd_set,
+                                    capture_output=True,
+                                    text=True,
+                                )
+                                if result.returncode == 0 and result.stdout:
+                                    break
+                            except FileNotFoundError:
+                                continue
+
+                        if result and result.returncode == 0 and result.stdout:
+                            # Check if it contains some expected OCTypes symbols
+                            expected_symbols = [
+                                "OCNumberGetValue",
+                                "OCBooleanGetValue",
+                                "OCStringGetCString",
+                            ]
+                            found_symbols = []
+                            for sym in expected_symbols:
+                                if sym in result.stdout:
+                                    found_symbols.append(sym)
+
+                            print(
+                                f"Windows: OCTypes import lib contains {len(found_symbols)}/{len(expected_symbols)} expected symbols: {found_symbols}"
+                            )
+
+                            # Save symbol dump for diagnostics
+                            try:
+                                nm_log = os.path.join(
+                                    "lib", "libOCTypes.dll.a.symbols.log"
+                                )
+                                with open(nm_log, "w") as lf:
+                                    lf.write(f"CMD: {' '.join(cmd_set)}\n")
+                                    lf.write("STDOUT:\n")
+                                    lf.write(result.stdout or "")
+                                    lf.write("\nSTDERR:\n")
+                                    lf.write(result.stderr or "")
+                                print(f"Windows: Saved symbol dump to {nm_log}")
+                            except Exception:
+                                pass
+
+                            # If no expected symbols found, treat as problematic
+                            if not found_symbols:
+                                print(
+                                    "Windows: WARNING - OCTypes import library contains no expected symbols, may need regeneration"
+                                )
+                                # Force regeneration by treating it as a DLL-only case
+                                if os.path.exists(dll_path):
+                                    print(
+                                        f"Windows: Attempting to regenerate OCTypes import library from {dll_path}"
+                                    )
+                                    lib_info[lib_name] = {
+                                        "type": "dll_only",
+                                        "path": dll_path,
+                                    }
+                                    # Don't continue, let it fall through to DLL processing
+                                else:
+                                    # No DLL available for regeneration, stick with problematic import lib
+                                    continue
+                            else:
+                                # Import library contains expected symbols, use it
+                                continue
+                        else:
+                            print(
+                                "Windows: Could not examine OCTypes import library symbols: nm failed"
+                            )
+                            # Can't verify, but proceed with the import library
+                            continue
+                    except FileNotFoundError:
+                        print(
+                            "Windows: Could not examine OCTypes import library symbols: nm not available"
+                        )
+                        # Can't verify, but proceed with the import library
+                        continue
+                    except Exception as e:
+                        print(f"Windows: Error examining OCTypes import library: {e}")
+                        # Can't verify, but proceed with the import library
+                        continue
+                else:
+                    # Not OCTypes, just use the import library
+                    continue
             elif os.path.exists(dll_path):
                 # For DLLs without import libraries, create a temporary import library
-                temp_import_lib = f"lib/lib{lib_name}.dll.a.temp"
+                # Use a different naming strategy for OCTypes regeneration
+                if (
+                    lib_name == "OCTypes"
+                    and lib_info.get(lib_name, {}).get("type") == "dll_only"
+                ):
+                    # This is a regeneration case - use different name
+                    temp_import_lib = f"lib/lib{lib_name}.dll.a.regenerated"
+                else:
+                    temp_import_lib = f"lib/lib{lib_name}.dll.a.temp"
+
                 if not os.path.exists(temp_import_lib):
                     print(f"Windows: Creating import library for {dll_path}")
                     try:
