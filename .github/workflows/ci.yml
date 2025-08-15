@@ -58,7 +58,7 @@ jobs:
       with:
         msystem: MINGW64
         update: true
-        install: >-
+        install: |
           mingw-w64-x86_64-toolchain
           mingw-w64-x86_64-python
           mingw-w64-x86_64-python-pip
@@ -69,6 +69,7 @@ jobs:
           mingw-w64-x86_64-curl
           mingw-w64-x86_64-openblas
           mingw-w64-x86_64-lapack
+          mingw-w64-x86_64-openmp
           mingw-w64-x86_64-make
 
     - name: Verify MSYS2 Python installation (Windows)
@@ -81,6 +82,21 @@ jobs:
         python -c "import numpy; print('NumPy version:', numpy.__version__)"
         python -c "import pytest; print('Pytest installed successfully')"
         echo "✓ MSYS2 Python environment ready"
+
+    - name: Debug OpenBLAS installation (Windows)
+      if: runner.os == 'Windows'
+      shell: msys2 {0}
+      run: |
+        echo "=== Debugging OpenBLAS installation ==="
+        echo "Looking for cblas.h and lapacke.h..."
+        find /mingw64 -name "cblas.h" -o -name "lapacke.h" 2>/dev/null || echo "Headers not found in /mingw64"
+        echo "OpenBLAS package contents:"
+        pacman -Ql mingw-w64-x86_64-openblas | grep -E "(cblas|lapack)" || echo "No cblas/lapack files found"
+        echo "LAPACK package contents:"
+        pacman -Ql mingw-w64-x86_64-lapack | head -20 || echo "LAPACK package query failed"
+        echo "Include directories:"
+        ls -la /mingw64/include/ | grep -E "(blas|lapack)" || echo "No BLAS/LAPACK includes in /mingw64/include"
+        echo "=== End debug info ==="
 
     - name: Download OCTypes from GitHub releases
       run: |
