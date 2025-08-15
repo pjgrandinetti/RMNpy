@@ -392,6 +392,23 @@ def get_extensions() -> list[Extension]:
         ]
     )
 
+    # Phase 3A: RMNLib dimension wrapper
+    extensions.extend(
+        [
+            Extension(
+                "rmnpy.wrappers.rmnlib.dimension",
+                sources=["src/rmnpy/wrappers/rmnlib/dimension.pyx"],
+                include_dirs=include_dirs,
+                library_dirs=library_dirs,
+                libraries=libraries,
+                language="c",
+                extra_compile_args=extra_compile_args,
+                extra_link_args=extra_link_args,
+                define_macros=define_macros,
+            )
+        ]
+    )
+
     return extensions
 
 
