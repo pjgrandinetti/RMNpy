@@ -6,7 +6,7 @@ certifi==2025.7.14
 charset-normalizer==3.4.3
 colorama @ file:///home/conda/feedstock_root/build_artifacts/colorama_1733218098505/work
 coverage==7.10.3
-Cython==3.1.2
+Cython==3.1.3
 docutils==0.22
 exceptiongroup @ file:///home/conda/feedstock_root/build_artifacts/exceptiongroup_1746947292760/work
 idna==3.10
