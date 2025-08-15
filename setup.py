@@ -610,6 +610,11 @@ def get_extensions() -> list[Extension]:
                                 print(
                                     f"Windows: Temporarily hiding static {static_path}"
                                 )
+                    elif lib_data["type"] == "static":
+                        # Use static library with explicit path
+                        abs_path = os.path.abspath(lib_data["path"])
+                        explicit_lib_paths.append(abs_path)
+                        print(f"Windows: Will explicitly link static: {abs_path}")
                     elif lib_data["type"] == "dll_only":
                         # This shouldn't work with MinGW, but let's try
                         print(
@@ -619,11 +624,6 @@ def get_extensions() -> list[Extension]:
                         external_libraries.insert(
                             0, lib_name
                         )  # Add to front so it's found first
-                    else:
-                        # Fall back to library name for static linking
-                        print(f"Windows: Using static library for {lib_name}")
-                        external_libraries.insert(0, lib_name)
-                        print(f"Windows: Using static library for {lib_name}")
 
         except Exception as e:
             print(f"Windows: Error managing library paths: {e}")
@@ -631,6 +631,27 @@ def get_extensions() -> list[Extension]:
         # Store paths and hidden libraries for later use/cleanup
         globals()["_explicit_dll_libs"] = explicit_lib_paths
         globals()["_hidden_static_libs"] = static_libs_to_hide
+
+        # For explicit library paths, ensure proper dependency order:
+        # Libraries that depend on others should come BEFORE their dependencies
+        # RMN and SITypes depend on OCTypes, so they should come first
+        if explicit_lib_paths:
+            ordered_lib_paths = []
+            octypes_lib = None
+
+            # Separate OCTypes from other libs
+            for lib_path in explicit_lib_paths:
+                if "OCTypes" in lib_path:
+                    octypes_lib = lib_path
+                else:
+                    ordered_lib_paths.append(lib_path)
+
+            # Add OCTypes at the end (dependencies come after dependents)
+            if octypes_lib:
+                ordered_lib_paths.append(octypes_lib)
+
+            globals()["_explicit_dll_libs"] = ordered_lib_paths
+            print(f"Windows: Ordered library paths for linking: {ordered_lib_paths}")
 
         # Set final libraries list to just external dependencies
         libraries = external_libraries
