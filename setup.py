@@ -243,6 +243,17 @@ def get_extensions() -> list[Extension]:
         get_python_inc(),  # Python headers (essential for MinGW builds)
     ]
 
+    # Add platform-specific include directories
+    if platform.system() == "Windows":
+        # Add OpenBLAS include directory for CBLAS headers on Windows/MinGW
+        msystem = os.environ.get("MSYSTEM", "").lower()
+        if msystem == "mingw64":
+            # MSYS2 MinGW64 OpenBLAS headers location
+            include_dirs.append("/mingw64/include/openblas")
+        elif msystem == "mingw32":
+            # MSYS2 MinGW32 OpenBLAS headers location
+            include_dirs.append("/mingw32/include/openblas")
+
     # Common library directories and libraries
     library_dirs = ["lib"]
     libraries = ["OCTypes", "SITypes", "RMN"]

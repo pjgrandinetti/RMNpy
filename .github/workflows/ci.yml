@@ -69,7 +69,6 @@ jobs:
           mingw-w64-x86_64-curl
           mingw-w64-x86_64-openblas
           mingw-w64-x86_64-lapack
-          mingw-w64-x86_64-cblas
           mingw-w64-x86_64-make
 
     - name: Verify MSYS2 Python installation (Windows)
