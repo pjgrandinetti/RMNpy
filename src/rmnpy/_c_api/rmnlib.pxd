@@ -125,17 +125,17 @@ cdef extern from "RMNLibrary.h":
 
     # SparseSampling accessors
     OCIndexSetRef SparseSamplingGetDimensionIndexes(SparseSamplingRef ss)
-    bint SparseSamplingSetDimensionIndexes(SparseSamplingRef ss, OCIndexSetRef indexes, OCStringRef *outError)
+    bint SparseSamplingSetDimensionIndexes(SparseSamplingRef ss, OCIndexSetRef indexes)
     OCArrayRef SparseSamplingGetSparseGridVertexes(SparseSamplingRef ss)
-    bint SparseSamplingSetSparseGridVertexes(SparseSamplingRef ss, OCArrayRef vertexes, OCStringRef *outError)
+    bint SparseSamplingSetSparseGridVertexes(SparseSamplingRef ss, OCArrayRef vertexes)
     OCNumberType SparseSamplingGetUnsignedIntegerType(SparseSamplingRef ss)
-    bint SparseSamplingSetUnsignedIntegerType(SparseSamplingRef ss, OCNumberType type, OCStringRef *outError)
+    bint SparseSamplingSetUnsignedIntegerType(SparseSamplingRef ss, OCNumberType type)
     OCStringRef SparseSamplingGetEncoding(SparseSamplingRef ss)
-    bint SparseSamplingSetEncoding(SparseSamplingRef ss, OCStringRef encoding, OCStringRef *outError)
+    bint SparseSamplingSetEncoding(SparseSamplingRef ss, OCStringRef encoding)
     OCStringRef SparseSamplingGetDescription(SparseSamplingRef ss)
-    bint SparseSamplingSetDescription(SparseSamplingRef ss, OCStringRef description, OCStringRef *outError)
+    bint SparseSamplingSetDescription(SparseSamplingRef ss, OCStringRef description)
     OCDictionaryRef SparseSamplingGetApplicationMetaData(SparseSamplingRef ss)
-    bint SparseSamplingSetApplicationMetaData(SparseSamplingRef ss, OCDictionaryRef metadata, OCStringRef *outError)
+    bint SparseSamplingSetApplicationMetaData(SparseSamplingRef ss, OCDictionaryRef metadata)
 
     # SparseSampling utility functions
     OCIndex SparseSamplingGetVertexCount(SparseSamplingRef ss)

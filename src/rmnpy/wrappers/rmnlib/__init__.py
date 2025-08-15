@@ -15,8 +15,10 @@ except ImportError:
     __all__ = []
 
 # TODO: Add other wrappers when implemented
-# try:
-#     from .dependent_variable import DependentVariable
-#     __all__.append("DependentVariable")
-# except ImportError:
-#     pass
+try:
+    from .sparse_sampling import SparseSampling
+
+    __all__.append("SparseSampling")
+except ImportError:
+    # SparseSampling wrapper not yet built/available
+    pass

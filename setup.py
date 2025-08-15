@@ -692,6 +692,23 @@ def get_extensions() -> List[Extension]:
         ]
     )
 
+    # Phase 3B: RMNLib sparse_sampling wrapper
+    extensions.extend(
+        [
+            Extension(
+                "rmnpy.wrappers.rmnlib.sparse_sampling",
+                sources=["src/rmnpy/wrappers/rmnlib/sparse_sampling.pyx"],
+                include_dirs=include_dirs,
+                library_dirs=library_dirs,
+                libraries=libraries,
+                language="c",
+                extra_compile_args=extra_compile_args,
+                extra_link_args=extra_link_args,
+                define_macros=define_macros,
+            )
+        ]
+    )
+
     # Phase 4: Constants module (only if constants.pyx exists)
     constants_file = Path(__file__).parent / "src" / "rmnpy" / "constants.pyx"
     if constants_file.exists():
