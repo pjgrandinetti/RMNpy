@@ -256,18 +256,44 @@ def get_extensions() -> list[Extension]:
 
     # Library configuration depends on platform
     if platform.system() == "Windows":
-        # On Windows with MinGW, we need to force linking against DLL import libraries
-        # instead of static libraries to avoid undefined reference errors.
-        #
-        # The issue: MinGW linker prefers libXXX.a over libXXX.dll.a
-        # Solution: Temporarily hide static libraries during linking
-        import glob
-        import os  # Import os here for Windows-specific operations
-        import shutil
+        # Environment variable to force all-static linking as fallback
+        force_static = os.environ.get("RMNPY_WINDOWS_STATIC_ONLY", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
 
-        # On Windows, check what type of libraries we have for each dependency
-        # Some might have .dll.a import libraries, others might just have DLLs
-        lib_info = {}
+        if force_static:
+            print(
+                "Windows: RMNPY_WINDOWS_STATIC_ONLY enabled - using all static libraries"
+            )
+            # Use static libraries directly, avoiding import library complexity
+            libraries = ["RMN", "SITypes", "OCTypes"]
+            external_libraries = []
+
+            # Verify all static libraries exist
+            for lib in libraries:
+                static_path = os.path.join("lib", f"lib{lib}.a")
+                if not os.path.exists(static_path):
+                    raise FileNotFoundError(f"Static library not found: {static_path}")
+                print(f"Windows: Verified static library: {static_path}")
+
+        else:
+            # Normal dynamic/import library approach (existing logic)
+            print("Windows: Using dynamic/import library approach")
+
+            # On Windows with MinGW, we need to force linking against DLL import libraries
+            # instead of static libraries to avoid undefined reference errors.
+            #
+            # The issue: MinGW linker prefers libXXX.a over libXXX.dll.a
+            # Solution: Temporarily hide static libraries during linking
+            import glob
+            import os  # Import os here for Windows-specific operations
+            import shutil
+
+            # On Windows, check what type of libraries we have for each dependency
+            # Some might have .dll.a import libraries, others might just have DLLs
+            lib_info = {}
         main_libs = ["RMN", "SITypes", "OCTypes"]
 
         for lib_name in main_libs:
@@ -755,8 +781,8 @@ def get_extensions() -> list[Extension]:
             globals()["_explicit_dll_libs"] = ordered_lib_paths
             print(f"Windows: Ordered library paths for linking: {ordered_lib_paths}")
 
-        # Set final libraries list to just external dependencies
-        libraries = external_libraries
+            # Set final libraries list to just external dependencies
+            libraries = external_libraries
     else:
         # On Unix-like systems, library order matters for static linking
         # RMN depends on OCTypes/SITypes, so list RMN first
