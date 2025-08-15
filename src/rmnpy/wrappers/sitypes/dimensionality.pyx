@@ -104,7 +104,7 @@ cdef class Dimensionality:
 
         Args:
             quantity_constant (str): A quantity constant string. Can be one of the
-                                   kSIQuantity* constants from the constants module
+                                   kSIQuantity* constants from the quantities module
                                    or the equivalent string value.
 
         Returns:
@@ -115,7 +115,7 @@ cdef class Dimensionality:
 
         Examples:
             >>> # Import quantity constants
-            >>> from rmnpy.constants import kSIQuantityPressure, kSIQuantityEnergy
+            >>> from rmnpy.quantities import kSIQuantityPressure, kSIQuantityEnergy
             >>> pressure_dim = Dimensionality.for_quantity(kSIQuantityPressure)
             >>> energy_dim = Dimensionality.for_quantity(kSIQuantityEnergy)
             >>>

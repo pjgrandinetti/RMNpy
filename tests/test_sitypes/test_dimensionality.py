@@ -584,7 +584,7 @@ def test_for_quantity_with_constants():
     """
     Test Dimensionality.for_quantity with SI quantity constants and error on string input.
     """
-    from rmnpy.constants import kSIQuantityDimensionless, kSIQuantityLength
+    from rmnpy.quantities import kSIQuantityDimensionless, kSIQuantityLength
     from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
     # Should work with SI quantity constants (now Python strings)
