@@ -22,3 +22,11 @@ try:
 except ImportError:
     # SparseSampling wrapper not yet built/available
     pass
+
+try:
+    from .dependent_variable import DependentVariable, dependent_variable_from_dict
+
+    __all__.extend(["DependentVariable", "dependent_variable_from_dict"])
+except ImportError:
+    # DependentVariable wrapper not yet built/available
+    pass

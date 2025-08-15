@@ -111,7 +111,7 @@ def generate_si_constants() -> None:
         print("Build will continue with existing constants file if available")
 
 
-# Generate SI constants before defining extensions (required for constants extension)
+# Generate SI quantities before defining extensions (required for quantities extension)
 generate_si_constants()
 
 
@@ -159,7 +159,7 @@ class CustomBuildExt(build_ext):
 
     def run(self) -> None:
         """Check dependencies before building extensions."""
-        # Generate SI constants before building
+        # Generate SI quantities before building
         generate_si_constants()
         # Continue with normal build (which will call build_extensions)
         super().run()
@@ -709,14 +709,31 @@ def get_extensions() -> List[Extension]:
         ]
     )
 
-    # Phase 4: Constants module (only if constants.pyx exists)
-    constants_file = Path(__file__).parent / "src" / "rmnpy" / "constants.pyx"
-    if constants_file.exists():
+    # Phase 3C: RMNLib dependent_variable wrapper
+    extensions.extend(
+        [
+            Extension(
+                "rmnpy.wrappers.rmnlib.dependent_variable",
+                sources=["src/rmnpy/wrappers/rmnlib/dependent_variable.pyx"],
+                include_dirs=include_dirs,
+                library_dirs=library_dirs,
+                libraries=libraries,
+                language="c",
+                extra_compile_args=extra_compile_args,
+                extra_link_args=extra_link_args,
+                define_macros=define_macros,
+            )
+        ]
+    )
+
+    # Phase 4: Quantities module (only if quantities.pyx exists)
+    quantities_file = Path(__file__).parent / "src" / "rmnpy" / "quantities.pyx"
+    if quantities_file.exists():
         extensions.extend(
             [
                 Extension(
-                    "rmnpy.constants",
-                    sources=["src/rmnpy/constants.pyx"],
+                    "rmnpy.quantities",
+                    sources=["src/rmnpy/quantities.pyx"],
                     include_dirs=include_dirs,
                     library_dirs=library_dirs,
                     libraries=libraries,
@@ -729,7 +746,7 @@ def get_extensions() -> List[Extension]:
         )
     else:
         print(
-            f"[WARNING] constants.pyx not found at {constants_file} - skipping constants extension"
+            f"[WARNING] quantities.pyx not found at {quantities_file} - skipping quantities extension"
         )
 
     return extensions

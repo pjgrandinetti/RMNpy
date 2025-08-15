@@ -243,21 +243,17 @@ cdef extern from "RMNLibrary.h":
     bint DependentVariableIsSymmetricMatrixType(DependentVariableRef dv, OCIndex *outN)
     OCIndex DependentVariableComponentsCountFromQuantityType(OCStringRef quantityType)
 
-    # DependentVariable basic accessors
-    OCStringRef DependentVariableGetType(DependentVariableRef dv)
-    bint DependentVariableSetType(DependentVariableRef dv, OCStringRef newType)
-    OCStringRef DependentVariableGetEncoding(DependentVariableRef dv)
-    bint DependentVariableSetEncoding(DependentVariableRef dv, OCStringRef newEnc)
+    # DependentVariable basic accessors (using copy functions for memory safety)
+    OCStringRef DependentVariableCopyType(DependentVariableRef dv)
+    OCStringRef DependentVariableCopyEncoding(DependentVariableRef dv)
     OCStringRef DependentVariableGetComponentsURL(DependentVariableRef dv)
     bint DependentVariableSetComponentsURL(DependentVariableRef dv, OCStringRef url)
-    OCStringRef DependentVariableGetName(DependentVariableRef dv)
-    bint DependentVariableSetName(DependentVariableRef dv, OCStringRef newName)
-    OCStringRef DependentVariableGetDescription(DependentVariableRef dv)
-    bint DependentVariableSetDescription(DependentVariableRef dv, OCStringRef newDesc)
-    OCStringRef DependentVariableGetQuantityName(DependentVariableRef dv)
-    bint DependentVariableSetQuantityName(DependentVariableRef dv, OCStringRef quantityName)
-    OCStringRef DependentVariableGetQuantityType(DependentVariableRef dv)
-    bint DependentVariableSetQuantityType(DependentVariableRef dv, OCStringRef quantityType)
+    OCStringRef DependentVariableCopyName(DependentVariableRef dv)
+    bint DependentVariableSetName(DependentVariableRef dv, OCStringRef name)
+    OCStringRef DependentVariableCopyDescription(DependentVariableRef dv)
+    bint DependentVariableSetDescription(DependentVariableRef dv, OCStringRef description)
+    OCStringRef DependentVariableCopyQuantityName(DependentVariableRef dv)
+    OCStringRef DependentVariableCopyQuantityType(DependentVariableRef dv)
     OCNumberType DependentVariableGetNumericType(DependentVariableRef dv)
     bint DependentVariableSetNumericType(DependentVariableRef dv, OCNumberType newType)
 
@@ -345,6 +341,36 @@ cdef extern from "RMNLibrary.h":
     bint DatasetSetApplicationMetaData(DatasetRef dataset, OCDictionaryRef metadata, OCStringRef *outError)
 
     # ====================================================================================
+    # DependentVariable API - Dataset variables with metadata and components
+    # ====================================================================================
+
+    # Core creation and management
+    DependentVariableRef DependentVariableCreate(OCStringRef name, OCStringRef description,
+                                                  SIUnitRef unit, OCStringRef quantityName,
+                                                  OCStringRef quantityType, OCNumberType elementType,
+                                                  OCArrayRef componentLabels, OCArrayRef components,
+                                                  OCStringRef *outError)
+    DependentVariableRef DependentVariableCopy(DependentVariableRef orig)
+
+    # String property accessors (memory-safe copy functions)
+    OCStringRef DependentVariableCopyName(DependentVariableRef dv)
+    OCStringRef DependentVariableCopyDescription(DependentVariableRef dv)
+    OCStringRef DependentVariableCopyQuantityType(DependentVariableRef dv)
+    OCStringRef DependentVariableCopyQuantityName(DependentVariableRef dv)
+    OCStringRef DependentVariableCopyEncoding(DependentVariableRef dv)
+    OCStringRef DependentVariableCopyType(DependentVariableRef dv)
+
+    # Property setters
+    bint DependentVariableSetName(DependentVariableRef dv, OCStringRef name)
+    bint DependentVariableSetDescription(DependentVariableRef dv, OCStringRef desc)
+    bint DependentVariableSetQuantityName(DependentVariableRef dv, OCStringRef quantityName)
+
+    # Numeric and structural properties
+    OCNumberType DependentVariableGetNumericType(DependentVariableRef dv)
+    OCIndex DependentVariableGetComponentCount(DependentVariableRef dv)
+    OCIndex DependentVariableGetSize(DependentVariableRef dv)
+
+    # ====================================================================================
     # TypeID Functions for OCType Identification
     # ====================================================================================
 
@@ -354,6 +380,7 @@ cdef extern from "RMNLibrary.h":
     OCTypeID SIDimensionGetTypeID()
     OCTypeID SILinearDimensionGetTypeID()
     OCTypeID SIMonotonicDimensionGetTypeID()
+    OCTypeID DependentVariableGetTypeID()
 
     # ====================================================================================
     # Utility Functions and Metadata Handling

@@ -25,6 +25,38 @@ from rmnpy.helpers.octypes import ocarray_to_pylist, ocstring_to_pystring
 from libc.stdint cimport uint64_t, uintptr_t
 
 
+# Helper function for converting various input types to SIUnitRef
+cdef SIUnitRef convert_to_siunit_ref(value) except NULL:
+    """
+    Convert various input types to SIUnitRef.
+
+    Accepts:
+    - Unit objects: Returns their C reference (borrowed, caller should copy if needed)
+    - str: Creates Unit from string expression
+    - None: Returns NULL (for dimensionless/no unit)
+
+    Returns:
+        SIUnitRef: C reference to unit (caller owns reference and must release)
+
+    Raises:
+        TypeError: If input type is not supported
+        RMNError: If unit creation fails
+    """
+    cdef Unit temp_unit
+
+    if value is None:
+        return NULL  # Allow NULL for dimensionless quantities
+    elif isinstance(value, Unit):
+        # Return the C reference directly
+        return (<Unit>value)._c_ref
+    elif isinstance(value, str):
+        # Create Unit from string and return its C reference
+        temp_unit = Unit(value)
+        return temp_unit._c_ref
+    else:
+        raise TypeError(f"Cannot convert {type(value)} to SIUnitRef")
+
+
 cdef class Unit:
     """
     Python wrapper for SIUnit - represents a physical unit.

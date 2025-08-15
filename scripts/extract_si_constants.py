@@ -14,7 +14,7 @@ Manual usage:
     make generate-constants
 
 Generates:
-    src/rmnpy/constants.pyx - Python constants module with OCStringRef constants
+    src/rmnpy/quantities.pyx - Python quantities module with OCStringRef constants
 """
 
 import re
@@ -66,8 +66,8 @@ def extract_quantity_constants(header_path: Path) -> List[Tuple[str, str]]:
 def generate_python_constants(
     constants: List[Tuple[str, str]], output_path: Path, header_path: Path
 ) -> None:
-    """Generate Python constants module."""
-    print(f"Generating Python constants: {output_path}")
+    """Generate Python quantities module."""
+    print(f"Generating Python quantities: {output_path}")
 
     # Sort constants alphabetically by constant name
     constants = sorted(constants, key=lambda x: x[0])
@@ -75,9 +75,9 @@ def generate_python_constants(
     # Generate file content
     lines = [
         '"""',
-        "SI Quantity Constants - Auto-generated from SIDimensionality.h",
+        "SI Quantity Names - Auto-generated from SIDimensionality.h",
         "",
-        "This file contains all SI quantity constants extracted from the C header file.",
+        "This file contains all SI quantity name constants extracted from the C header file.",
         "Do not edit manually - regenerate using extract_si_constants.py.",
         "",
         f"Generated from: {header_path.name}",
@@ -90,7 +90,7 @@ def generate_python_constants(
         "cdef inline object STR(const char* cStr):",
         "    return cStr.decode('utf-8')",
         "",
-        "# All quantity constants as Python strings",
+        "# All quantity name constants as Python strings",
     ]
 
     # Add each constant
@@ -122,7 +122,7 @@ def main() -> None:
     """Main extraction process."""
     try:
         print("=" * 60)
-        print("SI Quantity Constants Extraction")
+        print("SI Quantity Names Extraction")
         print("=" * 60)
 
         # Find header file
@@ -133,18 +133,18 @@ def main() -> None:
 
         # Generate Python constants module
         script_dir = Path(__file__).parent
-        output_path = script_dir.parent / "src" / "rmnpy" / "constants.pyx"
+        output_path = script_dir.parent / "src" / "rmnpy" / "quantities.pyx"
 
         generate_python_constants(constants, output_path, header_path)
 
         print("=" * 60)
-        print("[OK] SI Constants extraction completed successfully!")
+        print("[OK] SI Quantity Names extraction completed successfully!")
         print(f"Output: {output_path}")
-        print(f"Constants: {len(constants)} quantity constants")
+        print(f"Constants: {len(constants)} quantity name constants")
         print("=" * 60)
 
         # Show some examples
-        print("\nExample constants generated:")
+        print("\nExample quantity names generated:")
         for i, (const_name, string_value) in enumerate(constants[:5]):
             print(f'  {const_name} = STR("{string_value}")')
         if len(constants) > 5:
