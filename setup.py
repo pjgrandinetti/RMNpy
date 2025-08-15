@@ -309,6 +309,69 @@ def get_extensions() -> list[Extension]:
             "-Wno-sign-compare",
             "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
         ]
+
+        # Handle missing import libraries on Windows by generating them from DLLs
+        lib_dir = Path(__file__).parent / "lib"
+        windows_libraries = []
+
+        for lib_name in ["OCTypes", "SITypes", "RMN"]:
+            dll_a_path = lib_dir / f"lib{lib_name}.dll.a"
+            dll_path = lib_dir / f"lib{lib_name}.dll"
+
+            if dll_a_path.exists():
+                # Use import library if available
+                windows_libraries.append(lib_name)
+                print(f"[setup.py] Using existing import library for {lib_name}")
+            elif dll_path.exists():
+                # Generate import library from DLL using gendef + dlltool
+                print(f"[setup.py] Generating import library for {lib_name} from DLL")
+                try:
+                    # Generate .def file from DLL
+                    def_file = lib_dir / f"lib{lib_name}.def"
+                    subprocess.run(
+                        ["gendef", str(dll_path)],
+                        cwd=str(lib_dir),
+                        check=True,
+                        capture_output=True,
+                    )
+
+                    # Generate import library from .def file
+                    subprocess.run(
+                        [
+                            "dlltool",
+                            "-d",
+                            str(def_file),
+                            "-D",
+                            str(dll_path),
+                            "-l",
+                            str(dll_a_path),
+                        ],
+                        check=True,
+                        capture_output=True,
+                    )
+
+                    windows_libraries.append(lib_name)
+                    print(
+                        f"[setup.py] Successfully generated import library for {lib_name}"
+                    )
+
+                except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                    print(
+                        f"[setup.py] Failed to generate import library for {lib_name}: {e}"
+                    )
+                    # Fallback: try direct DLL linking (may work with some MinGW versions)
+                    windows_libraries.append(str(dll_path.absolute()))
+                    print(
+                        f"[setup.py] Using direct DLL path for {lib_name}: {dll_path}"
+                    )
+            else:
+                # Fallback to library name (original behavior)
+                windows_libraries.append(lib_name)
+                print(f"[setup.py] Using library name fallback for {lib_name}")
+
+        # Replace the OCTypes/SITypes/RMN libraries with our resolved list
+        libraries = windows_libraries
+
         # Add external dependencies required by RMNLib on Windows
         libraries.extend(["curl", "openblas", "lapack"])
         # Add MinGW runtime libraries
