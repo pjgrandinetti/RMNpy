@@ -262,78 +262,83 @@ def get_extensions() -> list[Extension]:
         import os  # Import os here for Windows-specific operations
         import shutil
 
-        # On Windows, explicitly use DLL import libraries to avoid undefined references
-        # Check for and verify DLL import libraries exist
-        expected_libs = ["libRMN.dll.a", "libSITypes.dll.a", "libOCTypes.dll.a"]
-        dll_libs_found = []
+        # On Windows, check what type of libraries we have for each dependency
+        # Some might have .dll.a import libraries, others might just have DLLs
+        lib_info = {}
+        main_libs = ["RMN", "SITypes", "OCTypes"]
 
-        for lib in expected_libs:
-            lib_path = os.path.join("lib", lib)
-            if os.path.exists(lib_path):
-                dll_libs_found.append(lib_path)
-                print(f"Windows: Found DLL import library: {lib_path}")
+        for lib_name in main_libs:
+            dll_a_path = os.path.join("lib", f"lib{lib_name}.dll.a")
+            dll_path = os.path.join("lib", f"lib{lib_name}.dll")
+            static_path = os.path.join("lib", f"lib{lib_name}.a")
+
+            if os.path.exists(dll_a_path):
+                lib_info[lib_name] = {"type": "dll_import", "path": dll_a_path}
+                print(f"Windows: Found DLL import library: {dll_a_path}")
+            elif os.path.exists(dll_path):
+                lib_info[lib_name] = {"type": "dll_only", "path": dll_path}
+                print(f"Windows: Found DLL only: {dll_path}")
+            elif os.path.exists(static_path):
+                lib_info[lib_name] = {"type": "static", "path": static_path}
+                print(f"Windows: Found static library: {static_path}")
             else:
-                print(f"Windows: WARNING - Missing DLL import library: {lib_path}")
+                print(f"Windows: WARNING - No library found for {lib_name}")
 
-        if len(dll_libs_found) == len(expected_libs):
-            print("Windows: All DLL import libraries found, using explicit linking")
-            # DON'T use library names - they will cause MinGW to find static .a files
-            # Instead, we'll use ONLY explicit paths in extra_link_args
-            main_libraries = []  # Empty - we'll use explicit paths only
+        # Strategy: Use explicit paths for all libraries to avoid MinGW confusion
+        # This prevents MinGW from choosing the wrong library type
+        print("Windows: Using explicit library paths to avoid linking issues")
 
-            # But we still need external dependencies
-            external_libraries = [
-                "curl",
-                "openblas",
-                "lapack",
-                "gcc_s",
-                "winpthread",
-                "quadmath",
-                "gomp",
-            ]
+        # Don't use library names in Extension() - use only external dependencies
+        main_libraries = []  # Empty - we'll use explicit paths in extra_link_args
 
-            # ALSO: Add explicit import library paths to force MinGW to use them
-            # This is the most reliable way to ensure the correct libraries are used
-            explicit_lib_paths = []
-            for lib_path in dll_libs_found:
-                abs_path = os.path.abspath(lib_path)
-                explicit_lib_paths.append(abs_path)
-                print(f"Windows: Will explicitly link: {abs_path}")
+        external_libraries = [
+            "curl",
+            "openblas",
+            "lapack",
+            "gcc_s",
+            "winpthread",
+            "quadmath",
+            "gomp",
+        ]
 
-            # Store these for use in extra_link_args later
-            globals()["_explicit_dll_libs"] = explicit_lib_paths
+        # Build explicit library paths for extra_link_args
+        explicit_lib_paths = []
 
-            # Also hide static libraries to force use of import libraries
-            static_libs_to_hide = []
-            try:
-                # Find all static libraries in lib/ directory
-                static_libs = glob.glob("lib/lib*.a")
-                # Filter out the .dll.a import libraries
-                static_libs = [lib for lib in static_libs if not lib.endswith(".dll.a")]
+        # Hide static libraries if we have import libraries or DLLs available
+        static_libs_to_hide = []
+        try:
+            for lib_name in main_libs:
+                if lib_name in lib_info:
+                    lib_data = lib_info[lib_name]
+                    if lib_data["type"] in ["dll_import", "dll_only"]:
+                        # Use the DLL import library or try to link against DLL directly
+                        abs_path = os.path.abspath(lib_data["path"])
+                        explicit_lib_paths.append(abs_path)
+                        print(f"Windows: Will explicitly link: {abs_path}")
 
-                print(f"Windows: Found static libraries to hide: {static_libs}")
+                        # Hide corresponding static library to prevent conflicts
+                        static_path = os.path.join("lib", f"lib{lib_name}.a")
+                        if os.path.exists(static_path):
+                            backup_name = static_path + ".backup"
+                            if not os.path.exists(backup_name):
+                                shutil.move(static_path, backup_name)
+                                static_libs_to_hide.append((static_path, backup_name))
+                                print(
+                                    f"Windows: Temporarily hiding static {static_path}"
+                                )
+                    else:
+                        # Fall back to library name for static linking
+                        print(f"Windows: Using static library for {lib_name}")
 
-                # Temporarily rename static libraries so MinGW will use .dll.a import libraries
-                for static_lib in static_libs:
-                    backup_name = static_lib + ".backup"
-                    if os.path.exists(static_lib) and not os.path.exists(backup_name):
-                        shutil.move(static_lib, backup_name)
-                        static_libs_to_hide.append((static_lib, backup_name))
-                        print(f"Windows: Temporarily hiding {static_lib}")
+        except Exception as e:
+            print(f"Windows: Error managing library paths: {e}")
 
-            except Exception as e:
-                print(f"Windows: Error managing static libraries: {e}")
+        # Store paths and hidden libraries for later use/cleanup
+        globals()["_explicit_dll_libs"] = explicit_lib_paths
+        globals()["_hidden_static_libs"] = static_libs_to_hide
 
-            # Store the list for restoration later (if needed)
-            globals()["_hidden_static_libs"] = static_libs_to_hide
-
-            # Set final libraries list to just external dependencies
-            libraries = external_libraries
-        else:
-            print(
-                "Windows: ERROR - Not all DLL import libraries found, falling back to standard linking"
-            )
-            libraries = ["RMN", "SITypes", "OCTypes"]
+        # Set final libraries list to just external dependencies
+        libraries = external_libraries
     else:
         # On Unix-like systems, library order matters for static linking
         # RMN depends on OCTypes/SITypes, so list RMN first
@@ -426,8 +431,6 @@ def get_extensions() -> list[Extension]:
 
             # First check what library files actually exist
             try:
-                import glob
-
                 static_libs = glob.glob(os.path.join(mingw_lib_dir, "lib*fortran*.a"))
                 dll_libs = glob.glob(
                     os.path.join(
