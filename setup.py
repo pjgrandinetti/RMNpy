@@ -282,40 +282,113 @@ def get_extensions() -> list[Extension]:
                 if not os.path.exists(temp_import_lib):
                     print(f"Windows: Creating import library for {dll_path}")
                     try:
-                        # Use dlltool (part of MinGW toolchain) to create import library from DLL
+                        # Use objdump to extract exported symbols and create a .def file,
+                        # then use dlltool to make an import library. This mirrors numpy's
+                        # approach and works under MSYS2/MinGW.
+                        import re
                         import subprocess
 
-                        result = subprocess.run(
-                            [
-                                "dlltool",
-                                "-D",
-                                dll_path,  # Input DLL
-                                "-l",
-                                temp_import_lib,  # Output import library
-                                "-d",
-                                "/dev/null",  # No .def file needed
-                            ],
-                            capture_output=True,
-                            text=True,
-                        )
+                        def _dump_table(dll_file_path: str):
+                            # Try common objdump names; allow system to resolve the correct one
+                            for cmd in (
+                                ["objdump", "-p", dll_file_path],
+                                ["objdump.exe", "-p", dll_file_path],
+                            ):
+                                try:
+                                    out = subprocess.check_output(cmd)
+                                    return out.split(b"\n")
+                                except (
+                                    subprocess.CalledProcessError,
+                                    FileNotFoundError,
+                                ):
+                                    continue
+                            # If we get here, no objdump variant worked
+                            raise FileNotFoundError(
+                                "objdump not found or failed to read DLL exports"
+                            )
 
-                        if result.returncode == 0 and os.path.exists(temp_import_lib):
-                            lib_info[lib_name] = {
-                                "type": "generated_import",
-                                "path": temp_import_lib,
-                            }
-                            print(
-                                f"Windows: Successfully created import library: {temp_import_lib}"
+                        def _generate_def_from_dump(dll_file_path: str, def_path: str):
+                            dump = _dump_table(dll_file_path)
+                            # Find start of Export Table (objdump -p output)
+                            start_re = re.compile(r"^\s*Export\s+Table")
+                            table_re = re.compile(r"^\s*(\d+)\s+(\S+)")
+                            for i in range(len(dump)):
+                                try:
+                                    line = dump[i].decode()
+                                except Exception:
+                                    line = ""
+                                if start_re.match(line):
+                                    break
+                            else:
+                                raise ValueError(
+                                    "Symbol table not found in DLL (objdump output differs)"
+                                )
+
+                            syms = []
+                            for j in range(i + 1, len(dump)):
+                                try:
+                                    line_txt = dump[j].decode()
+                                except Exception:
+                                    break
+                                m = table_re.match(line_txt)
+                                if m:
+                                    syms.append(m.group(2))
+                                else:
+                                    break
+
+                            if len(syms) == 0:
+                                print(
+                                    f"Windows: Warning - no exported symbols found in {dll_file_path}"
+                                )
+
+                            with open(def_path, "w") as df:
+                                df.write(
+                                    f"LIBRARY        {os.path.basename(dll_file_path)}\n"
+                                )
+                                df.write("\nEXPORTS\n")
+                                for s in syms:
+                                    df.write(f"{s}\n")
+
+                        # Create a temporary .def file next to libs so paths are simple
+                        temp_def = os.path.join("lib", f"lib{lib_name}.def")
+                        try:
+                            _generate_def_from_dump(dll_path, temp_def)
+                            # Call dlltool with the generated def file to create import library
+                            result = subprocess.run(
+                                ["dlltool", "-d", temp_def, "-l", temp_import_lib],
+                                capture_output=True,
+                                text=True,
                             )
-                        else:
-                            print(
-                                f"Windows: Failed to create import library for {lib_name}: {result.stderr}"
-                            )
-                            # Fall back to direct DLL linking (may not work)
-                            lib_info[lib_name] = {"type": "dll_only", "path": dll_path}
+
+                            if result.returncode == 0 and os.path.exists(
+                                temp_import_lib
+                            ):
+                                lib_info[lib_name] = {
+                                    "type": "generated_import",
+                                    "path": temp_import_lib,
+                                }
+                                print(
+                                    f"Windows: Successfully created import library: {temp_import_lib}"
+                                )
+                            else:
+                                print(
+                                    f"Windows: Failed to create import library for {lib_name}: {result.stderr} {result.stdout}"
+                                )
+                                # Fall back to direct DLL linking (may not work)
+                                lib_info[lib_name] = {
+                                    "type": "dll_only",
+                                    "path": dll_path,
+                                }
+                        finally:
+                            # Clean up generated .def if it exists
+                            try:
+                                if os.path.exists(temp_def):
+                                    os.remove(temp_def)
+                            except Exception:
+                                pass
                     except FileNotFoundError:
                         print(
-                            f"Windows: dlltool not found, cannot create import library for {lib_name}"
+                            f"Windows: objdump/dlltool not found, cannot create import library for {lib_name}"
                         )
                         lib_info[lib_name] = {"type": "dll_only", "path": dll_path}
                     except Exception as e:
@@ -728,23 +801,24 @@ def get_extensions() -> list[Extension]:
 # Note: Most project configuration is now in pyproject.toml
 # This setup.py only handles the Cython build process
 
-setup(
-    # Most configuration is now in pyproject.toml
-    # Only specify what's needed for the build system
-    ext_modules=cythonize(
-        get_extensions(),
-        compiler_directives={
-            "language_level": 3,
-            "embedsignature": True,
-            "boundscheck": False,
-            "wraparound": False,
-            "initializedcheck": False,
+if __name__ == "__main__":
+    setup(
+        # Most configuration is now in pyproject.toml
+        # Only specify what's needed for the build system
+        ext_modules=cythonize(
+            get_extensions(),
+            compiler_directives={
+                "language_level": 3,
+                "embedsignature": True,
+                "boundscheck": False,
+                "wraparound": False,
+                "initializedcheck": False,
+            },
+            # Add build configuration for Windows compatibility
+            build_dir="build",
+        ),
+        cmdclass={
+            "build_ext": CustomBuildExt,
         },
-        # Add build configuration for Windows compatibility
-        build_dir="build",
-    ),
-    cmdclass={
-        "build_ext": CustomBuildExt,
-    },
-    zip_safe=False,
-)
+        zip_safe=False,
+    )
