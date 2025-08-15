@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Setup script for RMNpy - Python bindings for OCTypes, SITypes, and RMNLib."""
-# Version with automatic import library generation for Windows DLLs - commit 452219ad
 
 import os
 import platform
@@ -13,37 +12,35 @@ import sysconfig
 # Handle distutils imports with fallbacks for different Python versions
 try:
     from distutils.ccompiler import new_compiler  # type: ignore[import-untyped]
-
-    from setuptools._distutils.sysconfig import (
-        get_python_inc,  # type: ignore[attr-defined]
-    )
+    from distutils.sysconfig import customize_compiler  # type: ignore[import-untyped]
+    from distutils.sysconfig import get_python_inc  # type: ignore[import-untyped]
 except ImportError:
-    # Ultimate fallback for testing - use sysconfig only
-    from typing import Any
+    try:
+        from setuptools._distutils.ccompiler import (
+            new_compiler,  # type: ignore[attr-defined]
+        )
+        from setuptools._distutils.sysconfig import (
+            customize_compiler,  # type: ignore[attr-defined]
+        )
+        from setuptools._distutils.sysconfig import (
+            get_python_inc,  # type: ignore[attr-defined]
+        )
+    except ImportError:
+        # Ultimate fallback for testing - use sysconfig only
+        from typing import Any
 
-    def new_compiler(*args: Any, **kwargs: Any) -> Any:
-        return None
+        def new_compiler(*args: Any, **kwargs: Any) -> Any:
+            return None
 
-    # Note: customize_compiler fallback is provided later to avoid redefinition
-    def get_python_inc(*args: Any, **kwargs: Any) -> str:
-        return sysconfig.get_path("include")
+        def customize_compiler(*args: Any, **kwargs: Any) -> None:
+            pass
+
+        def get_python_inc(*args: Any, **kwargs: Any) -> str:
+            return sysconfig.get_path("include")
 
 
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-# Ensure customize_compiler is available; some environments provide it via
-# distutils.sysconfig while others may not. Provide a safe no-op fallback.
-try:
-    from distutils.sysconfig import customize_compiler  # type: ignore[import-untyped]
-except Exception:
-    # Only define a fallback if an earlier import/fallback didn't already define it
-    if "customize_compiler" not in globals():
-
-        def customize_compiler(*args, **kwargs):
-            """Fallback no-op if customize_compiler is unavailable."""
-            return None
-
 
 import numpy
 from Cython.Build import cythonize
@@ -129,30 +126,8 @@ class CustomBuildExt(build_ext):
             self.compiler = compiler
             print("Forced MinGW compiler on Windows")
 
-        try:
-            # Continue with normal build
-            super().build_extensions()
-        finally:
-            # Always restore hidden static libraries on Windows
-            if platform.system() == "Windows":
-                self._restore_hidden_libraries()
-
-    def _restore_hidden_libraries(self) -> None:
-        """Restore hidden static libraries on Windows after build."""
-        try:
-            hidden_libs = globals().get("_hidden_static_libs", [])
-            if hidden_libs:
-                import shutil
-
-                print(f"Windows: Restoring {len(hidden_libs)} hidden static libraries")
-                for original_path, backup_path in hidden_libs:
-                    if os.path.exists(backup_path):
-                        shutil.move(backup_path, original_path)
-                        print(f"Windows: Restored {original_path}")
-                # Clear the global variable
-                globals()["_hidden_static_libs"] = []
-        except Exception as e:
-            print(f"Windows: Error restoring hidden libraries: {e}")
+        # Continue with normal build
+        super().build_extensions()
 
     def run(self) -> None:
         """Check dependencies before building extensions."""
@@ -180,7 +155,7 @@ class CustomBuildExt(build_ext):
         lib_dir = base_dir / "lib"
         include_dir = base_dir / "include"
 
-        # Determine library extension based on platform
+        # Check for shared libraries (the actual runtime libraries)
         system = platform.system()
         if system == "Windows":
             lib_ext = ".dll"
@@ -209,6 +184,23 @@ class CustomBuildExt(build_ext):
                 print(f"[X] Missing library: {lib_file}")
                 return False
             print(f"[OK] Found library: {lib_file.name}")
+
+        # On Windows, also check for/generate import libraries
+        if system == "Windows":
+            print("Windows: Checking import libraries...")
+            for lib_name in ["OCTypes", "SITypes", "RMN"]:
+                dll_path = lib_dir / f"lib{lib_name}.dll"
+                import_lib_path = lib_dir / f"lib{lib_name}.dll.a"
+
+                if import_lib_path.exists():
+                    print(f"[OK] Found import library: {import_lib_path.name}")
+                elif dll_path.exists():
+                    print(
+                        f"[!] Missing import library for {lib_name} - will be generated during build"
+                    )
+                else:
+                    print(f"[X] Missing both DLL and import library for {lib_name}")
+                    return False
 
         # Check headers
         for header_dir in required_headers:
@@ -253,545 +245,7 @@ def get_extensions() -> list[Extension]:
 
     # Common library directories and libraries
     library_dirs = ["lib"]
-
-    # Library configuration depends on platform
-    if platform.system() == "Windows":
-        # On Windows with MinGW, focus on ensuring all libraries have proper import libraries
-        # This avoids mixing static and import libraries which causes symbol resolution issues
-        import glob
-        import os  # Import os here for Windows-specific operations
-        import shutil
-
-        print("Windows: Ensuring consistent import library generation for all DLLs")
-
-        # Strategy: Generate import libraries for ALL DLLs using our toolchain
-        # This ensures compatibility and avoids pre-built import library issues
-        lib_info = {}
-        main_libs = ["RMN", "SITypes", "OCTypes"]
-
-        # First, attempt to generate consistent import libraries for all DLLs
-        print("Windows: Generating consistent import libraries for all DLLs...")
-
-        for lib_name in main_libs:
-            dll_path = os.path.join("lib", f"lib{lib_name}.dll")
-            consistent_import_lib = os.path.join("lib", f"lib{lib_name}.dll.a.rebuilt")
-
-            if os.path.exists(dll_path):
-                print(
-                    f"Windows: Generating import library for {lib_name} from {dll_path}"
-                )
-                # This will use the existing _dump_table and import library generation logic
-                # but generate a new .dll.a.rebuilt file for consistency
-                lib_info[lib_name] = {"type": "dll_to_rebuild", "path": dll_path}
-            else:
-                print(f"Windows: No DLL found for {lib_name}, this will cause issues")
-                # We could still try to use existing import library as fallback
-                dll_a_path = os.path.join("lib", f"lib{lib_name}.dll.a")
-                if os.path.exists(dll_a_path):
-                    print(
-                        f"Windows: Using existing import library as fallback: {dll_a_path}"
-                    )
-                    lib_info[lib_name] = {"type": "dll_import", "path": dll_a_path}
-            dll_a_path = os.path.join("lib", f"lib{lib_name}.dll.a")
-            dll_path = os.path.join("lib", f"lib{lib_name}.dll")
-            static_path = os.path.join("lib", f"lib{lib_name}.a")
-
-            if os.path.exists(dll_a_path):
-                lib_info[lib_name] = {"type": "dll_import", "path": dll_a_path}
-                print(f"Windows: Found DLL import library: {dll_a_path}")
-
-                # For OCTypes, verify the import library contains expected symbols
-                if lib_name == "OCTypes":
-                    try:
-                        # Try both nm and objdump to examine the import library
-                        result = None
-                        for cmd_set in [
-                            ["nm", dll_a_path],  # Try without -D flag first
-                            ["nm", "-D", dll_a_path],  # Dynamic symbols
-                            ["objdump", "-t", dll_a_path],  # Symbol table
-                        ]:
-                            try:
-                                result = subprocess.run(
-                                    cmd_set,
-                                    capture_output=True,
-                                    text=True,
-                                )
-                                if result.returncode == 0 and result.stdout:
-                                    break
-                            except FileNotFoundError:
-                                continue
-
-                        if result and result.returncode == 0 and result.stdout:
-                            # Check if it contains some expected OCTypes symbols
-                            expected_symbols = [
-                                "OCNumberGetValue",
-                                "OCBooleanGetValue",
-                                "OCStringGetCString",
-                            ]
-                            found_symbols = []
-                            for sym in expected_symbols:
-                                if sym in result.stdout:
-                                    found_symbols.append(sym)
-
-                            print(
-                                f"Windows: OCTypes import lib contains {len(found_symbols)}/{len(expected_symbols)} expected symbols: {found_symbols}"
-                            )
-
-                            # Save symbol dump for diagnostics
-                            try:
-                                nm_log = os.path.join(
-                                    "lib", "libOCTypes.dll.a.symbols.log"
-                                )
-                                with open(nm_log, "w") as lf:
-                                    lf.write(f"CMD: {' '.join(cmd_set)}\n")
-                                    lf.write("STDOUT:\n")
-                                    lf.write(result.stdout or "")
-                                    lf.write("\nSTDERR:\n")
-                                    lf.write(result.stderr or "")
-                                print(f"Windows: Saved symbol dump to {nm_log}")
-                            except Exception:
-                                pass
-
-                            # If no expected symbols found, treat as problematic
-                            if not found_symbols:
-                                print(
-                                    "Windows: WARNING - OCTypes import library contains no expected symbols, may need regeneration"
-                                )
-                                # Force regeneration by treating it as a DLL-only case
-                                if os.path.exists(dll_path):
-                                    print(
-                                        f"Windows: Attempting to regenerate OCTypes import library from {dll_path}"
-                                    )
-                                    lib_info[lib_name] = {
-                                        "type": "dll_only",
-                                        "path": dll_path,
-                                    }
-                                    # Don't continue, let it fall through to DLL processing
-                                else:
-                                    # No DLL available for regeneration, stick with problematic import lib
-                                    continue
-                            else:
-                                # Import library contains expected symbols, use it
-                                continue
-                        else:
-                            print(
-                                "Windows: Could not examine OCTypes import library symbols: nm failed"
-                            )
-                            # Can't verify, but proceed with the import library
-                            continue
-                    except FileNotFoundError:
-                        print(
-                            "Windows: Could not examine OCTypes import library symbols: nm not available"
-                        )
-                        # Can't verify, but proceed with the import library
-                        continue
-                    except Exception as e:
-                        print(f"Windows: Error examining OCTypes import library: {e}")
-                        # Can't verify, but proceed with the import library
-                        continue
-                else:
-                    # Not OCTypes, just use the import library
-                    continue
-            elif os.path.exists(dll_path):
-                # For DLLs without import libraries, create a temporary import library
-                # Use a different naming strategy for OCTypes regeneration
-                if (
-                    lib_name == "OCTypes"
-                    and lib_info.get(lib_name, {}).get("type") == "dll_only"
-                ):
-                    # This is a regeneration case - use different name
-                    temp_import_lib = f"lib/lib{lib_name}.dll.a.regenerated"
-                else:
-                    temp_import_lib = f"lib/lib{lib_name}.dll.a.temp"
-
-                if not os.path.exists(temp_import_lib):
-                    print(f"Windows: Creating import library for {dll_path}")
-                    try:
-                        # Use objdump to extract exported symbols and create a .def file,
-                        # then use dlltool to make an import library. This mirrors numpy's
-                        # approach and works under MSYS2/MinGW.
-                        import re
-                        import subprocess
-
-                        def _dump_table(dll_file_path: str):
-                            # Try several objdump variants to account for MSYS2/toolchain differences
-                            candidates = [
-                                ["x86_64-w64-mingw32-objdump", "-p", dll_file_path],
-                                ["objdump.exe", "-p", dll_file_path],
-                                ["objdump", "-p", dll_file_path],
-                                ["x86_64-w64-mingw32-objdump.exe", "-p", dll_file_path],
-                            ]
-                            last_exc = None
-                            for cmd in candidates:
-                                try:
-                                    out = subprocess.check_output(
-                                        cmd, stderr=subprocess.STDOUT
-                                    )
-                                    # Save raw dump for diagnostics
-                                    try:
-                                        debug_dump_path = os.path.join(
-                                            "lib",
-                                            f"{os.path.basename(dll_file_path)}.raw_objdump.txt",
-                                        )
-                                        with open(debug_dump_path, "wb") as rdf:
-                                            rdf.write(out)
-                                    except Exception:
-                                        pass
-                                    return out.split(b"\n")
-                                except (
-                                    subprocess.CalledProcessError,
-                                    FileNotFoundError,
-                                ) as e:
-                                    last_exc = e
-                                    continue
-                            # If none worked, re-raise the last exception for upstream handling
-                            if last_exc is not None:
-                                raise last_exc
-                            return []
-
-                        def _generate_def_from_dump(dll_file_path: str, def_path: str):
-                            dump = _dump_table(dll_file_path)
-
-                            # Try several start patterns to cope with objdump formatting
-                            start_patterns = [
-                                r"\[Ordinal/Name Pointer\] Table",
-                                r"Export Table",
-                                r"Exports",
-                            ]
-                            start_re_list = [re.compile(p) for p in start_patterns]
-
-                            # Table line patterns - a few variants observed in different objdump builds
-                            table_patterns = [
-                                r"^\s*\[\s*(\d+)\]\s*([A-Za-z0-9_@]+)",
-                                r"^\s*(\d+)\s+([A-Za-z0-9_@]+)",
-                            ]
-                            table_re_list = [re.compile(p) for p in table_patterns]
-
-                            # Locate start of export table
-                            start_idx = None
-                            for i in range(len(dump)):
-                                try:
-                                    line = dump[i].decode(errors="ignore")
-                                except Exception:
-                                    line = ""
-                                for start_re in start_re_list:
-                                    if start_re.search(line):
-                                        start_idx = i
-                                        break
-                                if start_idx is not None:
-                                    break
-
-                            if start_idx is None:
-                                # Dump first lines to a debug file to help CI diagnostics
-                                try:
-                                    debug_path = os.path.join(
-                                        "lib",
-                                        f"lib{os.path.basename(dll_file_path)}.objdump.txt",
-                                    )
-                                    with open(debug_path, "wb") as df:
-                                        df.write(b"\n".join(dump[:200]))
-                                    print(
-                                        f"Windows: objdump format not recognized, saved sample to {debug_path}"
-                                    )
-                                except Exception:
-                                    pass
-                                raise ValueError(
-                                    "Symbol table not found in DLL (objdump output differs)"
-                                )
-
-                            syms = []
-                            for j in range(start_idx + 1, len(dump)):
-                                try:
-                                    line = dump[j].decode(errors="ignore")
-                                except Exception:
-                                    continue
-                                matched = False
-                                for table_re in table_re_list:
-                                    m = table_re.match(line)
-                                    if m:
-                                        syms.append(m.group(2))
-                                        matched = True
-                                        break
-                                if not matched:
-                                    # Stop on first non-matching line after the table
-                                    break
-
-                            if len(syms) == 0:
-                                print(
-                                    f"Windows: Warning - no exported symbols found in {dll_file_path}"
-                                )
-
-                            # For diagnostics, also write the parsed def file so CI can inspect it
-                            try:
-                                with open(def_path, "w") as df:
-                                    df.write(
-                                        f"LIBRARY {os.path.basename(dll_file_path)}\n"
-                                    )
-                                    df.write("\nEXPORTS\n")
-                                    for s in syms:
-                                        df.write(f"{s}\n")
-                                print(
-                                    f"Windows: Wrote generated .def to {def_path} for diagnostics"
-                                )
-                            except Exception:
-                                pass
-
-                            with open(def_path, "w") as df:
-                                df.write(
-                                    f"LIBRARY        {os.path.basename(dll_file_path)}\n"
-                                )
-                                df.write(
-                                    ";CODE          PRELOAD MOVEABLE DISCARDABLE\n"
-                                )
-                                df.write(";DATA          PRELOAD SINGLE\n")
-                                df.write("\nEXPORTS\n")
-                                for s in syms:
-                                    df.write(f"{s}\n")
-
-                        # Create a temporary .def file next to libs so paths are simple
-                        temp_def = os.path.join("lib", f"lib{lib_name}.def")
-                        try:
-                            # Generate a .def and inspect it before calling dlltool. If the
-                            # generated .def contains no exports, prefer the static .a
-                            # archive (if available) rather than creating an empty
-                            # import library which will not resolve symbols.
-                            _generate_def_from_dump(dll_path, temp_def)
-
-                            # Count exported symbols in the generated def file
-                            def_has_exports = False
-                            try:
-                                with open(temp_def, "r") as df:
-                                    in_exports = False
-                                    for line in df:
-                                        line = line.strip()
-                                        if not line:
-                                            continue
-                                        if line.upper().startswith("EXPORTS"):
-                                            in_exports = True
-                                            continue
-                                        if in_exports and not line.startswith(";"):
-                                            # non-comment export line found
-                                            def_has_exports = True
-                                            break
-                            except Exception:
-                                # If we can't read the def, assume no exports (safe fallback)
-                                def_has_exports = False
-
-                            if not def_has_exports:
-                                # Prefer static .a if it's available, otherwise fall back to dll_only
-                                static_path = os.path.join("lib", f"lib{lib_name}.a")
-                                if os.path.exists(static_path):
-                                    lib_info[lib_name] = {
-                                        "type": "static",
-                                        "path": static_path,
-                                    }
-                                    print(
-                                        f"Windows: Generated .def for {dll_path} contained no exports; falling back to static {static_path}"
-                                    )
-                                else:
-                                    lib_info[lib_name] = {
-                                        "type": "dll_only",
-                                        "path": dll_path,
-                                    }
-                                    print(
-                                        f"Windows: Generated .def for {dll_path} contained no exports and no static .a found; will attempt direct DLL linking"
-                                    )
-                                # Keep the generated .def for CI diagnostics; do not call dlltool
-                                # Remove temp_def only later in cleanup section
-                            else:
-                                # Call dlltool with the generated def file to create import library
-                                result = subprocess.run(
-                                    ["dlltool", "-d", temp_def, "-l", temp_import_lib],
-                                    capture_output=True,
-                                    text=True,
-                                )
-
-                                # Save dlltool output for CI diagnostics regardless of success
-                                try:
-                                    dlltool_log = os.path.join(
-                                        "lib",
-                                        f"{os.path.basename(dll_path)}.dlltool.log",
-                                    )
-                                    with open(dlltool_log, "w") as lf:
-                                        lf.write(
-                                            f"CMD: dlltool -d {temp_def} -l {temp_import_lib}\n"
-                                        )
-                                        lf.write("STDOUT:\n")
-                                        lf.write(result.stdout or "")
-                                        lf.write("\nSTDERR:\n")
-                                        lf.write(result.stderr or "")
-                                    print(
-                                        f"Windows: Saved dlltool log to {dlltool_log}"
-                                    )
-                                except Exception:
-                                    pass
-
-                                if result.returncode == 0 and os.path.exists(
-                                    temp_import_lib
-                                ):
-                                    lib_info[lib_name] = {
-                                        "type": "generated_import",
-                                        "path": temp_import_lib,
-                                    }
-                                    print(
-                                        f"Windows: Successfully created import library: {temp_import_lib}"
-                                    )
-                                else:
-                                    print(
-                                        f"Windows: Failed to create import library for {lib_name}: {result.stderr} {result.stdout}"
-                                    )
-                                    # Fall back to static .a if available, else dll_only
-                                    static_path = os.path.join(
-                                        "lib", f"lib{lib_name}.a"
-                                    )
-                                    if os.path.exists(static_path):
-                                        lib_info[lib_name] = {
-                                            "type": "static",
-                                            "path": static_path,
-                                        }
-                                        print(
-                                            f"Windows: Falling back to static library {static_path} after dlltool failure"
-                                        )
-                                    else:
-                                        lib_info[lib_name] = {
-                                            "type": "dll_only",
-                                            "path": dll_path,
-                                        }
-                                        print(
-                                            f"Windows: Fall back to direct DLL linking for {lib_name} (no static .a available)"
-                                        )
-                        finally:
-                            # Clean up generated .def if it exists
-                            try:
-                                if os.path.exists(temp_def):
-                                    os.remove(temp_def)
-                            except Exception:
-                                pass
-                    except FileNotFoundError:
-                        print(
-                            f"Windows: objdump/dlltool not found, cannot create import library for {lib_name}"
-                        )
-                        lib_info[lib_name] = {"type": "dll_only", "path": dll_path}
-                    except Exception as e:
-                        print(
-                            f"Windows: Error creating import library for {lib_name}: {e}"
-                        )
-                        lib_info[lib_name] = {"type": "dll_only", "path": dll_path}
-                else:
-                    lib_info[lib_name] = {
-                        "type": "generated_import",
-                        "path": temp_import_lib,
-                    }
-                    print(
-                        f"Windows: Using existing generated import library: {temp_import_lib}"
-                    )
-            elif os.path.exists(static_path):
-                lib_info[lib_name] = {"type": "static", "path": static_path}
-                print(f"Windows: Found static library: {static_path}")
-            else:
-                print(f"Windows: WARNING - No library found for {lib_name}")
-
-        # Strategy: Use explicit paths for all libraries to avoid MinGW confusion
-        # This prevents MinGW from choosing the wrong library type
-        print("Windows: Using explicit library paths to avoid linking issues")
-
-        # Don't use library names in Extension() - use only external dependencies
-        main_libraries = []  # Empty - we'll use explicit paths in extra_link_args
-
-        external_libraries = [
-            "curl",
-            "openblas",
-            "lapack",
-            "gcc_s",
-            "winpthread",
-            "quadmath",
-            "gomp",
-        ]
-
-        # Build explicit library paths for extra_link_args
-        explicit_lib_paths = []
-
-        # Hide static libraries if we have import libraries or DLLs available
-        static_libs_to_hide = []
-        try:
-            for lib_name in main_libs:
-                if lib_name in lib_info:
-                    lib_data = lib_info[lib_name]
-                    if lib_data["type"] in ["dll_import", "generated_import"]:
-                        # Use the DLL import library (real or generated)
-                        abs_path = os.path.abspath(lib_data["path"])
-                        explicit_lib_paths.append(abs_path)
-                        print(f"Windows: Will explicitly link: {abs_path}")
-
-                        # Hide corresponding static library to prevent conflicts
-                        static_path = os.path.join("lib", f"lib{lib_name}.a")
-                        if os.path.exists(static_path):
-                            backup_name = static_path + ".backup"
-                            if not os.path.exists(backup_name):
-                                shutil.move(static_path, backup_name)
-                                static_libs_to_hide.append((static_path, backup_name))
-                                print(
-                                    f"Windows: Temporarily hiding static {static_path}"
-                                )
-                    elif lib_data["type"] == "static":
-                        # Use static library with explicit path
-                        abs_path = os.path.abspath(lib_data["path"])
-                        explicit_lib_paths.append(abs_path)
-                        print(f"Windows: Will explicitly link static: {abs_path}")
-                    elif lib_data["type"] == "dll_only":
-                        # This shouldn't work with MinGW, but let's try
-                        print(
-                            f"Windows: WARNING - Attempting direct DLL linking for {lib_name} (may fail)"
-                        )
-                        # Don't add DLL to explicit paths, fall back to library name
-                        external_libraries.insert(
-                            0, lib_name
-                        )  # Add to front so it's found first
-
-        except Exception as e:
-            print(f"Windows: Error managing library paths: {e}")
-
-        # Store paths and hidden libraries for later use/cleanup
-        globals()["_explicit_dll_libs"] = explicit_lib_paths
-        globals()["_hidden_static_libs"] = static_libs_to_hide
-
-        # For explicit library paths, ensure proper dependency order:
-        # Libraries that depend on others should come BEFORE their dependencies
-        # RMN and SITypes depend on OCTypes, so they should come first
-        if explicit_lib_paths:
-            ordered_lib_paths = []
-            octypes_lib = None
-
-            # Separate OCTypes from other libs
-            for lib_path in explicit_lib_paths:
-                if "OCTypes" in lib_path:
-                    octypes_lib = lib_path
-                else:
-                    ordered_lib_paths.append(lib_path)
-
-            # Add OCTypes at the end (dependencies come after dependents)
-            if octypes_lib:
-                ordered_lib_paths.append(octypes_lib)
-
-            globals()["_explicit_dll_libs"] = ordered_lib_paths
-            print(f"Windows: Ordered library paths for linking: {ordered_lib_paths}")
-
-            # Set final libraries list to just external dependencies
-            libraries = external_libraries
-    else:
-        # On Unix-like systems, library order matters for static linking
-        # RMN depends on OCTypes/SITypes, so list RMN first
-        libraries = ["RMN", "SITypes", "OCTypes"]
-
-    # Add runtime library directory for shared libraries
-    # This tells the dynamic linker where to find .dylib/.so files at runtime
-    # Note: runtime_library_dirs is not supported on Windows
-    import os
-
-    # Only set runtime_library_dirs on Unix-like systems (Linux/macOS)
-    runtime_library_dirs = (
-        [] if platform.system() == "Windows" else [os.path.abspath("lib")]
-    )
+    libraries = ["OCTypes", "SITypes", "RMN"]
 
     # Common compiler/linker options (platform-specific)
     extra_link_args: list[str] = []
@@ -801,112 +255,24 @@ def get_extensions() -> list[Extension]:
 
     if platform.system() == "Windows":
         # On Windows, our CustomBuildExt class forces MinGW, so use GCC-style flags
-        # Following SpinOps approach: don't override SIZEOF_VOID_P, let Cython handle it
-        # But add the correct SIZEOF_VOID_P for x86_64 MinGW to prevent Cython check failure
         extra_compile_args = [
             "-std=c99",
             "-Wno-unused-function",
             "-Wno-sign-compare",
             "-DPy_NO_ENABLE_SHARED",  # Help with MinGW Python linking
         ]
-
-        # On Windows with MinGW, force linking to DLL import libraries instead of static libraries
-        # The .dll.a files are the import libraries for the DLLs
-        # This avoids undefined references when linking against static libraries
-        extra_link_args.extend(
-            [
-                "-Wl,--enable-auto-import",  # Allow auto-import from DLLs
-                "-Wl,--disable-auto-image-base",  # Prevent address conflicts
-            ]
-        )
-
-        # Add explicit paths to DLL import libraries if available
-        explicit_dll_libs = globals().get("_explicit_dll_libs", [])
-        if explicit_dll_libs:
-            print(
-                f"Windows: Adding {len(explicit_dll_libs)} explicit library paths to linker args"
-            )
-            for lib_path in explicit_dll_libs:
-                extra_link_args.append(lib_path)
-                print(f"Windows: Added explicit linker arg: {lib_path}")
-        # Add MSYS2/MinGW64 specific include directories for dependencies
-        # These are needed for RMNLib which depends on BLAS/LAPACK headers
-        mingw_prefix = os.environ.get("MSYSTEM_PREFIX", "/mingw64")
-        include_dirs.extend(
-            [
-                f"{mingw_prefix}/include/openblas",  # For cblas.h, lapacke.h
-                f"{mingw_prefix}/include",  # General MinGW headers
-            ]
-        )
-
-        # Add MinGW library directories
-        library_dirs.extend(
-            [
-                f"{mingw_prefix}/lib",  # MinGW libraries
-            ]
-        )
-
         # Add external dependencies required by RMNLib on Windows
-        # These are needed because the static libraries don't include external deps
-        # For MSYS2 MinGW64, use the actual library names from the installation
-        if "external_libraries" in locals():
-            # We're using explicit library paths, so combine external deps with main libraries
-            libraries = external_libraries
-        else:
-            # Standard approach - extend the existing libraries list
-            libraries.extend(["curl", "openblas", "lapack"])
-
-        # Add MinGW runtime libraries with correct library names
-        # Note: In MSYS2 MinGW64, these are the correct linker names
-        if "external_libraries" not in locals():
-            libraries.extend(["gcc_s", "winpthread", "quadmath", "gomp"])
-
-        # Try to find the correct Fortran library name
-        mingw_lib_dir = os.environ.get("MINGW_LIB_DIR")
-        if mingw_lib_dir and os.path.exists(mingw_lib_dir):
-            library_dirs.append(mingw_lib_dir)
-            # Look for Fortran library variants - check actual library names
-            print(f"Checking Fortran libraries in: {mingw_lib_dir}")
-
-            # First check what library files actually exist
-            try:
-                static_libs = glob.glob(os.path.join(mingw_lib_dir, "lib*fortran*.a"))
-                dll_libs = glob.glob(
-                    os.path.join(
-                        mingw_lib_dir.replace("/lib", "/bin"), "lib*fortran*.dll"
-                    )
-                )
-                print(
-                    f"Found static libs: {[os.path.basename(f) for f in static_libs]}"
-                )
-                print(f"Found DLL libs: {[os.path.basename(f) for f in dll_libs]}")
-
-                # Also check for import libraries (.dll.a files)
-                import_libs = glob.glob(
-                    os.path.join(mingw_lib_dir, "lib*fortran*.dll.a")
-                )
-                print(
-                    f"Found import libs: {[os.path.basename(f) for f in import_libs]}"
-                )
-            except Exception as e:
-                print(f"Error checking library files: {e}")
-
-            # In MSYS2 MinGW64, we need to link against the import library or use GCC's built-in libraries
-            # Since libgfortran-5.dll exists but no static/import library, we skip explicit gfortran linking
-            # GCC will automatically link the Fortran runtime when needed
-            print(
-                "MSYS2 MinGW64: Skipping explicit gfortran linking - GCC will handle it automatically"
-            )
-        # Add MinGW library directory for external dependencies
+        libraries.extend(["curl", "openblas", "lapack"])
+        # Add MinGW runtime libraries
+        libraries.extend(["gcc_s", "winpthread", "quadmath", "gomp"])
         # Add SIZEOF_VOID_P=8 for x86_64 to prevent Cython's division by zero error
         define_macros.append(("SIZEOF_VOID_P", "8"))
         print("Configured for MinGW/GCC compiler on Windows")
     else:
         # GCC/Clang flags on Unix-like systems
         extra_compile_args = ["-std=c99", "-Wno-unused-function"]
-        define_macros = [("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]
 
-    # Start with empty extensions list - we'll add them as we implement phases
+    # Build extensions list
     extensions = []
 
     # Phase 1: OCTypes helper functions
@@ -918,7 +284,6 @@ def get_extensions() -> list[Extension]:
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 libraries=libraries,
-                runtime_library_dirs=runtime_library_dirs,
                 language="c",
                 extra_compile_args=extra_compile_args,
                 extra_link_args=extra_link_args,
@@ -927,42 +292,7 @@ def get_extensions() -> list[Extension]:
         ]
     )
 
-    # Test modules are built separately for testing, not during installation
-    # Use: python setup.py build_ext --inplace to build tests for development
-    # extensions.extend([
-    #     Extension(
-    #         "test_octypes_linking",
-    #         sources=["tests/test_helpers/test_octypes_linking.pyx"],
-    #         include_dirs=include_dirs,
-    #         library_dirs=library_dirs,
-    #         libraries=libraries,
-    #         language="c",
-    #         extra_compile_args=extra_compile_args,
-    #         extra_link_args=extra_link_args
-    #     ),
-    #     Extension(
-    #         "test_octypes_roundtrip",
-    #         sources=["tests/test_helpers/test_octypes_roundtrip.pyx"],
-    #         include_dirs=include_dirs,
-    #         library_dirs=library_dirs,
-    #         libraries=libraries,
-    #         language="c",
-    #         extra_compile_args=extra_compile_args,
-    #         extra_link_args=extra_link_args
-    #     ),
-    #     Extension(
-    #         "test_minimal",
-    #         sources=["tests/test_helpers/test_minimal.pyx"],
-    #         include_dirs=include_dirs,
-    #         library_dirs=library_dirs,
-    #         libraries=libraries,
-    #         language="c",
-    #         extra_compile_args=extra_compile_args,
-    #         extra_link_args=extra_link_args
-    #     )
-    # ])
-
-    # Phase 2A: SIDimensionality wrapper (complete implementation)
+    # Phase 2A: SIDimensionality wrapper
     extensions.extend(
         [
             Extension(
@@ -971,15 +301,15 @@ def get_extensions() -> list[Extension]:
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 libraries=libraries,
-                runtime_library_dirs=runtime_library_dirs,
                 language="c",
                 extra_compile_args=extra_compile_args,
                 extra_link_args=extra_link_args,
+                define_macros=define_macros,
             )
         ]
     )
 
-    # Phase 2B: SIUnit wrapper (complete implementation)
+    # Phase 2B: SIUnit wrapper
     extensions.extend(
         [
             Extension(
@@ -988,15 +318,15 @@ def get_extensions() -> list[Extension]:
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 libraries=libraries,
-                runtime_library_dirs=runtime_library_dirs,
                 language="c",
                 extra_compile_args=extra_compile_args,
                 extra_link_args=extra_link_args,
+                define_macros=define_macros,
             )
         ]
     )
 
-    # Phase 2C: SIScalar wrapper (complete implementation)
+    # Phase 2C: SIScalar wrapper
     extensions.extend(
         [
             Extension(
@@ -1005,94 +335,10 @@ def get_extensions() -> list[Extension]:
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 libraries=libraries,
-                runtime_library_dirs=runtime_library_dirs,
                 language="c",
                 extra_compile_args=extra_compile_args,
                 extra_link_args=extra_link_args,
-            )
-        ]
-    )
-
-    # Phase 2: SITypes wrappers (will be implemented after Phase 1)
-    # extensions.extend([
-    #     Extension(
-    #         "rmnpy.wrappers.sitypes.scalar",
-    #         sources=["src/rmnpy/wrappers/sitypes/scalar.pyx"],
-    #         include_dirs=include_dirs,
-    #         library_dirs=library_dirs,
-    #         libraries=libraries,
-    #         language="c",
-    #         extra_compile_args=extra_compile_args,
-    #         extra_link_args=extra_link_args
-    #     ),
-    #     Extension(
-    #         "rmnpy.wrappers.sitypes.unit",
-    #         sources=["src/rmnpy/wrappers/sitypes/unit.pyx"],
-    #         include_dirs=include_dirs,
-    #         library_dirs=library_dirs,
-    #         libraries=libraries,
-    #         language="c",
-    #         extra_compile_args=extra_compile_args,
-    #         extra_link_args=extra_link_args
-    #     ),
-    #     Extension(
-    #         "rmnpy.wrappers.sitypes.dimensionality",
-    #         sources=["src/rmnpy/wrappers/sitypes/dimensionality.pyx"],
-    #         include_dirs=include_dirs,
-    #         library_dirs=library_dirs,
-    #         libraries=libraries,
-    #         language="c",
-    #         extra_compile_args=extra_compile_args,
-    #         extra_link_args=extra_link_args
-    #     )
-    # ])
-
-    # Phase 3A: RMNLib Dimension wrapper (ENABLED after fixing header issue)
-    extensions.extend(
-        [
-            Extension(
-                "rmnpy.wrappers.rmnlib.dimension",
-                sources=["src/rmnpy/wrappers/rmnlib/dimension.pyx"],
-                include_dirs=include_dirs,
-                library_dirs=library_dirs,
-                libraries=libraries,
-                runtime_library_dirs=runtime_library_dirs,
-                language="c",
-                extra_compile_args=extra_compile_args,
-                extra_link_args=extra_link_args,
-            )
-        ]
-    )
-
-    # Phase 3B+: Other RMNLib wrappers (DISABLED until Phase 3A testing complete)
-    # Build the dependent_variable wrapper for RMNLib
-    # TODO: Re-enable when dependent_variable.pyx compilation issues are fixed
-    # extensions.extend([
-    #     Extension(
-    #         "rmnpy.wrappers.rmnlib.dependent_variable",
-    #         sources=["src/rmnpy/wrappers/rmnlib/dependent_variable.pyx"],
-    #         include_dirs=include_dirs,
-    #         library_dirs=library_dirs,
-    #         libraries=libraries,
-    #         language="c",
-    #         extra_compile_args=extra_compile_args,
-    #         extra_link_args=extra_link_args
-    #     )
-    # ])
-
-    # Constants module - SI quantity constants
-    extensions.extend(
-        [
-            Extension(
-                "rmnpy.constants",
-                sources=["src/rmnpy/constants.pyx"],
-                include_dirs=include_dirs,
-                library_dirs=library_dirs,
-                libraries=libraries,
-                runtime_library_dirs=runtime_library_dirs,
-                language="c",
-                extra_compile_args=extra_compile_args,
-                extra_link_args=extra_link_args,
+                define_macros=define_macros,
             )
         ]
     )
@@ -1103,24 +349,23 @@ def get_extensions() -> list[Extension]:
 # Note: Most project configuration is now in pyproject.toml
 # This setup.py only handles the Cython build process
 
-if __name__ == "__main__":
-    setup(
-        # Most configuration is now in pyproject.toml
-        # Only specify what's needed for the build system
-        ext_modules=cythonize(
-            get_extensions(),
-            compiler_directives={
-                "language_level": 3,
-                "embedsignature": True,
-                "boundscheck": False,
-                "wraparound": False,
-                "initializedcheck": False,
-            },
-            # Add build configuration for Windows compatibility
-            build_dir="build",
-        ),
-        cmdclass={
-            "build_ext": CustomBuildExt,
+setup(
+    # Most configuration is now in pyproject.toml
+    # Only specify what's needed for the build system
+    ext_modules=cythonize(
+        get_extensions(),
+        compiler_directives={
+            "language_level": 3,
+            "embedsignature": True,
+            "boundscheck": False,
+            "wraparound": False,
+            "initializedcheck": False,
         },
-        zip_safe=False,
-    )
+        # Add build configuration for Windows compatibility
+        build_dir="build",
+    ),
+    cmdclass={
+        "build_ext": CustomBuildExt,
+    },
+    zip_safe=False,
+)
