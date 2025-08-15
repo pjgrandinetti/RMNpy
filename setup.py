@@ -13,31 +13,22 @@ import sysconfig
 # Handle distutils imports with fallbacks for different Python versions
 try:
     from distutils.ccompiler import new_compiler  # type: ignore[import-untyped]
-    from distutils.sysconfig import customize_compiler  # type: ignore[import-untyped]
-    from distutils.sysconfig import get_python_inc  # type: ignore[import-untyped]
+
+    from setuptools._distutils.sysconfig import (
+        get_python_inc,  # type: ignore[attr-defined]
+    )
 except ImportError:
-    try:
-        from setuptools._distutils.ccompiler import (
-            new_compiler,  # type: ignore[attr-defined]
-        )
-        from setuptools._distutils.sysconfig import (
-            customize_compiler,  # type: ignore[attr-defined]
-        )
-        from setuptools._distutils.sysconfig import (
-            get_python_inc,  # type: ignore[attr-defined]
-        )
-    except ImportError:
-        # Ultimate fallback for testing - use sysconfig only
-        from typing import Any
+    # Ultimate fallback for testing - use sysconfig only
+    from typing import Any
 
-        def new_compiler(*args: Any, **kwargs: Any) -> Any:
-            return None
+    def new_compiler(*args: Any, **kwargs: Any) -> Any:
+        return None
 
-        def customize_compiler(*args: Any, **kwargs: Any) -> None:
-            pass
+    def customize_compiler(*args: Any, **kwargs: Any) -> None:
+        pass
 
-        def get_python_inc(*args: Any, **kwargs: Any) -> str:
-            return sysconfig.get_path("include")
+    def get_python_inc(*args: Any, **kwargs: Any) -> str:
+        return sysconfig.get_path("include")
 
 
 from pathlib import Path
@@ -289,51 +280,96 @@ def get_extensions() -> list[Extension]:
                         import subprocess
 
                         def _dump_table(dll_file_path: str):
-                            # Try common objdump names; allow system to resolve the correct one
-                            for cmd in (
-                                ["objdump", "-p", dll_file_path],
+                            # Try several objdump variants to account for MSYS2/toolchain differences
+                            candidates = [
+                                ["x86_64-w64-mingw32-objdump", "-p", dll_file_path],
                                 ["objdump.exe", "-p", dll_file_path],
-                            ):
+                                ["objdump", "-p", dll_file_path],
+                                ["x86_64-w64-mingw32-objdump.exe", "-p", dll_file_path],
+                            ]
+                            last_exc = None
+                            for cmd in candidates:
                                 try:
-                                    out = subprocess.check_output(cmd)
+                                    out = subprocess.check_output(
+                                        cmd, stderr=subprocess.STDOUT
+                                    )
                                     return out.split(b"\n")
                                 except (
                                     subprocess.CalledProcessError,
                                     FileNotFoundError,
-                                ):
+                                ) as e:
+                                    last_exc = e
                                     continue
-                            # If we get here, no objdump variant worked
-                            raise FileNotFoundError(
-                                "objdump not found or failed to read DLL exports"
-                            )
+                            # If none worked, re-raise the last exception for upstream handling
+                            if last_exc is not None:
+                                raise last_exc
+                            return []
 
                         def _generate_def_from_dump(dll_file_path: str, def_path: str):
                             dump = _dump_table(dll_file_path)
-                            # Find start of Export Table (objdump -p output)
-                            start_re = re.compile(r"^\s*Export\s+Table")
-                            table_re = re.compile(r"^\s*(\d+)\s+(\S+)")
+
+                            # Try several start patterns to cope with objdump formatting
+                            start_patterns = [
+                                r"\[Ordinal/Name Pointer\] Table",
+                                r"Export Table",
+                                r"Exports",
+                            ]
+                            start_re_list = [re.compile(p) for p in start_patterns]
+
+                            # Table line patterns - a few variants observed in different objdump builds
+                            table_patterns = [
+                                r"^\s*\[\s*(\d+)\]\s*([A-Za-z0-9_@]+)",
+                                r"^\s*(\d+)\s+([A-Za-z0-9_@]+)",
+                            ]
+                            table_re_list = [re.compile(p) for p in table_patterns]
+
+                            # Locate start of export table
+                            start_idx = None
                             for i in range(len(dump)):
                                 try:
-                                    line = dump[i].decode()
+                                    line = dump[i].decode(errors="ignore")
                                 except Exception:
                                     line = ""
-                                if start_re.match(line):
+                                for start_re in start_re_list:
+                                    if start_re.search(line):
+                                        start_idx = i
+                                        break
+                                if start_idx is not None:
                                     break
-                            else:
+
+                            if start_idx is None:
+                                # Dump first lines to a debug file to help CI diagnostics
+                                try:
+                                    debug_path = os.path.join(
+                                        "lib",
+                                        f"lib{os.path.basename(dll_file_path)}.objdump.txt",
+                                    )
+                                    with open(debug_path, "wb") as df:
+                                        df.write(b"\n".join(dump[:200]))
+                                    print(
+                                        f"Windows: objdump format not recognized, saved sample to {debug_path}"
+                                    )
+                                except Exception:
+                                    pass
                                 raise ValueError(
                                     "Symbol table not found in DLL (objdump output differs)"
                                 )
 
                             syms = []
-                            for j in range(i + 1, len(dump)):
+                            for j in range(start_idx + 1, len(dump)):
                                 try:
-                                    line_txt = dump[j].decode()
+                                    line = dump[j].decode(errors="ignore")
                                 except Exception:
-                                    break
-                                m = table_re.match(line_txt)
-                                if m:
-                                    syms.append(m.group(2))
-                                else:
+                                    continue
+                                matched = False
+                                for table_re in table_re_list:
+                                    m = table_re.match(line)
+                                    if m:
+                                        syms.append(m.group(2))
+                                        matched = True
+                                        break
+                                if not matched:
+                                    # Stop on first non-matching line after the table
                                     break
 
                             if len(syms) == 0:
@@ -345,6 +381,10 @@ def get_extensions() -> list[Extension]:
                                 df.write(
                                     f"LIBRARY        {os.path.basename(dll_file_path)}\n"
                                 )
+                                df.write(
+                                    ";CODE          PRELOAD MOVEABLE DISCARDABLE\n"
+                                )
+                                df.write(";DATA          PRELOAD SINGLE\n")
                                 df.write("\nEXPORTS\n")
                                 for s in syms:
                                     df.write(f"{s}\n")
