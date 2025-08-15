@@ -2,7 +2,7 @@ alabaster==1.0.0
 babel==2.17.0
 breathe==4.36.0
 build @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_67kiqen6lr/croot/build_1692303732972/work
-certifi==2025.7.14
+certifi==2025.8.3
 charset-normalizer==3.4.3
 colorama @ file:///home/conda/feedstock_root/build_artifacts/colorama_1733218098505/work
 coverage==7.10.3
