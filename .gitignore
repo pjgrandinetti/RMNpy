@@ -65,6 +65,9 @@ src/rmnpy/**/*.c
 src/rmnpy/**/*.cpp
 src/rmnpy/**/*.html
 
+# Generated constants file (created by extract_si_constants.py during build)
+src/rmnpy/constants.pyx
+
 # In-place build directories (for setup.py build_ext --inplace)
 # Only ignore rmnpy/ at root level, not src/rmnpy/
 /rmnpy/
