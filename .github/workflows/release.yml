@@ -62,13 +62,7 @@ jobs:
           - os: macos-latest
             python-version: "3.12"
 
-          # Windows - Multiple Python versions
-          - os: windows-latest
-            python-version: "3.9"
-          - os: windows-latest
-            python-version: "3.10"
-          - os: windows-latest
-            python-version: "3.11"
+          # Windows - Only Python 3.12 (MinGW compatibility)
           - os: windows-latest
             python-version: "3.12"
 
