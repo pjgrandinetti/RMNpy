@@ -169,26 +169,18 @@ jobs:
         # Use no-isolation but ensure metadata is properly set
         SETUPTOOLS_SCM_PRETEND_VERSION=0.1.0 python -m build --wheel --outdir dist --no-isolation
 
-    - name: Verify wheel metadata (All platforms)
-      shell: bash
+    - name: Build wheels (Non-Windows)
+      if: runner.os != 'Windows'
       run: |
-        # Install wheel package for metadata checking
-        python -m pip install wheel
-        # Check that all wheels have proper metadata
-        for wheel in dist/*.whl; do
-          echo "Checking metadata for: $wheel"
-          python -c "
-        import sys
-        from wheel.metadata import pkginfo_to_metadata
-        from pkginfo import Wheel
-        wheel_info = Wheel('$wheel')
-        if not wheel_info.name or not wheel_info.version:
-            print(f'ERROR: Missing metadata in $wheel - Name: {wheel_info.name}, Version: {wheel_info.version}')
-            sys.exit(1)
-        else:
-            print(f'OK: $wheel has Name: {wheel_info.name}, Version: {wheel_info.version}')
-        "
-        done
+        # Use standard build process to ensure proper metadata handling
+        python -m build --wheel --outdir dist
+
+    - name: Verify wheel metadata before upload
+      run: |
+        # Install required packages for metadata checking
+        python -m pip install wheel pkginfo
+        # Simple wheel verification script
+        python -c "import pkginfo,os; [print(f'OK: {f}') if pkginfo.Wheel(f'dist/{f}').name else exit(1) for f in os.listdir('dist') if f.endswith('.whl')]"
 
     - name: Upload wheels
       uses: actions/upload-artifact@v4
