@@ -47,18 +47,24 @@ jobs:
       run: |
         brew install cmake flex bison openblas lapack curl libomp
 
-    - name: Set up Python ${{ matrix.python-version }} (Windows)
-      if: runner.os == 'Windows'
-      uses: actions/setup-python@v5
+    - name: Setup MSYS2 (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: msys2/setup-msys2@v2
       with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Install system dependencies (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        # Install vcpkg packages for Windows
-        vcpkg install openblas:x64-windows lapack:x64-windows curl:x64-windows
-      shell: cmd
+        msystem: MINGW64
+        update: true
+        install: |
+          mingw-w64-x86_64-toolchain
+          mingw-w64-x86_64-python
+          mingw-w64-x86_64-python-pip
+          mingw-w64-x86_64-python-numpy
+          mingw-w64-x86_64-cython
+          mingw-w64-x86_64-curl
+          mingw-w64-x86_64-openblas
+          mingw-w64-x86_64-lapack
+          mingw-w64-x86_64-openmp
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-ninja
 
     # Download dependencies (same as CI workflow)
     - name: Download OCTypes from GitHub releases
@@ -117,7 +123,7 @@ jobs:
       shell: msys2 {0}
       run: |
         if [ -f lib/libOCTypes.a ] && [ -f lib/libSITypes.a ] && [ -f lib/libRMN.a ]; then
-          x86_64-w64-mingw32-gcc -shared -o lib/rmnstack_bridge.dll \
+          gcc -shared -o lib/rmnstack_bridge.dll \
             -Wl,--out-implib,lib/rmnstack_bridge.dll.a \
             -Wl,--whole-archive \
               lib/libRMN.a lib/libSITypes.a lib/libOCTypes.a \
