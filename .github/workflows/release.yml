@@ -155,14 +155,14 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install --upgrade "setuptools>=70" "wheel>=0.44" "build>=1.2.1" "Cython>=0.29.36" "numpy>=1.21"
 
-    - name: Build and repair wheel (Linux)
+    - name: Build wheel and repair for manylinux compatibility (Linux)
       if: runner.os == 'Linux'
       run: |
         # Build wheel and repair for manylinux compatibility
         python -m build --wheel --outdir dist-temp
         python -m pip install auditwheel
         mkdir -p dist
-        auditwheel repair --wheel-dir dist --plat manylinux_2_28_x86_64 dist-temp/*.whl
+        auditwheel repair --wheel-dir dist --plat manylinux_2_35_x86_64 dist-temp/*.whl
 
     - name: Build wheel (macOS)
       if: runner.os == 'macOS'
