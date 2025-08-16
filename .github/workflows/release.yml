@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm64, macos-latest, windows-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         exclude:
           # Reduce Windows build matrix to save CI time
@@ -71,7 +71,11 @@ jobs:
       run: |
         mkdir -p lib include/OCTypes
         if [[ "${{ runner.os }}" == "Linux" ]]; then
-          LIB_FILE="libOCTypes-ubuntu-latest.x64.zip"
+          if [[ "${{ runner.arch }}" == "ARM64" ]]; then
+            LIB_FILE="libOCTypes-ubuntu-latest.arm64.zip"
+          else
+            LIB_FILE="libOCTypes-ubuntu-latest.x64.zip"
+          fi
         elif [[ "${{ runner.os }}" == "macOS" ]]; then
           LIB_FILE="libOCTypes-macos-latest.zip"
         elif [[ "${{ runner.os }}" == "Windows" ]]; then
@@ -88,7 +92,11 @@ jobs:
       run: |
         mkdir -p include/SITypes
         if [[ "${{ runner.os }}" == "Linux" ]]; then
-          LIB_FILE="libSITypes-ubuntu-latest.x64.zip"
+          if [[ "${{ runner.arch }}" == "ARM64" ]]; then
+            LIB_FILE="libSITypes-ubuntu-latest.arm64.zip"
+          else
+            LIB_FILE="libSITypes-ubuntu-latest.x64.zip"
+          fi
         elif [[ "${{ runner.os }}" == "macOS" ]]; then
           LIB_FILE="libSITypes-macos-latest.zip"
         elif [[ "${{ runner.os }}" == "Windows" ]]; then
@@ -105,7 +113,11 @@ jobs:
       run: |
         mkdir -p include/RMNLib
         if [[ "${{ runner.os }}" == "Linux" ]]; then
-          LIB_FILE="libRMN-ubuntu-latest.x64.zip"
+          if [[ "${{ runner.arch }}" == "ARM64" ]]; then
+            LIB_FILE="libRMN-ubuntu-latest.arm64.zip"
+          else
+            LIB_FILE="libRMN-ubuntu-latest.x64.zip"
+          fi
         elif [[ "${{ runner.os }}" == "macOS" ]]; then
           LIB_FILE="libRMN-macos-latest.zip"
         elif [[ "${{ runner.os }}" == "Windows" ]]; then
