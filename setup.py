@@ -756,7 +756,10 @@ def get_extensions() -> List[Extension]:
 # This setup.py only handles the Cython build process
 
 setup(
-    # Most configuration is now in pyproject.toml
+    # Essential metadata for --no-build-isolation compatibility
+    name="rmnpy",
+    version="0.1.0",
+    # Most other configuration is in pyproject.toml
     # Only specify what's needed for the build system
     ext_modules=cythonize(
         get_extensions(),
