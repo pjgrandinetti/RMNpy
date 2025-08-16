@@ -162,11 +162,12 @@ jobs:
         python -m build --wheel --outdir dist-temp
         python -m pip install auditwheel
         mkdir -p dist
-        # First try to check what symbols are causing issues
-        auditwheel show dist-temp/*.whl || true
-        # Try to repair with force option if normal repair fails
-        auditwheel repair --wheel-dir dist --plat manylinux_2_35_x86_64 dist-temp/*.whl || \
-        auditwheel repair --wheel-dir dist --plat manylinux_2_35_x86_64 --force dist-temp/*.whl || \
+        # Check what manylinux platform is needed
+        echo "Checking wheel compatibility..."
+        auditwheel show dist-temp/*.whl
+        # Try to repair with the appropriate manylinux tag, fallback to what auditwheel suggests
+        auditwheel repair --wheel-dir dist --plat manylinux_2_38_x86_64 dist-temp/*.whl || \
+        auditwheel repair --wheel-dir dist dist-temp/*.whl || \
         (echo "auditwheel repair failed, copying unrepaired wheel" && cp dist-temp/*.whl dist/)
 
     - name: Build wheel (macOS)
