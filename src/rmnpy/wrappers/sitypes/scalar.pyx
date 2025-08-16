@@ -120,10 +120,6 @@ cdef class Scalar:
         result._c_ref = copied_ref
         return result
 
-    cdef SIScalarRef get_c_ref(self):
-        """Get the C scalar reference for cross-module access."""
-        return self._c_ref
-
     def __init__(self, value=1.0, expression=None):
         """
         Create a scalar physical quantity with flexible argument patterns.

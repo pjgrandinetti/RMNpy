@@ -15,5 +15,3 @@ cdef class Dimensionality:
 
     @staticmethod
     cdef Dimensionality _from_c_ref(SIDimensionalityRef dim_ref)
-
-    cdef SIDimensionalityRef get_c_ref(self)

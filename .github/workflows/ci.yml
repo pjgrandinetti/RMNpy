@@ -14,8 +14,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.12"]
+        include:
+          # Linux supports both Python 3.11 and 3.12
+          - os: ubuntu-latest
+            python-version: "3.11"
+          - os: ubuntu-latest
+            python-version: "3.12"
+          # macOS supports both Python 3.11 and 3.12
+          - os: macos-latest
+            python-version: "3.11"
+          - os: macos-latest
+            python-version: "3.12"
+          # Windows MinGW only supports Python 3.12
+          - os: windows-latest
+            python-version: "3.12"
 
     steps:
     - name: Checkout RMNpy

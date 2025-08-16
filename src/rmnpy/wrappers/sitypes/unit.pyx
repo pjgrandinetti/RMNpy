@@ -151,19 +151,6 @@ cdef class Unit:
         result._c_ref = unit_ref
         return result
 
-    cdef SIUnitRef get_c_ref(self):
-        """
-        Get the C unit reference for cross-module access.
-
-        This method is used internally for passing Unit objects
-        between different wrapper modules (e.g., to Scalar or other classes).
-        Since SIUnitRef are singletons, no memory management is needed.
-
-        Returns:
-            SIUnitRef: The underlying C reference (may be NULL)
-        """
-        return self._c_ref
-
     @classmethod
     def from_name(cls, name):
         """

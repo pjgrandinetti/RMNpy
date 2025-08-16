@@ -50,6 +50,8 @@ if TYPE_CHECKING:
 
 # Force MinGW compiler on Windows early in setup (SpinOps approach)
 # This must happen before any other setup code to ensure correct compiler selection
+# NOTE: Windows MinGW builds require Python 3.12+ due to MSYS2/MinGW64 Python availability
+# Other platforms (Linux, macOS) support Python 3.11+
 if sys.platform == "win32":
     # Get pointer size to determine 32-bit vs 64-bit
     try:

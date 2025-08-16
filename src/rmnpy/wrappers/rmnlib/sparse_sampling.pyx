@@ -37,7 +37,6 @@ cdef class SparseSampling:
     Represents sparse sampling patterns over selected dimensions in a multidimensional grid.
     All properties are retrieved directly from the C API (single source of truth).
     """
-    cdef SparseSamplingRef _c_ref
 
     def __cinit__(self):
         """Initialize C-level attributes."""
@@ -47,6 +46,20 @@ cdef class SparseSampling:
         """Clean up C resources."""
         if self._c_ref != NULL:
             OCRelease(self._c_ref)
+
+    @staticmethod
+    cdef SparseSampling _from_c_ref(SparseSamplingRef sparse_ref):
+        """Create SparseSampling wrapper from C reference (internal use).
+
+        Creates a copy of the sparse sampling reference, so caller retains ownership
+        of their original reference and can safely release it.
+        """
+        cdef SparseSampling result = SparseSampling.__new__(SparseSampling)
+        cdef SparseSamplingRef copied_ref = <SparseSamplingRef>OCTypeDeepCopy(<OCTypeRef>sparse_ref)
+        if copied_ref == NULL:
+            raise RMNError("Failed to create copy of SparseSampling")
+        result._c_ref = copied_ref
+        return result
 
     def __init__(self, dimension_indexes, sparse_grid_vertices,
                  unsigned_integer_type="uint32", encoding="none",
@@ -66,6 +79,9 @@ cdef class SparseSampling:
               If both contain data, each vertex in sparse_grid_vertices must have the same number of
               (index,value) pairs as there are dimensions in dimension_indexes.
         """
+        if self._c_ref != NULL:
+            return  # Already initialized by _from_c_ref
+
         cdef OCStringRef err_ocstr = NULL
         cdef OCIndexSetRef dim_indexes_ref = NULL
         cdef OCArrayRef vertices_ref = NULL

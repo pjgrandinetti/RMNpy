@@ -73,6 +73,78 @@ class TestDependentVariableBasics:
         ), f"Expected '{kSIQuantityLengthRatio}', got '{dv.quantity_name}'"
 
 
+class TestDependentVariableAppend:
+    """Test DependentVariable append functionality"""
+
+    def test_append_basic(self):
+        """Test basic append functionality"""
+        # Create first DependentVariable
+        data1 = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+        dv1 = DependentVariable(
+            components=[data1],
+            name="data1",
+            description="First dataset",
+            unit=" ",  # dimensionless
+            quantity_name=kSIQuantityDimensionless,
+            quantity_type="scalar",
+            element_type="float64",
+        )
+
+        # Create second DependentVariable with compatible properties
+        data2 = np.array([4.0, 5.0], dtype=np.float64)
+        dv2 = DependentVariable(
+            components=[data2],
+            name="data2",
+            description="Second dataset",
+            unit=" ",  # dimensionless
+            quantity_name=kSIQuantityDimensionless,
+            quantity_type="scalar",
+            element_type="float64",
+        )
+
+        # Check initial sizes
+        assert dv1.size == 3
+        assert dv2.size == 2
+
+        # Append dv2 to dv1
+        dv1.append(dv2)
+
+        # Verify the size increased
+        assert dv1.size == 5  # 3 + 2
+
+    def test_append_error_cases(self):
+        """Test error cases for append"""
+        data = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+        dv = DependentVariable(
+            components=[data],
+            name="test",
+            description="Test data",
+            unit=" ",
+            quantity_name=kSIQuantityDimensionless,
+            quantity_type="scalar",
+            element_type="float64",
+        )
+
+        # Test appending non-DependentVariable
+        import pytest
+
+        with pytest.raises(TypeError, match="other must be a DependentVariable"):
+            dv.append("not a dependent variable")
+
+        with pytest.raises(TypeError, match="other must be a DependentVariable"):
+            dv.append([1, 2, 3])
+
+        # Test appending to uninitialized DependentVariable
+        uninitialized_dv = DependentVariable.__new__(DependentVariable)
+        with pytest.raises(ValueError, match="DependentVariable not initialized"):
+            uninitialized_dv.append(dv)
+
+        # Test appending uninitialized DependentVariable
+        other_uninitialized = DependentVariable.__new__(DependentVariable)
+        with pytest.raises(ValueError, match="other DependentVariable not initialized"):
+            dv.append(other_uninitialized)
+
+
 class TestDependentVariableIntegration:
     """Test DependentVariable integration with SITypes"""
 

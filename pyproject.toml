@@ -26,25 +26,23 @@ keywords = [
     "cython"
 ]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS",
     "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: C",
     "Programming Language :: Cython",
     "Topic :: Scientific/Engineering",
-    "Topic :: Scientific/Engineering :: Physics",
-    "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed"
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.20.0",
     "cython>=0.29.24",

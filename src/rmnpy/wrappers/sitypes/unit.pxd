@@ -16,5 +16,3 @@ cdef class Unit:
 
     @staticmethod
     cdef Unit _from_c_ref(SIUnitRef unit_ref)
-
-    cdef SIUnitRef get_c_ref(self)

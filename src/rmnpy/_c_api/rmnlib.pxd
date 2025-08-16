@@ -258,7 +258,7 @@ cdef extern from "RMNLibrary.h":
     bint DependentVariableSetNumericType(DependentVariableRef dv, OCNumberType newType)
 
     # DependentVariable sparse sampling
-    SparseSamplingRef DependentVariableGetSparseSampling(DependentVariableRef dv)
+    SparseSamplingRef DependentVariableCopySparseSampling(DependentVariableRef dv)
     bint DependentVariableSetSparseSampling(DependentVariableRef dv, SparseSamplingRef ss)
 
     # DependentVariable metadata and ownership

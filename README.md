@@ -50,7 +50,9 @@ pip install rmnpy
 ```
 
 **Platform Support:**
-- **Linux/macOS**: Python 3.8-3.12
+- ## Requirements
+
+- **Linux/macOS**: Python 3.11-3.12
 - **Windows**: Python 3.12 only (requires MSYS2 environment)
 
 ### Windows (MSYS2/Mingw-w64 Python)

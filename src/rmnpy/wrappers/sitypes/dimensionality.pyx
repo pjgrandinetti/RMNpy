@@ -182,19 +182,6 @@ cdef class Dimensionality:
         result._c_ref = c_ref
         return result
 
-    cdef SIDimensionalityRef get_c_ref(self):
-        """
-        Get the C dimensionality reference for cross-module access.
-
-        This method is used internally for passing Dimensionality objects
-        between different wrapper modules (e.g., to Unit or Scalar classes).
-        Since SIDimensionalityRef are singletons, no memory management is needed.
-
-        Returns:
-            SIDimensionalityRef: The underlying C reference (may be NULL)
-        """
-        return self._c_ref
-
     @property
     def is_dimensionless(self):
         """
