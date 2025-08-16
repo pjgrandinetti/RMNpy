@@ -32,17 +32,42 @@ elif sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
     else:  # macOS
         lib_ext = ".dylib"
 
+    # Debug: List all files in package directory
+    try:
+        all_files = list(package_dir.iterdir())
+        lib_files_found = [f for f in all_files if f.name.endswith(lib_ext)]
+        print(f"DEBUG: Package directory: {package_dir}", file=sys.stderr)
+        print(
+            f"DEBUG: Library files found: {[f.name for f in lib_files_found]}",
+            file=sys.stderr,
+        )
+    except Exception as e:
+        print(f"DEBUG: Error listing package directory: {e}", file=sys.stderr)
+
     # Try to pre-load the libraries in dependency order
     lib_files = [f"libOCTypes{lib_ext}", f"libSITypes{lib_ext}", f"libRMN{lib_ext}"]
 
     for lib_file in lib_files:
         lib_path = package_dir / lib_file
+        print(f"DEBUG: Checking for {lib_path}", file=sys.stderr)
         if lib_path.exists():
             try:
+                print(f"DEBUG: Loading {lib_file}...", file=sys.stderr)
                 ctypes.CDLL(str(lib_path), mode=ctypes.RTLD_GLOBAL)
+                print(f"DEBUG: Successfully loaded {lib_file}", file=sys.stderr)
             except OSError as e:
-                # Log but don't fail - the libraries might still be found through other means
                 print(f"Warning: Could not pre-load {lib_file}: {e}", file=sys.stderr)
+        else:
+            print(f"DEBUG: Library {lib_file} not found at {lib_path}", file=sys.stderr)
+
+    # Alternative approach: try to set LD_LIBRARY_PATH environment variable
+    if sys.platform.startswith("linux"):
+        current_ld_path = os.environ.get("LD_LIBRARY_PATH", "")
+        new_ld_path = (
+            f"{package_dir}:{current_ld_path}" if current_ld_path else str(package_dir)
+        )
+        os.environ["LD_LIBRARY_PATH"] = new_ld_path
+        print(f"DEBUG: Set LD_LIBRARY_PATH to: {new_ld_path}", file=sys.stderr)
 
 # Read version from package metadata (single source of truth in pyproject.toml)
 try:
