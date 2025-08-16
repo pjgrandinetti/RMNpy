@@ -77,8 +77,8 @@ jobs:
         elif [[ "${{ runner.os }}" == "Windows" ]]; then
           LIB_FILE="libOCTypes-windows-latest.zip"
         fi
-        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/${LIB_FILE} -o octypes-lib.zip
-        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-headers.zip -o octypes-headers.zip
+        curl -L --fail --retry 5 --retry-delay 10 --retry-max-time 180 https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/${LIB_FILE} -o octypes-lib.zip
+        curl -L --fail --retry 5 --retry-delay 10 --retry-max-time 180 https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-headers.zip -o octypes-headers.zip
         unzip -o -j -q octypes-lib.zip -d lib/
         unzip -o -j -q octypes-headers.zip -d include/OCTypes/
         rm octypes-lib.zip octypes-headers.zip
@@ -94,8 +94,8 @@ jobs:
         elif [[ "${{ runner.os }}" == "Windows" ]]; then
           LIB_FILE="libSITypes-windows-latest.zip"
         fi
-        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/${LIB_FILE} -o sitypes-lib.zip
-        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-headers.zip -o sitypes-headers.zip
+        curl -L --fail --retry 5 --retry-delay 10 --retry-max-time 180 https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/${LIB_FILE} -o sitypes-lib.zip
+        curl -L --fail --retry 5 --retry-delay 10 --retry-max-time 180 https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-headers.zip -o sitypes-headers.zip
         unzip -o -j -q sitypes-lib.zip -d lib/
         unzip -o -j -q sitypes-headers.zip -d include/SITypes/
         rm sitypes-lib.zip sitypes-headers.zip
@@ -111,8 +111,8 @@ jobs:
         elif [[ "${{ runner.os }}" == "Windows" ]]; then
           LIB_FILE="libRMN-windows-latest.zip"
         fi
-        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/${LIB_FILE} -o rmnlib-lib.zip
-        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-headers.zip -o rmnlib-headers.zip
+        curl -L --fail --retry 5 --retry-delay 10 --retry-max-time 180 https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/${LIB_FILE} -o rmnlib-lib.zip
+        curl -L --fail --retry 5 --retry-delay 10 --retry-max-time 180 https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-headers.zip -o rmnlib-headers.zip
         unzip -o -j -q rmnlib-lib.zip -d lib/
         unzip -o -q rmnlib-headers.zip -d .
         rm rmnlib-lib.zip rmnlib-headers.zip
