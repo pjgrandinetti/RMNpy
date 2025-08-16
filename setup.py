@@ -8,6 +8,17 @@ import sys
 
 # Import for SpinOps-style MinGW forcing and Python headers
 import sysconfig
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, List
+
+# Try to read version from pyproject.toml for consistency
+try:
+    import tomllib
+except ImportError:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        tomllib = None
 
 # Handle distutils imports with fallbacks for different Python versions
 try:
@@ -27,8 +38,6 @@ except ImportError:
         )
     except ImportError:
         # Ultimate fallback for testing - use sysconfig only
-        from typing import Any
-
         def new_compiler(*args: Any, **kwargs: Any) -> Any:
             return None
 
@@ -39,9 +48,6 @@ except ImportError:
             return sysconfig.get_path("include")
 
 
-from pathlib import Path
-from typing import TYPE_CHECKING, List
-
 import numpy
 from Cython.Build import cythonize
 from setuptools import Extension, setup
@@ -49,6 +55,23 @@ from setuptools.command.build_ext import build_ext
 
 if TYPE_CHECKING:
     pass
+
+
+def read_pyproject_metadata():
+    """Read metadata from pyproject.toml if available."""
+    if not tomllib or not os.path.exists("pyproject.toml"):
+        return {}
+
+    try:
+        with open("pyproject.toml", "rb") as f:
+            data = tomllib.load(f)
+        return data.get("project", {})
+    except Exception:
+        return {}
+
+
+# Read metadata from pyproject.toml
+PROJECT_METADATA = read_pyproject_metadata()
 
 
 # Force MinGW compiler on Windows early in setup (SpinOps approach)
@@ -757,16 +780,22 @@ def get_extensions() -> List[Extension]:
 
 setup(
     # Essential metadata for --no-build-isolation compatibility
-    name="rmnpy",
-    version="0.1.0",
-    description="Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis",
+    # Use pyproject.toml metadata when available, fallback to hardcoded values
+    name=PROJECT_METADATA.get("name", "rmnpy"),
+    version=PROJECT_METADATA.get("version", "0.1.0"),
+    description=PROJECT_METADATA.get(
+        "description",
+        "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis",
+    ),
     long_description=open("README.md").read() if os.path.exists("README.md") else "",
     long_description_content_type="text/markdown",
     author="Philip Grandinetti",
     author_email="grandinetti.1@osu.edu",
-    url="https://github.com/pjgrandinetti/RMNpy",
+    url=PROJECT_METADATA.get("urls", {}).get(
+        "Homepage", "https://github.com/pjgrandinetti/RMNpy"
+    ),
     license="MIT",
-    python_requires=">=3.8",
+    python_requires=PROJECT_METADATA.get("requires-python", ">=3.8"),
     # Most other configuration is in pyproject.toml
     # Only specify what's needed for the build system
     ext_modules=cythonize(
