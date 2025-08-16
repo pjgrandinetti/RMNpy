@@ -252,6 +252,60 @@ class TestDependentVariableImportStyles:
         assert dv.name == "temperature_data"
         assert dv.unit.symbol == "K"
 
+    def test_components_property(self):
+        """Test components property getter and setter functionality"""
+        # Create initial test data
+        original_data = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
+
+        # Create DependentVariable with initial components
+        dv = DependentVariable(
+            components=[original_data],
+            name="test_components",
+            description="Test components property",
+            unit=" ",  # dimensionless
+            quantity_name=kSIQuantityDimensionless,
+            quantity_type="scalar",
+            element_type="float64",
+        )
+
+        # Test components getter - should return a copy of the original data
+        retrieved_components = dv.components
+        assert (
+            len(retrieved_components) == 1
+        ), f"Expected 1 component, got {len(retrieved_components)}"
+
+        # Check that the retrieved data matches original
+        retrieved_data = np.array(retrieved_components[0])
+        np.testing.assert_array_equal(retrieved_data, original_data)
+
+        # Test components setter with new data
+        new_data1 = np.array([10.0, 20.0, 30.0], dtype=np.float64)
+        new_data2 = np.array([100.0, 200.0, 300.0], dtype=np.float64)
+
+        # Set single component
+        dv.components = [new_data1]
+        updated_components = dv.components
+        assert len(updated_components) == 1
+        updated_data = np.array(updated_components[0])
+        np.testing.assert_array_equal(updated_data, new_data1)
+
+        # Test that size was updated correctly
+        assert dv.size == 3  # new_data1 has 3 elements
+
+        # Set multiple components
+        dv.components = [new_data1, new_data2]
+        multi_components = dv.components
+        assert len(multi_components) == 2
+
+        # Check both components
+        comp1_data = np.array(multi_components[0])
+        comp2_data = np.array(multi_components[1])
+        np.testing.assert_array_equal(comp1_data, new_data1)
+        np.testing.assert_array_equal(comp2_data, new_data2)
+
+        # Test that component count was updated
+        assert dv.component_count == 2
+
     def test_namespace_alias_imports(self):
         """Test namespace alias imports work"""
         import rmnpy as rmn

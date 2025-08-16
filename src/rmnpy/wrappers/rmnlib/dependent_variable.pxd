@@ -17,4 +17,3 @@ cdef class DependentVariable:
     @staticmethod
     cdef DependentVariable _from_c_ref(DependentVariableRef dep_var_ref)
     cdef OCNumberType _element_type_to_enum(self, element_type)
-    cdef str _enum_to_element_type(self, OCNumberType elem_type)

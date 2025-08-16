@@ -1477,6 +1477,57 @@ def pydimension_to_dimension_ptr(object dimension_obj):
 
     return <uint64_t>dimension_obj._c_ref
 
+
+def element_type_to_numpy_dtype(str element_type_str):
+    """Convert OCNumberType name to corresponding NumPy dtype.
+
+    Args:
+        element_type_str (str): OCNumberType name (e.g., "float64", "sint32", etc.)
+
+    Returns:
+        numpy.dtype: Corresponding NumPy dtype
+
+    Note:
+        This function maps OCNumberType names to their NumPy equivalents.
+        Returns np.float64 as default for unknown types.
+    """
+    # Map OCNumberType names to NumPy dtypes
+    dtype_map = {
+        "sint8": np.int8,
+        "sint16": np.int16,
+        "sint32": np.int32,
+        "sint64": np.int64,
+        "uint8": np.uint8,
+        "uint16": np.uint16,
+        "uint32": np.uint32,
+        "uint64": np.uint64,
+        "float32": np.float32,
+        "float64": np.float64,
+        "complex64": np.complex64,
+        "complex128": np.complex128,
+    }
+    return dtype_map.get(element_type_str.lower(), np.float64)
+
+
+def enum_to_element_type(OCNumberType elem_type):
+    """Convert OCNumberType enum to string using OCTypes helper.
+
+    Args:
+        elem_type (OCNumberType): OCNumberType enum value
+
+    Returns:
+        str: String representation of the OCNumberType (e.g., "float64", "sint32", etc.)
+
+    Note:
+        This function uses the OCTypes API to convert enum values to their string names.
+        Returns "unknown" for invalid or unrecognized types.
+    """
+    cdef const char* type_name = OCNumberGetTypeName(elem_type)
+    if type_name == NULL:
+        return "unknown"
+    return type_name.decode('utf-8')
+
+
 # ====================================================================================
 # End of File
 # ===================================================================================

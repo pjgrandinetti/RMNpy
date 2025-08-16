@@ -206,6 +206,10 @@ cdef extern from "OCTypes/OCNumber.h":
     # Number operations
     OCComparisonResult OCNumberCompare(OCNumberRef number1, OCNumberRef number2)
 
+    # OCNumberType helper functions
+    const char *OCNumberGetTypeName(OCNumberType type)
+    OCNumberType OCNumberTypeFromName(const char *name)
+
 # OCArray functions
 cdef extern from "OCTypes/OCArray.h":
     # Array callbacks structure

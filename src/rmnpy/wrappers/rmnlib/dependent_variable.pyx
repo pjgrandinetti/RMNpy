@@ -7,12 +7,16 @@ DependentVariable represents measured or computed data values with
 associated metadata including units, quantity type, and components.
 """
 
+import numpy as np
+
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.rmnlib cimport *
 from rmnpy._c_api.sitypes cimport *
 
 from rmnpy.exceptions import RMNError
 from rmnpy.helpers.octypes import (
+    element_type_to_numpy_dtype,
+    enum_to_element_type,
     ocarray_create_from_pylist,
     ocarray_to_pylist,
     ocdict_create_from_pydict,
@@ -173,18 +177,15 @@ cdef class DependentVariable:
             OCRelease(<OCTypeRef>self._c_ref)
 
     cdef OCNumberType _element_type_to_enum(self, element_type):
-        """Convert string element type to OCNumberType enum."""
-        # Use the correct constants from octypes.pxd with k prefix
-        type_map = {
-            "float64": kOCNumberFloat64Type,
-            "float32": kOCNumberFloat32Type,
-            "int32": kOCNumberSInt32Type,
-            "int64": kOCNumberSInt64Type,
-        }
-        if element_type not in type_map:
-            supported_types = list(type_map.keys())
-            raise ValueError(f"Invalid element_type: {element_type}. Supported: {supported_types}")
-        return type_map[element_type]
+        """Convert string element type to OCNumberType enum using OCTypes helper."""
+        cdef bytes element_type_bytes = element_type.encode('utf-8')
+        cdef const char* element_type_cstr = element_type_bytes
+        cdef OCNumberType result = OCNumberTypeFromName(element_type_cstr)
+
+        if result == 0:  # kOCNumberTypeInvalid
+            raise ValueError(f"Invalid element_type: {element_type}. Use a valid OCNumberType name.")
+
+        return result
 
     @property
     def name(self):
@@ -298,17 +299,7 @@ cdef class DependentVariable:
         if self._c_ref == NULL:
             raise ValueError("DependentVariable not initialized")
         cdef OCNumberType elem_type = DependentVariableGetNumericType(self._c_ref)
-        return self._enum_to_element_type(elem_type)
-
-    cdef str _enum_to_element_type(self, OCNumberType elem_type):
-        """Convert OCNumberType enum to string."""
-        type_map = {
-            kOCNumberFloat64Type: "float64",
-            kOCNumberFloat32Type: "float32",
-            kOCNumberSInt32Type: "int32",
-            kOCNumberSInt64Type: "int64",
-        }
-        return type_map.get(elem_type, "unknown")
+        return enum_to_element_type(elem_type)
 
     @property
     def component_count(self):
@@ -336,6 +327,75 @@ cdef class DependentVariable:
         cdef bint success = DependentVariableSetSize(self._c_ref, new_size)
         if not success:
             raise RMNError("Failed to set DependentVariable size")
+
+    @property
+    def components(self):
+        """Get the components (data arrays) of this DependentVariable."""
+        if self._c_ref == NULL:
+            raise ValueError("DependentVariable not initialized")
+
+        cdef OCMutableArrayRef components_ref = DependentVariableCopyComponents(self._c_ref)
+        if components_ref == NULL:
+            raise RMNError("Failed to get components - C reference may be corrupt")
+
+        # Declare all cdef variables at the beginning
+        cdef uint64_t count
+        cdef list result = []
+        cdef uint64_t i
+        cdef const void* item_ptr
+        cdef OCTypeID type_id
+
+        try:
+            # Get the element type to determine the correct numpy dtype
+            element_type_str = self.element_type
+
+            # Convert the OCArray to a list, but handle OCData components specially
+            count = OCArrayGetCount(<OCArrayRef>components_ref)
+
+            # Get the corresponding NumPy dtype using the helper function
+            np_dtype = element_type_to_numpy_dtype(element_type_str)
+
+            for i in range(count):
+                item_ptr = OCArrayGetValueAtIndex(<OCArrayRef>components_ref, i)
+                if item_ptr == NULL:
+                    result.append(None)
+                    continue
+
+                type_id = OCGetTypeID(item_ptr)
+
+                # Handle OCData with the correct dtype
+                if type_id == OCDataGetTypeID():
+                    from rmnpy.helpers.octypes import ocdata_to_numpy_array
+                    py_item = ocdata_to_numpy_array(<uint64_t>item_ptr, np_dtype)
+                else:
+                    # For other types, use the standard conversion
+                    from rmnpy.helpers.octypes import ocarray_to_pylist
+                    py_item = ocarray_to_pylist(<uint64_t>item_ptr) if type_id == OCArrayGetTypeID() else None
+
+                result.append(py_item)
+
+            return result
+        finally:
+            OCRelease(<OCTypeRef>components_ref)
+
+    @components.setter
+    def components(self, value):
+        """Set the components (data arrays) of this DependentVariable."""
+        if self._c_ref == NULL:
+            raise ValueError("DependentVariable not initialized")
+
+        cdef OCArrayRef components_array = NULL
+
+        try:
+            if value is not None:
+                components_array = <OCArrayRef><uint64_t>ocarray_create_from_pylist(value)
+
+            success = DependentVariableSetComponents(self._c_ref, components_array)
+            if not success:
+                raise RMNError("Failed to set components")
+        finally:
+            if components_array != NULL:
+                OCRelease(<OCTypeRef>components_array)
 
     @property
     def unit(self):
