@@ -8,11 +8,11 @@ on:
 
 jobs:
   test_build:
-    name: Test build on Ubuntu
+    name: Test build on Ubuntu (Python 3.12)
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.12"]
 
     steps:
     - name: Checkout RMNpy
