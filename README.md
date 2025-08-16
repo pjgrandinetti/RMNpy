@@ -99,7 +99,7 @@ pip install -e .[test]
 ## Quick Start
 
 ```python
-from rmnpy.wrappers.sitypes import Scalar, Unit, Dimensionality
+from rmnpy.sitypes import Scalar, Unit, Dimensionality
 
 # === Flexible Scalar Creation ===
 

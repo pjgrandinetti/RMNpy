@@ -17,7 +17,23 @@ if sys.platform == "win32":
 
     setup_dll_paths()
 
-__version__ = "0.1.0"
+# Read version from package metadata (single source of truth in pyproject.toml)
+try:
+    import importlib.metadata
+
+    __version__ = importlib.metadata.version("rmnpy")
+except ImportError:
+    # Fallback for Python < 3.8
+    try:
+        import importlib_metadata
+
+        __version__ = importlib_metadata.version("rmnpy")
+    except ImportError:
+        # Fallback if package not installed (e.g., during development)
+        __version__ = "unknown"
+except Exception:
+    # Fallback if package not installed (e.g., during development)
+    __version__ = "unknown"
 __author__ = "Philip Grandinetti"
 __email__ = "grandinetti.1@osu.edu"
 
