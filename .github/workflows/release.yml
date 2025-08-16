@@ -8,22 +8,44 @@ on:
 
 jobs:
   build_wheels:
-    name: Build wheels on ${{ matrix.os }}
+    name: Build wheels on ${{ matrix.os }} (Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
+      max-parallel: 6  # Limit concurrent jobs to avoid overwhelming runners
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm64, macos-latest, windows-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-        exclude:
-          # Reduce Windows build matrix to save CI time
-          - os: windows-latest
+        include:
+          # Linux x64 - build for all Python versions
+          - os: ubuntu-latest
             python-version: "3.8"
-          - os: windows-latest
+          - os: ubuntu-latest
             python-version: "3.9"
-          - os: windows-latest
+          - os: ubuntu-latest
             python-version: "3.10"
-          - os: windows-latest
+          - os: ubuntu-latest
             python-version: "3.11"
+          - os: ubuntu-latest
+            python-version: "3.12"
+
+          # Linux ARM64 - only build for Python 3.10 and 3.11 (most common)
+          - os: ubuntu-24.04-arm64
+            python-version: "3.10"
+          - os: ubuntu-24.04-arm64
+            python-version: "3.11"
+
+          # macOS - build for Python 3.9, 3.10, 3.11, 3.12 (skip 3.8 due to compatibility)
+          - os: macos-latest
+            python-version: "3.9"
+          - os: macos-latest
+            python-version: "3.10"
+          - os: macos-latest
+            python-version: "3.11"
+          - os: macos-latest
+            python-version: "3.12"
+
+          # Windows - only Python 3.12 for now (can expand later)
+          - os: windows-latest
+            python-version: "3.12"
 
     steps:
     - name: Checkout RMNpy
