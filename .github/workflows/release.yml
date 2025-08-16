@@ -162,7 +162,7 @@ jobs:
         python -m build --wheel --outdir dist-temp
         python -m pip install auditwheel
         mkdir -p dist
-        auditwheel repair --wheel-dir dist --plat-tag manylinux_2_17_x86_64 dist-temp/*.whl
+        auditwheel repair --wheel-dir dist dist-temp/*.whl
 
     - name: Build wheel (macOS)
       if: runner.os == 'macOS'
