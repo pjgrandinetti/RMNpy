@@ -4,9 +4,28 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  release:
+    types: [published]
   workflow_dispatch:
 
 jobs:
+  check_version:
+    name: Check if this is a minor/major release
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish_pypi: ${{ steps.version_check.outputs.should_publish }}
+    steps:
+    - name: Check version pattern
+      id: version_check
+      run: |
+        if [[ "${{ github.ref }}" =~ refs/tags/v[0-9]+\.[0-9]+\.0$ ]]; then
+          echo "This is a minor or major release (ends with .0)"
+          echo "should_publish=true" >> $GITHUB_OUTPUT
+        else
+          echo "This is a patch release (does not end with .0)"
+          echo "should_publish=false" >> $GITHUB_OUTPUT
+        fi
+
   build_wheels:
     name: Build wheels on ${{ matrix.os }} (Python 3.12)
     runs-on: ${{ matrix.os }}
@@ -283,9 +302,10 @@ jobs:
 
   publish:
     name: Publish to PyPI and GitHub
-    needs: [build_wheels, build_sdist]
+    needs: [check_version, build_wheels, build_sdist]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    # Only publish to PyPI for minor/major releases (vx.y.0) or when manually triggered
+    if: needs.check_version.outputs.should_publish_pypi == 'true' || github.event_name == 'workflow_dispatch'
 
     steps:
     - name: Download all artifacts
@@ -321,6 +341,25 @@ jobs:
         packages-dir: dist/
         verify-metadata: false
         skip-existing: true
+
+  github_release:
+    name: Create GitHub Release with Artifacts
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
+
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist-artifacts/
+
+    - name: Flatten artifact directory
+      run: |
+        mkdir -p dist
+        find dist-artifacts -name "*.whl" -exec mv {} dist/ \;
+        find dist-artifacts -name "*.tar.gz" -exec mv {} dist/ \;
+        ls -la dist/
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
