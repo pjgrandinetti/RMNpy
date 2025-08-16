@@ -31,14 +31,20 @@ jobs:
         fi
 
   build_wheels:
-    name: Build wheels on ${{ matrix.os }} (Python 3.12)
+    name: Build wheels on ${{ matrix.os }} (Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      max-parallel: 4  # One job per platform
+      max-parallel: 6  # Multiple Python versions per platform
       matrix:
         include:
-          # Linux x64 - Python 3.12
+          # Linux x64 - Multiple Python versions
+          - os: ubuntu-latest
+            python-version: "3.9"
+          - os: ubuntu-latest
+            python-version: "3.10"
+          - os: ubuntu-latest
+            python-version: "3.11"
           - os: ubuntu-latest
             python-version: "3.12"
 
@@ -46,11 +52,23 @@ jobs:
           # - os: ubuntu-24.04-arm64
           #   python-version: "3.12"
 
-          # macOS - Python 3.12
+          # macOS - Multiple Python versions
+          - os: macos-latest
+            python-version: "3.9"
+          - os: macos-latest
+            python-version: "3.10"
+          - os: macos-latest
+            python-version: "3.11"
           - os: macos-latest
             python-version: "3.12"
 
-          # Windows - Python 3.12
+          # Windows - Multiple Python versions
+          - os: windows-latest
+            python-version: "3.9"
+          - os: windows-latest
+            python-version: "3.10"
+          - os: windows-latest
+            python-version: "3.11"
           - os: windows-latest
             python-version: "3.12"
 
