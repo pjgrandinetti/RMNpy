@@ -164,8 +164,8 @@ jobs:
       if: runner.os == 'Windows'
       shell: msys2 {0}
       run: |
-        # Use standard build process to ensure proper metadata handling
-        python -m build --wheel --outdir dist
+        # MSYS2 has issues with isolated environments, disable isolation
+        python -m build --wheel --outdir dist --no-isolation
 
     - name: Upload wheels
       uses: actions/upload-artifact@v4
