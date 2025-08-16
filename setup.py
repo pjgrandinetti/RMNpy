@@ -759,6 +759,14 @@ setup(
     # Essential metadata for --no-build-isolation compatibility
     name="rmnpy",
     version="0.1.0",
+    description="Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis",
+    long_description=open("README.md").read() if os.path.exists("README.md") else "",
+    long_description_content_type="text/markdown",
+    author="Philip Grandinetti",
+    author_email="grandinetti.1@osu.edu",
+    url="https://github.com/pjgrandinetti/RMNpy",
+    license="MIT",
+    python_requires=">=3.8",
     # Most other configuration is in pyproject.toml
     # Only specify what's needed for the build system
     ext_modules=cythonize(
