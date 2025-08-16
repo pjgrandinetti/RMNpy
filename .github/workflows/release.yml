@@ -38,9 +38,9 @@ jobs:
           - os: ubuntu-latest
             python-version: "3.12"
 
-          # Linux ARM64 - Python 3.12
-          - os: ubuntu-24.04-arm64
-            python-version: "3.12"
+          # Linux ARM64 - Python 3.12 (commented out due to minutes limit)
+          # - os: ubuntu-24.04-arm64
+          #   python-version: "3.12"
 
           # macOS - Python 3.12
           - os: macos-latest
