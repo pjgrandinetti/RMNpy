@@ -163,8 +163,8 @@ jobs:
       if: runner.os == 'Windows'
       shell: msys2 {0}
       run: |
-        # Use build module but with system packages bypass for MSYS2 compatibility
-        PYTHONDONTWRITEBYTECODE=1 python -m build --wheel
+        # Build wheel directly with pip to avoid isolated environment issues in MSYS2
+        python -m pip wheel --no-build-isolation --no-deps --wheel-dir dist .
 
     - name: Upload wheels
       uses: actions/upload-artifact@v4
