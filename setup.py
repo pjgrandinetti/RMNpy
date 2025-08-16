@@ -59,15 +59,40 @@ if TYPE_CHECKING:
 
 def read_pyproject_metadata():
     """Read metadata from pyproject.toml if available."""
-    if not tomllib or not os.path.exists("pyproject.toml"):
+    if not os.path.exists("pyproject.toml"):
         return {}
 
     try:
-        with open("pyproject.toml", "rb") as f:
-            data = tomllib.load(f)
+        # Try multiple tomllib implementations
+        if tomllib:
+            with open("pyproject.toml", "rb") as f:
+                data = tomllib.load(f)
+        else:
+            # Fallback to manual parsing for critical fields
+            with open("pyproject.toml", "r", encoding="utf-8") as f:
+                content = f.read()
+                data = {"project": {}}
+                # Extract name and version manually as fallback
+                for line in content.split("\n"):
+                    line = line.strip()
+                    if line.startswith("name ="):
+                        data["project"]["name"] = (
+                            line.split("=", 1)[1].strip().strip("\"'")
+                        )
+                    elif line.startswith("version ="):
+                        data["project"]["version"] = (
+                            line.split("=", 1)[1].strip().strip("\"'")
+                        )
+
         return data.get("project", {})
-    except Exception:
-        return {}
+    except Exception as e:
+        print(f"Warning: Could not read pyproject.toml metadata: {e}")
+        # Return hardcoded fallback metadata to ensure wheel building works
+        return {
+            "name": "rmnpy",
+            "version": "0.1.0",
+            "description": "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis",
+        }
 
 
 # Read metadata from pyproject.toml
@@ -796,6 +821,19 @@ setup(
     ),
     license="MIT",
     python_requires=PROJECT_METADATA.get("requires-python", ">=3.8"),
+    # Add explicit classifiers for PyPI compatibility
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Topic :: Scientific/Engineering",
+    ],
     # Most other configuration is in pyproject.toml
     # Only specify what's needed for the build system
     ext_modules=cythonize(

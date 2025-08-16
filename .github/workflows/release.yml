@@ -166,14 +166,10 @@ jobs:
       run: |
         # MSYS2 workaround: reinstall pip components to fix distlib issue
         python -m pip install --break-system-packages --force-reinstall pip setuptools wheel
+        # Install pyproject.toml reader for no-isolation build
+        python -m pip install --break-system-packages tomli
         # Use no-isolation but ensure metadata is properly set
         SETUPTOOLS_SCM_PRETEND_VERSION=0.1.0 python -m build --wheel --outdir dist --no-isolation
-
-    - name: Build wheels (Non-Windows)
-      if: runner.os != 'Windows'
-      run: |
-        # Use standard build process to ensure proper metadata handling
-        python -m build --wheel --outdir dist
 
     - name: Verify wheel metadata before upload
       run: |
