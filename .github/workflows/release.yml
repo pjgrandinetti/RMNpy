@@ -164,8 +164,31 @@ jobs:
       if: runner.os == 'Windows'
       shell: msys2 {0}
       run: |
-        # MSYS2 has issues with isolated environments, disable isolation
-        python -m build --wheel --outdir dist --no-isolation
+        # MSYS2 workaround: reinstall pip components to fix distlib issue
+        python -m pip install --break-system-packages --force-reinstall pip setuptools wheel
+        # Use no-isolation but ensure metadata is properly set
+        SETUPTOOLS_SCM_PRETEND_VERSION=0.1.0 python -m build --wheel --outdir dist --no-isolation
+
+    - name: Verify wheel metadata (All platforms)
+      shell: bash
+      run: |
+        # Install wheel package for metadata checking
+        python -m pip install wheel
+        # Check that all wheels have proper metadata
+        for wheel in dist/*.whl; do
+          echo "Checking metadata for: $wheel"
+          python -c "
+        import sys
+        from wheel.metadata import pkginfo_to_metadata
+        from pkginfo import Wheel
+        wheel_info = Wheel('$wheel')
+        if not wheel_info.name or not wheel_info.version:
+            print(f'ERROR: Missing metadata in $wheel - Name: {wheel_info.name}, Version: {wheel_info.version}')
+            sys.exit(1)
+        else:
+            print(f'OK: $wheel has Name: {wheel_info.name}, Version: {wheel_info.version}')
+        "
+        done
 
     - name: Upload wheels
       uses: actions/upload-artifact@v4
