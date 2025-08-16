@@ -324,6 +324,19 @@ cdef class DependentVariable:
             raise ValueError("DependentVariable not initialized")
         return DependentVariableGetSize(self._c_ref)
 
+    @size.setter
+    def size(self, OCIndex new_size):
+        """Set the size (number of elements per component)."""
+        if self._c_ref == NULL:
+            raise ValueError("DependentVariable not initialized")
+
+        if new_size < 0:
+            raise ValueError("Size must be non-negative")
+
+        cdef bint success = DependentVariableSetSize(self._c_ref, new_size)
+        if not success:
+            raise RMNError("Failed to set DependentVariable size")
+
     @property
     def unit(self):
         """Get the unit of this DependentVariable."""

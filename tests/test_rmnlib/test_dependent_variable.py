@@ -72,6 +72,42 @@ class TestDependentVariableBasics:
             dv.quantity_name == kSIQuantityLengthRatio
         ), f"Expected '{kSIQuantityLengthRatio}', got '{dv.quantity_name}'"
 
+    def test_size_property_setter(self):
+        """Test size property getter and setter functionality"""
+        # Create a DependentVariable with initial data
+        data = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+        dv = DependentVariable(
+            components=[data],
+            name="test_data",
+            description="Test data for size manipulation",
+            unit=" ",  # dimensionless
+            quantity_name=kSIQuantityDimensionless,
+            quantity_type="scalar",
+            element_type="float64",
+        )
+
+        # Test initial size getter
+        assert dv.size == 3, f"Expected size 3, got {dv.size}"
+
+        # Test increasing size
+        dv.size = 5
+        assert dv.size == 5, f"Expected size 5 after setting, got {dv.size}"
+
+        # Test decreasing size
+        dv.size = 2
+        assert dv.size == 2, f"Expected size 2 after setting, got {dv.size}"
+
+        # Test setting size to 0 (should be valid)
+        dv.size = 0
+        assert dv.size == 0, f"Expected size 0 after setting, got {dv.size}"
+
+        # Test invalid size (negative)
+        try:
+            dv.size = -1
+            assert False, "Expected ValueError for negative size"
+        except ValueError as e:
+            assert "non-negative" in str(e)
+
 
 class TestDependentVariableAppend:
     """Test DependentVariable append functionality"""
