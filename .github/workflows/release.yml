@@ -47,24 +47,18 @@ jobs:
       run: |
         brew install cmake flex bison openblas lapack curl libomp
 
-    - name: Setup MSYS2 (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: msys2/setup-msys2@v2
+    - name: Set up Python ${{ matrix.python-version }} (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/setup-python@v5
       with:
-        msystem: MINGW64
-        update: true
-        install: |
-          mingw-w64-x86_64-toolchain
-          mingw-w64-x86_64-python
-          mingw-w64-x86_64-python-pip
-          mingw-w64-x86_64-python-numpy
-          mingw-w64-x86_64-cython
-          mingw-w64-x86_64-curl
-          mingw-w64-x86_64-openblas
-          mingw-w64-x86_64-lapack
-          mingw-w64-x86_64-openmp
-          mingw-w64-x86_64-cmake
-          mingw-w64-x86_64-ninja
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install system dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        # Install vcpkg packages for Windows
+        vcpkg install openblas:x64-windows lapack:x64-windows curl:x64-windows
+      shell: cmd
 
     # Download dependencies (same as CI workflow)
     - name: Download OCTypes from GitHub releases
@@ -182,7 +176,21 @@ jobs:
       env:
         PIP_NO_BUILD_ISOLATION: "1"
       run: |
-        python -m build --wheel --no-isolation
+        python -m build --wheel --outdir dist-temp --no-isolation
+        python -m pip install delvewheel
+        mkdir -p dist
+        # Show original wheel info
+        echo "Original MinGW wheel:"
+        python -m wheel unpack --dest temp-unpack dist-temp/*.whl
+        ls -la temp-unpack/
+        # Repair wheel to have win_amd64 tag for PyPI compatibility
+        echo "Repairing wheel for PyPI compatibility..."
+        delvewheel repair --wheel-dir dist dist-temp/*.whl || \
+        (echo "delvewheel repair failed, manually renaming wheel" && \
+         for whl in dist-temp/*.whl; do \
+           newname=$(echo "$whl" | sed 's/mingw_x86_64_msvcrt_gnu/win_amd64/g' | sed 's/dist-temp/dist/g'); \
+           cp "$whl" "$newname"; \
+         done)
 
     - name: Verify wheel metadata before upload
       run: |
