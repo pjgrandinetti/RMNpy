@@ -102,7 +102,7 @@ where = ["src"]
 "" = "src"
 
 [tool.setuptools.package-data]
-"rmnpy" = ["*.dll"]  # Include DLL files on Windows
+"rmnpy" = ["*.dll", "*.dylib", "*.so*"]  # Include dynamic libraries for all platforms
 
 # Build configuration for extensions
 [tool.cython]

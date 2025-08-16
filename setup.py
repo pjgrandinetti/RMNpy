@@ -130,29 +130,57 @@ class CustomBuildExt(build_ext):
         # Continue with normal build
         super().build_extensions()
 
-        # Copy Windows bridge DLL to package directory for runtime access
-        self._copy_windows_dll()
+        # Copy dynamic libraries to package directory for runtime access
+        self._copy_runtime_libraries()
 
-    def _copy_windows_dll(self) -> None:
-        """Copy Windows bridge DLL to package directory for runtime access."""
-        if platform.system() != "Windows":
-            return
-
+    def _copy_runtime_libraries(self) -> None:
+        """Copy dynamic libraries to package directory for runtime access."""
         lib_dir = Path(__file__).parent / "lib"
         src_rmnpy_dir = Path(__file__).parent / "src" / "rmnpy"
 
-        bridge_dll_path = lib_dir / "rmnstack_bridge.dll"
+        if platform.system() == "Windows":
+            # Copy Windows bridge DLL
+            bridge_dll_path = lib_dir / "rmnstack_bridge.dll"
+            if bridge_dll_path.exists():
+                import shutil
 
-        if bridge_dll_path.exists():
+                dest_dll_path = src_rmnpy_dir / "rmnstack_bridge.dll"
+                print(f"[setup.py] Copying bridge DLL to package: {dest_dll_path}")
+                shutil.copy2(bridge_dll_path, dest_dll_path)
+                print("[setup.py] Bridge DLL copied for runtime access")
+            else:
+                print(f"[setup.py] Warning: Bridge DLL not found at {bridge_dll_path}")
+                print("[setup.py] Runtime may require DLL to be in system PATH")
+
+        elif platform.system() == "Darwin":  # macOS
+            # Copy macOS dynamic libraries
             import shutil
 
-            dest_dll_path = src_rmnpy_dir / "rmnstack_bridge.dll"
-            print(f"[setup.py] Copying bridge DLL to package: {dest_dll_path}")
-            shutil.copy2(bridge_dll_path, dest_dll_path)
-            print("[setup.py] Bridge DLL copied for runtime access")
-        else:
-            print(f"[setup.py] Warning: Bridge DLL not found at {bridge_dll_path}")
-            print("[setup.py] Runtime may require DLL to be in system PATH")
+            dylib_files = list(lib_dir.glob("*.dylib"))
+            if dylib_files:
+                print(f"[setup.py] Copying {len(dylib_files)} .dylib files to package")
+                for dylib_file in dylib_files:
+                    dest_path = src_rmnpy_dir / dylib_file.name
+                    print(f"[setup.py] Copying {dylib_file.name} to package")
+                    shutil.copy2(dylib_file, dest_path)
+                print("[setup.py] macOS dynamic libraries copied for runtime access")
+            else:
+                print("[setup.py] Warning: No .dylib files found in lib directory")
+
+        elif platform.system() == "Linux":
+            # Copy Linux shared libraries
+            import shutil
+
+            so_files = list(lib_dir.glob("*.so*"))
+            if so_files:
+                print(f"[setup.py] Copying {len(so_files)} .so files to package")
+                for so_file in so_files:
+                    dest_path = src_rmnpy_dir / so_file.name
+                    print(f"[setup.py] Copying {so_file.name} to package")
+                    shutil.copy2(so_file, dest_path)
+                print("[setup.py] Linux shared libraries copied for runtime access")
+            else:
+                print("[setup.py] Warning: No .so files found in lib directory")
 
     def run(self) -> None:
         """Check dependencies before building extensions."""
@@ -573,33 +601,30 @@ def get_extensions() -> List[Extension]:
         extra_compile_args = ["-std=c99", "-Wno-unused-function"]
 
         # Add RPATH for finding shared libraries at runtime
-        # Get the absolute path to the lib directory
-        lib_dir = Path(__file__).parent / "lib"
-        lib_dir_abs = str(lib_dir.absolute())
-
-        # Add runtime library search paths
+        # Point to the package directory where libraries will be installed
         extra_link_args.extend(
             [
-                f"-Wl,-rpath,{lib_dir_abs}",  # Local lib directory
-                "-Wl,-rpath,@loader_path/../../../lib",  # Relative path from extension to lib
-                "-Wl,-rpath,@loader_path/../../../../lib",  # Alternative relative path
+                "-Wl,-rpath,@loader_path",  # Same directory as the extension module
+                "-Wl,-rpath,@loader_path/..",  # Parent directory (rmnpy package)
+                "-Wl,-rpath,@loader_path/../..",  # Grandparent directory
             ]
         )
 
-        print(f"Configured macOS RPATH for library directory: {lib_dir_abs}")
+        print("Configured macOS RPATH for package-relative library paths")
     else:
         # Linux and other Unix-like systems
         extra_compile_args = ["-std=c99", "-Wno-unused-function"]
 
-        # Add RPATH for Linux as well
-        lib_dir = Path(__file__).parent / "lib"
-        lib_dir_abs = str(lib_dir.absolute())
+        # Add RPATH for Linux as well - point to package directory
         extra_link_args.extend(
             [
-                f"-Wl,-rpath,{lib_dir_abs}",  # Local lib directory
-                "-Wl,-rpath,$ORIGIN/../../../lib",  # Relative path from extension to lib
+                "-Wl,-rpath,$ORIGIN",  # Same directory as the extension module
+                "-Wl,-rpath,$ORIGIN/..",  # Parent directory (rmnpy package)
+                "-Wl,-rpath,$ORIGIN/../..",  # Grandparent directory
             ]
         )
+
+        print("Configured Linux RPATH for package-relative library paths")
 
     # Build extensions list
     extensions = []

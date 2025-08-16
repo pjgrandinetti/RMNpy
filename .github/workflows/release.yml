@@ -177,8 +177,7 @@ jobs:
         # Check what manylinux platform is needed
         echo "Checking wheel compatibility..."
         auditwheel show dist-temp/*.whl
-        # Try to repair with the appropriate manylinux tag, fallback to what auditwheel suggests
-        auditwheel repair --wheel-dir dist --plat manylinux_2_38_x86_64 dist-temp/*.whl || \
+        # Let auditwheel automatically determine the appropriate manylinux tag
         auditwheel repair --wheel-dir dist dist-temp/*.whl || \
         (echo "auditwheel repair failed, copying unrepaired wheel" && cp dist-temp/*.whl dist/)
 
