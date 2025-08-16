@@ -135,7 +135,7 @@ jobs:
     - name: Install build dependencies (Linux/macOS)
       if: runner.os != 'Windows'
       run: |
-        python -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2" build
+        python -m pip install --upgrade "setuptools>=70" "wheel>=0.44" "build>=1.2.1" "Cython>=0.29.36" "numpy>=1.21"
 
     - name: Generate constants (Linux/macOS)
       if: runner.os != 'Windows'
@@ -148,11 +148,12 @@ jobs:
       run: |
         python scripts/extract_si_constants.py
 
-    - name: Install build dependencies (Windows)
+    - name: Ensure modern build tools (Windows)
       if: runner.os == 'Windows'
       shell: msys2 {0}
       run: |
-        python -m pip install --break-system-packages --upgrade pip setuptools wheel Cython "numpy>=1.21,<2" build
+        python -m pip install --upgrade pip
+        python -m pip install --upgrade "setuptools>=70" "wheel>=0.44" "build>=1.2.1" "Cython>=0.29.36" "numpy>=1.21"
 
     - name: Build wheel (Linux/macOS)
       if: runner.os != 'Windows'
@@ -160,16 +161,13 @@ jobs:
         # Use standard build process to ensure proper metadata handling
         python -m build --wheel --outdir dist
 
-    - name: Build wheel (Windows)
+    - name: Build wheel with PEP 517 (Windows, no isolation)
       if: runner.os == 'Windows'
       shell: msys2 {0}
+      env:
+        PIP_NO_BUILD_ISOLATION: "1"
       run: |
-        # MSYS2 workaround: reinstall pip components to fix distlib issue
-        python -m pip install --break-system-packages --force-reinstall pip setuptools wheel
-        # Install pyproject.toml reader for no-isolation build
-        python -m pip install --break-system-packages tomli
-        # Use no-isolation but ensure metadata is properly set
-        SETUPTOOLS_SCM_PRETEND_VERSION=0.1.0 python -m build --wheel --outdir dist --no-isolation
+        python -m build --wheel --no-isolation
 
     - name: Verify wheel metadata before upload
       run: |
@@ -255,6 +253,19 @@ jobs:
         find dist-artifacts -name "*.whl" -exec mv {} dist/ \;
         find dist-artifacts -name "*.tar.gz" -exec mv {} dist/ \;
         ls -la dist/
+
+    - name: Verify wheel METADATA (Name/Version)
+      run: |
+        python -m pip install --upgrade pkginfo
+        for whl in dist/*.whl; do
+          echo "Checking $whl for Name/Version metadata"
+          python -c "import sys,pkginfo; w=pkginfo.Wheel(sys.argv[1]); print(f'OK: {w.name} v{w.version}') if w.name and w.version else sys.exit(1)" "$whl"
+        done
+
+    - name: Twine check
+      run: |
+        python -m pip install --upgrade twine
+        python -m twine check dist/*
 
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@v1.8.11

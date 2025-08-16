@@ -11,15 +11,6 @@ import sysconfig
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List
 
-# Try to read version from pyproject.toml for consistency
-try:
-    import tomllib
-except ImportError:
-    try:
-        import tomli as tomllib
-    except ImportError:
-        tomllib = None
-
 # Handle distutils imports with fallbacks for different Python versions
 try:
     from distutils.ccompiler import new_compiler  # type: ignore[import-untyped]
@@ -55,48 +46,6 @@ from setuptools.command.build_ext import build_ext
 
 if TYPE_CHECKING:
     pass
-
-
-def read_pyproject_metadata():
-    """Read metadata from pyproject.toml if available."""
-    if not os.path.exists("pyproject.toml"):
-        return {}
-
-    try:
-        # Try multiple tomllib implementations
-        if tomllib:
-            with open("pyproject.toml", "rb") as f:
-                data = tomllib.load(f)
-        else:
-            # Fallback to manual parsing for critical fields
-            with open("pyproject.toml", "r", encoding="utf-8") as f:
-                content = f.read()
-                data = {"project": {}}
-                # Extract name and version manually as fallback
-                for line in content.split("\n"):
-                    line = line.strip()
-                    if line.startswith("name ="):
-                        data["project"]["name"] = (
-                            line.split("=", 1)[1].strip().strip("\"'")
-                        )
-                    elif line.startswith("version ="):
-                        data["project"]["version"] = (
-                            line.split("=", 1)[1].strip().strip("\"'")
-                        )
-
-        return data.get("project", {})
-    except Exception as e:
-        print(f"Warning: Could not read pyproject.toml metadata: {e}")
-        # Return hardcoded fallback metadata to ensure wheel building works
-        return {
-            "name": "rmnpy",
-            "version": "0.1.0",
-            "description": "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis",
-        }
-
-
-# Read metadata from pyproject.toml
-PROJECT_METADATA = read_pyproject_metadata()
 
 
 # Force MinGW compiler on Windows early in setup (SpinOps approach)
@@ -804,37 +753,7 @@ def get_extensions() -> List[Extension]:
 # This setup.py only handles the Cython build process
 
 setup(
-    # Essential metadata for --no-build-isolation compatibility
-    # Use pyproject.toml metadata when available, fallback to hardcoded values
-    name=PROJECT_METADATA.get("name", "rmnpy"),
-    version=PROJECT_METADATA.get("version", "0.1.0"),
-    description=PROJECT_METADATA.get(
-        "description",
-        "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis",
-    ),
-    long_description=open("README.md").read() if os.path.exists("README.md") else "",
-    long_description_content_type="text/markdown",
-    author="Philip Grandinetti",
-    author_email="grandinetti.1@osu.edu",
-    url=PROJECT_METADATA.get("urls", {}).get(
-        "Homepage", "https://github.com/pjgrandinetti/RMNpy"
-    ),
-    license="MIT",
-    python_requires=PROJECT_METADATA.get("requires-python", ">=3.8"),
-    # Add explicit classifiers for PyPI compatibility
-    classifiers=[
-        "Development Status :: 3 - Alpha",
-        "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12",
-        "Topic :: Scientific/Engineering",
-    ],
-    # Most other configuration is in pyproject.toml
+    # All metadata is now read from pyproject.toml
     # Only specify what's needed for the build system
     ext_modules=cythonize(
         get_extensions(),
