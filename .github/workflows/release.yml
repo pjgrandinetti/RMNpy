@@ -233,79 +233,34 @@ jobs:
         echo "=== Library pre-copy completed ==="
       shell: bash
 
-    - name: Build wheel and repair for manylinux compatibility (Linux)
+    - name: Build Linux wheels with cibuildwheel
       if: runner.os == 'Linux'
-      run: |
-        # Build wheel and repair for manylinux compatibility
-        python -m build --wheel --outdir dist-temp
-        python -m pip install auditwheel
-        mkdir -p dist
+      uses: pypa/cibuildwheel@v2.21.2
+      env:
+        CIBW_BUILD: cp311-* cp312-*
+        CIBW_ARCHS_LINUX: x86_64
+        CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_35_x86_64
+        CIBW_BEFORE_ALL_LINUX: |
+          # Install system dependencies needed for bundling
+          yum install -y openblas-devel lapack-devel libgomp
+          # Install auditwheel for automatic dependency bundling
+          pip install auditwheel
+        CIBW_BEFORE_BUILD: |
+          pip install setuptools wheel build Cython numpy
+        CIBW_ENVIRONMENT: |
+          LDFLAGS="-Wl,--no-as-needed -lopenblas -llapacke -lgomp"
+        CIBW_REPAIR_WHEEL_COMMAND: |
+          # Let cibuildwheel handle the auditwheel repair automatically
+          auditwheel repair --wheel-dir {dest_dir} {wheel} --plat-tag manylinux_2_35_x86_64
 
-        # Debug: Check what's in the wheel before repair
-        echo "=== Checking wheel contents before repair ==="
-        python -m wheel unpack --dest wheel-check dist-temp/*.whl
-        echo "Files in wheel:"
-        find wheel-check -name "*.so*" || echo "No .so files found"
-        ls -la wheel-check/*/rmnpy/ || true
+    - name: Upload Linux wheels
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v4
+      with:
+        name: wheels-linux-${{ matrix.python-version }}
+        path: wheelhouse/*.whl
 
-        # Count our bundled libraries
-        BUNDLED_LIBS=$(find wheel-check -name "libOCTypes.so" -o -name "libSITypes.so" -o -name "libRMN.so" | wc -l)
-        echo "Found $BUNDLED_LIBS bundled libraries in wheel"
-        rm -rf wheel-check
 
-        # Check what manylinux platform is needed
-        echo "=== Checking wheel compatibility ==="
-        auditwheel show dist-temp/*.whl
-
-        # Try to repair wheel and bundle all dependencies
-        echo "=== Attempting auditwheel repair ==="
-
-        # First, try with verbose output to see what's happening
-        echo "Checking wheel before repair:"
-        auditwheel show dist-temp/*.whl
-
-        if [ "$BUNDLED_LIBS" -eq "3" ]; then
-          echo "All 3 libraries found, attempting repair to bundle system dependencies..."
-
-          # Try repair with different strategies
-          echo "Attempting repair with manylinux_2_35..."
-          if auditwheel repair --wheel-dir dist --plat-tag manylinux_2_35_x86_64 dist-temp/*.whl; then
-            echo "auditwheel repair with manylinux_2_35 succeeded"
-          else
-            echo "manylinux_2_35 failed, trying manylinux_2_34..."
-            if auditwheel repair --wheel-dir dist --plat-tag manylinux_2_34_x86_64 dist-temp/*.whl; then
-              echo "auditwheel repair with manylinux_2_34 succeeded"
-            else
-              echo "manylinux repair failed, trying without platform constraint..."
-              if auditwheel repair --wheel-dir dist dist-temp/*.whl; then
-                echo "auditwheel repair without platform constraint succeeded"
-              else
-                echo "All auditwheel repair attempts failed, copying unrepaired wheel"
-                cp dist-temp/*.whl dist/
-              fi
-            fi
-          fi
-        else
-          echo "Missing libraries ($BUNDLED_LIBS/3), attempting standard repair..."
-          auditwheel repair --wheel-dir dist --plat-tag manylinux_2_35_x86_64 dist-temp/*.whl || \
-          (echo "auditwheel repair failed, copying unrepaired wheel" && cp dist-temp/*.whl dist/)
-        fi
-
-        # Show final wheel info
-        echo "Final wheel created:"
-        ls -la dist/
-        echo "Checking final wheel:"
-        auditwheel show dist/*.whl || echo "Could not check final wheel with auditwheel"
-
-        # Debug: Check what's in the final wheel after repair
-        echo "=== Checking final wheel contents ==="
-        python -m wheel unpack --dest wheel-final dist/*.whl
-        echo "Files in final wheel:"
-        find wheel-final -name "*.so*" || echo "No .so files found"
-        ls -la wheel-final/*/rmnpy/ || true
-        FINAL_LIBS=$(find wheel-final -name "libOCTypes.so" -o -name "libSITypes.so" -o -name "libRMN.so" | wc -l)
-        echo "Final wheel has $FINAL_LIBS/3 required libraries"
-        rm -rf wheel-final
 
     - name: Build wheel (macOS)
       if: runner.os == 'macOS'
