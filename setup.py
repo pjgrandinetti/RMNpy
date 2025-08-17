@@ -229,9 +229,9 @@ class CustomBuildExt(build_ext):
             if lib_path.exists():
                 size = lib_path.stat().st_size
                 found_libs.append(lib)
-                print(f"[setup.py] ✓ {lib} ({size} bytes)")
+                print(f"[setup.py] [OK] {lib} ({size} bytes)")
             else:
-                print(f"[setup.py] ✗ {lib} NOT FOUND")
+                print(f"[setup.py] [MISSING] {lib} NOT FOUND")
 
         print(
             f"[setup.py] Library verification: {len(found_libs)}/{len(required_libs)} found"
