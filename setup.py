@@ -31,8 +31,9 @@ except Exception:
 # Link against all three libraries in dependency order
 LIBDIRS = [str(ROOT / "lib")]
 if sys.platform == "win32":
-    # Windows/MINGW needs all libraries linked explicitly
-    LIBS = ["RMN", "SITypes", "OCTypes"]
+    # Windows/MINGW needs all libraries linked explicitly in reverse dependency order
+    # SITypes depends on OCTypes, RMN depends on both SITypes and OCTypes
+    LIBS = ["SITypes", "OCTypes", "RMN"]
 else:
     # On Unix-like systems, RMN should pull in its dependencies
     LIBS = ["RMN"]
