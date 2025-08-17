@@ -81,8 +81,8 @@ jobs:
         sudo apt-get install -y build-essential cmake pkg-config flex bison
         sudo apt-get install -y libopenblas-dev liblapacke-dev libcurl4-openssl-dev
         sudo apt-get install -y libomp5 libomp-dev
-        # Also install the runtime libraries that auditwheel needs to find
-        sudo apt-get install -y liblapacke3 libopenblas0
+        # Runtime libraries are already installed as dependencies, but ensure they're available
+        # liblapacke and libopenblas0 are already installed by the -dev packages
         # Debug: Check what LAPACK libraries are available
         find /usr/lib -name "*lapack*" -o -name "*blas*" | head -10
         find /usr/lib -name "*omp*" | head -10
