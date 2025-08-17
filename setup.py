@@ -893,4 +893,14 @@ setup(
         "build_ext": CustomBuildExt,
     },
     zip_safe=False,
+    # Explicitly include shared libraries as package data
+    package_data={
+        "rmnpy": [
+            "*.so*",  # Linux shared libraries
+            "*.dylib",  # macOS dynamic libraries
+            "*.dll",  # Windows DLLs
+            "py.typed",  # Type information
+        ],
+    },
+    include_package_data=True,  # Also use MANIFEST.in
 )
