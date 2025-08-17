@@ -154,13 +154,13 @@ second = Unit("s")
 velocity_unit = meter / second       # Result: m/s
 
 # Dimensional analysis
-length_dim = Dimensionality("L")
-time_dim = Dimensionality("T")
+length_dim = Dimensionality.for_quantity(kSIQuantityLength)
+time_dim = Dimensionality.for_quantity(kSIQuantityTime)
 velocity_dim = length_dim / time_dim # Result: L/T
 
 print(f"Speed: {speed}")             # "50 m/s"
-print(f"Unit: {speed.unit.symbol}")  # "m/s"
-print(f"Dimensionality: {speed.dimensionality.symbol}")  # "L/T"
+print(f"Unit: {speed.unit}")  # "m/s"
+print(f"Dimensionality: {speed.dimensionality}")  # "L/T"
 ```
 
 ## Development
