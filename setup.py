@@ -39,9 +39,9 @@ else:
 
 # rpath so extensions find bundled libs at runtime
 if sys.platform == "darwin":
-    EXTRA_LINK = ["-Wl,-rpath,@loader_path/_libs"]
+    EXTRA_LINK = ["-Wl,-rpath,@loader_path/_libs", f"-Wl,-rpath,{ROOT / 'lib'}"]
 elif sys.platform.startswith("linux"):
-    EXTRA_LINK = ["-Wl,-rpath,$ORIGIN/_libs"]
+    EXTRA_LINK = ["-Wl,-rpath,$ORIGIN/_libs", f"-Wl,-rpath,{ROOT / 'lib'}"]
 else:
     EXTRA_LINK = []
 
@@ -148,11 +148,19 @@ class build_ext(_build_ext):
             files.extend(glob.glob(str(src_lib / pat)))
         if not files:
             return
-        # where the package will live inside the build lib
-        out_pkg = Path(self.build_lib) / "rmnpy" / "_libs"
-        out_pkg.mkdir(parents=True, exist_ok=True)
+
+        # For editable installs, copy to package directory too
+        pkg_dir = PKG / "_libs"
+        pkg_dir.mkdir(parents=True, exist_ok=True)
         for f in files:
-            shutil.copy2(f, out_pkg)
+            shutil.copy2(f, pkg_dir)
+
+        # For wheel builds, copy to build lib
+        if hasattr(self, "build_lib") and self.build_lib:
+            out_pkg = Path(self.build_lib) / "rmnpy" / "_libs"
+            out_pkg.mkdir(parents=True, exist_ok=True)
+            for f in files:
+                shutil.copy2(f, out_pkg)
 
 
 setup(
