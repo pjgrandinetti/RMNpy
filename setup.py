@@ -57,19 +57,59 @@ def copy_runtime_libraries_early() -> None:
     src_rmnpy_dir = Path(__file__).parent / "src" / "rmnpy"
 
     print(f"[setup.py] EARLY COPY: Platform: {platform.system()}")
+    print(f"[setup.py] EARLY COPY: Current working dir: {Path.cwd()}")
+    print(f"[setup.py] EARLY COPY: Script parent dir: {Path(__file__).parent}")
+    print(f"[setup.py] EARLY COPY: lib_dir path: {lib_dir}")
     print(f"[setup.py] EARLY COPY: lib_dir exists: {lib_dir.exists()}")
     print(f"[setup.py] EARLY COPY: src_rmnpy_dir exists: {src_rmnpy_dir.exists()}")
 
-    if not lib_dir.exists():
-        print(f"[setup.py] EARLY COPY: lib_dir not found at {lib_dir}")
+    # Try multiple potential library locations
+    potential_lib_dirs = [
+        lib_dir,  # Standard location
+        Path.cwd() / "lib",  # In case setup.py is run from different directory
+        Path(__file__).parent.parent / "lib",  # One level up
+    ]
+
+    found_lib_dir = None
+    for potential_dir in potential_lib_dirs:
+        print(f"[setup.py] EARLY COPY: Checking for libraries in: {potential_dir}")
+        if potential_dir.exists():
+            # Check if it contains any libraries
+            if platform.system() == "Linux":
+                lib_files = list(potential_dir.glob("*.so*"))
+            elif platform.system() == "Darwin":
+                lib_files = list(potential_dir.glob("*.dylib"))
+            elif platform.system() == "Windows":
+                lib_files = list(potential_dir.glob("*.dll"))
+            else:
+                lib_files = []
+
+            print(
+                f"[setup.py] EARLY COPY: Found {len(lib_files)} library files in {potential_dir}"
+            )
+            if lib_files:
+                print(
+                    f"[setup.py] EARLY COPY: Library files: {[f.name for f in lib_files]}"
+                )
+                found_lib_dir = potential_dir
+                break
+        else:
+            print(f"[setup.py] EARLY COPY: Directory does not exist: {potential_dir}")
+
+    if not found_lib_dir:
+        print(
+            "[setup.py] EARLY COPY: No library directory found with libraries - will try during build_ext"
+        )
         return
+
+    print(f"[setup.py] EARLY COPY: Using library directory: {found_lib_dir}")
 
     if not src_rmnpy_dir.exists():
         src_rmnpy_dir.mkdir(parents=True, exist_ok=True)
         print(f"[setup.py] EARLY COPY: Created {src_rmnpy_dir}")
 
     if platform.system() == "Linux":
-        so_files = list(lib_dir.glob("*.so*"))
+        so_files = list(found_lib_dir.glob("*.so*"))
         print(
             f"[setup.py] EARLY COPY: Found {len(so_files)} .so files: {[f.name for f in so_files]}"
         )
@@ -78,7 +118,7 @@ def copy_runtime_libraries_early() -> None:
             print(f"[setup.py] EARLY COPY: Copying {so_file.name} -> {dest_path}")
             shutil.copy2(so_file, dest_path)
     elif platform.system() == "Darwin":
-        dylib_files = list(lib_dir.glob("*.dylib"))
+        dylib_files = list(found_lib_dir.glob("*.dylib"))
         print(
             f"[setup.py] EARLY COPY: Found {len(dylib_files)} .dylib files: {[f.name for f in dylib_files]}"
         )
@@ -87,7 +127,7 @@ def copy_runtime_libraries_early() -> None:
             print(f"[setup.py] EARLY COPY: Copying {dylib_file.name} -> {dest_path}")
             shutil.copy2(dylib_file, dest_path)
     elif platform.system() == "Windows":
-        dll_files = list(lib_dir.glob("*.dll"))
+        dll_files = list(found_lib_dir.glob("*.dll"))
         print(
             f"[setup.py] EARLY COPY: Found {len(dll_files)} .dll files: {[f.name for f in dll_files]}"
         )
@@ -115,8 +155,31 @@ class CustomBuildPy(build_py):
 
     def run(self) -> None:
         """Copy libraries before building Python packages."""
-        print("[setup.py] CustomBuildPy: Copying libraries before package build")
-        copy_runtime_libraries_early()
+        print("[setup.py] CustomBuildPy: Checking if libraries need to be copied")
+
+        # Check if libraries are already in place
+        src_rmnpy_dir = Path(__file__).parent / "src" / "rmnpy"
+        if platform.system() == "Linux":
+            existing_libs = list(src_rmnpy_dir.glob("*.so*"))
+        elif platform.system() == "Darwin":
+            existing_libs = list(src_rmnpy_dir.glob("*.dylib"))
+        elif platform.system() == "Windows":
+            existing_libs = list(src_rmnpy_dir.glob("*.dll"))
+        else:
+            existing_libs = []
+
+        print(
+            f"[setup.py] CustomBuildPy: Found {len(existing_libs)} existing library files in package dir"
+        )
+
+        if len(existing_libs) == 0:
+            print("[setup.py] CustomBuildPy: No libraries found, attempting copy again")
+            copy_runtime_libraries_early()
+        else:
+            print(
+                f"[setup.py] CustomBuildPy: Libraries already present: {[f.name for f in existing_libs]}"
+            )
+
         super().run()
 
 
