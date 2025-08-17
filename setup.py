@@ -43,9 +43,81 @@ import numpy
 from Cython.Build import cythonize
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
+from setuptools.command.build_py import build_py
 
 if TYPE_CHECKING:
     pass
+
+
+def copy_runtime_libraries_early() -> None:
+    """Copy runtime libraries before package collection begins."""
+    import shutil
+
+    lib_dir = Path(__file__).parent / "lib"
+    src_rmnpy_dir = Path(__file__).parent / "src" / "rmnpy"
+
+    print(f"[setup.py] EARLY COPY: Platform: {platform.system()}")
+    print(f"[setup.py] EARLY COPY: lib_dir exists: {lib_dir.exists()}")
+    print(f"[setup.py] EARLY COPY: src_rmnpy_dir exists: {src_rmnpy_dir.exists()}")
+
+    if not lib_dir.exists():
+        print(f"[setup.py] EARLY COPY: lib_dir not found at {lib_dir}")
+        return
+
+    if not src_rmnpy_dir.exists():
+        src_rmnpy_dir.mkdir(parents=True, exist_ok=True)
+        print(f"[setup.py] EARLY COPY: Created {src_rmnpy_dir}")
+
+    if platform.system() == "Linux":
+        so_files = list(lib_dir.glob("*.so*"))
+        print(
+            f"[setup.py] EARLY COPY: Found {len(so_files)} .so files: {[f.name for f in so_files]}"
+        )
+        for so_file in so_files:
+            dest_path = src_rmnpy_dir / so_file.name
+            print(f"[setup.py] EARLY COPY: Copying {so_file.name} -> {dest_path}")
+            shutil.copy2(so_file, dest_path)
+    elif platform.system() == "Darwin":
+        dylib_files = list(lib_dir.glob("*.dylib"))
+        print(
+            f"[setup.py] EARLY COPY: Found {len(dylib_files)} .dylib files: {[f.name for f in dylib_files]}"
+        )
+        for dylib_file in dylib_files:
+            dest_path = src_rmnpy_dir / dylib_file.name
+            print(f"[setup.py] EARLY COPY: Copying {dylib_file.name} -> {dest_path}")
+            shutil.copy2(dylib_file, dest_path)
+    elif platform.system() == "Windows":
+        dll_files = list(lib_dir.glob("*.dll"))
+        print(
+            f"[setup.py] EARLY COPY: Found {len(dll_files)} .dll files: {[f.name for f in dll_files]}"
+        )
+        for dll_file in dll_files:
+            dest_path = src_rmnpy_dir / dll_file.name
+            print(f"[setup.py] EARLY COPY: Copying {dll_file.name} -> {dest_path}")
+            shutil.copy2(dll_file, dest_path)
+
+    # Verify what's in the destination
+    copied_files = []
+    for pattern in ["*.so*", "*.dylib", "*.dll"]:
+        copied_files.extend(list(src_rmnpy_dir.glob(pattern)))
+    print(
+        f"[setup.py] EARLY COPY: After copy, found {len(copied_files)} library files in package: {[f.name for f in copied_files]}"
+    )
+
+
+# Copy libraries immediately when this module is imported
+print("[setup.py] Performing early library copy...")
+copy_runtime_libraries_early()
+
+
+class CustomBuildPy(build_py):
+    """Custom build_py that ensures libraries are copied before package collection."""
+
+    def run(self) -> None:
+        """Copy libraries before building Python packages."""
+        print("[setup.py] CustomBuildPy: Copying libraries before package build")
+        copy_runtime_libraries_early()
+        super().run()
 
 
 # Force MinGW compiler on Windows early in setup (SpinOps approach)
@@ -891,6 +963,7 @@ setup(
     ),
     cmdclass={
         "build_ext": CustomBuildExt,
+        "build_py": CustomBuildPy,
     },
     zip_safe=False,
     # Explicitly include shared libraries as package data
