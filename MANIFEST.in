@@ -1,0 +1,49 @@
+# MANIFEST.in for RMNpy
+# Include shared libraries for all platforms
+include lib/*.so*
+include lib/*.dylib
+include lib/*.dll
+include src/rmnpy/*.so*
+include src/rmnpy/*.dylib
+include src/rmnpy/*.dll
+
+# Include header files (for development builds)
+recursive-include include *.h
+
+# Include documentation and license files
+include README.md
+include LICENSE
+include CHANGELOG.md
+include *.md
+include *.txt
+include *.rst
+
+# Include build configuration files
+include pyproject.toml
+include setup.py
+include setup.cfg
+include Makefile
+
+# Include test and script files
+recursive-include tests *.py
+recursive-include scripts *.py
+
+# Exclude unnecessary files
+exclude .gitignore
+exclude .github
+recursive-exclude .github *
+exclude build
+recursive-exclude build *
+exclude dist
+recursive-exclude dist *
+exclude htmlcov
+recursive-exclude htmlcov *
+exclude .mypy_cache
+recursive-exclude .mypy_cache *
+exclude __pycache__
+recursive-exclude __pycache__ *
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.orig
+global-exclude *.rej
+global-exclude *~

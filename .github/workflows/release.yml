@@ -215,12 +215,44 @@ jobs:
         python -m build --wheel --outdir dist-temp
         python -m pip install auditwheel
         mkdir -p dist
+
+        # Debug: Check what's in the wheel before repair
+        echo "=== Checking wheel contents before repair ==="
+        python -m wheel unpack --dest wheel-check dist-temp/*.whl
+        echo "Files in wheel:"
+        find wheel-check -name "*.so*" || echo "No .so files found"
+        ls -la wheel-check/*/rmnpy/ || true
+
+        # Count our bundled libraries
+        BUNDLED_LIBS=$(find wheel-check -name "libOCTypes.so" -o -name "libSITypes.so" -o -name "libRMN.so" | wc -l)
+        echo "Found $BUNDLED_LIBS bundled libraries in wheel"
+        rm -rf wheel-check
+
         # Check what manylinux platform is needed
-        echo "Checking wheel compatibility..."
+        echo "=== Checking wheel compatibility ==="
         auditwheel show dist-temp/*.whl
-        # Let auditwheel automatically determine the appropriate manylinux tag
-        auditwheel repair --wheel-dir dist dist-temp/*.whl || \
-        (echo "auditwheel repair failed, copying unrepaired wheel" && cp dist-temp/*.whl dist/)
+
+        # Try to repair wheel, but if we have bundled libraries, be more careful
+        echo "=== Attempting auditwheel repair ==="
+        if [ "$BUNDLED_LIBS" -eq "3" ]; then
+          echo "All 3 libraries found, attempting repair with excludes..."
+          auditwheel repair --wheel-dir dist dist-temp/*.whl --exclude libOCTypes.so --exclude libSITypes.so --exclude libRMN.so || \
+          (echo "auditwheel repair with excludes failed, trying without repair" && cp dist-temp/*.whl dist/)
+        else
+          echo "Missing libraries ($BUNDLED_LIBS/3), attempting standard repair..."
+          auditwheel repair --wheel-dir dist dist-temp/*.whl || \
+          (echo "auditwheel repair failed, copying unrepaired wheel" && cp dist-temp/*.whl dist/)
+        fi
+
+        # Debug: Check what's in the final wheel after repair
+        echo "=== Checking final wheel contents ==="
+        python -m wheel unpack --dest wheel-final dist/*.whl
+        echo "Files in final wheel:"
+        find wheel-final -name "*.so*" || echo "No .so files found"
+        ls -la wheel-final/*/rmnpy/ || true
+        FINAL_LIBS=$(find wheel-final -name "libOCTypes.so" -o -name "libSITypes.so" -o -name "libRMN.so" | wc -l)
+        echo "Final wheel has $FINAL_LIBS/3 required libraries"
+        rm -rf wheel-final
 
     - name: Build wheel (macOS)
       if: runner.os == 'macOS'
@@ -254,8 +286,56 @@ jobs:
       run: |
         # Install required packages for metadata checking
         python -m pip install wheel pkginfo
-        # Simple wheel verification script
-        python -c "import pkginfo,os; [print(f'OK: {f}') if pkginfo.Wheel(f'dist/{f}').name else exit(1) for f in os.listdir('dist') if f.endswith('.whl')]"
+        # Platform-aware wheel verification script
+        python -c "
+        import pkginfo, os, zipfile, sys, platform
+        for f in os.listdir('dist'):
+            if f.endswith('.whl'):
+                print(f'=== Checking wheel: {f} ===')
+                wheel_info = pkginfo.Wheel(f'dist/{f}')
+                if wheel_info.name:
+                    print(f'Name: {wheel_info.name}')
+                    print(f'Version: {wheel_info.version}')
+                else:
+                    print('Invalid wheel metadata')
+                    sys.exit(1)
+
+                with zipfile.ZipFile(f'dist/{f}', 'r') as zf:
+                    files = zf.namelist()
+
+                    # Platform-specific library checking
+                    if 'linux' in f.lower():
+                        required_libs = ['libOCTypes.so', 'libSITypes.so', 'libRMN.so']
+                        lib_exts = ['.so']
+                    elif 'macos' in f.lower() or 'darwin' in f.lower():
+                        required_libs = ['libOCTypes.dylib', 'libSITypes.dylib', 'libRMN.dylib']
+                        lib_exts = ['.dylib']
+                    elif 'win' in f.lower():
+                        required_libs = ['rmnstack_bridge.dll']
+                        lib_exts = ['.dll']
+                    else:
+                        required_libs = ['libOCTypes', 'libSITypes', 'libRMN']
+                        lib_exts = ['.so', '.dylib', '.dll']
+
+                    lib_files = [f for f in files if any(f.endswith(ext) or ext in f for ext in lib_exts)]
+                    found_libs = []
+
+                    for lib in required_libs:
+                        if any(lib in f for f in lib_files):
+                            found_libs.append(lib)
+                            print(f'Found: {lib}')
+                        else:
+                            print(f'Missing: {lib}')
+
+                    print(f'Libraries found: {len(found_libs)}/{len(required_libs)}')
+                    if len(lib_files) > 0:
+                        print(f'All library files in wheel: {lib_files}')
+
+                    if len(found_libs) < len(required_libs):
+                        print('WARNING: Not all required libraries found in wheel')
+                    else:
+                        print('All required libraries found in wheel')
+        "
 
     - name: Upload wheels
       uses: actions/upload-artifact@v4

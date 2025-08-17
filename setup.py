@@ -119,7 +119,10 @@ class CustomBuildExt(build_ext):
 
     def build_extensions(self) -> None:
         """Override to force MinGW compiler on Windows like SpinOps does."""
-        # First do our dependency checking
+        # First copy runtime libraries before building
+        self._copy_runtime_libraries()
+
+        # Then do our dependency checking
         self._check_dependencies()
 
         # Force MinGW compiler on Windows (SpinOps approach)
@@ -132,13 +135,18 @@ class CustomBuildExt(build_ext):
         # Continue with normal build
         super().build_extensions()
 
-        # Copy dynamic libraries to package directory for runtime access
-        self._copy_runtime_libraries()
-
     def _copy_runtime_libraries(self) -> None:
         """Copy dynamic libraries to package directory for runtime access."""
         lib_dir = Path(__file__).parent / "lib"
         src_rmnpy_dir = Path(__file__).parent / "src" / "rmnpy"
+
+        print(f"[setup.py] Copying libraries from {lib_dir} to {src_rmnpy_dir}")
+        print(f"[setup.py] lib_dir exists: {lib_dir.exists()}")
+        print(f"[setup.py] src_rmnpy_dir exists: {src_rmnpy_dir.exists()}")
+
+        if lib_dir.exists():
+            all_files = list(lib_dir.iterdir())
+            print(f"[setup.py] Files in lib_dir: {[f.name for f in all_files]}")
 
         if platform.system() == "Windows":
             # Copy Windows bridge DLL
@@ -181,8 +189,60 @@ class CustomBuildExt(build_ext):
                     print(f"[setup.py] Copying {so_file.name} to package")
                     shutil.copy2(so_file, dest_path)
                 print("[setup.py] Linux shared libraries copied for runtime access")
+
+                # Verify the files were copied
+                copied_files = list(src_rmnpy_dir.glob("*.so*"))
+                print(
+                    f"[setup.py] Verification: {len(copied_files)} .so files in package dir"
+                )
+                for copied_file in copied_files:
+                    print(
+                        f"[setup.py] Verified: {copied_file.name} ({copied_file.stat().st_size} bytes)"
+                    )
             else:
                 print("[setup.py] Warning: No .so files found in lib directory")
+                if lib_dir.exists():
+                    all_files = list(lib_dir.iterdir())
+                    print(f"[setup.py] Available files: {[f.name for f in all_files]}")
+
+    def _verify_library_copy(self) -> None:
+        """Verify that libraries were copied successfully."""
+        src_rmnpy_dir = Path(__file__).parent / "src" / "rmnpy"
+
+        if platform.system() == "Linux":
+            required_libs = ["libOCTypes.so", "libSITypes.so", "libRMN.so"]
+        elif platform.system() == "Darwin":
+            required_libs = ["libOCTypes.dylib", "libSITypes.dylib", "libRMN.dylib"]
+        elif platform.system() == "Windows":
+            required_libs = ["rmnstack_bridge.dll"]
+        else:
+            print(f"[setup.py] Unknown platform: {platform.system()}")
+            return
+
+        print(
+            f"[setup.py] Verifying {len(required_libs)} required libraries in package..."
+        )
+        found_libs = []
+
+        for lib in required_libs:
+            lib_path = src_rmnpy_dir / lib
+            if lib_path.exists():
+                size = lib_path.stat().st_size
+                found_libs.append(lib)
+                print(f"[setup.py] ✓ {lib} ({size} bytes)")
+            else:
+                print(f"[setup.py] ✗ {lib} NOT FOUND")
+
+        print(
+            f"[setup.py] Library verification: {len(found_libs)}/{len(required_libs)} found"
+        )
+
+        if len(found_libs) != len(required_libs):
+            print(
+                "[setup.py] WARNING: Missing libraries may cause runtime import errors!"
+            )
+        else:
+            print("[setup.py] SUCCESS: All required libraries are in the package")
 
     def run(self) -> None:
         """Check dependencies before building extensions."""
@@ -190,6 +250,9 @@ class CustomBuildExt(build_ext):
         generate_si_constants()
         # Continue with normal build (which will call build_extensions)
         super().run()
+
+        # After build, verify libraries were copied
+        self._verify_library_copy()
 
     def _check_dependencies(self) -> None:
         """Check dependencies before building extensions."""

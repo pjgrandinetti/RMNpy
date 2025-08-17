@@ -16,6 +16,8 @@ help:
 	@echo "  rebuild      - Clean libraries and rebuild Python package"
 	@echo "  generate-constants - Generate SI quantity constants from C header file"
 	@echo "  test         - Run the test suite"
+	@echo "  test-wheel   - Build wheel and test that libraries are included"
+	@echo "  check-wheel  - Check existing wheel files for required libraries"
 	@echo "  help         - Show this help message"
 
 # Copy libraries and headers from local directories
@@ -211,3 +213,16 @@ bridge:
 		echo "  ✗ Bridge DLL creation failed"; \
 		exit 1; \
 	fi
+
+# Test wheel building and verify libraries are included
+test-wheel:
+	@echo "Building wheel and testing library inclusion..."
+	@rm -rf dist build
+	@python -m build --wheel
+	@echo "Verifying wheel contents..."
+	@python scripts/check_wheel_libraries.py
+
+# Check existing wheel files for required libraries
+check-wheel:
+	@echo "Checking existing wheel files..."
+	@python scripts/check_wheel_libraries.py
