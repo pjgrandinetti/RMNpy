@@ -53,7 +53,13 @@ if sys.platform == "win32":
         str(lib_dir / "libSITypes.a"),  # Depends on OCTypes
         str(lib_dir / "libRMN.a"),  # Depends on both SITypes and OCTypes
     ]
-    LIBS = []  # Don't use -l flags, use direct file paths instead
+    # Link against MSYS2 OpenBLAS for CBLAS functions needed by RMNLib
+    LIBS = ["openblas"]  # MSYS2 provides this as libopenblas
+
+    # Add MSYS2 library directory
+    msys2_base = os.environ.get("MSYSTEM_PREFIX")
+    if msys2_base:
+        LIBDIRS.append(f"{msys2_base}/lib")
 else:
     # On Unix-like systems, RMN should pull in its dependencies
     LIBS = ["RMN"]
