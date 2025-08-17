@@ -265,11 +265,11 @@ jobs:
         echo "=== Attempting auditwheel repair ==="
         if [ "$BUNDLED_LIBS" -eq "3" ]; then
           echo "All 3 libraries found, attempting repair with excludes..."
-          auditwheel repair --wheel-dir dist dist-temp/*.whl --exclude libOCTypes.so --exclude libSITypes.so --exclude libRMN.so || \
+          auditwheel repair --wheel-dir dist --plat-tag manylinux_2_35_x86_64 dist-temp/*.whl --exclude libOCTypes.so --exclude libSITypes.so --exclude libRMN.so || \
           (echo "auditwheel repair with excludes failed, trying without repair" && cp dist-temp/*.whl dist/)
         else
           echo "Missing libraries ($BUNDLED_LIBS/3), attempting standard repair..."
-          auditwheel repair --wheel-dir dist dist-temp/*.whl || \
+          auditwheel repair --wheel-dir dist --plat-tag manylinux_2_35_x86_64 dist-temp/*.whl || \
           (echo "auditwheel repair failed, copying unrepaired wheel" && cp dist-temp/*.whl dist/)
         fi
 
