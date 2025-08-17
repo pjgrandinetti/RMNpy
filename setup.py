@@ -20,6 +20,20 @@ INC = [
     str(ROOT / "include" / "RMNLib"),
 ]
 
+# Platform-specific include directories
+if sys.platform == "win32":
+    # Add MSYS2/MinGW include directories for CBLAS/LAPACK headers
+    import os
+
+    msys2_base = os.environ.get("MSYSTEM_PREFIX")
+    if msys2_base:
+        INC.extend(
+            [
+                f"{msys2_base}/include",
+                f"{msys2_base}/include/openblas",
+            ]
+        )
+
 # Numpy include (optional; safe to add)
 try:
     import numpy as _np
