@@ -208,6 +208,35 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install --upgrade "setuptools>=70" "wheel>=0.44" "build>=1.2.1" "Cython>=0.29.36" "numpy>=1.21"
 
+    # Explicitly copy libraries to source directory before building
+    - name: Pre-copy libraries to source directory
+      run: |
+        echo "=== Pre-copying libraries to ensure they're included in wheel ==="
+        mkdir -p src/rmnpy
+        echo "Current directory: $(pwd)"
+        echo "Checking lib directory:"
+        ls -la lib/ || echo "lib/ directory not found"
+
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          echo "Copying .so files for Linux..."
+          find lib/ -name "*.so*" -exec cp {} src/rmnpy/ \; 2>/dev/null || echo "No .so files found to copy"
+          echo "Files in src/rmnpy/ after copy:"
+          ls -la src/rmnpy/ || echo "src/rmnpy/ directory not accessible"
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          echo "Copying .dylib files for macOS..."
+          find lib/ -name "*.dylib" -exec cp {} src/rmnpy/ \; 2>/dev/null || echo "No .dylib files found to copy"
+          echo "Files in src/rmnpy/ after copy:"
+          ls -la src/rmnpy/ || echo "src/rmnpy/ directory not accessible"
+        elif [[ "${{ runner.os }}" == "Windows" ]]; then
+          echo "Copying .dll files for Windows..."
+          find lib/ -name "*.dll" -exec cp {} src/rmnpy/ \; 2>/dev/null || echo "No .dll files found to copy"
+          echo "Files in src/rmnpy/ after copy:"
+          ls -la src/rmnpy/ || echo "src/rmnpy/ directory not accessible"
+        fi
+
+        echo "=== Library pre-copy completed ==="
+      shell: bash
+
     - name: Build wheel and repair for manylinux compatibility (Linux)
       if: runner.os == 'Linux'
       run: |
