@@ -28,9 +28,14 @@ try:
 except Exception:
     pass
 
-# Link only against RMN; its deps (OCTypes/SITypes) are provided as shared libs in the wheel
+# Link against all three libraries in dependency order
 LIBDIRS = [str(ROOT / "lib")]
-LIBS = ["RMN"]  # expects libRMN.{so|dylib|dll(.a)} in ./lib
+if sys.platform == "win32":
+    # Windows/MINGW needs all libraries linked explicitly
+    LIBS = ["RMN", "SITypes", "OCTypes"]
+else:
+    # On Unix-like systems, RMN should pull in its dependencies
+    LIBS = ["RMN"]
 
 # rpath so extensions find bundled libs at runtime
 if sys.platform == "darwin":
