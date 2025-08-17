@@ -35,43 +35,39 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      max-parallel: 6  # Multiple Python versions per platform
+      max-parallel: 6
       matrix:
         include:
-          # Linux x64 - Multiple Python versions
+          # Linux - Use cibuildwheel for proper manylinux builds
           - os: ubuntu-latest
-            python-version: "3.9"
-          - os: ubuntu-latest
-            python-version: "3.10"
-          - os: ubuntu-latest
-            python-version: "3.11"
-          - os: ubuntu-latest
-            python-version: "3.12"
-
-          # Linux ARM64 - Python 3.12 (commented out due to minutes limit)
-          # - os: ubuntu-24.04-arm64
-          #   python-version: "3.12"
+            python-version: "3.9,3.10,3.11,3.12"
+            build_type: "linux"
 
           # macOS - Multiple Python versions
           - os: macos-latest
             python-version: "3.9"
+            build_type: "macos"
           - os: macos-latest
             python-version: "3.10"
+            build_type: "macos"
           - os: macos-latest
             python-version: "3.11"
+            build_type: "macos"
           - os: macos-latest
             python-version: "3.12"
+            build_type: "macos"
 
           # Windows - Only Python 3.12 (MinGW compatibility)
           - os: windows-latest
             python-version: "3.12"
+            build_type: "windows"
 
     steps:
     - name: Checkout RMNpy
       uses: actions/checkout@v5
 
     - name: Set up Python ${{ matrix.python-version }}
-      if: runner.os != 'Windows'
+      if: matrix.build_type != 'linux'
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
@@ -81,7 +77,15 @@ jobs:
       run: |
         sudo systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" --wait /bin/true
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev libcurl4-openssl-dev libomp5
+        # Install dev packages with static libraries
+        sudo apt-get install -y build-essential cmake pkg-config flex bison
+        sudo apt-get install -y libopenblas-dev liblapacke-dev libcurl4-openssl-dev
+        sudo apt-get install -y libomp5 libomp-dev
+        # Also install the runtime libraries that auditwheel needs to find
+        sudo apt-get install -y liblapacke3 libopenblas0
+        # Debug: Check what LAPACK libraries are available
+        find /usr/lib -name "*lapack*" -o -name "*blas*" | head -10
+        find /usr/lib -name "*omp*" | head -10
 
     - name: Install system dependencies (macOS)
       if: runner.os == 'macOS'
@@ -263,16 +267,43 @@ jobs:
 
         # Try to repair wheel and bundle all dependencies
         echo "=== Attempting auditwheel repair ==="
+
+        # First, try with verbose output to see what's happening
+        echo "Checking wheel before repair:"
+        auditwheel show dist-temp/*.whl
+
         if [ "$BUNDLED_LIBS" -eq "3" ]; then
           echo "All 3 libraries found, attempting repair to bundle system dependencies..."
-          # Don't exclude our libraries - let auditwheel handle everything
-          auditwheel repair --wheel-dir dist --plat-tag manylinux_2_35_x86_64 dist-temp/*.whl || \
-          (echo "auditwheel repair failed, copying unrepaired wheel" && cp dist-temp/*.whl dist/)
+
+          # Try repair with different strategies
+          echo "Attempting repair with manylinux_2_35..."
+          if auditwheel repair --wheel-dir dist --plat-tag manylinux_2_35_x86_64 dist-temp/*.whl; then
+            echo "auditwheel repair with manylinux_2_35 succeeded"
+          else
+            echo "manylinux_2_35 failed, trying manylinux_2_34..."
+            if auditwheel repair --wheel-dir dist --plat-tag manylinux_2_34_x86_64 dist-temp/*.whl; then
+              echo "auditwheel repair with manylinux_2_34 succeeded"
+            else
+              echo "manylinux repair failed, trying without platform constraint..."
+              if auditwheel repair --wheel-dir dist dist-temp/*.whl; then
+                echo "auditwheel repair without platform constraint succeeded"
+              else
+                echo "All auditwheel repair attempts failed, copying unrepaired wheel"
+                cp dist-temp/*.whl dist/
+              fi
+            fi
+          fi
         else
           echo "Missing libraries ($BUNDLED_LIBS/3), attempting standard repair..."
           auditwheel repair --wheel-dir dist --plat-tag manylinux_2_35_x86_64 dist-temp/*.whl || \
           (echo "auditwheel repair failed, copying unrepaired wheel" && cp dist-temp/*.whl dist/)
         fi
+
+        # Show final wheel info
+        echo "Final wheel created:"
+        ls -la dist/
+        echo "Checking final wheel:"
+        auditwheel show dist/*.whl || echo "Could not check final wheel with auditwheel"
 
         # Debug: Check what's in the final wheel after repair
         echo "=== Checking final wheel contents ==="
