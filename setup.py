@@ -122,6 +122,9 @@ class CustomBuildExt(build_ext):
         # First copy runtime libraries before building
         self._copy_runtime_libraries()
 
+        # Verify libraries were copied
+        self._verify_library_copy()
+
         # Then do our dependency checking
         self._check_dependencies()
 
@@ -135,18 +138,47 @@ class CustomBuildExt(build_ext):
         # Continue with normal build
         super().build_extensions()
 
+        # Final verification after build
+        print("[setup.py] === FINAL PACKAGE VERIFICATION ===")
+        self._verify_library_copy()
+
     def _copy_runtime_libraries(self) -> None:
         """Copy dynamic libraries to package directory for runtime access."""
         lib_dir = Path(__file__).parent / "lib"
         src_rmnpy_dir = Path(__file__).parent / "src" / "rmnpy"
 
+        print(f"[setup.py] Platform: {platform.system()}")
         print(f"[setup.py] Copying libraries from {lib_dir} to {src_rmnpy_dir}")
         print(f"[setup.py] lib_dir exists: {lib_dir.exists()}")
         print(f"[setup.py] src_rmnpy_dir exists: {src_rmnpy_dir.exists()}")
 
         if lib_dir.exists():
             all_files = list(lib_dir.iterdir())
-            print(f"[setup.py] Files in lib_dir: {[f.name for f in all_files]}")
+            print(f"[setup.py] All files in lib_dir: {[f.name for f in all_files]}")
+
+            # Show detailed file info
+            for f in all_files:
+                if f.is_file():
+                    print(
+                        f"[setup.py] File: {f.name}, size: {f.stat().st_size}, type: {f.suffix}"
+                    )
+        else:
+            print(f"[setup.py] ERROR: lib_dir does not exist at {lib_dir}")
+            print("[setup.py] Current working directory:", Path.cwd())
+            print("[setup.py] Script parent directory:", Path(__file__).parent)
+            # Try to find libraries in other locations
+            alt_locations = [
+                Path.cwd() / "lib",
+                Path.cwd() / "../lib",
+                Path.cwd() / "build" / "lib",
+            ]
+            for alt_lib in alt_locations:
+                if alt_lib.exists():
+                    print(f"[setup.py] Found alternative lib directory at: {alt_lib}")
+                    print(
+                        f"[setup.py] Contents: {[f.name for f in alt_lib.iterdir() if f.is_file()]}"
+                    )
+            return
 
         if platform.system() == "Windows":
             # Copy Windows bridge DLL
