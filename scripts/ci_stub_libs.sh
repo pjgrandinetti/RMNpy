@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # CI script to create stub libraries and headers for documentation builds
 # This allows docs to build without needing full C library compilation
 
-set -e
+set -euo pipefail
 
 echo "Creating stub libraries and headers for CI documentation build..."
 
@@ -12,10 +12,10 @@ mkdir -p include/OCTypes
 mkdir -p include/SITypes
 mkdir -p include/RMNLib
 
-# Create minimal stub libraries (empty archives)
-touch lib/libOCTypes.a
-touch lib/libSITypes.a
-touch lib/libRMNLib.a
+# Create minimal stub libraries (empty archives/files)
+: > lib/libOCTypes.a
+: > lib/libSITypes.a
+: > lib/libRMN.a
 
 # Create minimal stub headers for OCTypes
 cat > include/OCTypes/OCTypes.h << 'EOF'

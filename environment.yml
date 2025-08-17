@@ -1,14 +1,27 @@
 name: rmnpy-dev
 channels:
   - conda-forge
-  - defaults
 dependencies:
+  # Python
   - python=3.11
-  - numpy>=1.20.0
-  - cython>=0.29.24
-  - setuptools>=61.0
-  - wheel>=0.37.0
-  - build>=0.8.0
+  - pip
+
+  # Build / Cython
+  - numpy>=1.21
+  - cython>=0.29.36
+  - setuptools>=70
+  - wheel>=0.44
+  - build>=1.2
+  - c-compiler
+  - cxx-compiler
+  - make
+  - cmake
+  - pkg-config
+  - llvm-openmp        # OpenMP runtime (macOS/Linux)
+  - openblas           # runtime match for RMNLib on Linux
+  - curl
+
+  # Dev / QA
   - pytest>=6.2.0
   - pytest-cov>=2.12.0
   - pytest-xdist>=2.4.0
@@ -19,6 +32,6 @@ dependencies:
   - sphinx>=3.1.0
   - sphinx-rtd-theme>=0.5.2
   - breathe>=4.13.0
-  - pip
+
   - pip:
-    # Add any pip-only dependencies here if needed
+      # pip-only deps (if any) go here

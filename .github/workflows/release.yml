@@ -1,474 +1,169 @@
-name: Build & Release
+name: Build Wheels & Release
 
 on:
   push:
     tags:
-      - 'v*.*.*'
-  release:
-    types: [published]
+      - "v*.*.*"
   workflow_dispatch:
 
 permissions:
   contents: write
-  packages: read
 
 jobs:
-  check_version:
-    name: Check if this is a minor/major release
-    runs-on: ubuntu-latest
-    outputs:
-      should_publish_pypi: ${{ steps.version_check.outputs.should_publish }}
-    steps:
-    - name: Check version pattern
-      id: version_check
-      run: |
-        if [[ "${{ github.ref }}" =~ refs/tags/v[0-9]+\.[0-9]+\.0$ ]]; then
-          echo "This is a minor or major release (ends with .0)"
-          echo "should_publish=true" >> $GITHUB_OUTPUT
-        else
-          echo "This is a patch release (does not end with .0)"
-          echo "should_publish=false" >> $GITHUB_OUTPUT
-        fi
-
-  build_wheels:
-    name: Build wheels on ${{ matrix.os }} (Python ${{ matrix.python-version }})
+  build:
+    name: Build wheel (${{ matrix.os }} / py${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      max-parallel: 6
       matrix:
         include:
-          # Linux x64 - Python 3.11 and 3.12 only
-          - os: ubuntu-latest
-            python-version: "3.11"
           - os: ubuntu-latest
             python-version: "3.12"
-
-          # macOS - Python 3.11 and 3.12 only
-          - os: macos-latest
-            python-version: "3.11"
           - os: macos-latest
             python-version: "3.12"
-
-          # Windows - Only Python 3.12 (MinGW compatibility)
           - os: windows-latest
             python-version: "3.12"
 
     steps:
-    - name: Checkout RMNpy
-      uses: actions/checkout@v5
+      - name: Checkout
+        uses: actions/checkout@v5
 
-    - name: Set up Python ${{ matrix.python-version }}
-      if: runner.os != 'Windows'
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python (non-Windows)
+        if: runner.os != 'Windows'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install system dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" --wait /bin/true
-        sudo apt-get update
-        # Install dev packages with static libraries
-        sudo apt-get install -y build-essential cmake pkg-config flex bison
-        sudo apt-get install -y libopenblas-dev liblapacke-dev libcurl4-openssl-dev
-        sudo apt-get install -y libomp5 libomp-dev
-        # Runtime libraries are already installed as dependencies, but ensure they're available
-        # liblapacke and libopenblas0 are already installed by the -dev packages
-        # Debug: Check what LAPACK libraries are available
-        find /usr/lib -name "*lapack*" -o -name "*blas*" | head -10
-        find /usr/lib -name "*omp*" | head -10
+      - name: System deps (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev libcurl4-openssl-dev libomp5 unzip
 
-    - name: Install system dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install cmake flex bison openblas lapack curl libomp
+      - name: System deps (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake flex bison openblas lapack curl libomp unzip
 
-    - name: Setup MSYS2 (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        update: true
-        install: |
-          mingw-w64-x86_64-toolchain
-          mingw-w64-x86_64-python
-          mingw-w64-x86_64-python-pip
-          mingw-w64-x86_64-python-numpy
-          mingw-w64-x86_64-cython
-          mingw-w64-x86_64-curl
-          mingw-w64-x86_64-openblas
-          mingw-w64-x86_64-lapack
-          mingw-w64-x86_64-openmp
-          mingw-w64-x86_64-cmake
-          mingw-w64-x86_64-ninja
+      - name: MSYS2 (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: |
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-python
+            mingw-w64-x86_64-python-pip
+            mingw-w64-x86_64-python-numpy
+            mingw-w64-x86_64-cython
+            mingw-w64-x86_64-curl
+            mingw-w64-x86_64-openblas
+            mingw-w64-x86_64-lapack
+            mingw-w64-x86_64-openmp
+            mingw-w64-x86_64-make
+            unzip
 
-    # Download dependencies (same as CI workflow)
-    - name: Download OCTypes from GitHub releases
-      run: |
-        mkdir -p lib include/OCTypes
-        if [[ "${{ runner.os }}" == "Linux" ]]; then
-          if [[ "${{ runner.arch }}" == "ARM64" ]]; then
-            LIB_FILE="libOCTypes-ubuntu-latest.arm64.zip"
+      - name: Download OCTypes/SITypes/RMNLib (latest)
+        shell: bash
+        run: |
+          set -e
+          mkdir -p lib include/OCTypes include/SITypes include/RMNLib
+
+          # OCTypes
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            ARCH=$(uname -m)
+            [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]] && OCT_LIB="libOCTypes-ubuntu-latest.arm64.zip" || OCT_LIB="libOCTypes-ubuntu-latest.x64.zip"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            OCT_LIB="libOCTypes-macos-latest.zip"
           else
-            LIB_FILE="libOCTypes-ubuntu-latest.x64.zip"
+            OCT_LIB="libOCTypes-windows-latest.zip"
           fi
-        elif [[ "${{ runner.os }}" == "macOS" ]]; then
-          LIB_FILE="libOCTypes-macos-latest.zip"
-        elif [[ "${{ runner.os }}" == "Windows" ]]; then
-          LIB_FILE="libOCTypes-windows-latest.zip"
-        fi
-        curl -L --fail --retry 5 --retry-delay 10 --retry-max-time 180 https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/${LIB_FILE} -o octypes-lib.zip
-        curl -L --fail --retry 5 --retry-delay 10 --retry-max-time 180 https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-headers.zip -o octypes-headers.zip
-        unzip -o -j -q octypes-lib.zip -d lib/
-        unzip -o -j -q octypes-headers.zip -d include/OCTypes/
-        rm octypes-lib.zip octypes-headers.zip
-      shell: bash
+          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/OCTypes/releases/latest/download/${OCT_LIB} -o octypes-lib.zip
+          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/OCTypes/releases/latest/download/libOCTypes-headers.zip -o octypes-headers.zip
+          unzip -o -j -q octypes-lib.zip -d lib/
+          unzip -o -j -q octypes-headers.zip -d include/OCTypes/
+          rm -f octypes-lib.zip octypes-headers.zip
 
-    - name: Download SITypes from GitHub releases
-      run: |
-        mkdir -p include/SITypes
-        if [[ "${{ runner.os }}" == "Linux" ]]; then
-          if [[ "${{ runner.arch }}" == "ARM64" ]]; then
-            LIB_FILE="libSITypes-ubuntu-latest.arm64.zip"
+          # SITypes
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            ARCH=$(uname -m)
+            [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]] && SI_LIB="libSITypes-ubuntu-latest.arm64.zip" || SI_LIB="libSITypes-ubuntu-latest.x64.zip"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            SI_LIB="libSITypes-macos-latest.zip"
           else
-            LIB_FILE="libSITypes-ubuntu-latest.x64.zip"
+            SI_LIB="libSITypes-windows-latest.zip"
           fi
-        elif [[ "${{ runner.os }}" == "macOS" ]]; then
-          LIB_FILE="libSITypes-macos-latest.zip"
-        elif [[ "${{ runner.os }}" == "Windows" ]]; then
-          LIB_FILE="libSITypes-windows-latest.zip"
-        fi
-        curl -L --fail --retry 5 --retry-delay 10 --retry-max-time 180 https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/${LIB_FILE} -o sitypes-lib.zip
-        curl -L --fail --retry 5 --retry-delay 10 --retry-max-time 180 https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-headers.zip -o sitypes-headers.zip
-        unzip -o -j -q sitypes-lib.zip -d lib/
-        unzip -o -j -q sitypes-headers.zip -d include/SITypes/
-        rm sitypes-lib.zip sitypes-headers.zip
-      shell: bash
+          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/SITypes/releases/latest/download/${SI_LIB} -o sitypes-lib.zip
+          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/SITypes/releases/latest/download/libSITypes-headers.zip -o sitypes-headers.zip
+          unzip -o -j -q sitypes-lib.zip -d lib/
+          unzip -o -j -q sitypes-headers.zip -d include/SITypes/
+          rm -f sitypes-lib.zip sitypes-headers.zip
 
-    - name: Download RMNLib from GitHub releases
-      run: |
-        mkdir -p include/RMNLib
-        if [[ "${{ runner.os }}" == "Linux" ]]; then
-          if [[ "${{ runner.arch }}" == "ARM64" ]]; then
-            LIB_FILE="libRMN-ubuntu-latest.arm64.zip"
+          # RMNLib
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            ARCH=$(uname -m)
+            [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]] && RMN_LIB="libRMN-ubuntu-latest.arm64.zip" || RMN_LIB="libRMN-ubuntu-latest.x64.zip"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            RMN_LIB="libRMN-macos-latest.zip"
           else
-            LIB_FILE="libRMN-ubuntu-latest.x64.zip"
+            RMN_LIB="libRMN-windows-latest.zip"
           fi
-        elif [[ "${{ runner.os }}" == "macOS" ]]; then
-          LIB_FILE="libRMN-macos-latest.zip"
-        elif [[ "${{ runner.os }}" == "Windows" ]]; then
-          LIB_FILE="libRMN-windows-latest.zip"
-        fi
-        curl -L --fail --retry 5 --retry-delay 10 --retry-max-time 180 https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/${LIB_FILE} -o rmnlib-lib.zip
-        curl -L --fail --retry 5 --retry-delay 10 --retry-max-time 180 https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-headers.zip -o rmnlib-headers.zip
-        unzip -o -j -q rmnlib-lib.zip -d lib/
-        unzip -o -q rmnlib-headers.zip -d .
-        rm rmnlib-lib.zip rmnlib-headers.zip
-      shell: bash
+          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/RMNLib/releases/latest/download/${RMN_LIB} -o rmnlib-lib.zip
+          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/RMNLib/releases/latest/download/libRMN-headers.zip -o rmnlib-headers.zip
+          unzip -o -j -q rmnlib-lib.zip -d lib/
+          unzip -o -q rmnlib-headers.zip -d .
+          rm -f rmnlib-lib.zip rmnlib-headers.zip
 
-    - name: Create Windows Bridge DLL
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: |
-        if [ -f lib/libOCTypes.a ] && [ -f lib/libSITypes.a ] && [ -f lib/libRMN.a ]; then
-          gcc -shared -o lib/rmnstack_bridge.dll \
-            -Wl,--out-implib,lib/rmnstack_bridge.dll.a \
-            -Wl,--whole-archive \
-              lib/libRMN.a lib/libSITypes.a lib/libOCTypes.a \
-            -Wl,--no-whole-archive \
-            -Wl,--export-all-symbols \
-            -lopenblas -llapack -lcurl -lgcc_s -lwinpthread -lquadmath -lgomp -lm
-        fi
+      - name: Create Windows Bridge DLL
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          if [ -f lib/libOCTypes.a ] && [ -f lib/libSITypes.a ] && [ -f lib/libRMN.a ]; then
+            x86_64-w64-mingw32-gcc -shared -o lib/rmnstack_bridge.dll \
+              -Wl,--out-implib,lib/rmnstack_bridge.dll.a \
+              -Wl,--whole-archive lib/libRMN.a lib/libSITypes.a lib/libOCTypes.a -Wl,--no-whole-archive \
+              -Wl,--export-all-symbols \
+              -lopenblas -llapack -lcurl -lgcc_s -lwinpthread -lquadmath -lgomp -lm
+          else
+            echo "Missing static libs; cannot create bridge DLL"; exit 1
+          fi
 
-    - name: Install build dependencies (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        python -m pip install --upgrade "setuptools>=70" "wheel>=0.44" "build>=1.2.1" "Cython>=0.29.36" "numpy>=1.21"
+      - name: Build wheel (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          python -m pip install --upgrade pip setuptools wheel "numpy>=1.21,<2" cython build
+          python -m build --wheel
+          ls -la dist/
 
-    - name: Generate constants (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        make generate-constants
+      - name: Build wheel (Windows / MSYS2)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          python -m pip install --upgrade pip setuptools wheel build
+          python setup.py build_ext --inplace
+          python -m build --wheel
+          ls -la dist/
 
-    - name: Generate constants (Windows)
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: |
-        python scripts/extract_si_constants.py
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rmnpy-${{ runner.os }}-py${{ matrix.python-version }}
+          path: dist/*.whl
 
-    - name: Ensure modern build tools (Windows)
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install --upgrade "setuptools>=70" "wheel>=0.44" "build>=1.2.1" "Cython>=0.29.36" "numpy>=1.21"
-
-    # Explicitly copy libraries to source directory before building
-    - name: Pre-copy libraries to source directory
-      run: |
-        echo "=== Pre-copying libraries to ensure they're included in wheel ==="
-        mkdir -p src/rmnpy
-        echo "Current directory: $(pwd)"
-        echo "Checking lib directory:"
-        ls -la lib/ || echo "lib/ directory not found"
-
-        if [[ "${{ runner.os }}" == "Linux" ]]; then
-          echo "Copying .so files for Linux..."
-          find lib/ -name "*.so*" -exec cp {} src/rmnpy/ \; 2>/dev/null || echo "No .so files found to copy"
-          echo "Files in src/rmnpy/ after copy:"
-          ls -la src/rmnpy/ || echo "src/rmnpy/ directory not accessible"
-        elif [[ "${{ runner.os }}" == "macOS" ]]; then
-          echo "Copying .dylib files for macOS..."
-          find lib/ -name "*.dylib" -exec cp {} src/rmnpy/ \; 2>/dev/null || echo "No .dylib files found to copy"
-          echo "Files in src/rmnpy/ after copy:"
-          ls -la src/rmnpy/ || echo "src/rmnpy/ directory not accessible"
-        elif [[ "${{ runner.os }}" == "Windows" ]]; then
-          echo "Copying .dll files for Windows..."
-          find lib/ -name "*.dll" -exec cp {} src/rmnpy/ \; 2>/dev/null || echo "No .dll files found to copy"
-          echo "Files in src/rmnpy/ after copy:"
-          ls -la src/rmnpy/ || echo "src/rmnpy/ directory not accessible"
-        fi
-
-        echo "=== Library pre-copy completed ==="
-      shell: bash
-
-    - name: Build Linux wheels with cibuildwheel
-      if: runner.os == 'Linux'
-      uses: pypa/cibuildwheel@v2.21.2
-      env:
-        CIBW_BUILD: cp311-* cp312-*
-        CIBW_ARCHS_LINUX: x86_64
-        CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_35_x86_64
-        CIBW_BEFORE_ALL_LINUX: |
-          # Install system dependencies needed for bundling
-          yum install -y openblas-devel lapack-devel libgomp
-          # Install auditwheel for automatic dependency bundling
-          pip install auditwheel
-        CIBW_BEFORE_BUILD: |
-          pip install setuptools wheel build Cython numpy
-        CIBW_ENVIRONMENT: |
-          LDFLAGS="-Wl,--no-as-needed -lopenblas -llapacke -lgomp"
-        CIBW_REPAIR_WHEEL_COMMAND: |
-          # Let cibuildwheel handle the auditwheel repair automatically
-          auditwheel repair --wheel-dir {dest_dir} {wheel} --plat-tag manylinux_2_35_x86_64
-
-    - name: Upload Linux wheels
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v4
-      with:
-        name: wheels-linux-${{ matrix.python-version }}
-        path: wheelhouse/*.whl
-
-
-
-    - name: Build wheel (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        # macOS wheels don't need manylinux repair
-        python -m build --wheel --outdir dist
-
-    - name: Build wheel with PEP 517 (Windows, no isolation)
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      env:
-        PIP_NO_BUILD_ISOLATION: "1"
-      run: |
-        python -m build --wheel --outdir dist-temp --no-isolation
-        python -m pip install delvewheel
-        mkdir -p dist
-        # Show original wheel info
-        echo "Original MinGW wheel:"
-        python -m wheel unpack --dest temp-unpack dist-temp/*.whl
-        ls -la temp-unpack/
-        # Repair wheel to have win_amd64 tag for PyPI compatibility
-        echo "Repairing wheel for PyPI compatibility..."
-        delvewheel repair --wheel-dir dist dist-temp/*.whl || \
-        (echo "delvewheel repair failed, manually renaming wheel" && \
-         for whl in dist-temp/*.whl; do \
-           newname=$(echo "$whl" | sed 's/mingw_x86_64_msvcrt_gnu/win_amd64/g' | sed 's/dist-temp/dist/g'); \
-           cp "$whl" "$newname"; \
-         done)
-
-    - name: Verify wheel metadata before upload
-      run: |
-        # Install required packages for metadata checking
-        python -m pip install wheel pkginfo
-        # Platform-aware wheel verification script
-        python -c "
-        import pkginfo, os, zipfile, sys, platform
-        for f in os.listdir('dist'):
-            if f.endswith('.whl'):
-                print(f'=== Checking wheel: {f} ===')
-                wheel_info = pkginfo.Wheel(f'dist/{f}')
-                if wheel_info.name:
-                    print(f'Name: {wheel_info.name}')
-                    print(f'Version: {wheel_info.version}')
-                else:
-                    print('Invalid wheel metadata')
-                    sys.exit(1)
-
-                with zipfile.ZipFile(f'dist/{f}', 'r') as zf:
-                    files = zf.namelist()
-
-                    # Platform-specific library checking
-                    if 'linux' in f.lower():
-                        required_libs = ['libOCTypes.so', 'libSITypes.so', 'libRMN.so']
-                        lib_exts = ['.so']
-                    elif 'macos' in f.lower() or 'darwin' in f.lower():
-                        required_libs = ['libOCTypes.dylib', 'libSITypes.dylib', 'libRMN.dylib']
-                        lib_exts = ['.dylib']
-                    elif 'win' in f.lower():
-                        required_libs = ['rmnstack_bridge.dll']
-                        lib_exts = ['.dll']
-                    else:
-                        required_libs = ['libOCTypes', 'libSITypes', 'libRMN']
-                        lib_exts = ['.so', '.dylib', '.dll']
-
-                    lib_files = [f for f in files if any(f.endswith(ext) or ext in f for ext in lib_exts)]
-                    found_libs = []
-
-                    for lib in required_libs:
-                        if any(lib in f for f in lib_files):
-                            found_libs.append(lib)
-                            print(f'Found: {lib}')
-                        else:
-                            print(f'Missing: {lib}')
-
-                    print(f'Libraries found: {len(found_libs)}/{len(required_libs)}')
-                    if len(lib_files) > 0:
-                        print(f'All library files in wheel: {lib_files}')
-
-                    if len(found_libs) < len(required_libs):
-                        print('WARNING: Not all required libraries found in wheel')
-                    else:
-                        print('All required libraries found in wheel')
-        "
-
-    - name: Upload wheels
-      uses: actions/upload-artifact@v4
-      with:
-        name: wheels-${{ matrix.os }}-py${{ matrix.python-version }}
-        path: dist/*.whl
-
-  build_sdist:
-    name: Build source distribution
+  github-release:
+    name: Create GitHub Release
+    needs: build
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout RMNpy
-      uses: actions/checkout@v5
+      - name: Download wheels
+        uses: actions/download-artifact@v5
+        with:
+          path: wheels
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
-
-    - name: Install system dependencies
-      run: |
-        sudo systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" --wait /bin/true
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev libcurl4-openssl-dev libomp5
-
-    - name: Download dependencies
-      run: |
-        mkdir -p lib include/OCTypes include/SITypes include/RMNLib
-        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-ubuntu-latest.x64.zip -o octypes-lib.zip
-        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-headers.zip -o octypes-headers.zip
-        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-ubuntu-latest.x64.zip -o sitypes-lib.zip
-        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-headers.zip -o sitypes-headers.zip
-        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-ubuntu-latest.x64.zip -o rmnlib-lib.zip
-        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-headers.zip -o rmnlib-headers.zip
-        unzip -o -j -q octypes-lib.zip -d lib/
-        unzip -o -j -q octypes-headers.zip -d include/OCTypes/
-        unzip -o -j -q sitypes-lib.zip -d lib/
-        unzip -o -j -q sitypes-headers.zip -d include/SITypes/
-        unzip -o -j -q rmnlib-lib.zip -d lib/
-        unzip -o -q rmnlib-headers.zip -d .
-        rm *.zip
-
-    - name: Install build dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2" build
-
-    - name: Generate constants
-      run: |
-        make generate-constants
-
-    - name: Build source distribution
-      run: |
-        python -m build --sdist
-
-    - name: Upload sdist
-      uses: actions/upload-artifact@v4
-      with:
-        name: sdist
-        path: dist/*.tar.gz
-
-  publish:
-    name: Publish to PyPI and GitHub
-    needs: [check_version, build_wheels, build_sdist]
-    runs-on: ubuntu-latest
-    # Only publish to PyPI for minor/major releases (vx.y.0) or when manually triggered
-    if: needs.check_version.outputs.should_publish_pypi == 'true' || github.event_name == 'workflow_dispatch'
-
-    steps:
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: dist-artifacts/
-
-    - name: Flatten artifact directory
-      run: |
-        mkdir -p dist
-        find dist-artifacts -name "*.whl" -exec mv {} dist/ \;
-        find dist-artifacts -name "*.tar.gz" -exec mv {} dist/ \;
-        ls -la dist/
-
-    - name: Verify wheel METADATA (Name/Version)
-      run: |
-        python -m pip install --upgrade pkginfo
-        for whl in dist/*.whl; do
-          echo "Checking $whl for Name/Version metadata"
-          python -c "import sys,pkginfo; w=pkginfo.Wheel(sys.argv[1]); print(f'OK: {w.name} v{w.version}') if w.name and w.version else sys.exit(1)" "$whl"
-        done
-
-    - name: Twine check
-      run: |
-        python -m pip install --upgrade twine
-        python -m twine check dist/*
-
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
-        packages-dir: dist/
-        verify-metadata: false
-        skip-existing: true
-
-  github_release:
-    name: Create GitHub Release with Artifacts
-    needs: [build_wheels, build_sdist]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
-
-    steps:
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: dist-artifacts/
-
-    - name: Flatten artifact directory
-      run: |
-        mkdir -p dist
-        find dist-artifacts -name "*.whl" -exec mv {} dist/ \;
-        find dist-artifacts -name "*.tar.gz" -exec mv {} dist/ \;
-        ls -la dist/
-
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: dist/*
-        generate_release_notes: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create/Update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: wheels/**/*.whl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

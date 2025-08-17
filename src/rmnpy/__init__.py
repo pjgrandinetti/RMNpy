@@ -9,78 +9,95 @@ This package provides:
 - quantities: SI quantity name constants
 """
 
-import os
+from __future__ import annotations
 
-# Setup platform-specific library paths before importing any C extensions
+import ctypes
+import os
 import sys
 from pathlib import Path
 
+# -------------------------------
+# Shared libraries bootstrap
+# -------------------------------
+_pkg_dir = Path(__file__).parent
+_candidate_dirs = [
+    _pkg_dir / "_libs",  # preferred location inside the wheel
+    _pkg_dir,  # fallback: libs dropped next to package
+    _pkg_dir.parent.parent / "lib",  # fallback: project-root/lib during dev
+]
+
+
+def _existing_dirs() -> list[Path]:
+    seen = set()
+    out = []
+    for d in _candidate_dirs:
+        p = d.resolve()
+        if p.exists() and p.is_dir() and p not in seen:
+            out.append(p)
+            seen.add(p)
+    return out
+
+
 if sys.platform == "win32":
-    from .dll_loader import setup_dll_paths
-
-    setup_dll_paths()
-elif sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
-    # For Linux and macOS, pre-load shared libraries in dependency order
-    package_dir = Path(__file__).parent
-
-    import ctypes
-
-    # Library file extensions by platform
-    if sys.platform.startswith("linux"):
-        lib_ext = ".so"
-    else:  # macOS
-        lib_ext = ".dylib"
-
-    # Try to pre-load the libraries in dependency order
-    lib_files = [f"libOCTypes{lib_ext}", f"libSITypes{lib_ext}", f"libRMN{lib_ext}"]
-
-    for lib_file in lib_files:
-        lib_path = package_dir / lib_file
-        if lib_path.exists():
-            try:
-                ctypes.CDLL(str(lib_path), mode=ctypes.RTLD_GLOBAL)
-            except OSError:
-                # Library loading failed, but continue - auditwheel should have bundled dependencies
-                pass
-
-    # Set LD_LIBRARY_PATH for Linux if needed
-    if sys.platform.startswith("linux"):
-        current_ld_path = os.environ.get("LD_LIBRARY_PATH", "")
-        new_ld_path = (
-            f"{package_dir}:{current_ld_path}" if current_ld_path else str(package_dir)
-        )
-        os.environ["LD_LIBRARY_PATH"] = new_ld_path
-
-# Read version from package metadata (single source of truth in pyproject.toml)
-try:
-    import importlib.metadata
-
-    __version__ = importlib.metadata.version("rmnpy")
-except ImportError:
-    # Fallback for Python < 3.8
+    # Centralized Windows handling (PATH, add_dll_directory, bridge DLL, runtimes)
     try:
-        import importlib_metadata
+        from .dll_loader import setup_dll_paths
 
-        __version__ = importlib_metadata.version("rmnpy")
-    except ImportError:
-        # Fallback if package not installed (e.g., during development)
-        __version__ = "unknown"
+        setup_dll_paths()
+    except Exception as e:
+        # Keep import working even if optional loader setup fails
+        sys.stderr.write(f"[RMNpy] dll_loader setup failed: {e}\n")
+else:
+    # Preload libs on Linux/macOS so that Cython extensions can resolve symbols
+    lib_ext = ".so" if sys.platform.startswith("linux") else ".dylib"
+    lib_names = [f"libOCTypes{lib_ext}", f"libSITypes{lib_ext}", f"libRMN{lib_ext}"]
+
+    loaded_any = False
+    for d in _existing_dirs():
+        for name in lib_names:
+            p = d / name
+            if p.exists():
+                try:
+                    # RTLD_GLOBAL makes symbols visible to subsequently loaded modules
+                    ctypes.CDLL(str(p), mode=ctypes.RTLD_GLOBAL)
+                    loaded_any = True
+                except OSError:
+                    # Continue; the next dir may have a working copy
+                    pass
+
+    # On Linux, optionally add the first valid dir to LD_LIBRARY_PATH for subprocesses
+    if sys.platform.startswith("linux"):
+        dirs = _existing_dirs()
+        if dirs:
+            current = os.environ.get("LD_LIBRARY_PATH", "")
+            if str(dirs[0]) not in current.split(os.pathsep):
+                os.environ["LD_LIBRARY_PATH"] = (
+                    f"{dirs[0]}{os.pathsep}{current}" if current else str(dirs[0])
+                )
+
+# -------------------------------
+# Package metadata
+# -------------------------------
+try:
+    import importlib.metadata as _im
+
+    __version__ = _im.version("rmnpy")
 except Exception:
-    # Fallback if package not installed (e.g., during development)
     __version__ = "unknown"
+
 __author__ = "Philip Grandinetti"
 __email__ = "grandinetti.1@osu.edu"
 
-# Import convenience modules
-from . import rmnlib, sitypes
+# -------------------------------
+# Public API imports
+# -------------------------------
+from . import rmnlib, sitypes  # noqa: E402
+from .rmnlib import DependentVariable  # noqa: E402
 
-# Import commonly used classes for direct access
-from .rmnlib import DependentVariable
-
-# Import Google Colab compatibility fix
+# Optional helpers (graceful fallback in editable/dev installs)
 try:
-    from .colab_fix import colab_install_fix, quick_fix
-except ImportError:
+    from .colab_fix import colab_install_fix, quick_fix  # noqa: E402
+except Exception:  # pragma: no cover
 
     def colab_install_fix() -> bool:
         print("Colab fix utility not available in this installation")
@@ -91,69 +108,8 @@ except ImportError:
         return False
 
 
-# Import quantities module if available (compiled Cython extension)
+# Optional compiled quantities module
 try:
-    from . import quantities
-except ImportError:
-    # This is expected during development/build process
-    # quantities.pyx needs to be compiled first
+    from . import quantities  # noqa: F401,E402
+except Exception:
     pass
-
-# Import the main Cython-built API elements (legacy paths for compatibility)
-from .wrappers.sitypes import Dimensionality, Scalar, Unit
-
-__all__ = [
-    "__version__",
-    "__author__",
-    "__email__",
-    # Legacy direct imports (for compatibility)
-    "Dimensionality",
-    "Scalar",
-    "Unit",
-    # New convenience modules
-    "rmnlib",
-    "sitypes",
-    "quantities",
-    # Common classes
-    "DependentVariable",
-    # Google Colab compatibility
-    "colab_install_fix",
-    "quick_fix",
-]
-
-
-# Add a helpful message for import errors
-def _handle_import_error() -> None:
-    """Provide helpful instructions when import fails due to missing libraries."""
-    print("=" * 60, file=sys.stderr)
-    print("RMNpy ImportError - Missing Shared Libraries", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
-    print(
-        "It appears that shared libraries are missing from your installation.",
-        file=sys.stderr,
-    )
-    print("This typically means the wheel was not built correctly.", file=sys.stderr)
-    print("", file=sys.stderr)
-    print("� Possible solutions:", file=sys.stderr)
-    print("", file=sys.stderr)
-    print("1. Try installing system dependencies:", file=sys.stderr)
-    print(
-        "   !apt-get update && apt-get install -y liblapacke-dev libomp-dev",
-        file=sys.stderr,
-    )
-    print("", file=sys.stderr)
-    print("2. Report this issue at:", file=sys.stderr)
-    print("   https://github.com/pjgrandinetti/RMNpy/issues", file=sys.stderr)
-    print("", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
-
-
-# Check if this is being imported from a failing context
-try:
-    # Test a basic import that should work if libraries are properly installed
-    from .wrappers.sitypes.scalar import Scalar as _test_scalar
-except ImportError as e:
-    if "libOCTypes.so" in str(e) or "cannot open shared object file" in str(e):
-        _handle_import_error()
-    # Re-raise the original error
-    raise

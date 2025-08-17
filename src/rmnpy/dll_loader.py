@@ -1,237 +1,181 @@
 # dll_loader.py
 """
-Windows DLL loader module for RMNpy.
-Implements Claude Opus 4's recommendation for pre-loading critical DLLs
-and setting up proper DLL search paths.
+Windows DLL loader for RMNpy.
+
+Goals for wheels and editable installs on Windows (Py>=3.11):
+- Prefer bundled native libs in rmnpy/_libs/
+- Fall back to project-root ./lib/ during local dev
+- Avoid PATH pollution; use os.add_dll_directory
+- Be quiet by default; opt-in logs via RMNPY_DLL_LOG=1 (or DEBUG with RMNPY_DLL_DEBUG=1)
+- Optionally load a bridge DLL if present (rmnstack_bridge.dll)
 """
+
+from __future__ import annotations
+
 import logging
 import os
 import sys
 from pathlib import Path
+from typing import List
 
-# Configure logging for DLL loader diagnostics
+# -----------------------------------------------------------------------------
+# Logging (opt-in)
+# -----------------------------------------------------------------------------
+_log_level = (
+    logging.DEBUG
+    if os.environ.get("RMNPY_DLL_DEBUG")
+    else (logging.INFO if os.environ.get("RMNPY_DLL_LOG") else logging.WARNING)
+)
 _logger = logging.getLogger(__name__)
-_handler = logging.StreamHandler(sys.stderr)
-_handler.setFormatter(logging.Formatter("[%(asctime)s] DLL_LOADER: %(message)s"))
-_logger.addHandler(_handler)
-_logger.setLevel(logging.INFO)
+if not _logger.handlers:
+    _h = logging.StreamHandler(sys.stderr)
+    _h.setFormatter(logging.Formatter("[%(asctime)s] DLL_LOADER: %(message)s"))
+    _logger.addHandler(_h)
+_logger.setLevel(_log_level)
 
-# Global flag to prevent multiple initialization
+# -----------------------------------------------------------------------------
+# State
+# -----------------------------------------------------------------------------
 _dll_setup_completed = False
+_dll_dir_cookies: List[object] = []  # keep cookies alive for the process
 
 
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+def _env_true(name: str) -> bool:
+    v = os.environ.get(name, "")
+    return v.lower() in {"1", "true", "yes", "on"}
+
+
+def _existing_dirs(paths: List[Path]) -> List[Path]:
+    seen = set()
+    out: List[Path] = []
+    for p in paths:
+        p = p.resolve()
+        if p.exists() and p.is_dir() and p not in seen:
+            out.append(p)
+            seen.add(p)
+    return out
+
+
+def _register_dirs(dirs: List[Path]) -> int:
+    count = 0
+    for d in dirs:
+        try:
+            if hasattr(os, "add_dll_directory"):
+                cookie = os.add_dll_directory(str(d))
+                _dll_dir_cookies.append(cookie)  # keep alive
+                count += 1
+                _logger.info(f"Registered DLL directory: {d}")
+        except Exception as e:  # pragma: no cover
+            _logger.warning(f"Failed to register {d}: {e}")
+    return count
+
+
+def _set_safe_search_mode() -> None:
+    # Win 8+ only; safe if it fails.
+    try:
+        import ctypes
+
+        if hasattr(ctypes, "windll"):
+            kernel32 = ctypes.windll.kernel32
+            LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000
+            kernel32.SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)
+            _logger.info("Enabled Windows safe DLL search mode")
+    except Exception as e:  # pragma: no cover
+        _logger.debug(f"SetDefaultDllDirectories not applied: {e}")
+
+
+def _maybe_load_bridge(base_dirs: List[Path]) -> None:
+    # Optional, non-fatal: load rmnstack_bridge.dll if present.
+    bridge = "rmnstack_bridge.dll"
+    for d in base_dirs:
+        p = d / bridge
+        if p.exists():
+            try:
+                import ctypes
+
+                ctypes.CDLL(str(p))
+                _logger.info(f"Loaded bridge DLL: {p}")
+                return
+            except Exception as e:  # pragma: no cover
+                _logger.warning(f"Bridge DLL found but failed to load ({p}): {e}")
+    _logger.debug("Bridge DLL not found; continuing without it")
+
+
+# -----------------------------------------------------------------------------
+# Public API
+# -----------------------------------------------------------------------------
 def setup_dll_paths() -> None:
-    """Setup DLL paths for Windows"""
+    """One-time Windows DLL path setup. Safe to call multiple times."""
     global _dll_setup_completed
-
     if _dll_setup_completed:
-        _logger.info("DLL setup already completed, skipping")
+        _logger.debug("DLL setup already completed; skipping")
         return
 
-    if sys.platform == "win32":
-        _logger.info("Starting Windows DLL path setup")
+    if sys.platform != "win32":
+        _logger.debug("Non-Windows platform; no DLL setup required")
+        _dll_setup_completed = True
+        return
 
-        # Set Windows DLL search strategy to safe defaults
+    _logger.info("Starting Windows DLL setup for RMNpy")
+    _set_safe_search_mode()
+
+    # Package layout
+    pkg_dir = Path(__file__).resolve().parent  # .../rmnpy
+    repo_root = pkg_dir.parent.parent  # project root (editable)
+    # Preferred: bundled libs inside the wheel
+    libs_dir = pkg_dir / "_libs"
+    # Fallback for editable/developer layout:
+    dev_libs_dir = repo_root / "lib"
+
+    # User-provided extra directories (e.g., MSYS2 mingw64/bin)
+    # Accept pathsep-separated list (;) on Windows
+    extra_env = os.environ.get("RMNPY_DLL_DIRS", "")
+    extra_dirs = [Path(p.strip()) for p in extra_env.split(os.pathsep) if p.strip()]
+
+    # We also register the package dir itself so extensions can be found cleanly.
+    candidate_dirs: List[Path] = [
+        libs_dir,
+        dev_libs_dir,
+        pkg_dir,  # package folder (sometimes contains *.pyd and local dlls)
+        # submodules/extensions that may sit near their dependent dlls in editable mode
+        pkg_dir / "wrappers" / "sitypes",
+        pkg_dir / "wrappers" / "rmnlib",
+    ] + extra_dirs
+
+    dirs = _existing_dirs(candidate_dirs)
+    _logger.info(f"DLL search dirs: {[str(d) for d in dirs]}")
+
+    registered = _register_dirs(dirs)
+    _logger.info(f"Registered {registered} DLL directories")
+
+    # Optional: load the bridge DLL if present
+    _maybe_load_bridge(dirs)
+
+    # Optional: explicitly load Python runtime DLL (rarely necessary on 3.11+)
+    if _env_true("RMNPY_LOAD_PY_DLL"):
         try:
             import ctypes
 
-            kernel32 = ctypes.windll.kernel32
-            # LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x1000
-            kernel32.SetDefaultDllDirectories(0x1000)
-            _logger.info("Set default DLL directories to safe search mode")
-        except Exception as e:
-            _logger.warning(f"Failed to set default DLL directories: {e}")
-
-        # Add DLL directories (including subdirectories for extension modules)
-        base_dir = Path(__file__).parent  # Package directory
-        dll_dirs = [
-            base_dir,  # Package directory (where bridge DLL should be)
-            base_dir / "helpers",  # Helper extensions
-            base_dir / "wrappers" / "sitypes",  # SITypes extensions
-            base_dir / "wrappers" / "rmnlib",  # RMNLib extensions
-            base_dir.parent.parent / "lib",  # lib directory (project root/lib)
-            Path(r"D:\a\_temp\msys64\mingw64\bin"),  # MinGW bin (CI environment)
-        ]
-        # Add Python installation directories for runtime DLL resolution
-        # Always include host Python base installation directories
-        dll_dirs.append(Path(sys.base_prefix))
-        dll_dirs.append(Path(sys.base_prefix) / "DLLs")
-        # Also include venv exec_prefix if different from base_prefix
-        if hasattr(sys, "exec_prefix") and sys.exec_prefix != sys.base_prefix:
-            dll_dirs.append(Path(sys.exec_prefix))
-            dll_dirs.append(Path(sys.exec_prefix) / "DLLs")
-
-        # Determine valid directories
-        existing_path = os.environ.get("PATH", "")
-        valid_dirs = [d for d in dll_dirs if d.exists()]
-        _logger.info(
-            f"Found {len(valid_dirs)} valid DLL directories: {[str(d) for d in valid_dirs]}"
-        )
-
-        # Prepend only Python installation and MinGW bin dirs to PATH
-        path_dirs = []
-        # Python base and DLL dirs
-        py_base = Path(sys.base_prefix)
-        if py_base.exists():
-            path_dirs.append(py_base)
-            path_dirs.append(py_base / "DLLs")
-        # Virtual environment exec_prefix if different
-        if hasattr(sys, "exec_prefix") and sys.exec_prefix != sys.base_prefix:
-            py_exec = Path(sys.exec_prefix)
-            if py_exec.exists():
-                path_dirs.append(py_exec)
-                path_dirs.append(py_exec / "DLLs")
-        # MinGW bin if present
-        for d in valid_dirs:
-            if "msys64" in str(d).lower() and d.is_dir():
-                path_dirs.append(d)
-        # Apply new PATH
-        new_path = os.pathsep.join([str(d) for d in path_dirs] + [existing_path])
-        os.environ["PATH"] = new_path
-        _logger.info(f"Updated PATH with {len(path_dirs)} directories")
-
-        # Register all valid dirs for DLL search
-        registered_dirs = 0
-        for d in valid_dirs:
-            if hasattr(os, "add_dll_directory"):
-                try:
-                    cookie = os.add_dll_directory(str(d))
-                    registered_dirs += 1
-                    _logger.info(f"Registered DLL directory: {d} (cookie: {cookie})")
-                except Exception as e:
-                    _logger.warning(f"Failed to register DLL directory {d}: {e}")
-        _logger.info(
-            f"Successfully registered {registered_dirs}/{len(valid_dirs)} DLL directories"
-        )
-
-        # SIMPLIFIED: Skip DLL copying for now to isolate the issue
-        # We'll rely only on PATH and add_dll_directory for this diagnostic run
-        _logger.info("Skipping DLL copying - using PATH and add_dll_directory only")
-
-        # Explicitly load Python runtime DLL globally to resolve extension module symbols
-        try:
-            import ctypes
-
-            # Determine Python DLL path
-            dll_name = f"python{sys.version_info.major}{sys.version_info.minor}.dll"
-            py_dll = Path(sys.base_prefix) / dll_name
-            if not py_dll.exists():
-                # fallback to generic python3.dll
-                py_dll = Path(sys.base_prefix) / "python3.dll"
-            if py_dll.exists():
-                # Use WinDLL for proper Windows loader semantics
-                _logger.info(f"Loading Python DLL: {py_dll}")
-                handle = ctypes.WinDLL(str(py_dll))
-                _logger.info(f"Successfully loaded Python DLL, handle: {handle}")
-            else:
-                _logger.warning(f"Python DLL not found at {py_dll}")
-        except Exception as e:
-            _logger.error(f"Failed to load Python DLL: {e}")
-
-        # Load the Windows Bridge DLL if available (WindowsPlan.md implementation)
-        bridge_dll_name = "rmnstack_bridge.dll"
-        bridge_dll_paths = [
-            base_dir / bridge_dll_name,  # Package directory
-            base_dir.parent.parent / "lib" / bridge_dll_name,  # Project lib directory
-        ]
-
-        bridge_loaded = False
-        for bridge_path in bridge_dll_paths:
-            if bridge_path.exists():
-                try:
-                    _logger.info(f"Loading bridge DLL: {bridge_path}")
-                    import ctypes
-
-                    handle = ctypes.CDLL(str(bridge_path))
-                    _logger.info(f"Successfully loaded bridge DLL, handle: {handle}")
-                    bridge_loaded = True
+            name = f"python{sys.version_info.major}{sys.version_info.minor}.dll"
+            cand = [Path(sys.base_prefix) / name, Path(sys.base_prefix) / "python3.dll"]
+            for p in cand:
+                if p.exists() and hasattr(ctypes, "WinDLL"):
+                    ctypes.WinDLL(str(p))
+                    _logger.info(f"Loaded Python runtime DLL: {p}")
                     break
-                except Exception as e:
-                    _logger.error(f"Failed to load bridge DLL from {bridge_path}: {e}")
+        except Exception as e:  # pragma: no cover
+            _logger.debug(f"Could not load Python DLL explicitly: {e}")
 
-        if not bridge_loaded:
-            _logger.warning(
-                f"Bridge DLL ({bridge_dll_name}) not found in expected locations"
-            )
-            _logger.warning("Extensions will link against individual libraries")
-
-        # Explicitly preload ONLY essential MinGW runtime DLLs to avoid conflicts
-        # Reduced set to minimize DLL loading conflicts during pytest
-        runtime_dlls = [
-            "libwinpthread-1.dll",
-            "libgcc_s_seh-1.dll",
-            "libgfortran-5.dll",  # Essential for Fortran code
-            "libopenblas.dll",  # Essential for BLAS operations
-            "liblapack.dll",  # Essential for LAPACK operations
-        ]
-
-        _logger.info(
-            f"Attempting to preload {len(runtime_dlls)} essential MinGW runtime DLLs"
-        )
-        loaded_dlls = 0
-        try:
-            import ctypes as _ct
-
-            for _dll in runtime_dlls:
-                dll_found = False
-                for _dir in valid_dirs:
-                    _path = Path(_dir) / _dll
-                    if _path.exists():
-                        try:
-                            # Load each runtime DLL with standard calling convention
-                            _logger.info(f"Loading MinGW DLL: {_path}")
-                            handle = _ct.CDLL(str(_path))
-                            _logger.info(
-                                f"Successfully loaded {_dll}, handle: {handle}"
-                            )
-                            loaded_dlls += 1
-                            dll_found = True
-                            break
-                        except Exception as e:
-                            _logger.error(f"Failed to load {_dll} from {_path}: {e}")
-                if not dll_found:
-                    _logger.warning(f"MinGW DLL not found: {_dll}")
-        except Exception as e:
-            _logger.error(f"Critical error during MinGW DLL preloading: {e}")
-
-        _logger.info(
-            f"Successfully loaded {loaded_dlls}/{len(runtime_dlls)} MinGW runtime DLLs"
-        )
-        _logger.info("Windows DLL path setup completed")
-
-        # Mark setup as completed
-        _dll_setup_completed = True
-    else:
-        _logger.info("Non-Windows platform, skipping DLL setup")
-        _dll_setup_completed = True
+    _dll_setup_completed = True
+    _logger.info("Windows DLL setup completed")
 
 
 def preload_mingw_runtime() -> None:
-    """Register MinGW runtime directories for Windows DLL loader without loading DLLs explicitly"""
-    if sys.platform == "win32":
-        _logger.info("Starting MinGW runtime directory registration")
-        base_dir = Path(__file__).parent
-        # Directories where runtime DLLs reside
-        runtime_dirs = [
-            base_dir,
-            base_dir / "wrappers" / "sitypes",
-            Path(r"D:\a\_temp\msys64\mingw64\bin"),
-            Path(r"C:\msys64\mingw64\bin"),
-        ]
-        # Register runtime dirs for DLL search without modifying PATH
-        registered = 0
-        for d in runtime_dirs:
-            if d.exists() and hasattr(os, "add_dll_directory"):
-                try:
-                    cookie = os.add_dll_directory(str(d))
-                    registered += 1
-                    _logger.info(
-                        f"Registered MinGW runtime directory: {d} (cookie: {cookie})"
-                    )
-                except Exception as e:
-                    _logger.warning(
-                        f"Failed to register MinGW runtime directory {d}: {e}"
-                    )
-        _logger.info(
-            f"MinGW runtime registration completed: {registered}/{len(runtime_dirs)} directories"
-        )
+    """
+    Back-compat no-op helper.
+    Keep for callers that previously invoked it; directories are handled by setup_dll_paths().
+    """
+    setup_dll_paths()

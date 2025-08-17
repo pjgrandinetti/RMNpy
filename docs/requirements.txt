@@ -1,12 +1,7 @@
 # docs/requirements.txt
-
-sphinx>=3.1.0
-sphinx-rtd-theme>=0.5.2
-breathe>=4.13.0
-myst-parser>=0.15.0
-sphinx-copybutton>=0.3.0
-nbsphinx>=0.8.0
-
-# Build dependencies for Cython extensions
-Cython
-numpy>=1.21,<3
+sphinx>=6
+sphinx-rtd-theme>=1.2
+breathe>=4.35
+myst-parser>=2.0
+sphinx-copybutton>=0.5
+nbsphinx>=0.9

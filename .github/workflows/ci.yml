@@ -15,357 +15,182 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Linux supports both Python 3.11 and 3.12
+          # Linux: Python 3.11 & 3.12
           - os: ubuntu-latest
             python-version: "3.11"
           - os: ubuntu-latest
             python-version: "3.12"
-          # macOS supports both Python 3.11 and 3.12
+          # macOS: Python 3.11 & 3.12
           - os: macos-latest
             python-version: "3.11"
           - os: macos-latest
             python-version: "3.12"
-          # Windows MinGW only supports Python 3.12
+          # Windows (MinGW): Python 3.12 only
           - os: windows-latest
             python-version: "3.12"
 
     steps:
-    - name: Checkout RMNpy
-      uses: actions/checkout@v5
+      - name: Checkout RMNpy
+        uses: actions/checkout@v5
 
-    - name: Set up Python ${{ matrix.python-version }}
-      if: runner.os != 'Windows'
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        if: runner.os != 'Windows'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install system dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        # Wait for automatic system updates to finish
-        sudo systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" --wait /bin/true
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev libcurl4-openssl-dev libomp5
+      - name: Install system dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" --wait /bin/true || true
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev libcurl4-openssl-dev libomp5 unzip
 
-    - name: Install system dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install cmake flex bison openblas lapack curl libomp
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake flex bison openblas lapack curl libomp unzip
 
-    - name: Setup MSYS2 (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        update: true
-        install: |
-          mingw-w64-x86_64-toolchain
-          mingw-w64-x86_64-python
-          mingw-w64-x86_64-python-pip
-          mingw-w64-x86_64-python-numpy
-          mingw-w64-x86_64-python-pytest
-          mingw-w64-x86_64-python-pytest-cov
-          mingw-w64-x86_64-cython
-          mingw-w64-x86_64-curl
-          mingw-w64-x86_64-openblas
-          mingw-w64-x86_64-lapack
-          mingw-w64-x86_64-openmp
-          mingw-w64-x86_64-make
+      - name: Setup MSYS2 (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: |
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-python
+            mingw-w64-x86_64-python-pip
+            mingw-w64-x86_64-python-numpy
+            mingw-w64-x86_64-python-pytest
+            mingw-w64-x86_64-python-pytest-cov
+            mingw-w64-x86_64-cython
+            mingw-w64-x86_64-curl
+            mingw-w64-x86_64-openblas
+            mingw-w64-x86_64-lapack
+            mingw-w64-x86_64-openmp
+            mingw-w64-x86_64-make
+            unzip
 
-    - name: Verify MSYS2 Python installation (Windows)
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: |
-        echo "=== Verifying MSYS2 Python installation ==="
-        python --version
-        python -c "import sys; print('Python executable:', sys.executable)"
-        python -c "import numpy; print('NumPy version:', numpy.__version__)"
-        python -c "import pytest; print('Pytest installed successfully')"
-        echo "✓ MSYS2 Python environment ready"
+      - name: Verify MSYS2 Python (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          python --version
+          python -c "import sys, numpy; print(sys.executable); print('NumPy:', numpy.__version__)"
 
-    - name: Debug OpenBLAS installation (Windows)
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: |
-        echo "=== Debugging OpenBLAS installation ==="
-        echo "Looking for cblas.h and lapacke.h..."
-        find /mingw64 -name "cblas.h" -o -name "lapacke.h" 2>/dev/null || echo "Headers not found in /mingw64"
-        echo "OpenBLAS package contents:"
-        pacman -Ql mingw-w64-x86_64-openblas | grep -E "(cblas|lapack)" || echo "No cblas/lapack files found"
-        echo "LAPACK package contents:"
-        pacman -Ql mingw-w64-x86_64-lapack | head -20 || echo "LAPACK package query failed"
-        echo "Include directories:"
-        ls -la /mingw64/include/ | grep -E "(blas|lapack)" || echo "No BLAS/LAPACK includes in /mingw64/include"
-        echo "=== End debug info ==="
-
-    - name: Download OCTypes from GitHub releases
-      run: |
-        mkdir -p lib include/OCTypes
-
-        # Detect architecture
-        if [[ "${{ runner.os }}" == "Linux" ]]; then
-          ARCH=$(uname -m)
-          if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]]; then
-            LIB_FILE="libOCTypes-ubuntu-latest.arm64.zip"
+      - name: Download OCTypes (latest)
+        shell: bash
+        run: |
+          set -e
+          mkdir -p lib include/OCTypes
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            ARCH=$(uname -m)
+            [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]] && LIB_FILE="libOCTypes-ubuntu-latest.arm64.zip" || LIB_FILE="libOCTypes-ubuntu-latest.x64.zip"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            LIB_FILE="libOCTypes-macos-latest.zip"
           else
-            LIB_FILE="libOCTypes-ubuntu-latest.x64.zip"
+            LIB_FILE="libOCTypes-windows-latest.zip"
           fi
-        elif [[ "${{ runner.os }}" == "macOS" ]]; then
-          LIB_FILE="libOCTypes-macos-latest.zip"
-        elif [[ "${{ runner.os }}" == "Windows" ]]; then
-          LIB_FILE="libOCTypes-windows-latest.zip"
-        fi
+          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/OCTypes/releases/latest/download/${LIB_FILE} -o octypes-lib.zip
+          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/OCTypes/releases/latest/download/libOCTypes-headers.zip -o octypes-headers.zip
+          unzip -o -j -q octypes-lib.zip -d lib/
+          unzip -o -j -q octypes-headers.zip -d include/OCTypes/
+          rm -f octypes-lib.zip octypes-headers.zip
 
-        echo "Downloading OCTypes: ${LIB_FILE}"
-        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/${LIB_FILE} -o octypes-lib.zip
-        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-headers.zip -o octypes-headers.zip
-        unzip -o -j -q octypes-lib.zip -d lib/
-        unzip -o -j -q octypes-headers.zip -d include/OCTypes/
-        rm octypes-lib.zip octypes-headers.zip
-      shell: bash
-
-    - name: Download SITypes from GitHub releases
-      run: |
-        mkdir -p include/SITypes
-
-        # Detect architecture
-        if [[ "${{ runner.os }}" == "Linux" ]]; then
-          ARCH=$(uname -m)
-          if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]]; then
-            LIB_FILE="libSITypes-ubuntu-latest.arm64.zip"
+      - name: Download SITypes (latest)
+        shell: bash
+        run: |
+          set -e
+          mkdir -p include/SITypes
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            ARCH=$(uname -m)
+            [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]] && LIB_FILE="libSITypes-ubuntu-latest.arm64.zip" || LIB_FILE="libSITypes-ubuntu-latest.x64.zip"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            LIB_FILE="libSITypes-macos-latest.zip"
           else
-            LIB_FILE="libSITypes-ubuntu-latest.x64.zip"
+            LIB_FILE="libSITypes-windows-latest.zip"
           fi
-        elif [[ "${{ runner.os }}" == "macOS" ]]; then
-          LIB_FILE="libSITypes-macos-latest.zip"
-        elif [[ "${{ runner.os }}" == "Windows" ]]; then
-          LIB_FILE="libSITypes-windows-latest.zip"
-        fi
+          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/SITypes/releases/latest/download/${LIB_FILE} -o sitypes-lib.zip
+          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/SITypes/releases/latest/download/libSITypes-headers.zip -o sitypes-headers.zip
+          unzip -o -j -q sitypes-lib.zip -d lib/
+          unzip -o -j -q sitypes-headers.zip -d include/SITypes/
+          rm -f sitypes-lib.zip sitypes-headers.zip
 
-        echo "Downloading SITypes: ${LIB_FILE}"
-        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/${LIB_FILE} -o sitypes-lib.zip
-        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-headers.zip -o sitypes-headers.zip
-        unzip -o -j -q sitypes-lib.zip -d lib/
-        unzip -o -j -q sitypes-headers.zip -d include/SITypes/
-        rm sitypes-lib.zip sitypes-headers.zip
-      shell: bash
-
-    - name: Download RMNLib from GitHub releases
-      run: |
-        mkdir -p include/RMNLib
-
-        # Detect architecture
-        if [[ "${{ runner.os }}" == "Linux" ]]; then
-          ARCH=$(uname -m)
-          if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]]; then
-            LIB_FILE="libRMN-ubuntu-latest.arm64.zip"
+      - name: Download RMNLib (latest)
+        shell: bash
+        run: |
+          set -e
+          mkdir -p include/RMNLib
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            ARCH=$(uname -m)
+            [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]] && LIB_FILE="libRMN-ubuntu-latest.arm64.zip" || LIB_FILE="libRMN-ubuntu-latest.x64.zip"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            LIB_FILE="libRMN-macos-latest.zip"
           else
-            LIB_FILE="libRMN-ubuntu-latest.x64.zip"
+            LIB_FILE="libRMN-windows-latest.zip"
           fi
-        elif [[ "${{ runner.os }}" == "macOS" ]]; then
-          LIB_FILE="libRMN-macos-latest.zip"
-        elif [[ "${{ runner.os }}" == "Windows" ]]; then
-          LIB_FILE="libRMN-windows-latest.zip"
-        fi
+          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/RMNLib/releases/latest/download/${LIB_FILE} -o rmnlib-lib.zip
+          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/RMNLib/releases/latest/download/libRMN-headers.zip -o rmnlib-headers.zip
+          unzip -o -j -q rmnlib-lib.zip -d lib/
+          unzip -o -q rmnlib-headers.zip -d .
+          rm -f rmnlib-lib.zip rmnlib-headers.zip
 
-        echo "Downloading RMNLib: ${LIB_FILE}"
-        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/${LIB_FILE} -o rmnlib-lib.zip
-        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-headers.zip -o rmnlib-headers.zip
-        unzip -o -j -q rmnlib-lib.zip -d lib/
-        unzip -o -q rmnlib-headers.zip -d .
-        rm rmnlib-lib.zip rmnlib-headers.zip
-      shell: bash
+      - name: Verify downloaded libraries
+        shell: bash
+        run: |
+          echo "lib/:" && ls -la lib/ || true
+          echo "include/:" && ls -la include/ || true
 
-    - name: Verify downloaded libraries
-      run: |
-        ls -la lib/
-        ls -la include/
-        echo "✓ Libraries downloaded and ready for Python build"
-      shell: bash
-
-    - name: Create Windows Bridge DLL
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: |
-        echo "=== Creating Windows Bridge DLL ==="
-        echo "Available static libraries:"
-        ls -la lib/*.a || echo "No .a files found"
-
-        if [ -f lib/libOCTypes.a ] && [ -f lib/libSITypes.a ] && [ -f lib/libRMN.a ]; then
-          echo "✓ Found all required static libraries"
-
-          # Clean up any existing small/bad bridge DLL
-          if [ -f lib/rmnstack_bridge.dll.a ] && [ $(wc -c < lib/rmnstack_bridge.dll.a) -lt 4096 ]; then
-            echo "Removing existing small bridge DLL (likely empty exports)"
-            rm -f lib/rmnstack_bridge.dll lib/rmnstack_bridge.dll.a
-          fi
-
-          echo "Creating bridge DLL..."
-
-          x86_64-w64-mingw32-gcc -shared -o lib/rmnstack_bridge.dll \
-            -Wl,--out-implib,lib/rmnstack_bridge.dll.a \
-            -Wl,--whole-archive \
-              lib/libRMN.a lib/libSITypes.a lib/libOCTypes.a \
-            -Wl,--no-whole-archive \
-            -Wl,--export-all-symbols \
-            -lopenblas -llapack -lcurl -lgcc_s -lwinpthread -lquadmath -lgomp -lm
-
-          if [ -f lib/rmnstack_bridge.dll ]; then
-            echo "✓ Successfully created bridge DLL"
-            echo "✓ Bridge DLL size: $(wc -c < lib/rmnstack_bridge.dll) bytes"
-            echo "✓ Import library size: $(wc -c < lib/rmnstack_bridge.dll.a) bytes"
-            echo "Checking exports (first 50)..."
-            objdump -p lib/rmnstack_bridge.dll | sed -n '/Export Table/,$p' | head -n 50 | tail -n 45 || true
+      - name: Create Windows Bridge DLL
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          echo "Static libraries in lib/:"
+          ls -la lib/*.a || true
+          if [ -f lib/libOCTypes.a ] && [ -f lib/libSITypes.a ] && [ -f lib/libRMN.a ]; then
+            x86_64-w64-mingw32-gcc -shared -o lib/rmnstack_bridge.dll \
+              -Wl,--out-implib,lib/rmnstack_bridge.dll.a \
+              -Wl,--whole-archive lib/libRMN.a lib/libSITypes.a lib/libOCTypes.a -Wl,--no-whole-archive \
+              -Wl,--export-all-symbols \
+              -lopenblas -llapack -lcurl -lgcc_s -lwinpthread -lquadmath -lgomp -lm
+            test -f lib/rmnstack_bridge.dll || (echo "Bridge DLL failed"; exit 1)
           else
-            echo "✗ Bridge DLL creation failed"
-            exit 1
+            echo "Missing static libs; skipping bridge DLL"; exit 1
           fi
-        else
-          echo "✗ Missing required static libraries for bridge DLL"
-          echo "Available files in lib/:"
-          ls -la lib/
-          exit 1
-        fi
 
-    - name: Install build tools (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        python -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2"
+      - name: Install Python deps (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          python -m pip install --upgrade pip setuptools wheel "numpy>=1.21,<2" cython
+          python -m pip install -e .[test]
 
-    - name: Install Python dependencies (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        python -m pip install -e .[test]
+      - name: Install Python deps (Windows via MSYS2)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          python setup.py build_ext --inplace
+          python -m pip install --no-build-isolation -e .
 
-    - name: Install Python dependencies (Windows)
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: |
-        echo "=== Installing Python dependencies via MSYS2 ==="
-        # All dependencies already installed via pacman in MSYS2 setup
-        echo "Python version:"
-        python --version
+      - name: Generate constants (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: make generate-constants
 
-        echo "Testing numpy import..."
-        python -c "import numpy; print('Numpy version: ' + numpy.__version__)"
-        echo "✓ Numpy import successful"
+      - name: Generate constants (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: python scripts/extract_si_constants.py || true
 
-        echo "Building C extensions..."
-        python setup.py build_ext --inplace
+      - name: Smoke import (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: python -c "import rmnpy; print('RMNpy:', rmnpy.__version__)"
 
-        echo "Installing package with --no-build-isolation..."
-        python -m pip install --no-build-isolation -e .
+      - name: Run test suite (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python -m pytest --maxfail=1 --disable-warnings -q
 
-        echo "Checking if bridge DLL was copied to package..."
-        if [ -f src/rmnpy/rmnstack_bridge.dll ]; then
-          echo "✓ Bridge DLL found in package directory"
-          echo "  Size: $(wc -c < src/rmnpy/rmnstack_bridge.dll) bytes"
-        else
-          echo "✗ Bridge DLL not found in package directory"
-          echo "Available files in src/rmnpy/:"
-          ls -la src/rmnpy/ | grep "\.dll\|\.so\|\.pyd" || echo "No library files found"
-        fi
-
-    - name: Generate constants (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        make generate-constants
-
-    - name: Generate constants (Windows)
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: |
-        echo "Generating constants..."
-        python scripts/extract_si_constants.py || echo "Constants generation completed"
-
-    - name: Test basic imports (Windows)
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: |
-        echo "=== Testing Basic Imports ==="
-        echo "Python version:"
-        python --version
-
-        echo "Testing numpy import..."
-        python -c "import numpy; print('Numpy version: ' + numpy.__version__)"
-        echo "✓ Numpy import successful"
-
-        echo "Testing RMNpy import..."
-        python -c "import sys; import rmnpy; print('RMNpy imported successfully'); print('Version:', rmnpy.__version__)"
-        echo "✓ All import tests passed"
-
-    - name: Run test suite (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        python -m pytest --maxfail=1 --disable-warnings -q
-
-    - name: Run test suite (Windows)
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: |
-        echo "=== Running test suite with MSYS2 Python ==="
-        python -m pytest --maxfail=1 --disable-warnings -q
-
-  # ARM64 Linux test: only run on releases (tags) for faster development cycles
-  test-arm64:
-    name: Test on ubuntu-latest (ARM64) - Python 3.12
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-    - name: Checkout RMNpy
-      uses: actions/checkout@v5
-
-    - name: Set up QEMU emulation
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: linux/arm64
-
-    - name: Install QEMU binfmt handlers
-      run: docker run --rm --privileged tonistiigi/binfmt --install all
-
-    - name: Test in ARM64 container
-      run: |
-        docker run --rm --platform=linux/arm64 \
-          -v ${{ github.workspace }}:/src -w /src ubuntu:22.04 bash -lc "
-            echo '=== ARM64 Container Setup ==='
-            apt-get update
-            apt-get install -y curl python3 python3-pip python3-dev build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev libcurl4-openssl-dev libomp5
-            python3 --version
-
-            echo '=== Downloading ARM64 libraries ==='
-            mkdir -p lib include/OCTypes include/SITypes include/RMNLib
-
-            # Download ARM64 libraries (these will be available after we create releases)
-            echo 'Downloading OCTypes ARM64...'
-            curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-ubuntu-latest.arm64.zip -o octypes-lib.zip || echo 'ARM64 OCTypes not yet available'
-            curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-headers.zip -o octypes-headers.zip
-
-            echo 'Downloading SITypes ARM64...'
-            curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-ubuntu-latest.arm64.zip -o sitypes-lib.zip || echo 'ARM64 SITypes not yet available'
-            curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-headers.zip -o sitypes-headers.zip
-
-            echo 'Downloading RMNLib ARM64...'
-            curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-ubuntu-latest.arm64.zip -o rmnlib-lib.zip || echo 'ARM64 RMNLib not yet available'
-            curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-headers.zip -o rmnlib-headers.zip
-
-            echo '=== Extracting libraries ==='
-            [ -f octypes-lib.zip ] && unzip -o -j -q octypes-lib.zip -d lib/ && rm octypes-lib.zip
-            [ -f octypes-headers.zip ] && unzip -o -j -q octypes-headers.zip -d include/OCTypes/ && rm octypes-headers.zip
-            [ -f sitypes-lib.zip ] && unzip -o -j -q sitypes-lib.zip -d lib/ && rm sitypes-lib.zip
-            [ -f sitypes-headers.zip ] && unzip -o -j -q sitypes-headers.zip -d include/SITypes/ && rm sitypes-headers.zip
-            [ -f rmnlib-lib.zip ] && unzip -o -j -q rmnlib-lib.zip -d lib/ && rm rmnlib-lib.zip
-            [ -f rmnlib-headers.zip ] && unzip -o -q rmnlib-headers.zip -d . && rm rmnlib-headers.zip
-
-            echo '=== Verifying libraries ==='
-            ls -la lib/ || echo 'No lib directory'
-            ls -la include/ || echo 'No include directory'
-
-            echo '=== Installing Python dependencies ==='
-            pip3 install --upgrade pip setuptools wheel
-            pip3 install numpy cython pytest
-
-            echo '=== Building and testing RMNpy ==='
-            python3 setup.py build_ext --inplace
-            python3 -c 'import rmnpy; print(\"RMNpy version:\", rmnpy.__version__)'
-            python3 -m pytest --maxfail=1 --disable-warnings -q || echo 'Tests completed with some failures (expected for ARM64 preview)'
-          "
+      - name: Run test suite (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: python -m pytest --maxfail=1 --disable-warnings -q

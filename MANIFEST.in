@@ -1,16 +1,23 @@
 # MANIFEST.in for RMNpy
-# Include shared libraries for all platforms
-include lib/*.so*
-include lib/*.dylib
-include lib/*.dll
-include src/rmnpy/*.so*
-include src/rmnpy/*.dylib
-include src/rmnpy/*.dll
 
-# Include header files (for development builds)
+# ── Bundled shared libraries (inside the package) ─────────────────────────────
+include src/rmnpy/_libs/*.so*
+include src/rmnpy/_libs/*.dylib
+include src/rmnpy/_libs/*.dll
+
+# Typing marker
+include src/rmnpy/py.typed
+
+# ── Cython sources (needed for sdist builds) ──────────────────────────────────
+recursive-include src *.pyx *.pxd *.pxi
+
+# Optional: include generated C if present (harmless if absent)
+recursive-include src *.c
+
+# ── Headers (dev builds / local consumption) ──────────────────────────────────
 recursive-include include *.h
 
-# Include documentation and license files
+# ── Docs and top-level metadata ───────────────────────────────────────────────
 include README.md
 include LICENSE
 include CHANGELOG.md
@@ -18,32 +25,22 @@ include *.md
 include *.txt
 include *.rst
 
-# Include build configuration files
+# ── Build configuration ───────────────────────────────────────────────────────
 include pyproject.toml
 include setup.py
 include setup.cfg
 include Makefile
 
-# Include test and script files
-recursive-include tests *.py
+# ── Tests and scripts (sdist only; wheels ignore MANIFEST for package_data) ──
+recursive-include tests *.py *.pyx
 recursive-include scripts *.py
 
-# Exclude unnecessary files
-exclude .gitignore
-exclude .github
-recursive-exclude .github *
-exclude build
-recursive-exclude build *
-exclude dist
-recursive-exclude dist *
-exclude htmlcov
-recursive-exclude htmlcov *
-exclude .mypy_cache
-recursive-exclude .mypy_cache *
-exclude __pycache__
-recursive-exclude __pycache__ *
-global-exclude *.pyc
-global-exclude *.pyo
-global-exclude *.orig
-global-exclude *.rej
-global-exclude *~
+# ── Excludes / pruning ────────────────────────────────────────────────────────
+prune .github
+prune build
+prune dist
+prune htmlcov
+prune .mypy_cache
+prune __pycache__
+
+global-exclude *.pyc *.pyo *.orig *.rej *~

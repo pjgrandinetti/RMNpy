@@ -1,31 +1,27 @@
-# RMNpy .gitignore
-# Python package with Cython extensions, C library dependencies, and Sphinx documentation
+# ── RMNpy .gitignore ──
+# Source is tracked; all build outputs, vendor libs, and local artifacts are ignored.
 
-# Python
+############################
+# Python / Packaging
+############################
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
 *.egg
 *.egg-info/
-dist/
-build/
-*.whl
-.Python
-develop-eggs/
-downloads/
-eggs/
-.eggs/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
 .installed.cfg
+.Python
+build/
+dist/
+wheels/
+share/python-wheels/
+pip-wheel-metadata/
+*.whl
 MANIFEST
 
-# Virtual environments
+############################
+# Virtual envs
+############################
 .env
 .venv
 env/
@@ -34,64 +30,98 @@ ENV/
 env.bak/
 venv.bak/
 
-# PyCharm
-.idea/
-
-# VS Code
-.vscode/
-*.code-workspace
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pytest
+############################
+# Tests / Coverage
+############################
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 .tox/
+.nox/
 .cache
 nosetests.xml
 coverage.xml
 *.cover
+*.py,cover
 .hypothesis/
 
-# Development artifacts
-*.xml
-debug_*.py
-update_*.py
-
-# Cython generated files (only the generated .c/.cpp/.html files, not source .py files)
+############################
+# Cython / Extensions
+############################
+# generated C/C++/HTML from .pyx
 src/rmnpy/**/*.c
 src/rmnpy/**/*.cpp
 src/rmnpy/**/*.html
 
-# Generated constants file (created by extract_si_constants.py during build)
-src/rmnpy/constants.pyx
-
-# In-place build directories (for setup.py build_ext --inplace)
-# Only ignore rmnpy/ at root level, not src/rmnpy/
-/rmnpy/
-
-# Compiled extension files
+# compiled extensions
 src/rmnpy/**/*.so
 src/rmnpy/**/*.pyd
 src/rmnpy/**/*.dll
+src/rmnpy/**/*.dylib
 
-# C/C++ compilation artifacts
-*.o
+# keep package drop-site for runtime libs but ignore binaries
+src/rmnpy/_libs/*
+!src/rmnpy/_libs/.gitkeep
+
+############################
+# Local vendored C libs/headers (produced by `make synclib`)
+############################
+lib/
+include/
+test_include/
 *.a
+*.lib
+*.dll.a
+*.exp
+*.pdb
+
+############################
+# Generic C/C++ artifacts
+############################
+*.o
+*.obj
 *.so
 *.dll
 *.dylib
 *.lib
-*.exp
-*.pdb
 
-# Local library dependencies
-lib/
-include/
-*.a
-*.lib
+# Generated parsers (if any)
+*Parser.tab.c
+*Parser.tab.h
+*Scanner.c
+
+############################
+# CMake / Xcode helpers
+############################
+build-xcode/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+
+############################
+# Docs
+############################
+docs/_build/
+docs/doxygen/
+docs/api/_autosummary/
+docs/_static/generated/
+docs/_templates/generated/
+.doctrees/
+doctrees/
+htmldocs/
+site/
+
+############################
+# Editors / OS junk
+############################
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
 
 # macOS
 .DS_Store
@@ -125,136 +155,29 @@ $RECYCLE.BIN/
 .Trash-*
 .nfs*
 
-# Documentation
-docs/_build/
-docs/doxygen/
-docs/api/_autosummary/
-.doctrees/
-doctrees/
-htmldocs/
-
-# Sphinx
-docs/_static/generated/
-docs/_templates/generated/
-
-# Read the Docs
-site/
-
-# Distribution / packaging artifacts
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-MANIFEST
-
-# pip
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-# Environments
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Editor backup files
-*~
-*.swp
-*.swo
-.#*
-#*#
-
-# Temporary files
+############################
+# Misc / Backups / Logs
+############################
+*.log
 *.tmp
 *.temp
-.tmp/
 tmp/
-
-# Build artifacts specific to this project
-build-xcode/
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-CTestTestfile.cmake
-
-# Generated parser files (if any)
-*Parser.tab.c
-*Parser.tab.h
-*Scanner.c
-
-# Package management
-poetry.lock
-Pipfile.lock
-
-# IPython
-profile_default/
-ipython_config.py
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# Backup files
+.tmp/
 *.bak
 *.backup
 *.old
 
-# Log files
-*.log
+# Typing / tooling caches
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
 
-# Database files
-*.db
-*.sqlite
-*.sqlite3
+# Project management
+poetry.lock
+Pipfile.lock
 
-# Configuration files that might contain secrets
-.secrets
-config.ini
-settings.ini
-
-# Downloaded dependencies (that should be rebuilt)
-downloads/
-external/
-third_party/lib/
-third_party/include/
+# Keep these folders tracked even if empty
+!/docs/_static/
+!/docs/_templates/
