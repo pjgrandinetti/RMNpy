@@ -31,12 +31,19 @@ except Exception:
 # Link against all three libraries in dependency order
 LIBDIRS = [str(ROOT / "lib")]
 if sys.platform == "win32":
-    # Windows/MINGW needs libraries in linker resolution order: dependencies first
-    # OCTypes first (no dependencies), then SITypes (depends on OCTypes), then RMN (depends on both)
-    LIBS = ["OCTypes", "SITypes", "RMN"]
+    # Windows/MINGW: Use explicit static library linking to avoid DLL/import library issues
+    # Specify full paths to static libraries to ensure proper symbol resolution
+    lib_dir = ROOT / "lib"
+    EXTRA_LINK_LIBS = [
+        str(lib_dir / "libOCTypes.a"),  # Base library, no dependencies
+        str(lib_dir / "libSITypes.a"),  # Depends on OCTypes
+        str(lib_dir / "libRMN.a"),  # Depends on both SITypes and OCTypes
+    ]
+    LIBS = []  # Don't use -l flags, use direct file paths instead
 else:
     # On Unix-like systems, RMN should pull in its dependencies
     LIBS = ["RMN"]
+    EXTRA_LINK_LIBS = []
 
 # rpath so extensions find bundled libs at runtime
 if sys.platform == "darwin":
@@ -44,7 +51,8 @@ if sys.platform == "darwin":
 elif sys.platform.startswith("linux"):
     EXTRA_LINK = ["-Wl,-rpath,$ORIGIN/_libs", f"-Wl,-rpath,{ROOT / 'lib'}"]
 else:
-    EXTRA_LINK = []
+    # Windows: Add static library files directly to linker command
+    EXTRA_LINK = EXTRA_LINK_LIBS
 
 EXTRA_COMPILE = []
 if sys.platform == "win32":
