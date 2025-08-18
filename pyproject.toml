@@ -57,12 +57,12 @@ before-all = [
     # Build OCTypes from source (v0.1.4 with static inline fixes)
     "git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
     "cd /tmp/octypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install && make -j$(sysctl -n hw.ncpu) && make install",
-    # Build SITypes from source - set up OCTypes in expected location
+    # Build SITypes from source - set up OCTypes in expected location for Makefile
     "git clone --depth 1 https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
-    "mkdir -p /tmp/sitypes/third_party/OCTypes/include && mkdir -p /tmp/sitypes/third_party/OCTypes/lib",
-    "cp -r /tmp/install/include/OCTypes /tmp/sitypes/third_party/OCTypes/include/",
-    "cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/OCTypes/lib/",
-    "cd /tmp/sitypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install && make -j$(sysctl -n hw.ncpu) && make install",
+    "mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib",
+    "cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/",
+    "cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/lib/",
+    "cd /tmp/sitypes && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install",
     # Build RMNLib from source (v0.1.4 with static inline fixes)
     "git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
     "cd /tmp/rmnlib && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install -DCMAKE_PREFIX_PATH=/tmp/install && make -j$(sysctl -n hw.ncpu) && make install",
