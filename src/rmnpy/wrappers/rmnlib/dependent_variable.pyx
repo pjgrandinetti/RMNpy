@@ -136,22 +136,15 @@ cdef class DependentVariable:
 
             # Convert components if provided - each component must be converted to OCDataRef
             if components is not None:
-                # Convert each NumPy array to OCDataRef first
-                ocdata_components = []
+                # Create a mutable array and append each OCDataRef
+                components_array = <OCArrayRef>OCMutableArrayCreate(&kOCTypeArrayCallBacks)
+                if components_array == NULL:
+                    raise RMNError("Failed to create components array")
+
                 for component in components:
                     ocdata_ref = ocdata_create_from_numpy_array(component)
-                    ocdata_components.append(ocdata_ref)
-
-                # Create OCArray directly from OCDataRef pointers instead of using ocarray_create_from_pylist
-                # which would convert integers to OCNumber objects
-                num_components = len(ocdata_components)
-                value_array = <const void**>PyMem_Malloc(num_components * sizeof(void*))
-                try:
-                    for i in range(num_components):
-                        value_array[i] = <const void*><uint64_t>ocdata_components[i]
-                    components_array = OCArrayCreate(value_array, num_components, &kOCTypeArrayCallBacks)
-                finally:
-                    PyMem_Free(value_array)
+                    # Cast the returned uint64_t back to OCDataRef pointer and append
+                    OCMutableArrayAppendValue(<OCMutableArrayRef>components_array, <const void*><OCDataRef><uint64_t>ocdata_ref)
 
             # Call the core C API creator
             result = DependentVariableCreate(
