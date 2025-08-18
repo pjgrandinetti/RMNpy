@@ -94,7 +94,14 @@ jobs:
           fi
           curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/OCTypes/releases/latest/download/${LIB_FILE} -o octypes-lib.zip
           curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/OCTypes/releases/latest/download/libOCTypes-headers.zip -o octypes-headers.zip
-          unzip -o -j -q octypes-lib.zip -d lib/
+          # Extract only shared libraries to maintain TypeID consistency across Cython modules
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            unzip -o -j -q octypes-lib.zip "*.dll" "*.dll.a" -d lib/
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            unzip -o -j -q octypes-lib.zip "*.dylib" -d lib/
+          else
+            unzip -o -j -q octypes-lib.zip "*.so" -d lib/
+          fi
           unzip -o -j -q octypes-headers.zip -d include/OCTypes/
           rm -f octypes-lib.zip octypes-headers.zip
 
@@ -113,7 +120,14 @@ jobs:
           fi
           curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/SITypes/releases/latest/download/${LIB_FILE} -o sitypes-lib.zip
           curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/SITypes/releases/latest/download/libSITypes-headers.zip -o sitypes-headers.zip
-          unzip -o -j -q sitypes-lib.zip -d lib/
+          # Extract only shared libraries to maintain TypeID consistency across Cython modules
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            unzip -o -j -q sitypes-lib.zip "*.dll" "*.dll.a" -d lib/
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            unzip -o -j -q sitypes-lib.zip "*.dylib" -d lib/
+          else
+            unzip -o -j -q sitypes-lib.zip "*.so" -d lib/
+          fi
           unzip -o -j -q sitypes-headers.zip -d include/SITypes/
           rm -f sitypes-lib.zip sitypes-headers.zip
 
@@ -132,7 +146,14 @@ jobs:
           fi
           curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/RMNLib/releases/latest/download/${LIB_FILE} -o rmnlib-lib.zip
           curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/RMNLib/releases/latest/download/libRMN-headers.zip -o rmnlib-headers.zip
-          unzip -o -j -q rmnlib-lib.zip -d lib/
+          # Extract only shared libraries to maintain TypeID consistency across Cython modules
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            unzip -o -j -q rmnlib-lib.zip "*.dll" "*.dll.a" -d lib/
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            unzip -o -j -q rmnlib-lib.zip "*.dylib" -d lib/
+          else
+            unzip -o -j -q rmnlib-lib.zip "*.so" -d lib/
+          fi
           unzip -o -q rmnlib-headers.zip -d .
           rm -f rmnlib-lib.zip rmnlib-headers.zip
 
@@ -141,22 +162,43 @@ jobs:
         run: |
           echo "lib/:" && ls -la lib/ || true
           echo "include/:" && ls -la include/ || true
+          # Verify we have shared libraries only (critical for TypeID consistency)
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            echo "Checking for Windows DLLs and import libraries..."
+            ls -la lib/*.dll lib/*.dll.a 2>/dev/null || echo "Missing Windows shared libraries"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            echo "Checking for macOS dylibs..."
+            ls -la lib/*.dylib 2>/dev/null || echo "Missing macOS shared libraries"
+          else
+            echo "Checking for Linux shared objects..."
+            ls -la lib/*.so 2>/dev/null || echo "Missing Linux shared libraries"
+          fi
+          # Verify no static libraries are present (would cause TypeID conflicts)
+          if ls lib/*.a 2>/dev/null; then
+            echo "ERROR: Static libraries found - these would cause TypeID conflicts!"
+            echo "Only shared libraries should be present to maintain TypeID consistency."
+            exit 1
+          else
+            echo "Good: No static libraries found - TypeID consistency maintained"
+          fi
 
-      - name: Create Windows Bridge DLL
+      - name: Verify Windows DLLs
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
-          echo "Static libraries in lib/:"
-          ls -la lib/*.a || true
-          if [ -f lib/libOCTypes.a ] && [ -f lib/libSITypes.a ] && [ -f lib/libRMN.a ]; then
-            x86_64-w64-mingw32-gcc -shared -o lib/rmnstack_bridge.dll \
-              -Wl,--out-implib,lib/rmnstack_bridge.dll.a \
-              -Wl,--whole-archive lib/libRMN.a lib/libSITypes.a lib/libOCTypes.a -Wl,--no-whole-archive \
-              -Wl,--export-all-symbols \
-              -lopenblas -llapack -lcurl -lgcc_s -lwinpthread -lquadmath -lgomp -lm
-            test -f lib/rmnstack_bridge.dll || (echo "Bridge DLL failed"; exit 1)
+          echo "Available libraries:"
+          ls -la lib/ || true
+          echo "DLL files:"
+          ls -la lib/*.dll || true
+          echo "Import libraries:"
+          ls -la lib/*.dll.a || true
+          # Ensure DLLs are available - they should be used directly, not bundled into a bridge
+          # This maintains TypeID consistency across Cython modules
+          if [ -f lib/libOCTypes.dll ] && [ -f lib/libSITypes.dll ] && [ -f lib/libRMN.dll ]; then
+            echo "All required DLLs found - TypeID consistency will be maintained"
           else
-            echo "Missing static libs; skipping bridge DLL"; exit 1
+            echo "Missing required DLLs - this may cause TypeID conflicts"
+            exit 1
           fi
 
       - name: Install Python deps (Linux/macOS)
@@ -171,6 +213,8 @@ jobs:
       - name: Install Python deps (Windows via MSYS2)
         if: runner.os == 'Windows'
         shell: msys2 {0}
+        env:
+          PATH: ${{ github.workspace }}/lib:${{ env.PATH }}
         run: |
           python setup.py build_ext --inplace
           python -m pip install --no-build-isolation -e .
@@ -185,11 +229,15 @@ jobs:
       - name: Generate constants (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
+        env:
+          PATH: ${{ github.workspace }}/lib:${{ env.PATH }}
         run: python scripts/extract_si_constants.py || true
 
       - name: Smoke import (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
+        env:
+          PATH: ${{ github.workspace }}/lib:${{ env.PATH }}
         run: python -c "import rmnpy; print('RMNpy:', rmnpy.__version__)"
 
       - name: Run test suite (Linux/macOS)
@@ -202,4 +250,6 @@ jobs:
       - name: Run test suite (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
+        env:
+          PATH: ${{ github.workspace }}/lib:${{ env.PATH }}
         run: python -m pytest --maxfail=1 --disable-warnings -q
