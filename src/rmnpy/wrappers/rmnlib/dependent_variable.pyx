@@ -128,9 +128,15 @@ cdef class DependentVariable:
             if component_labels is not None:
                 component_labels_array = <OCArrayRef><uint64_t>ocarray_create_from_pylist(component_labels)
 
-            # Convert components if provided
+            # Convert components if provided - each component must be converted to OCDataRef
             if components is not None:
-                components_array = <OCArrayRef><uint64_t>ocarray_create_from_pylist(components)
+                # Convert each NumPy array to OCDataRef first
+                from rmnpy.helpers.octypes import ocdata_create_from_numpy_array
+                ocdata_components = []
+                for component in components:
+                    ocdata_ref = ocdata_create_from_numpy_array(component)
+                    ocdata_components.append(ocdata_ref)
+                components_array = <OCArrayRef><uint64_t>ocarray_create_from_pylist(ocdata_components)
 
             # Call the core C API creator
             result = DependentVariableCreate(
