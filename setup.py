@@ -100,7 +100,8 @@ elif sys.platform.startswith("linux"):
 elif sys.platform == "win32":
     # Windows: Need to use shared libraries to maintain TypeID consistency
     # Static libraries cause TypeID conflicts between Cython modules
-    pass
+    # Add auto-import flag to work with MinGW auto-export DLLs
+    EXTRA_LINK = ["-Wl,--enable-auto-import"]
 # Otherwise delvewheel will handle DLL bundling
 
 EXTRA_COMPILE = []
