@@ -174,12 +174,26 @@ jobs:
             ls -la lib/*.so 2>/dev/null || echo "Missing Linux shared libraries"
           fi
           # Verify no static libraries are present (would cause TypeID conflicts)
-          if ls lib/*.a 2>/dev/null; then
-            echo "ERROR: Static libraries found - these would cause TypeID conflicts!"
-            echo "Only shared libraries should be present to maintain TypeID consistency."
-            exit 1
+          # Note: .dll.a files on Windows are import libraries (not static), so exclude them
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            # On Windows, check for actual static libraries (.a files that are NOT .dll.a)
+            if ls lib/*.a 2>/dev/null | grep -v '\.dll\.a$'; then
+              echo "ERROR: Static libraries found - these would cause TypeID conflicts!"
+              echo "Only shared libraries should be present to maintain TypeID consistency."
+              exit 1
+            else
+              echo "Good: No static libraries found - TypeID consistency maintained"
+              echo "Import libraries (.dll.a) are present as expected for Windows linking"
+            fi
           else
-            echo "Good: No static libraries found - TypeID consistency maintained"
+            # On Linux/macOS, any .a files are static libraries and should be rejected
+            if ls lib/*.a 2>/dev/null; then
+              echo "ERROR: Static libraries found - these would cause TypeID conflicts!"
+              echo "Only shared libraries should be present to maintain TypeID consistency."
+              exit 1
+            else
+              echo "Good: No static libraries found - TypeID consistency maintained"
+            fi
           fi
 
       - name: Verify Windows DLLs
