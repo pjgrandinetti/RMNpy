@@ -45,20 +45,31 @@ except Exception:
 # Link against all three libraries in dependency order
 LIBDIRS = [str(ROOT / "lib")]
 if sys.platform == "win32":
-    # Windows/MINGW: Use explicit static library linking to avoid DLL/import library issues
-    # Use --whole-archive to ensure all symbols are available for cross-library dependencies
+    # Windows/MINGW: Use the bridge DLL to ensure all extensions share the same TypeID space
+    # This prevents OCTypes TypeID mismatches between different Python extensions
     lib_dir = ROOT / "lib"
-    EXTRA_LINK_LIBS = [
-        "-Wl,--whole-archive",
-        str(lib_dir / "libOCTypes.a"),  # Base library, no dependencies
-        str(lib_dir / "libSITypes.a"),  # Depends on OCTypes
-        str(lib_dir / "libRMN.a"),  # Depends on both SITypes and OCTypes
-        "-Wl,--no-whole-archive",
-        # Link against MSYS2 OpenBLAS for CBLAS functions needed by RMNLib
-        "-lopenblas",  # MSYS2 provides this as libopenblas
-        # Link against MSYS2 cURL for network functions needed by RMNLib
-        "-lcurl",  # MSYS2 provides this as libcurl
-    ]
+    bridge_dll = lib_dir / "rmnstack_bridge.dll.a"
+
+    if bridge_dll.exists():
+        # Use the bridge DLL import library - this ensures all extensions link to the same DLL
+        EXTRA_LINK_LIBS = [
+            str(bridge_dll),  # Import library for the bridge DLL
+            # Additional system libraries that might be needed
+            "-lopenblas",  # MSYS2 provides this as libopenblas
+            "-lcurl",  # MSYS2 provides this as libcurl
+        ]
+    else:
+        # Fallback to static linking if bridge DLL not available
+        EXTRA_LINK_LIBS = [
+            "-Wl,--whole-archive",
+            str(lib_dir / "libOCTypes.a"),  # Base library, no dependencies
+            str(lib_dir / "libSITypes.a"),  # Depends on OCTypes
+            str(lib_dir / "libRMN.a"),  # Depends on both SITypes and OCTypes
+            "-Wl,--no-whole-archive",
+            "-lopenblas",  # MSYS2 provides this as libopenblas
+            "-lcurl",  # MSYS2 provides this as libcurl
+        ]
+
     LIBS = []  # Use explicit linking via EXTRA_LINK_LIBS
 
     # Add MSYS2 library directory
