@@ -2,6 +2,8 @@
 
 Python bindings for OCTypes, SITypes, and RMNLib C libraries.
 
+![CI Status](https://github.com/pjgrandinetti/RMNpy/actions/workflows/ci.yml/badge.svg)
+
 > **🚀 Setting up on a new computer?** See **[docs/development/NEW_COMPUTER_SETUP.md](docs/development/NEW_COMPUTER_SETUP.md)** for quick setup or **[docs/development/ENVIRONMENT_SETUP.md](docs/development/ENVIRONMENT_SETUP.md)** for detailed instructions.
 
 ## Overview
