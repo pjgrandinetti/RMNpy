@@ -9,6 +9,10 @@ associated metadata including units, quantity type, and components.
 
 import numpy as np
 
+cimport numpy as cnp
+
+cnp.import_array()
+
 from cpython.mem cimport PyMem_Free, PyMem_Malloc
 from libc.stdlib cimport free, malloc
 
@@ -112,7 +116,9 @@ cdef class DependentVariable:
         cdef const void **value_array
         cdef DependentVariableRef result = NULL
         cdef bint success = False
-        cdef OCDataRef oc_data_ptr = NULL
+        cdef const unsigned char* data_ptr
+        cdef uint64_t length
+        cdef OCDataRef oc_data_ref
 
         try:
             # Convert parameters to C types using the exact pattern from dimension.pyx
@@ -144,10 +150,22 @@ cdef class DependentVariable:
                     raise RMNError("Failed to create components array")
 
                 for component in components:
-                    ocdata_ref = ocdata_create_from_numpy_array(component)
-                    # Cast the returned uint64_t back to OCDataRef pointer first, then to void*
-                    oc_data_ptr = <OCDataRef><uint64_t>ocdata_ref
-                    success = OCArrayAppendValue(<OCMutableArrayRef>components_array, <const void*>oc_data_ptr)
+                    # Create OCData directly without going through uint64_t conversion
+                    if not isinstance(component, np.ndarray):
+                        raise TypeError(f"Expected numpy.ndarray, got {type(component)}. Use numpy arrays for OCData.")
+
+                    # Ensure array is contiguous
+                    if not component.flags.c_contiguous:
+                        component = np.ascontiguousarray(component)
+
+                    data_ptr = <const unsigned char*>cnp.PyArray_DATA(component)
+                    length = component.nbytes
+
+                    oc_data_ref = OCDataCreate(data_ptr, length)
+                    if oc_data_ref == NULL:
+                        raise RMNError("Failed to create OCData from NumPy array")
+
+                    success = OCArrayAppendValue(<OCMutableArrayRef>components_array, <const void*>oc_data_ref)
                     if not success:
                         raise RMNError("Failed to append component to array")
 
