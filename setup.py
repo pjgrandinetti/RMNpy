@@ -1,4 +1,4 @@
-# setup.py — build Cython extensions using system-installed libraries
+# setup.py — build Cython extensions with flexible library detection
 import sys
 from pathlib import Path
 
@@ -9,28 +9,59 @@ ROOT = Path(__file__).parent.resolve()
 SRC = ROOT / "src"
 PKG = SRC / "rmnpy"
 
-# Use system include directories for libraries built by cibuildwheel
-INC = ["/usr/local/include"]
+# Detect whether we're using local libraries or system-installed libraries
+local_include = ROOT / "include"
+local_lib = ROOT / "lib"
 
-# Platform-specific include directories
-if sys.platform == "win32":
-    # MinGW system includes
-    INC.extend(
-        [
-            "C:/msys64/mingw64/include",
-            "C:/msys64/mingw64/include/openblas",
-        ]
-    )
-elif sys.platform == "darwin":
-    # macOS homebrew includes
-    INC.extend(
-        [
-            "/usr/local/include",
-            "/opt/homebrew/include",  # Apple Silicon
-            "/usr/local/opt/openblas/include",
-            "/opt/homebrew/opt/openblas/include",
-        ]
-    )
+if local_include.exists() and local_lib.exists():
+    # Local development mode - use libraries in ./lib and ./include
+    print("Using local libraries from ./lib and ./include")
+    INC = [
+        str(local_include),
+        str(local_include / "OCTypes"),
+        str(local_include / "SITypes"),
+        str(local_include / "RMNLib"),
+    ]
+    LIBDIRS = [str(local_lib)]
+
+    # Platform-specific local setup
+    if sys.platform == "win32":
+        import os
+
+        msys2_base = os.environ.get("MSYSTEM_PREFIX")
+        if msys2_base:
+            INC.extend(
+                [
+                    f"{msys2_base}/include",
+                    f"{msys2_base}/include/openblas",
+                ]
+            )
+            LIBDIRS.append(f"{msys2_base}/lib")
+else:
+    # cibuildwheel mode - use system-installed libraries
+    print("Using system-installed libraries")
+    INC = ["/usr/local/include"]
+    LIBDIRS = ["/usr/local/lib"]
+
+    # Platform-specific system setup
+    if sys.platform == "win32":
+        INC.extend(
+            [
+                "C:/msys64/mingw64/include",
+                "C:/msys64/mingw64/include/openblas",
+            ]
+        )
+        LIBDIRS = ["C:/msys64/mingw64/lib"]
+    elif sys.platform == "darwin":
+        INC.extend(
+            [
+                "/usr/local/include",
+                "/opt/homebrew/include",  # Apple Silicon
+                "/usr/local/opt/openblas/include",
+                "/opt/homebrew/opt/openblas/include",
+            ]
+        )
+        LIBDIRS.extend(["/usr/local/lib", "/opt/homebrew/lib"])
 
 # Numpy include (optional; safe to add)
 try:
@@ -39,13 +70,6 @@ try:
     INC.append(_np.get_include())
 except Exception:
     pass
-
-# Use system-installed libraries built by cibuildwheel
-LIBDIRS = ["/usr/local/lib"]
-if sys.platform == "win32":
-    LIBDIRS = ["C:/msys64/mingw64/lib"]
-elif sys.platform == "darwin":
-    LIBDIRS.extend(["/usr/local/lib", "/opt/homebrew/lib"])
 
 # Link against the libraries in dependency order
 LIBS = ["RMN", "SITypes", "OCTypes"]
