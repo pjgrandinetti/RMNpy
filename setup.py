@@ -92,18 +92,9 @@ elif sys.platform.startswith("linux"):
     # Linux: use rpath for bundled libraries
     EXTRA_LINK = ["-Wl,-rpath,$ORIGIN/_libs"]
 elif sys.platform == "win32":
-    # Windows: Use static libraries with proper linking order
-    if local_include.exists() and local_lib.exists():
-        # Local development mode - use static linking for better compatibility
-        LIBS = []  # Don't use -l flags, specify static libs directly
-        static_libs = [
-            str(local_lib / "libRMN.a"),
-            str(local_lib / "libSITypes.a"),
-            str(local_lib / "libOCTypes.a"),
-        ]
-        EXTRA_LINK.extend(static_libs)
-        # Add required system libraries for Windows
-        EXTRA_LINK.extend(["-lopenblas", "-llapack", "-lcurl", "-lm"])
+    # Windows: Need to use shared libraries to maintain TypeID consistency
+    # Static libraries cause TypeID conflicts between Cython modules
+    pass
 # Otherwise delvewheel will handle DLL bundling
 
 EXTRA_COMPILE = []
