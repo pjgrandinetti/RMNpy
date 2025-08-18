@@ -161,6 +161,9 @@ jobs:
 
       - name: Install Python deps (Linux/macOS)
         if: runner.os != 'Windows'
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.LD_LIBRARY_PATH }}
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.DYLD_LIBRARY_PATH }}
         run: |
           python -m pip install --upgrade pip setuptools wheel "numpy>=1.21,<2" cython
           python -m pip install -e .[test]
@@ -174,6 +177,9 @@ jobs:
 
       - name: Generate constants (Linux/macOS)
         if: runner.os != 'Windows'
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.LD_LIBRARY_PATH }}
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.DYLD_LIBRARY_PATH }}
         run: make generate-constants
 
       - name: Generate constants (Windows)
@@ -188,6 +194,9 @@ jobs:
 
       - name: Run test suite (Linux/macOS)
         if: runner.os != 'Windows'
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.LD_LIBRARY_PATH }}
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.DYLD_LIBRARY_PATH }}
         run: python -m pytest --maxfail=1 --disable-warnings -q
 
       - name: Run test suite (Windows)
