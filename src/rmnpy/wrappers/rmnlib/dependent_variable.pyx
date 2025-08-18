@@ -119,6 +119,8 @@ cdef class DependentVariable:
         cdef const unsigned char* data_ptr
         cdef uint64_t length
         cdef OCDataRef oc_data_ref
+        cdef OCTypeID type_id
+        cdef const char* type_name
 
         try:
             # Convert parameters to C types using the exact pattern from dimension.pyx
@@ -162,8 +164,17 @@ cdef class DependentVariable:
                     length = component.nbytes
 
                     oc_data_ref = OCDataCreate(data_ptr, length)
+
                     if oc_data_ref == NULL:
                         raise RMNError("Failed to create OCData from NumPy array")
+
+                    # Debug: Check TypeID of created OCData
+                    type_id = OCGetTypeID(oc_data_ref)
+                    type_name = OCTypeNameFromTypeID(type_id)
+                    if type_name != NULL:
+                        print(f"DEBUG: Created OCData with TypeID: {type_id}, Type name: {type_name.decode('utf-8')}")
+                    else:
+                        print(f"DEBUG: Created OCData with TypeID: {type_id}, but type name is NULL")
 
                     success = OCArrayAppendValue(<OCMutableArrayRef>components_array, <const void*>oc_data_ref)
                     if not success:
