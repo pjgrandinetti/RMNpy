@@ -9,6 +9,9 @@ associated metadata including units, quantity type, and components.
 
 import numpy as np
 
+from cpython.mem cimport PyMem_Free, PyMem_Malloc
+from libc.stdlib cimport free, malloc
+
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.rmnlib cimport *
 from rmnpy._c_api.sitypes cimport *
@@ -19,6 +22,7 @@ from rmnpy.helpers.octypes import (
     enum_to_element_type,
     ocarray_create_from_pylist,
     ocarray_to_pylist,
+    ocdata_create_from_numpy_array,
     ocdict_create_from_pydict,
     ocdict_to_pydict,
     ocstring_create_from_pystring,
@@ -104,6 +108,8 @@ cdef class DependentVariable:
         cdef OCArrayRef component_labels_array = NULL
         cdef OCArrayRef components_array = NULL
         cdef OCStringRef err_ocstr = NULL
+        cdef uint64_t num_components
+        cdef const void **value_array
         cdef DependentVariableRef result = NULL
 
         try:
@@ -131,12 +137,21 @@ cdef class DependentVariable:
             # Convert components if provided - each component must be converted to OCDataRef
             if components is not None:
                 # Convert each NumPy array to OCDataRef first
-                from rmnpy.helpers.octypes import ocdata_create_from_numpy_array
                 ocdata_components = []
                 for component in components:
                     ocdata_ref = ocdata_create_from_numpy_array(component)
                     ocdata_components.append(ocdata_ref)
-                components_array = <OCArrayRef><uint64_t>ocarray_create_from_pylist(ocdata_components)
+
+                # Create OCArray directly from OCDataRef pointers instead of using ocarray_create_from_pylist
+                # which would convert integers to OCNumber objects
+                num_components = len(ocdata_components)
+                value_array = <const void**>PyMem_Malloc(num_components * sizeof(void*))
+                try:
+                    for i in range(num_components):
+                        value_array[i] = <const void*><uint64_t>ocdata_components[i]
+                    components_array = OCArrayCreate(value_array, num_components, &kOCTypeArrayCallBacks)
+                finally:
+                    PyMem_Free(value_array)
 
             # Call the core C API creator
             result = DependentVariableCreate(
