@@ -13,13 +13,13 @@ before-all = [
     "yum install -y cmake3 flex bison curl-devel || apt-get update && apt-get install -y cmake flex bison libcurl4-openssl-dev || apk add cmake flex bison curl-dev",
     # Clone and build OCTypes from source (v0.1.4 with static inline fixes)
     "git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
-    "cd /tmp/octypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && make -j$(nproc) && make install",
+    "cd /tmp/octypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install && make -j$(nproc) && make install",
     # Clone and build SITypes from source
     "git clone --depth 1 https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
-    "cd /tmp/sitypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && make -j$(nproc) && make install",
+    "cd /tmp/sitypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install -DCMAKE_PREFIX_PATH=/tmp/install && make -j$(nproc) && make install",
     # Clone and build RMNLib from source (v0.1.4 with static inline fixes)
     "git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
-    "cd /tmp/rmnlib && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && make -j$(nproc) && make install",
+    "cd /tmp/rmnlib && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install -DCMAKE_PREFIX_PATH=/tmp/install && make -j$(nproc) && make install",
 ]
 
 # Linux-specific settings
@@ -36,10 +36,10 @@ before-all = [
     "cd /tmp/octypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install && make -j$(nproc) && make install",
     # Build SITypes from source
     "git clone --depth 1 https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
-    "cd /tmp/sitypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install && make -j$(nproc) && make install",
+    "cd /tmp/sitypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install -DCMAKE_PREFIX_PATH=/tmp/install && make -j$(nproc) && make install",
     # Build RMNLib from source (v0.1.4 with static inline fixes)
     "git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
-    "cd /tmp/rmnlib && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install && make -j$(nproc) && make install",
+    "cd /tmp/rmnlib && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install -DCMAKE_PREFIX_PATH=/tmp/install && make -j$(nproc) && make install",
 ]
 repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
 
@@ -53,10 +53,10 @@ before-all = [
     "cd /tmp/octypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install && make -j$(sysctl -n hw.ncpu) && make install",
     # Build SITypes from source
     "git clone --depth 1 https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
-    "cd /tmp/sitypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install && make -j$(sysctl -n hw.ncpu) && make install",
+    "cd /tmp/sitypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install -DCMAKE_PREFIX_PATH=/tmp/install && make -j$(sysctl -n hw.ncpu) && make install",
     # Build RMNLib from source (v0.1.4 with static inline fixes)
     "git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
-    "cd /tmp/rmnlib && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install && make -j$(sysctl -n hw.ncpu) && make install",
+    "cd /tmp/rmnlib && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install -DCMAKE_PREFIX_PATH=/tmp/install && make -j$(sysctl -n hw.ncpu) && make install",
 ]
 repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
 environment = { MACOSX_DEPLOYMENT_TARGET = "10.9" }
