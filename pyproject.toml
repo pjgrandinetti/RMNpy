@@ -11,17 +11,17 @@ skip = "pp* *-win32 *-manylinux_i686 *-musllinux_*"
 before-all = [
     # Install system dependencies for building C libraries from source
     "yum install -y flex bison curl-devel openblas-devel lapack-devel || apt-get update && apt-get install -y flex bison libcurl4-openssl-dev libopenblas-dev liblapack-dev || apk add flex bison curl-dev openblas-dev lapack-dev",
-    # Clone and build OCTypes from source (v0.1.4 with static inline fixes)
-    "git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
-    "cd /tmp/octypes && make -j$(nproc) && make install INSTALL_DIR=/tmp/install",
-    # Clone and build SITypes from source - set up OCTypes in expected location for Makefile
+        # Build OCTypes from source (latest version)
+    "git clone --depth 1 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
+    "cd /tmp/octypes && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install",
+    # Build SITypes from source - set up OCTypes in expected location for Makefile
     "git clone --depth 1 https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
     "mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib",
     "cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/",
     "cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/lib/",
-    "cd /tmp/sitypes && make -j$(nproc) && make install INSTALL_DIR=/tmp/install",
-    # Clone and build RMNLib from source (v0.1.4 with static inline fixes)
-    "git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
+    "cd /tmp/sitypes && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install",
+    # Build RMNLib from source (latest version)
+    "git clone --depth 1 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
     "cd /tmp/rmnlib && make -j$(nproc) && make install INSTALL_DIR=/tmp/install",
 ]
 
@@ -33,8 +33,8 @@ manylinux-aarch64-image = "manylinux2014"
 # Install system dependencies in manylinux container
 before-all = [
     "yum install -y flex bison curl-devel openblas-devel lapack-devel",
-    # Build OCTypes from source (v0.1.4 with static inline fixes)
-    "git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
+    # Build OCTypes from source (latest version)
+    "git clone --depth 1 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
     "cd /tmp/octypes && make -j$(nproc) && make install INSTALL_DIR=/tmp/install",
     # Build SITypes from source - set up OCTypes in expected location for Makefile
     "git clone --depth 1 https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
@@ -42,8 +42,8 @@ before-all = [
     "cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/",
     "cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/lib/",
     "cd /tmp/sitypes && make -j$(nproc) && make install INSTALL_DIR=/tmp/install",
-    # Build RMNLib from source (v0.1.4 with static inline fixes)
-    "git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
+    # Build RMNLib from source (latest version)
+    "git clone --depth 1 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
     "cd /tmp/rmnlib && make -j$(nproc) && make install INSTALL_DIR=/tmp/install",
 ]
 repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
@@ -53,8 +53,8 @@ repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
 # Install dependencies via homebrew
 before-all = [
     "brew install flex bison openblas lapack curl libomp",
-    # Build OCTypes from source (v0.1.4 with static inline fixes)
-    "git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
+    # Build OCTypes from source (latest version)
+    "git clone --depth 1 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
     "cd /tmp/octypes && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install",
     # Build SITypes from source - set up OCTypes in expected location for Makefile
     "git clone --depth 1 https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
@@ -62,8 +62,8 @@ before-all = [
     "cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/",
     "cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/lib/",
     "cd /tmp/sitypes && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install",
-    # Build RMNLib from source (v0.1.4 with static inline fixes)
-    "git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
+    # Build RMNLib from source (latest version)
+    "git clone --depth 1 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
     "cd /tmp/rmnlib && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install",
 ]
 repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
@@ -74,8 +74,8 @@ environment = { MACOSX_DEPLOYMENT_TARGET = "10.9" }
 # Use MSYS2/MinGW for Windows builds to match your current setup
 before-all = [
     "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-openblas mingw-w64-x86_64-curl",
-    # Build OCTypes from source using MinGW (v0.1.4 with static inline fixes)
-    "C:\\msys64\\usr\\bin\\bash.exe -lc \"git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes\"",
+    # Build OCTypes from source using MinGW (latest version)
+    "C:\\msys64\\usr\\bin\\bash.exe -lc \"git clone --depth 1 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes\"",
     "C:\\msys64\\usr\\bin\\bash.exe -lc \"cd /tmp/octypes && make -j$(nproc) && make install INSTALL_DIR=/mingw64\"",
     # Build SITypes from source - set up OCTypes in expected location for Makefile
     "C:\\msys64\\usr\\bin\\bash.exe -lc \"git clone --depth 1 https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes\"",
@@ -83,8 +83,8 @@ before-all = [
     "C:\\msys64\\usr\\bin\\bash.exe -lc \"cp /mingw64/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/\"",
     "C:\\msys64\\usr\\bin\\bash.exe -lc \"cp /mingw64/lib/libOCTypes.a /tmp/sitypes/third_party/lib/\"",
     "C:\\msys64\\usr\\bin\\bash.exe -lc \"cd /tmp/sitypes && make -j$(nproc) && make install INSTALL_DIR=/mingw64\"",
-    # Build RMNLib from source (v0.1.4 with static inline fixes)
-    "C:\\msys64\\usr\\bin\\bash.exe -lc \"git clone --depth 1 --branch v0.1.4 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib\"",
+    # Build RMNLib from source (latest version)
+    "C:\\msys64\\usr\\bin\\bash.exe -lc \"git clone --depth 1 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib\"",
     "C:\\msys64\\usr\\bin\\bash.exe -lc \"cd /tmp/rmnlib && make -j$(nproc) && make install INSTALL_DIR=/mingw64\"",
 ]
 repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
