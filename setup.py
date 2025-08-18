@@ -52,9 +52,11 @@ if sys.platform == "win32":
         str(lib_dir / "libOCTypes.a"),  # Base library, no dependencies
         str(lib_dir / "libSITypes.a"),  # Depends on OCTypes
         str(lib_dir / "libRMN.a"),  # Depends on both SITypes and OCTypes
+        # Link against MSYS2 OpenBLAS for CBLAS functions needed by RMNLib
+        # Order matters: static libs first, then their dependencies
+        "-lopenblas",  # MSYS2 provides this as libopenblas
     ]
-    # Link against MSYS2 OpenBLAS for CBLAS functions needed by RMNLib
-    LIBS = ["openblas"]  # MSYS2 provides this as libopenblas
+    LIBS = []  # Use explicit linking via EXTRA_LINK_LIBS
 
     # Add MSYS2 library directory
     msys2_base = os.environ.get("MSYSTEM_PREFIX")
