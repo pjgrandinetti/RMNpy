@@ -46,14 +46,15 @@ except Exception:
 LIBDIRS = [str(ROOT / "lib")]
 if sys.platform == "win32":
     # Windows/MINGW: Use explicit static library linking to avoid DLL/import library issues
-    # Specify full paths to static libraries to ensure proper symbol resolution
+    # Use --whole-archive to ensure all symbols are available for cross-library dependencies
     lib_dir = ROOT / "lib"
     EXTRA_LINK_LIBS = [
+        "-Wl,--whole-archive",
         str(lib_dir / "libOCTypes.a"),  # Base library, no dependencies
         str(lib_dir / "libSITypes.a"),  # Depends on OCTypes
         str(lib_dir / "libRMN.a"),  # Depends on both SITypes and OCTypes
+        "-Wl,--no-whole-archive",
         # Link against MSYS2 OpenBLAS for CBLAS functions needed by RMNLib
-        # Order matters: static libs first, then their dependencies
         "-lopenblas",  # MSYS2 provides this as libopenblas
     ]
     LIBS = []  # Use explicit linking via EXTRA_LINK_LIBS
