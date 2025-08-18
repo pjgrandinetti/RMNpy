@@ -56,6 +56,8 @@ if sys.platform == "win32":
         "-Wl,--no-whole-archive",
         # Link against MSYS2 OpenBLAS for CBLAS functions needed by RMNLib
         "-lopenblas",  # MSYS2 provides this as libopenblas
+        # Link against MSYS2 cURL for network functions needed by RMNLib
+        "-lcurl",  # MSYS2 provides this as libcurl
     ]
     LIBS = []  # Use explicit linking via EXTRA_LINK_LIBS
 
