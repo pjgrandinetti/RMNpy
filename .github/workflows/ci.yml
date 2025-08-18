@@ -230,6 +230,12 @@ jobs:
         env:
           PATH: ${{ github.workspace }}/lib:${{ env.PATH }}
         run: |
+          # Debug: Check what symbols are in the import libraries
+          echo "Checking symbols in import libraries..."
+          nm lib/libOCTypes.dll.a | head -20 || true
+          echo "Checking DLL dependencies..."
+          ldd lib/libOCTypes.dll || true
+          echo "Attempting build..."
           python setup.py build_ext --inplace
           python -m pip install --no-build-isolation -e .
 
