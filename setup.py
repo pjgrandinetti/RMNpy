@@ -82,9 +82,9 @@ except Exception:
 
 # Link against the libraries in dependency order
 if sys.platform == "win32":
-    # Windows: explicitly link against import libraries (.dll.a)
+    # Windows: explicitly link against import libraries using -l:filename syntax
     # This ensures proper symbol resolution for shared libraries
-    LIBS = ["libRMN.dll", "libSITypes.dll", "libOCTypes.dll"]
+    LIBS = [":libRMN.dll.a", ":libSITypes.dll.a", ":libOCTypes.dll.a"]
 else:
     # Unix-like systems: standard library naming
     LIBS = ["RMN", "SITypes", "OCTypes"]
