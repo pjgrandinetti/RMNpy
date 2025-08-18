@@ -1,38 +1,36 @@
-# setup.py — build Cython extensions and bundle shared libs from ./lib into rmnpy/_libs
-import glob
-import shutil
+# setup.py — build Cython extensions using system-installed libraries
 import sys
 from pathlib import Path
 
 from Cython.Build import cythonize
 from setuptools import Extension, find_packages, setup
-from setuptools.command.build_ext import build_ext as _build_ext
 
 ROOT = Path(__file__).parent.resolve()
 SRC = ROOT / "src"
 PKG = SRC / "rmnpy"
 
-# Headers staged by your Makefile (make synclib / update-deps)
-INC = [
-    str(ROOT / "include"),
-    str(ROOT / "include" / "OCTypes"),
-    str(ROOT / "include" / "SITypes"),
-    str(ROOT / "include" / "RMNLib"),
-]
+# Use system include directories for libraries built by cibuildwheel
+INC = ["/usr/local/include"]
 
 # Platform-specific include directories
 if sys.platform == "win32":
-    # Add MSYS2/MinGW include directories for CBLAS/LAPACK headers
-    import os
-
-    msys2_base = os.environ.get("MSYSTEM_PREFIX")
-    if msys2_base:
-        INC.extend(
-            [
-                f"{msys2_base}/include",
-                f"{msys2_base}/include/openblas",
-            ]
-        )
+    # MinGW system includes
+    INC.extend(
+        [
+            "C:/msys64/mingw64/include",
+            "C:/msys64/mingw64/include/openblas",
+        ]
+    )
+elif sys.platform == "darwin":
+    # macOS homebrew includes
+    INC.extend(
+        [
+            "/usr/local/include",
+            "/opt/homebrew/include",  # Apple Silicon
+            "/usr/local/opt/openblas/include",
+            "/opt/homebrew/opt/openblas/include",
+        ]
+    )
 
 # Numpy include (optional; safe to add)
 try:
@@ -42,57 +40,28 @@ try:
 except Exception:
     pass
 
-# Link against all three libraries in dependency order
-LIBDIRS = [str(ROOT / "lib")]
+# Use system-installed libraries built by cibuildwheel
+LIBDIRS = ["/usr/local/lib"]
 if sys.platform == "win32":
-    # Windows/MINGW: Use the bridge DLL to ensure all extensions share the same TypeID space
-    # This prevents OCTypes TypeID mismatches between different Python extensions
-    lib_dir = ROOT / "lib"
-    bridge_dll = lib_dir / "rmnstack_bridge.dll.a"
+    LIBDIRS = ["C:/msys64/mingw64/lib"]
+elif sys.platform == "darwin":
+    LIBDIRS.extend(["/usr/local/lib", "/opt/homebrew/lib"])
 
-    if bridge_dll.exists():
-        # Use the bridge DLL import library - this ensures all extensions link to the same DLL
-        EXTRA_LINK_LIBS = [
-            str(bridge_dll),  # Import library for the bridge DLL
-            # Additional system libraries that might be needed
-            "-lopenblas",  # MSYS2 provides this as libopenblas
-            "-lcurl",  # MSYS2 provides this as libcurl
-        ]
-    else:
-        # Fallback to static linking if bridge DLL not available
-        EXTRA_LINK_LIBS = [
-            "-Wl,--whole-archive",
-            str(lib_dir / "libOCTypes.a"),  # Base library, no dependencies
-            str(lib_dir / "libSITypes.a"),  # Depends on OCTypes
-            str(lib_dir / "libRMN.a"),  # Depends on both SITypes and OCTypes
-            "-Wl,--no-whole-archive",
-            "-lopenblas",  # MSYS2 provides this as libopenblas
-            "-lcurl",  # MSYS2 provides this as libcurl
-        ]
+# Link against the libraries in dependency order
+LIBS = ["RMN", "SITypes", "OCTypes"]
 
-    LIBS = []  # Use explicit linking via EXTRA_LINK_LIBS
-
-    # Add MSYS2 library directory
-    msys2_base = os.environ.get("MSYSTEM_PREFIX")
-    if msys2_base:
-        LIBDIRS.append(f"{msys2_base}/lib")
-else:
-    # On Unix-like systems, RMN should pull in its dependencies
-    LIBS = ["RMN"]
-    EXTRA_LINK_LIBS = []
-
-# rpath so extensions find bundled libs at runtime
+# Platform-specific linking
+EXTRA_LINK = []
 if sys.platform == "darwin":
-    EXTRA_LINK = ["-Wl,-rpath,@loader_path/_libs", f"-Wl,-rpath,{ROOT / 'lib'}"]
+    # macOS: use rpath for bundled libraries
+    EXTRA_LINK = ["-Wl,-rpath,@loader_path/_libs"]
 elif sys.platform.startswith("linux"):
-    EXTRA_LINK = ["-Wl,-rpath,$ORIGIN/_libs", f"-Wl,-rpath,{ROOT / 'lib'}"]
-else:
-    # Windows: Add static library files directly to linker command
-    EXTRA_LINK = EXTRA_LINK_LIBS
+    # Linux: use rpath for bundled libraries
+    EXTRA_LINK = ["-Wl,-rpath,$ORIGIN/_libs"]
+# Windows: delvewheel will handle DLL bundling
 
 EXTRA_COMPILE = []
 if sys.platform == "win32":
-    # MinGW recommended (C99/VLA/complex.h); users will build wheels in CI
     EXTRA_COMPILE = ["-std=gnu99"]
 else:
     EXTRA_COMPILE = ["-std=c99"]
@@ -176,42 +145,11 @@ exts = [
 ]
 
 
-class build_ext(_build_ext):
-    """After building extensions, copy shared libs from ./lib into wheel under rmnpy/_libs."""
-
-    def run(self):
-        super().run()
-        self._copy_shared_libs()
-
-    def _copy_shared_libs(self):
-        src_lib = ROOT / "lib"
-        if not src_lib.is_dir():
-            return
-        patterns = ["*.so", "*.so.*", "*.dylib", "*.dll"]
-        files = []
-        for pat in patterns:
-            files.extend(glob.glob(str(src_lib / pat)))
-        if not files:
-            return
-
-        # For editable installs, copy to package directory too
-        pkg_dir = PKG / "_libs"
-        pkg_dir.mkdir(parents=True, exist_ok=True)
-        for f in files:
-            shutil.copy2(f, pkg_dir)
-
-        # For wheel builds, copy to build lib
-        if hasattr(self, "build_lib") and self.build_lib:
-            out_pkg = Path(self.build_lib) / "rmnpy" / "_libs"
-            out_pkg.mkdir(parents=True, exist_ok=True)
-            for f in files:
-                shutil.copy2(f, out_pkg)
-
-
+# No custom build_ext needed - cibuildwheel handles library bundling
 setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
-    include_package_data=True,  # picks up rmnpy/_libs/* via MANIFEST.in or package-data
+    include_package_data=True,
     ext_modules=cythonize(
         exts,
         language_level=3,
@@ -220,5 +158,4 @@ setup(
             boundscheck=False, wraparound=False, initializedcheck=False
         ),
     ),
-    cmdclass={"build_ext": build_ext},
 )

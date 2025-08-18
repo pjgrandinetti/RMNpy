@@ -10,160 +10,83 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build wheel (${{ matrix.os }} / py${{ matrix.python-version }})
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            python-version: "3.12"
-          - os: macos-latest
-            python-version: "3.12"
-          - os: windows-latest
-            python-version: "3.12"
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Set up Python (non-Windows)
-        if: runner.os != 'Windows'
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: System deps (Ubuntu)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev libcurl4-openssl-dev libomp5 unzip
-
-      - name: System deps (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install cmake flex bison openblas lapack curl libomp unzip
-
-      - name: MSYS2 (Windows)
+      - name: Setup MSYS2 (Windows only)
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          update: true
-          install: |
-            mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-python
-            mingw-w64-x86_64-python-pip
-            mingw-w64-x86_64-python-numpy
-            mingw-w64-x86_64-cython
-            mingw-w64-x86_64-curl
-            mingw-w64-x86_64-openblas
-            mingw-w64-x86_64-lapack
-            mingw-w64-x86_64-openmp
-            mingw-w64-x86_64-make
-            unzip
+          install: git
 
-      - name: Download OCTypes/SITypes/RMNLib (latest)
-        shell: bash
-        run: |
-          set -e
-          mkdir -p lib include/OCTypes include/SITypes include/RMNLib
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.21.0
+        env:
+          # Build from source instead of using prebuilt libraries
+          CIBW_BUILD_VERBOSITY: 1
 
-          # OCTypes
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            ARCH=$(uname -m)
-            [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]] && OCT_LIB="libOCTypes-ubuntu-latest.arm64.zip" || OCT_LIB="libOCTypes-ubuntu-latest.x64.zip"
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            OCT_LIB="libOCTypes-macos-latest.zip"
-          else
-            OCT_LIB="libOCTypes-windows-latest.zip"
-          fi
-          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/OCTypes/releases/latest/download/${OCT_LIB} -o octypes-lib.zip
-          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/OCTypes/releases/latest/download/libOCTypes-headers.zip -o octypes-headers.zip
-          unzip -o -j -q octypes-lib.zip -d lib/
-          unzip -o -j -q octypes-headers.zip -d include/OCTypes/
-          rm -f octypes-lib.zip octypes-headers.zip
-
-          # SITypes
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            ARCH=$(uname -m)
-            [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]] && SI_LIB="libSITypes-ubuntu-latest.arm64.zip" || SI_LIB="libSITypes-ubuntu-latest.x64.zip"
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            SI_LIB="libSITypes-macos-latest.zip"
-          else
-            SI_LIB="libSITypes-windows-latest.zip"
-          fi
-          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/SITypes/releases/latest/download/${SI_LIB} -o sitypes-lib.zip
-          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/SITypes/releases/latest/download/libSITypes-headers.zip -o sitypes-headers.zip
-          unzip -o -j -q sitypes-lib.zip -d lib/
-          unzip -o -j -q sitypes-headers.zip -d include/SITypes/
-          rm -f sitypes-lib.zip sitypes-headers.zip
-
-          # RMNLib
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            ARCH=$(uname -m)
-            [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]] && RMN_LIB="libRMN-ubuntu-latest.arm64.zip" || RMN_LIB="libRMN-ubuntu-latest.x64.zip"
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            RMN_LIB="libRMN-macos-latest.zip"
-          else
-            RMN_LIB="libRMN-windows-latest.zip"
-          fi
-          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/RMNLib/releases/latest/download/${RMN_LIB} -o rmnlib-lib.zip
-          curl -fL --retry 5 --retry-delay 5 https://github.com/pjgrandinetti/RMNLib/releases/latest/download/libRMN-headers.zip -o rmnlib-headers.zip
-          unzip -o -j -q rmnlib-lib.zip -d lib/
-          unzip -o -q rmnlib-headers.zip -d .
-          rm -f rmnlib-lib.zip rmnlib-headers.zip
-
-      - name: Create Windows Bridge DLL
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
-        run: |
-          if [ -f lib/libOCTypes.a ] && [ -f lib/libSITypes.a ] && [ -f lib/libRMN.a ]; then
-            x86_64-w64-mingw32-gcc -shared -o lib/rmnstack_bridge.dll \
-              -Wl,--out-implib,lib/rmnstack_bridge.dll.a \
-              -Wl,--whole-archive lib/libRMN.a lib/libSITypes.a lib/libOCTypes.a -Wl,--no-whole-archive \
-              -Wl,--export-all-symbols \
-              -lopenblas -llapack -lcurl -lgcc_s -lwinpthread -lquadmath -lgomp -lm
-          else
-            echo "Missing static libs; cannot create bridge DLL"; exit 1
-          fi
-
-      - name: Build wheel (Linux/macOS)
-        if: runner.os != 'Windows'
-        run: |
-          python -m pip install --upgrade pip setuptools wheel "numpy>=1.21,<2" cython build
-          python -m build --wheel
-          ls -la dist/
-
-      - name: Build wheel (Windows / MSYS2)
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
-        run: |
-          python -m pip install --upgrade pip setuptools wheel build
-          python setup.py build_ext --inplace
-          python -m build --wheel
-          ls -la dist/
-
-      - name: Upload wheel artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: rmnpy-${{ runner.os }}-py${{ matrix.python-version }}
-          path: dist/*.whl
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl
 
-  github-release:
-    name: Create GitHub Release
-    needs: build
+  build_sdist:
+    name: Build source distribution
     runs-on: ubuntu-latest
     steps:
-      - name: Download wheels
-        uses: actions/download-artifact@v5
+      - uses: actions/checkout@v5
+
+      - name: Build sdist
+        run: pipx run build --sdist
+
+      - uses: actions/upload-artifact@v4
         with:
+          name: cibw-sdist
+          path: dist/*.tar.gz
+
+  upload_pypi:
+    name: Upload to PyPI
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    # Upload to PyPI on every tag starting with 'v'
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    # alternatively, to publish when a GitHub Release is created, use the following rule:
+    # if: github.event_name == 'release' && github.event.action == 'published'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          # unpacks all CIBW artifacts into dist/
+          pattern: cibw-*
+          path: dist
+          merge-multiple: true
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  github_release:
+    name: Create GitHub Release
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cibw-*
           path: wheels
+          merge-multiple: true
 
       - name: Create/Update Release
         uses: softprops/action-gh-release@v2
         with:
-          files: wheels/**/*.whl
+          files: wheels/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

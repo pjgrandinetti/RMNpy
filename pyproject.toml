@@ -1,6 +1,82 @@
 [build-system]
-requires = ["setuptools>=70", "wheel>=0.44", "build>=1.2.1", "Cython>=0.29.36", "numpy>=1.21"]
+requires = ["setuptools>=70", "wheel>=0.44", "build>=1.2.1", "Cython>=0.29.36", "numpy>=1.21", "cibuildwheel>=2.21.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.cibuildwheel]
+# Build for Python 3.11 and 3.12
+build = "cp311-* cp312-*"
+skip = "pp* *-win32 *-manylinux_i686 *-musllinux_*"
+
+# Build from source inside containers - no prebuilt libraries
+before-all = [
+    # Install system dependencies for building C libraries from source
+    "yum install -y cmake3 flex bison curl-devel || apt-get update && apt-get install -y cmake flex bison libcurl4-openssl-dev || apk add cmake flex bison curl-dev",
+    # Clone and build OCTypes from source
+    "git clone --depth 1 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
+    "cd /tmp/octypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && make -j$(nproc) && make install",
+    # Clone and build SITypes from source
+    "git clone --depth 1 https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
+    "cd /tmp/sitypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && make -j$(nproc) && make install",
+    # Clone and build RMNLib from source
+    "git clone --depth 1 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
+    "cd /tmp/rmnlib && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && make -j$(nproc) && make install",
+]
+
+# Linux-specific settings
+[tool.cibuildwheel.linux]
+# Use manylinux2014 for broad compatibility
+manylinux-x86_64-image = "manylinux2014"
+manylinux-aarch64-image = "manylinux2014"
+# Install system dependencies in manylinux container
+before-all = [
+    "yum install -y cmake3 flex bison curl-devel openblas-devel lapack-devel",
+    "ln -sf /usr/bin/cmake3 /usr/bin/cmake",
+    # Build OCTypes from source
+    "git clone --depth 1 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
+    "cd /tmp/octypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && make -j$(nproc) && make install",
+    # Build SITypes from source
+    "git clone --depth 1 https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
+    "cd /tmp/sitypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && make -j$(nproc) && make install",
+    # Build RMNLib from source
+    "git clone --depth 1 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
+    "cd /tmp/rmnlib && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && make -j$(nproc) && make install",
+]
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
+
+# macOS-specific settings
+[tool.cibuildwheel.macos]
+# Install dependencies via homebrew
+before-all = [
+    "brew install cmake flex bison openblas lapack curl libomp",
+    # Build OCTypes from source
+    "git clone --depth 1 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
+    "cd /tmp/octypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && make -j$(sysctl -n hw.ncpu) && make install",
+    # Build SITypes from source
+    "git clone --depth 1 https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
+    "cd /tmp/sitypes && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && make -j$(sysctl -n hw.ncpu) && make install",
+    # Build RMNLib from source
+    "git clone --depth 1 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
+    "cd /tmp/rmnlib && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && make -j$(sysctl -n hw.ncpu) && make install",
+]
+repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
+environment = { MACOSX_DEPLOYMENT_TARGET = "10.9" }
+
+# Windows-specific settings
+[tool.cibuildwheel.windows]
+# Use MSYS2/MinGW for Windows builds to match your current setup
+before-all = [
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-openblas mingw-w64-x86_64-curl",
+    # Build OCTypes from source using MinGW
+    "C:\\msys64\\usr\\bin\\bash.exe -lc \"git clone --depth 1 https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes\"",
+    "C:\\msys64\\usr\\bin\\bash.exe -lc \"cd /tmp/octypes && mkdir -p build && cd build && cmake .. -G 'MSYS Makefiles' -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64 && make -j$(nproc) && make install\"",
+    # Build SITypes from source
+    "C:\\msys64\\usr\\bin\\bash.exe -lc \"git clone --depth 1 https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes\"",
+    "C:\\msys64\\usr\\bin\\bash.exe -lc \"cd /tmp/sitypes && mkdir -p build && cd build && cmake .. -G 'MSYS Makefiles' -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64 && make -j$(nproc) && make install\"",
+    # Build RMNLib from source
+    "C:\\msys64\\usr\\bin\\bash.exe -lc \"git clone --depth 1 https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib\"",
+    "C:\\msys64\\usr\\bin\\bash.exe -lc \"cd /tmp/rmnlib && mkdir -p build && cd build && cmake .. -G 'MSYS Makefiles' -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64 && make -j$(nproc) && make install\"",
+]
+repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
 
 [project]
 name = "rmnpy"
@@ -59,9 +135,9 @@ where = ["src"]
 [tool.setuptools.package-dir]
 "" = "src"
 
-# Ensure bundled shared libs (and typing marker) are included
+# Typing marker only - cibuildwheel handles library bundling
 [tool.setuptools.package-data]
-rmnpy = ["_libs/*", "py.typed"]
+rmnpy = ["py.typed"]
 
 [tool.cython]
 language_level = 3
