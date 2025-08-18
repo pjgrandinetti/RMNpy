@@ -230,12 +230,28 @@ jobs:
         env:
           PATH: ${{ github.workspace }}/lib:${{ env.PATH }}
         run: |
-          # Debug: Check what symbols are in the import libraries
-          echo "Checking symbols in import libraries..."
-          nm lib/libOCTypes.dll.a | head -20 || true
-          echo "Checking DLL dependencies..."
-          ldd lib/libOCTypes.dll || true
-          echo "Attempting build..."
+          # Enhanced debugging for symbol resolution issues
+          echo "=== Import Library Analysis ==="
+          echo "OCTypes import library symbols:"
+          nm lib/libOCTypes.dll.a | grep -E "(OCRelease|OCRetain)" || echo "OCTypes symbols not found"
+          echo "SITypes import library symbols:"
+          nm lib/libSITypes.dll.a | grep -E "(SIDimensionality|SIScalar)" || echo "SITypes symbols not found"
+
+          echo "=== DLL Export Analysis ==="
+          echo "OCTypes DLL exports:"
+          objdump -p lib/libOCTypes.dll | grep -A 50 "Export Table" | head -30 || echo "Could not check OCTypes DLL exports"
+          echo "SITypes DLL exports:"
+          objdump -p lib/libSITypes.dll | grep -A 50 "Export Table" | grep -E "(SIDimensionality|SIScalar)" || echo "Could not find SITypes exports"
+
+          echo "=== Symbol Count Check ==="
+          echo "Total symbols in OCTypes import library: $(nm lib/libOCTypes.dll.a | wc -l)"
+          echo "Total symbols in SITypes import library: $(nm lib/libSITypes.dll.a | wc -l)"
+
+          echo "=== DLL File Information ==="
+          file lib/*.dll
+          ls -lah lib/*.dll lib/*.dll.a
+
+          echo "=== Build attempt with detailed error reporting ==="
           python setup.py build_ext --inplace
           python -m pip install --no-build-isolation -e .
 
