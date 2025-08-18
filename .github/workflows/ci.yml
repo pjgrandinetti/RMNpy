@@ -232,16 +232,20 @@ jobs:
         run: |
           # Enhanced debugging for symbol resolution issues
           echo "=== Import Library Analysis ==="
-          echo "OCTypes import library symbols:"
+          echo "OCTypes import library symbols (first 20):"
+          nm lib/libOCTypes.dll.a | head -20 || echo "Could not read OCTypes import library"
+          echo "OCTypes import library: Looking for OCRelease/OCRetain:"
           nm lib/libOCTypes.dll.a | grep -E "(OCRelease|OCRetain)" || echo "OCTypes symbols not found"
-          echo "SITypes import library symbols:"
+          echo "SITypes import library symbols (first 20):"
+          nm lib/libSITypes.dll.a | head -20 || echo "Could not read SITypes import library"
+          echo "SITypes import library: Looking for SIDimensionality:"
           nm lib/libSITypes.dll.a | grep -E "(SIDimensionality|SIScalar)" || echo "SITypes symbols not found"
 
           echo "=== DLL Export Analysis ==="
-          echo "OCTypes DLL exports:"
-          objdump -p lib/libOCTypes.dll | grep -A 50 "Export Table" | head -30 || echo "Could not check OCTypes DLL exports"
-          echo "SITypes DLL exports:"
-          objdump -p lib/libSITypes.dll | grep -A 50 "Export Table" | grep -E "(SIDimensionality|SIScalar)" || echo "Could not find SITypes exports"
+          echo "OCTypes DLL exports (looking for specific symbols):"
+          objdump -p lib/libOCTypes.dll | grep -A 200 "Export Table" | grep -E "(OCRelease|OCRetain|Name)" || echo "Could not find OCTypes exports"
+          echo "SITypes DLL exports (looking for specific symbols):"
+          objdump -p lib/libSITypes.dll | grep -A 200 "Export Table" | grep -E "(SIDimensionality|SIScalar|Name)" || echo "Could not find SITypes exports"
 
           echo "=== Symbol Count Check ==="
           echo "Total symbols in OCTypes import library: $(nm lib/libOCTypes.dll.a | wc -l)"
@@ -250,6 +254,11 @@ jobs:
           echo "=== DLL File Information ==="
           file lib/*.dll
           ls -lah lib/*.dll lib/*.dll.a
+
+          echo "=== Critical Check: Are we linking against the wrong libraries? ==="
+          echo "This build is failing because import libraries contain wrong symbols."
+          echo "The DLLs may not have been built with proper __declspec(dllexport) declarations."
+          echo "Build will fail - this is expected until DLL export issue is resolved."
 
           echo "=== Build attempt with detailed error reporting ==="
           python setup.py build_ext --inplace
