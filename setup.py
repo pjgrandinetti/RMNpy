@@ -28,8 +28,17 @@ if local_include.exists() and local_lib.exists():
     if sys.platform == "win32":
         import os
 
+        # Try to find MSYS2 environment
         msys2_base = os.environ.get("MSYSTEM_PREFIX")
+        if not msys2_base:
+            # Common MSYS2 installation paths
+            for candidate in ["D:/a/_temp/msys64/mingw64", "C:/msys64/mingw64"]:
+                if Path(candidate).exists():
+                    msys2_base = candidate
+                    break
+
         if msys2_base:
+            print(f"Found MSYS2 environment at: {msys2_base}")
             INC.extend(
                 [
                     f"{msys2_base}/include",
@@ -82,7 +91,20 @@ if sys.platform == "darwin":
 elif sys.platform.startswith("linux"):
     # Linux: use rpath for bundled libraries
     EXTRA_LINK = ["-Wl,-rpath,$ORIGIN/_libs"]
-# Windows: delvewheel will handle DLL bundling
+elif sys.platform == "win32":
+    # Windows: Use static libraries with proper linking order
+    if local_include.exists() and local_lib.exists():
+        # Local development mode - use static linking for better compatibility
+        LIBS = []  # Don't use -l flags, specify static libs directly
+        static_libs = [
+            str(local_lib / "libRMN.a"),
+            str(local_lib / "libSITypes.a"),
+            str(local_lib / "libOCTypes.a"),
+        ]
+        EXTRA_LINK.extend(static_libs)
+        # Add required system libraries for Windows
+        EXTRA_LINK.extend(["-lopenblas", "-llapack", "-lcurl", "-lm"])
+# Otherwise delvewheel will handle DLL bundling
 
 EXTRA_COMPILE = []
 if sys.platform == "win32":
