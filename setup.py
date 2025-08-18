@@ -81,7 +81,13 @@ except Exception:
     pass
 
 # Link against the libraries in dependency order
-LIBS = ["RMN", "SITypes", "OCTypes"]
+if sys.platform == "win32":
+    # Windows: explicitly link against import libraries (.dll.a)
+    # This ensures proper symbol resolution for shared libraries
+    LIBS = ["libRMN.dll", "libSITypes.dll", "libOCTypes.dll"]
+else:
+    # Unix-like systems: standard library naming
+    LIBS = ["RMN", "SITypes", "OCTypes"]
 
 # Platform-specific linking
 EXTRA_LINK = []
