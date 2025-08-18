@@ -112,6 +112,7 @@ cdef class DependentVariable:
         cdef const void **value_array
         cdef DependentVariableRef result = NULL
         cdef bint success = False
+        cdef OCDataRef oc_data_ptr = NULL
 
         try:
             # Convert parameters to C types using the exact pattern from dimension.pyx
@@ -144,8 +145,9 @@ cdef class DependentVariable:
 
                 for component in components:
                     ocdata_ref = ocdata_create_from_numpy_array(component)
-                    # Cast the returned uint64_t back to OCDataRef pointer and append
-                    success = OCArrayAppendValue(<OCMutableArrayRef>components_array, <const void*><OCDataRef><uint64_t>ocdata_ref)
+                    # Cast the returned uint64_t back to OCDataRef pointer first, then to void*
+                    oc_data_ptr = <OCDataRef><uint64_t>ocdata_ref
+                    success = OCArrayAppendValue(<OCMutableArrayRef>components_array, <const void*>oc_data_ptr)
                     if not success:
                         raise RMNError("Failed to append component to array")
 
