@@ -1,9 +1,64 @@
 # setup.py — build Cython extensions with flexible library detection
+import os
 import sys
 from pathlib import Path
 
+# Force MinGW compiler on Windows for cibuildwheel builds
+# This is required because our C code uses C99 VLA and complex.h which MSVC doesn't support
+if sys.platform == "win32" and os.environ.get("CIBUILDWHEEL"):
+    # Set environment variables to ensure MinGW is used consistently
+    os.environ["CC"] = "C:/msys64/mingw64/bin/gcc.exe"
+    os.environ["CXX"] = "C:/msys64/mingw64/bin/g++.exe"
+    os.environ["DISTUTILS_USE_SDK"] = "1"
+    os.environ["MSSdk"] = "1"
+
+    # Also try to override distutils compiler selection
+    try:
+        from distutils import ccompiler
+
+        # Override the default compiler detection to force MinGW
+        def get_default_compiler(plat=None):
+            return "mingw32"
+
+        ccompiler.get_default_compiler = get_default_compiler
+    except ImportError:
+        pass
+
 from Cython.Build import cythonize
 from setuptools import Extension, find_packages, setup
+from setuptools.command.build_ext import build_ext
+
+
+# Custom build class to force MinGW on Windows during cibuildwheel builds
+class CustomBuildExt(build_ext):
+    def build_extensions(self):
+        # Force MinGW compiler on Windows for cibuildwheel builds
+        # This is required because our C code uses C99 VLA and complex.h which MSVC doesn't support
+        if sys.platform == "win32" and os.environ.get("CIBUILDWHEEL"):
+            # Override compiler to use MinGW
+            if self.compiler.compiler_type == "msvc":
+                print(
+                    "WARNING: MSVC compiler detected, attempting to switch to MinGW..."
+                )
+                # Try to force MinGW compiler
+                try:
+                    from distutils.cygwinccompiler import Mingw32CCompiler
+
+                    self.compiler = Mingw32CCompiler()
+                    self.compiler.set_executables(
+                        compiler="C:/msys64/mingw64/bin/gcc.exe",
+                        compiler_so="C:/msys64/mingw64/bin/gcc.exe",
+                        compiler_cxx="C:/msys64/mingw64/bin/g++.exe",
+                        linker_exe="C:/msys64/mingw64/bin/gcc.exe",
+                        linker_so="C:/msys64/mingw64/bin/gcc.exe",
+                    )
+                    print("Successfully switched to MinGW compiler")
+                except Exception as e:
+                    print(f"Failed to switch to MinGW: {e}")
+                    raise
+
+        super().build_extensions()
+
 
 ROOT = Path(__file__).parent.resolve()
 SRC = ROOT / "src"
@@ -49,7 +104,7 @@ if local_include.exists() and local_lib.exists():
 else:
     # cibuildwheel mode - use system-installed libraries
     print("Using system-installed libraries")
-    
+
     # Check for cibuildwheel installation directory first
     cibw_install = Path("/tmp/install")
     if cibw_install.exists():
@@ -204,11 +259,12 @@ exts = [
 ]
 
 
-# No custom build_ext needed - cibuildwheel handles library bundling
+# No custom build_ext needed for normal builds - cibuildwheel handles library bundling
 setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     include_package_data=True,
+    cmdclass={"build_ext": CustomBuildExt},
     ext_modules=cythonize(
         exts,
         language_level=3,
