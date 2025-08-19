@@ -41,9 +41,10 @@ before-all = [
     "ARCHFLAGS=$(if [[ $(uname -m) == 'x86_64' ]]; then echo '-arch x86_64'; else echo '-arch arm64'; fi) && RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $RMNLIB_TAG https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib && mkdir -p /tmp/rmnlib/third_party/include/OCTypes && mkdir -p /tmp/rmnlib/third_party/include/SITypes && mkdir -p /tmp/rmnlib/third_party/lib && cp /tmp/install/include/OCTypes/*.h /tmp/rmnlib/third_party/include/OCTypes/ && cp /tmp/install/include/SITypes/*.h /tmp/rmnlib/third_party/include/SITypes/ && cp /tmp/install/lib/libOCTypes.* /tmp/rmnlib/third_party/lib/ && cp /tmp/install/lib/libSITypes.* /tmp/rmnlib/third_party/lib/ && cd /tmp/rmnlib && make CC=\"clang $ARCHFLAGS\" LDFLAGS=\"$ARCHFLAGS\" -j$(sysctl -n hw.ncpu) && make CC=\"clang $ARCHFLAGS\" LDFLAGS=\"$ARCHFLAGS\" install INSTALL_DIR=/tmp/install",
 ]
 repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel} || delocate-wheel -w {dest_dir} -v {wheel}"
-  environment =
-    MACOSX_DEPLOYMENT_TARGET="13.0"
-    DYLD_LIBRARY_PATH="/tmp/install/lib:/usr/local/lib:/opt/homebrew/lib"
+
+[tool.cibuildwheel.macos.environment]
+MACOSX_DEPLOYMENT_TARGET = "13.0"
+DYLD_LIBRARY_PATH = "/tmp/install/lib:/usr/local/lib:/opt/homebrew/lib"
 
 # Windows-specific settings
 [tool.cibuildwheel.windows]
@@ -67,7 +68,7 @@ repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
 
 [project]
 name = "rmnpy"
-version = "0.1.41"
+version = "0.1.42"
 description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis"
 readme = "README.md"
 license = {text = "MIT"}
