@@ -1,4 +1,0 @@
-﻿2025-08-19T13:11:25.9539690Z Cleaning up orphan processes
-2025-08-19T13:11:26.0076880Z Terminate orphan process: pid (11282) (xcodebuild)
-2025-08-19T13:11:26.4882100Z Terminate orphan process: pid (10811) (Python)
-2025-08-19T13:11:26.6237750Z Terminate orphan process: pid (10810) (bash)
