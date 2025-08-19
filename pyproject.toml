@@ -35,31 +35,23 @@ repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
 # Install dependencies via homebrew
 before-all = [
     "brew install flex bison openblas lapack curl libomp",
-    # Download pre-built OCTypes library (latest stable release)
-    "OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||')",
-    "curl -L -o /tmp/octypes.zip https://github.com/pjgrandinetti/OCTypes/releases/download/$OCTYPES_TAG/libOCTypes-macos-latest.zip",
-    "curl -L -o /tmp/octypes-headers.zip https://github.com/pjgrandinetti/OCTypes/releases/download/$OCTYPES_TAG/libOCTypes-headers.zip",
-    "cd /tmp && unzip -q octypes.zip && unzip -q octypes-headers.zip",
-    "mkdir -p /tmp/install/include/OCTypes && mkdir -p /tmp/install/lib",
-    "cp -r include/OCTypes/* /tmp/install/include/OCTypes/",
-    "cp lib/* /tmp/install/lib/",
-    # Download pre-built SITypes library (latest stable release)
-    "SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||')",
-    "curl -L -o /tmp/sitypes.zip https://github.com/pjgrandinetti/SITypes/releases/download/$SITYPES_TAG/libSITypes-macos-latest.zip",
-    "curl -L -o /tmp/sitypes-headers.zip https://github.com/pjgrandinetti/SITypes/releases/download/$SITYPES_TAG/libSITypes-headers.zip",
-    "cd /tmp && unzip -q sitypes.zip && unzip -q sitypes-headers.zip",
-    "cp -r include/SITypes/* /tmp/install/include/",
-    "cp lib/* /tmp/install/lib/",
-    # Download pre-built RMNLib library (latest stable release)
-    "RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||')",
-    "curl -L -o /tmp/rmnlib.zip https://github.com/pjgrandinetti/RMNLib/releases/download/$RMNLIB_TAG/libRMN-macos-latest.zip",
-    "curl -L -o /tmp/rmnlib-headers.zip https://github.com/pjgrandinetti/RMNLib/releases/download/$RMNLIB_TAG/libRMN-headers.zip",
-    "cd /tmp && unzip -q rmnlib.zip && unzip -q rmnlib-headers.zip",
-    "cp -r include/* /tmp/install/include/",
-    "cp lib/* /tmp/install/lib/",
+    # Build OCTypes from source (latest stable release) - combine tag fetch and clone with robust tag parsing
+    "OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
+    "cd /tmp/octypes && make CC=clang -j$(sysctl -n hw.ncpu) && make CC=clang install INSTALL_DIR=/tmp/install",
+    # Build SITypes from source - combine tag fetch and clone with robust tag parsing, set up OCTypes dependencies
+    "SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
+    "mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib",
+    "cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/",
+    "cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/lib/",
+    "cd /tmp/sitypes && make CC=clang -j$(sysctl -n hw.ncpu) && make CC=clang install INSTALL_DIR=/tmp/install",
+    # Build RMNLib from source (latest stable release) - combine tag fetch and clone with robust tag parsing
+    "RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $RMNLIB_TAG https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
+    "cd /tmp/rmnlib && make CC=clang -j$(sysctl -n hw.ncpu) && make CC=clang install INSTALL_DIR=/tmp/install",
 ]
 repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel} || delocate-wheel -w {dest_dir} -v {wheel}"
-environment = { MACOSX_DEPLOYMENT_TARGET = "10.9", DYLD_LIBRARY_PATH = "/tmp/install/lib:/usr/local/lib:/opt/homebrew/lib" }
+  environment:
+    MACOSX_DEPLOYMENT_TARGET="12.0"
+    DYLD_LIBRARY_PATH="/tmp/install/lib:/usr/local/lib:/opt/homebrew/lib"
 
 # Windows-specific settings
 [tool.cibuildwheel.windows]
@@ -83,7 +75,7 @@ repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
 
 [project]
 name = "rmnpy"
-version = "0.1.34"
+version = "0.1.35"
 description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis"
 readme = "README.md"
 license = {text = "MIT"}
