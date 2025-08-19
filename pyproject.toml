@@ -73,7 +73,7 @@ repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
 
 [project]
 name = "rmnpy"
-version = "0.1.28"
+version = "0.1.29"
 description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis"
 readme = "README.md"
 license = {text = "MIT"}
