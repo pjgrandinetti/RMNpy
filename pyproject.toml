@@ -1,6 +1,5 @@
-[build-system]# Install system dependencies in manylinux container
-before-all = [
-    "yum install -y flex bison curl-devel openblas-devel lapack-devel atlas-devel",tools>=70", "wheel", "build>=1.2.1", "Cython>=0.29.36", "numpy>=1.21", "cibuildwheel>=2.21.0"]
+[build-system]
+requires = ["setuptools>=70", "wheel", "build>=1.2.1", "Cython>=0.29.36", "numpy>=1.21", "cibuildwheel>=2.21.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.cibuildwheel]
@@ -16,23 +15,6 @@ manylinux-aarch64-image = "manylinux2014"
 # Install system dependencies in manylinux container
 before-all = [
     "yum install -y flex bison curl-devel openblas-devel lapack-devel atlas-devel",
-    # Create minimal lapacke.h header since LAPACKE is not available in CentOS 7
-    "mkdir -p /usr/include && cat > /usr/include/lapacke.h << 'EOF'",
-    "#ifndef LAPACKE_H",
-    "#define LAPACKE_H",
-    "#ifdef __cplusplus",
-    "extern \"C\" {",
-    "#endif",
-    "#include <lapacke_config.h>",
-    "#include <lapacke_mangling.h>",
-    "#include <lapacke_utils.h>",
-    "// Minimal LAPACKE declarations - add specific functions as needed",
-    "// This is a minimal shim for manylinux2014 compatibility",
-    "#ifdef __cplusplus",
-    "}",
-    "#endif",
-    "#endif",
-    "EOF",
     # Build OCTypes from source (latest stable release) - robust tag parsing to handle annotated tags
     "OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | cut -f2 | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
     "cd /tmp/octypes && make CC=gcc -j$(nproc) && make CC=gcc install INSTALL_DIR=/tmp/install",
@@ -91,7 +73,7 @@ repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
 
 [project]
 name = "rmnpy"
-version = "0.1.32"
+version = "0.1.33"
 description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis"
 readme = "README.md"
 license = {text = "MIT"}
