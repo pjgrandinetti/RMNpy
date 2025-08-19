@@ -72,15 +72,15 @@ repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
 [tool.cibuildwheel.windows.environment]
 # Force use of MinGW/GCC for Python extension compilation to match dependency libraries
 # This is required because our C code uses C99 VLA and complex.h which MSVC doesn't support
-PATH = "C:/msys64/mingw64/bin;C:/msys64/usr/bin;${PATH}"
+# Don't modify PATH to avoid Python conflicts - just set compiler directly
 CC = "C:/msys64/mingw64/bin/gcc.exe"
 CXX = "C:/msys64/mingw64/bin/g++.exe"
-DISTUTILS_USE_SDK = "1"
-MSSdk = "1"
+# Additional environment to help find MinGW tools during compilation
+MINGW_PREFIX = "C:/msys64/mingw64"
 
 [project]
 name = "rmnpy"
-version = "0.1.58"
+version = "0.1.59"
 description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis"
 readme = "README.md"
 license = {text = "MIT"}
