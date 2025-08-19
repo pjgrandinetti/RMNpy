@@ -49,8 +49,21 @@ if local_include.exists() and local_lib.exists():
 else:
     # cibuildwheel mode - use system-installed libraries
     print("Using system-installed libraries")
-    INC = ["/usr/local/include"]
-    LIBDIRS = ["/usr/local/lib"]
+    
+    # Check for cibuildwheel installation directory first
+    cibw_install = Path("/tmp/install")
+    if cibw_install.exists():
+        print("Found cibuildwheel installation at /tmp/install")
+        INC = [
+            str(cibw_install / "include"),
+            str(cibw_install / "include" / "OCTypes"),
+            str(cibw_install / "include" / "SITypes"),
+            str(cibw_install / "include" / "RMNLib"),
+        ]
+        LIBDIRS = [str(cibw_install / "lib")]
+    else:
+        INC = ["/usr/local/include"]
+        LIBDIRS = ["/usr/local/lib"]
 
     # Platform-specific system setup
     if sys.platform == "win32":
@@ -60,7 +73,8 @@ else:
                 "C:/msys64/mingw64/include/openblas",
             ]
         )
-        LIBDIRS = ["C:/msys64/mingw64/lib"]
+        if not cibw_install.exists():
+            LIBDIRS = ["C:/msys64/mingw64/lib"]
     elif sys.platform == "darwin":
         INC.extend(
             [
@@ -70,7 +84,8 @@ else:
                 "/opt/homebrew/opt/openblas/include",
             ]
         )
-        LIBDIRS.extend(["/usr/local/lib", "/opt/homebrew/lib"])
+        if not cibw_install.exists():
+            LIBDIRS.extend(["/usr/local/lib", "/opt/homebrew/lib"])
 
 # Numpy include (optional; safe to add)
 try:
