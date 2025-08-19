@@ -1,0 +1,169 @@
+﻿2025-08-19T13:10:44.7679920Z ##[group]Run pypa/cibuildwheel@v2.21.0
+2025-08-19T13:10:44.7680242Z with:
+2025-08-19T13:10:44.7680398Z   package-dir: .
+2025-08-19T13:10:44.7680591Z   output-dir: wheelhouse
+2025-08-19T13:10:44.7680778Z env:
+2025-08-19T13:10:44.7680920Z   MSYSTEM: MINGW64
+2025-08-19T13:10:44.7681103Z   CIBW_BUILD_VERBOSITY: 1
+2025-08-19T13:10:44.7681294Z ##[endgroup]
+2025-08-19T13:10:44.7845668Z ##[group]Run actions/setup-python@v5
+2025-08-19T13:10:44.7845907Z with:
+2025-08-19T13:10:44.7846067Z   python-version: 3.12
+2025-08-19T13:10:44.7846256Z   update-environment: false
+2025-08-19T13:10:44.7846458Z   check-latest: false
+2025-08-19T13:10:44.7846741Z   token: ***
+2025-08-19T13:10:44.7846911Z   allow-prereleases: false
+2025-08-19T13:10:44.7847107Z   freethreaded: false
+2025-08-19T13:10:44.7847276Z env:
+2025-08-19T13:10:44.7847421Z   MSYSTEM: MINGW64
+2025-08-19T13:10:44.7847586Z   CIBW_BUILD_VERBOSITY: 1
+2025-08-19T13:10:44.7847775Z ##[endgroup]
+2025-08-19T13:10:45.0184768Z ##[group]Installed versions
+2025-08-19T13:10:45.0396058Z Successfully set up CPython (3.12.10)
+2025-08-19T13:10:45.0396657Z ##[endgroup]
+2025-08-19T13:10:45.0637633Z ##[group]Run # Install cibuildwheel
+2025-08-19T13:10:45.0638002Z [36;1m# Install cibuildwheel[0m
+2025-08-19T13:10:45.0638361Z [36;1m"C:\hostedtoolcache\windows\Python\3.12.10\x64\python.exe" -u << "EOF"[0m
+2025-08-19T13:10:45.0638704Z [36;1mimport os[0m
+2025-08-19T13:10:45.0638885Z [36;1mimport shutil[0m
+2025-08-19T13:10:45.0639074Z [36;1mimport sys[0m
+2025-08-19T13:10:45.0639236Z [36;1mimport venv[0m
+2025-08-19T13:10:45.0639397Z [36;1m[0m
+2025-08-19T13:10:45.0639585Z [36;1mfrom pathlib import Path[0m
+2025-08-19T13:10:45.0639811Z [36;1mfrom subprocess import run[0m
+2025-08-19T13:10:45.0640021Z [36;1m[0m
+2025-08-19T13:10:45.0640159Z [36;1m[0m
+2025-08-19T13:10:45.0640322Z [36;1mclass EnvBuilder(venv.EnvBuilder):[0m
+2025-08-19T13:10:45.0640566Z [36;1m    def __init__(self):[0m
+2025-08-19T13:10:45.0640781Z [36;1m        super().__init__()[0m
+2025-08-19T13:10:45.0641001Z [36;1m[0m
+2025-08-19T13:10:45.0641176Z [36;1m    def setup_scripts(self, context):[0m
+2025-08-19T13:10:45.0641426Z [36;1m        pass[0m
+2025-08-19T13:10:45.0641605Z [36;1m[0m
+2025-08-19T13:10:45.0641770Z [36;1m    def post_setup(self, context):[0m
+2025-08-19T13:10:45.0642028Z [36;1m        super().post_setup(context)[0m
+2025-08-19T13:10:45.0642317Z [36;1m        self.bin_path = Path(context.env_exe).parent[0m
+2025-08-19T13:10:45.0642833Z [36;1m        run([sys.executable, "-m", "pip", "--python", context.env_exe, "install", r"D:\a\_actions\pypa\cibuildwheel\v2.21.0"], check=True)[0m
+2025-08-19T13:10:45.0643500Z [36;1m[0m
+2025-08-19T13:10:45.0643640Z [36;1m[0m
+2025-08-19T13:10:45.0643818Z [36;1mprint("::group::Install cibuildwheel")[0m
+2025-08-19T13:10:45.0644093Z [36;1mvenv_path = Path(r"D:\a\_temp") / "cibw"[0m
+2025-08-19T13:10:45.0644351Z [36;1mif venv_path.exists():[0m
+2025-08-19T13:10:45.0644572Z [36;1m    shutil.rmtree(venv_path)[0m
+2025-08-19T13:10:45.0644800Z [36;1mbuilder = EnvBuilder()[0m
+2025-08-19T13:10:45.0645018Z [36;1mbuilder.create(venv_path)[0m
+2025-08-19T13:10:45.0645433Z [36;1mcibw_path = [path for path in builder.bin_path.glob("cibuildwheel*") if path.stem == "cibuildwheel"][0][0m
+2025-08-19T13:10:45.0645909Z [36;1mwith open(os.environ["GITHUB_OUTPUT"], "at") as f:[0m
+2025-08-19T13:10:45.0646208Z [36;1m    f.write(f"cibw-path={cibw_path}\n")[0m
+2025-08-19T13:10:45.0646489Z [36;1mprint("::endgroup::")[0m
+2025-08-19T13:10:45.0646689Z [36;1mEOF[0m
+2025-08-19T13:10:45.0661347Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2025-08-19T13:10:45.0661800Z env:
+2025-08-19T13:10:45.0661957Z   MSYSTEM: MINGW64
+2025-08-19T13:10:45.0662144Z   CIBW_BUILD_VERBOSITY: 1
+2025-08-19T13:10:45.0662336Z ##[endgroup]
+2025-08-19T13:10:45.9320779Z ##[group]Install cibuildwheel
+2025-08-19T13:10:49.5722431Z Processing d:\a\_actions\pypa\cibuildwheel\v2.21.0
+2025-08-19T13:10:49.5812735Z   Installing build dependencies: started
+2025-08-19T13:10:51.6169157Z   Installing build dependencies: finished with status 'done'
+2025-08-19T13:10:51.6184131Z   Getting requirements to build wheel: started
+2025-08-19T13:10:51.8514488Z   Getting requirements to build wheel: finished with status 'done'
+2025-08-19T13:10:51.8540275Z   Preparing metadata (pyproject.toml): started
+2025-08-19T13:10:52.1539235Z   Preparing metadata (pyproject.toml): finished with status 'done'
+2025-08-19T13:10:52.2227272Z Collecting bashlex!=0.13 (from cibuildwheel==2.21.0)
+2025-08-19T13:10:52.2358432Z   Downloading bashlex-0.18-py2.py3-none-any.whl.metadata (1.1 kB)
+2025-08-19T13:10:52.2792025Z Collecting bracex (from cibuildwheel==2.21.0)
+2025-08-19T13:10:52.2829733Z   Downloading bracex-2.6-py3-none-any.whl.metadata (3.6 kB)
+2025-08-19T13:10:52.3368342Z Collecting certifi (from cibuildwheel==2.21.0)
+2025-08-19T13:10:52.3407037Z   Downloading certifi-2025.8.3-py3-none-any.whl.metadata (2.4 kB)
+2025-08-19T13:10:52.4066614Z Collecting filelock (from cibuildwheel==2.21.0)
+2025-08-19T13:10:52.4103643Z   Downloading filelock-3.19.1-py3-none-any.whl.metadata (2.1 kB)
+2025-08-19T13:10:52.4507162Z Collecting packaging>=20.9 (from cibuildwheel==2.21.0)
+2025-08-19T13:10:52.4525599Z   Using cached packaging-25.0-py3-none-any.whl.metadata (3.3 kB)
+2025-08-19T13:10:52.4830956Z Collecting platformdirs (from cibuildwheel==2.21.0)
+2025-08-19T13:10:52.4870276Z   Downloading platformdirs-4.3.8-py3-none-any.whl.metadata (12 kB)
+2025-08-19T13:10:52.5125506Z Downloading bashlex-0.18-py2.py3-none-any.whl (69 kB)
+2025-08-19T13:10:52.5307520Z Using cached packaging-25.0-py3-none-any.whl (66 kB)
+2025-08-19T13:10:52.5367343Z Downloading bracex-2.6-py3-none-any.whl (11 kB)
+2025-08-19T13:10:52.5560670Z Downloading certifi-2025.8.3-py3-none-any.whl (161 kB)
+2025-08-19T13:10:52.5832468Z Downloading filelock-3.19.1-py3-none-any.whl (15 kB)
+2025-08-19T13:10:52.6034236Z Downloading platformdirs-4.3.8-py3-none-any.whl (18 kB)
+2025-08-19T13:10:52.6444140Z Building wheels for collected packages: cibuildwheel
+2025-08-19T13:10:52.6467798Z   Building wheel for cibuildwheel (pyproject.toml): started
+2025-08-19T13:10:52.7029818Z   Building wheel for cibuildwheel (pyproject.toml): finished with status 'done'
+2025-08-19T13:10:52.7050274Z   Created wheel for cibuildwheel: filename=cibuildwheel-2.21.0-py3-none-any.whl size=88836 sha256=f5f641f76238b79d344725e70d77816a5cb3fa93761944678284ad165f9e7229
+2025-08-19T13:10:52.7052246Z   Stored in directory: C:\Users\runneradmin\AppData\Local\Temp\pip-ephem-wheel-cache-yr33ftto\wheels\72\4c\05\63eb8766c97d96b23070a209a33aa84afd21afb3bfbbb9c28d
+2025-08-19T13:10:52.7117982Z Successfully built cibuildwheel
+2025-08-19T13:10:52.7239882Z Installing collected packages: platformdirs, packaging, filelock, certifi, bracex, bashlex, cibuildwheel
+2025-08-19T13:10:52.9949097Z
+2025-08-19T13:10:52.9963701Z Successfully installed bashlex-0.18 bracex-2.6 certifi-2025.8.3 cibuildwheel-2.21.0 filelock-3.19.1 packaging-25.0 platformdirs-4.3.8
+2025-08-19T13:10:53.1055841Z ##[endgroup]
+2025-08-19T13:10:53.1281273Z ##[group]Run & "D:\a\_temp\cibw\Scripts\cibuildwheel.exe" "." --output-dir "wheelhouse"
+2025-08-19T13:10:53.1281852Z [36;1m& "D:\a\_temp\cibw\Scripts\cibuildwheel.exe" "." --output-dir "wheelhouse"  [0m
+2025-08-19T13:10:53.1886897Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2025-08-19T13:10:53.1887365Z env:
+2025-08-19T13:10:53.1887580Z   MSYSTEM: MINGW64
+2025-08-19T13:10:53.1887839Z   CIBW_BUILD_VERBOSITY: 1
+2025-08-19T13:10:53.1888118Z ##[endgroup]
+2025-08-19T13:10:59.9800508Z
+2025-08-19T13:10:59.9801042Z      _ _       _ _   _       _           _
+2025-08-19T13:10:59.9801514Z  ___|_| |_ _ _|_| |_| |_ _ _| |_ ___ ___| |
+2025-08-19T13:10:59.9802192Z |  _| | . | | | | | . | | | |   | -_| -_| |
+2025-08-19T13:10:59.9802641Z |___|_|___|___|_|_|___|_____|_|_|___|___|_|
+2025-08-19T13:10:59.9802961Z
+2025-08-19T13:10:59.9803099Z cibuildwheel version 2.21.0
+2025-08-19T13:10:59.9803338Z
+2025-08-19T13:10:59.9804785Z Build options:
+2025-08-19T13:10:59.9805086Z   platform: windows
+2025-08-19T13:10:59.9869648Z   [38;5;244mallow_empty: False[0m
+2025-08-19T13:10:59.9870239Z   [38;5;244marchitectures: AMD64, x86[0m
+2025-08-19T13:10:59.9870658Z   build_selector:
+2025-08-19T13:10:59.9870991Z     build_config: cp311-* cp312-*
+2025-08-19T13:10:59.9871481Z     skip_config: pp* *-win32 *-manylinux_i686 *-musllinux_*
+2025-08-19T13:10:59.9871981Z     requires_python: >=3.11
+2025-08-19T13:10:59.9872350Z     prerelease_pythons: False
+2025-08-19T13:10:59.9872868Z     free_threaded_support: False[0m
+2025-08-19T13:10:59.9873457Z   output_dir: D:\a\RMNpy\RMNpy\wheelhouse[0m
+2025-08-19T13:10:59.9874015Z   package_dir: D:\a\RMNpy\RMNpy[0m
+2025-08-19T13:10:59.9874501Z   [38;5;244mtest_selector:
+2025-08-19T13:10:59.9874937Z [38;5;244m    skip_config:[0m
+2025-08-19T13:10:59.9885066Z   before_all: C:\msys64\usr\bin\pacman.exe -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-openblas mingw-w64-x86_64-curl && C:\msys64\usr\bin\bash.exe -lc "OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | cut -f2 | sed 's|refs/tags/||') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes" && C:\msys64\usr\bin\bash.exe -lc "cd /tmp/octypes && make -j$(nproc) && make install INSTALL_DIR=/mingw64" && C:\msys64\usr\bin\bash.exe -lc "SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git | head -1 | cut -f2 | sed 's|refs/tags/||') && git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes" && C:\msys64\usr\bin\bash.exe -lc "mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib" && C:\msys64\usr\bin\bash.exe -lc "cp /mingw64/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/" && C:\msys64\usr\bin\bash.exe -lc "cp /mingw64/lib/libOCTypes.a /tmp/sitypes/third_party/lib/" && C:\msys64\usr\bin\bash.exe -lc "cd /tmp/sitypes && make -j$(nproc) && make install INSTALL_DIR=/mingw64" && C:\msys64\usr\bin\bash.exe -lc "RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | cut -f2 | sed 's|refs/tags/||') && git clone --depth 1 --branch $RMNLIB_TAG https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib" && C:\msys64\usr\bin\bash.exe -lc "cd /tmp/rmnlib && make -j$(nproc) && make install INSTALL_DIR=/mingw64"[0m
+2025-08-19T13:10:59.9894397Z   [38;5;244mbefore_build: [0m
+2025-08-19T13:10:59.9894890Z   [38;5;244mbefore_test: [0m
+2025-08-19T13:10:59.9896598Z   [38;5;244mbuild_frontend: None[0m
+2025-08-19T13:10:59.9897084Z   build_verbosity: 1[0m
+2025-08-19T13:10:59.9897516Z   [38;5;244mconfig_settings: [0m
+2025-08-19T13:10:59.9898017Z   [38;5;244mcontainer_engine: docker[0m
+2025-08-19T13:10:59.9898608Z   [38;5;244mdependency_constraints: pinned[0m
+2025-08-19T13:10:59.9899169Z   [38;5;244menvironment: [0m
+2025-08-19T13:10:59.9899653Z   [38;5;244mmanylinux_images: None[0m
+2025-08-19T13:10:59.9900152Z   [38;5;244mmusllinux_images: None[0m
+2025-08-19T13:10:59.9900787Z   repair_command: delvewheel repair -w {dest_dir} {wheel}[0m
+2025-08-19T13:10:59.9901424Z   [38;5;244mtest_command: [0m
+2025-08-19T13:10:59.9901864Z   [38;5;244mtest_extras: [0m
+2025-08-19T13:10:59.9902295Z   [38;5;244mtest_requires: [0m
+2025-08-19T13:10:59.9902555Z
+2025-08-19T13:10:59.9902887Z Cache folder: C:\Users\runneradmin\AppData\Local\pypa\cibuildwheel\Cache
+2025-08-19T13:10:59.9903398Z
+2025-08-19T13:10:59.9903501Z Here we go!
+2025-08-19T13:10:59.9903674Z
+2025-08-19T13:10:59.9977691Z ##[group]Running before_all...
+2025-08-19T13:10:59.9977976Z
+2025-08-19T13:10:59.9991705Z + C:\msys64\usr\bin\pacman.exe -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-openblas mingw-w64-x86_64-curl && C:\msys64\usr\bin\bash.exe -lc "OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | cut -f2 | sed 's|refs/tags/||') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes" && C:\msys64\usr\bin\bash.exe -lc "cd /tmp/octypes && make -j$(nproc) && make install INSTALL_DIR=/mingw64" && C:\msys64\usr\bin\bash.exe -lc "SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git | head -1 | cut -f2 | sed 's|refs/tags/||') && git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes" && C:\msys64\usr\bin\bash.exe -lc "mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib" && C:\msys64\usr\bin\bash.exe -lc "cp /mingw64/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/" && C:\msys64\usr\bin\bash.exe -lc "cp /mingw64/lib/libOCTypes.a /tmp/sitypes/third_party/lib/" && C:\msys64\usr\bin\bash.exe -lc "cd /tmp/sitypes && make -j$(nproc) && make install INSTALL_DIR=/mingw64" && C:\msys64\usr\bin\bash.exe -lc "RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | cut -f2 | sed 's|refs/tags/||') && git clone --depth 1 --branch $RMNLIB_TAG https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib" && C:\msys64\usr\bin\bash.exe -lc "cd /tmp/rmnlib && make -j$(nproc) && make install INSTALL_DIR=/mingw64"
+2025-08-19T13:11:02.9638417Z :: There are 13 members in group mingw-w64-x86_64-toolchain:
+2025-08-19T13:11:02.9639104Z :: Repository mingw64
+2025-08-19T13:11:02.9641114Z    1) mingw-w64-x86_64-binutils  2) mingw-w64-x86_64-crt-git  3) mingw-w64-x86_64-gcc  4) mingw-w64-x86_64-gdb  5) mingw-w64-x86_64-gdb-multiarch  6) mingw-w64-x86_64-headers-git  7) mingw-w64-x86_64-libmangle-git  8) mingw-w64-x86_64-libwinpthread  9) mingw-w64-x86_64-make  10) mingw-w64-x86_64-pkgconf  11) mingw-w64-x86_64-tools-git  12) mingw-w64-x86_64-winpthreads  13) mingw-w64-x86_64-winstorecompat-git
+2025-08-19T13:11:02.9643066Z
+2025-08-19T13:11:02.9951359Z Enter a selection (default=all):
+2025-08-19T13:11:02.9951859Z resolving dependencies...
+2025-08-19T13:11:03.0368207Z looking for conflicting packages...
+2025-08-19T13:11:03.0460160Z
+2025-08-19T13:11:03.0470706Z Packages (57) mingw-w64-x86_64-brotli-1.1.0-5  mingw-w64-x86_64-bzip2-1.0.8-3  mingw-w64-x86_64-c-ares-1.34.5-1  mingw-w64-x86_64-ca-certificates-20250419-1  mingw-w64-x86_64-expat-2.7.1-2  mingw-w64-x86_64-gcc-libgfortran-15.2.0-8  mingw-w64-x86_64-gcc-libs-15.2.0-8  mingw-w64-x86_64-gettext-runtime-0.26-1  mingw-w64-x86_64-gmp-6.3.0-2  mingw-w64-x86_64-gnutls-3.8.10-1  mingw-w64-x86_64-isl-0.27-1  mingw-w64-x86_64-libffi-3.5.1-1  mingw-w64-x86_64-libiconv-1.18-1  mingw-w64-x86_64-libidn2-2.3.8-2  mingw-w64-x86_64-libpsl-0.21.5-3  mingw-w64-x86_64-libssh2-1.11.1-1  mingw-w64-x86_64-libsystre-1.0.2-1  mingw-w64-x86_64-libtasn1-4.20.0-1  mingw-w64-x86_64-libtre-0.9.0-1  mingw-w64-x86_64-libunistring-1.3-1  mingw-w64-x86_64-mpc-1.3.1-2  mingw-w64-x86_64-mpdecimal-4.0.1-1  mingw-w64-x86_64-mpfr-4.2.2-1  mingw-w64-x86_64-ncurses-6.5.20241228-3  mingw-w64-x86_64-nettle-3.10.2-1  mingw-w64-x86_64-nghttp2-1.66.0-1  mingw-w64-x86_64-nghttp3-1.11.0-1  mingw-w64-x86_64-ngtcp2-1.14.0-1  mingw-w64-x86_64-openssl-3.5.2-1  mingw-w64-x86_64-p11-kit-0.25.5-1  mingw-w64-x86_64-python-3.12.11-1  mingw-w64-x86_64-readline-8.3.001-1  mingw-w64-x86_64-sqlite3-3.50.4-1  mingw-w64-x86_64-tcl-8.6.16-1  mingw-w64-x86_64-termcap-1.3.1-7  mingw-w64-x86_64-tk-8.6.16-1  mingw-w64-x86_64-tzdata-2025b-2  mingw-w64-x86_64-windows-default-manifest-6.4-4  mingw-w64-x86_64-xxhash-0.8.3-1  mingw-w64-x86_64-xz-5.8.1-2  mingw-w64-x86_64-zlib-1.3.1-1  mingw-w64-x86_64-zstd-1.5.7-1  mingw-w64-x86_64-binutils-2.45-2  mingw-w64-x86_64-crt-git-13.0.0.r107.ge07d54f4b-1  mingw-w64-x86_64-curl-8.15.0-1  mingw-w64-x86_64-gcc-15.2.0-8  mingw-w64-x86_64-gdb-16.3-1  mingw-w64-x86_64-gdb-multiarch-16.3-1  mingw-w64-x86_64-headers-git-13.0.0.r107.ge07d54f4b-1  mingw-w64-x86_64-libmangle-git-13.0.0.r107.ge07d54f4b-1  mingw-w64-x86_64-libwinpthread-13.0.0.r107.ge07d54f4b-1  mingw-w64-x86_64-make-4.4.1-3  mingw-w64-x86_64-openblas-0.3.30-2  mingw-w64-x86_64-pkgconf-1~2.5.1-1  mingw-w64-x86_64-tools-git-13.0.0.r107.ge07d54f4b-1  mingw-w64-x86_64-winpthreads-13.0.0.r107.ge07d54f4b-1  mingw-w64-x86_64-winstorecompat-git-13.0.0.r107.ge07d54f4b-1
+2025-08-19T13:11:03.0481755Z
+2025-08-19T13:11:03.0481927Z Total Download Size:    143.04 MiB
+2025-08-19T13:11:03.0482351Z Total Installed Size:  1046.15 MiB
+2025-08-19T13:11:03.0482620Z
+2025-08-19T13:11:03.0482818Z :: Proceed with installation? [Y/n]
+2025-08-19T13:11:03.0483249Z :: Retrieving packages...
+2025-08-19T13:11:20.3590016Z ^C
+2025-08-19T13:11:20.3755232Z ##[error]The operation was canceled.

@@ -1,0 +1,424 @@
+﻿2025-08-19T13:10:11.6632077Z Current runner version: '2.327.1'
+2025-08-19T13:10:11.6655778Z ##[group]Runner Image Provisioner
+2025-08-19T13:10:11.6656779Z Hosted Compute Agent
+2025-08-19T13:10:11.6657485Z Version: 20250818.377
+2025-08-19T13:10:11.6658052Z Commit: 3c593e9f75fe0b87e893bca80d6e12ba089c61fc
+2025-08-19T13:10:11.6658858Z Build Date: 2025-08-18T14:52:18Z
+2025-08-19T13:10:11.6659488Z ##[endgroup]
+2025-08-19T13:10:11.6660003Z ##[group]Operating System
+2025-08-19T13:10:11.6660596Z Ubuntu
+2025-08-19T13:10:11.6661049Z 24.04.2
+2025-08-19T13:10:11.6661516Z LTS
+2025-08-19T13:10:11.6661913Z ##[endgroup]
+2025-08-19T13:10:11.6662483Z ##[group]Runner Image
+2025-08-19T13:10:11.6663011Z Image: ubuntu-24.04
+2025-08-19T13:10:11.6663493Z Version: 20250810.1.0
+2025-08-19T13:10:11.6664535Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20250810.1/images/ubuntu/Ubuntu2404-Readme.md
+2025-08-19T13:10:11.6666002Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20250810.1
+2025-08-19T13:10:11.6667278Z ##[endgroup]
+2025-08-19T13:10:11.6668297Z ##[group]GITHUB_TOKEN Permissions
+2025-08-19T13:10:11.6670384Z Contents: write
+2025-08-19T13:10:11.6670939Z Metadata: read
+2025-08-19T13:10:11.6671394Z ##[endgroup]
+2025-08-19T13:10:11.6673452Z Secret source: Actions
+2025-08-19T13:10:11.6674337Z Prepare workflow directory
+2025-08-19T13:10:11.7005614Z Prepare all required actions
+2025-08-19T13:10:11.7043485Z Getting action download info
+2025-08-19T13:10:12.0352125Z Download action repository 'actions/checkout@v5' (SHA:08c6903cd8c0fde910a37f88322edcfb5dd907a8)
+2025-08-19T13:10:12.3212272Z Download action repository 'msys2/setup-msys2@v2' (SHA:40677d36a502eb2cf0fb808cc9dec31bf6152638)
+2025-08-19T13:10:12.5454485Z Download action repository 'pypa/cibuildwheel@v2.21.0' (SHA:79b0dd328794e1180a7268444d46cdf12e1abd01)
+2025-08-19T13:10:12.8299760Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2025-08-19T13:10:13.0812755Z Getting action download info
+2025-08-19T13:10:13.1723908Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2025-08-19T13:10:13.4566774Z Complete job name: Build wheels on ubuntu-latest
+2025-08-19T13:10:13.5225208Z ##[group]Run actions/checkout@v5
+2025-08-19T13:10:13.5226117Z with:
+2025-08-19T13:10:13.5226586Z   repository: pjgrandinetti/RMNpy
+2025-08-19T13:10:13.5227515Z   token: ***
+2025-08-19T13:10:13.5227953Z   ssh-strict: true
+2025-08-19T13:10:13.5228399Z   ssh-user: git
+2025-08-19T13:10:13.5228846Z   persist-credentials: true
+2025-08-19T13:10:13.5229357Z   clean: true
+2025-08-19T13:10:13.5229807Z   sparse-checkout-cone-mode: true
+2025-08-19T13:10:13.5230362Z   fetch-depth: 1
+2025-08-19T13:10:13.5230800Z   fetch-tags: false
+2025-08-19T13:10:13.5231247Z   show-progress: true
+2025-08-19T13:10:13.5231706Z   lfs: false
+2025-08-19T13:10:13.5232121Z   submodules: false
+2025-08-19T13:10:13.5232635Z   set-safe-directory: true
+2025-08-19T13:10:13.5233378Z ##[endgroup]
+2025-08-19T13:10:13.6133492Z Syncing repository: pjgrandinetti/RMNpy
+2025-08-19T13:10:13.6135373Z ##[group]Getting Git version info
+2025-08-19T13:10:13.6136119Z Working directory is '/home/runner/work/RMNpy/RMNpy'
+2025-08-19T13:10:13.6137467Z [command]/usr/bin/git version
+2025-08-19T13:10:13.6201177Z git version 2.50.1
+2025-08-19T13:10:13.6222111Z ##[endgroup]
+2025-08-19T13:10:13.6235199Z Temporarily overriding HOME='/home/runner/work/_temp/df855478-4477-4a63-b50f-1f9e735ccfdc' before making global git config changes
+2025-08-19T13:10:13.6237791Z Adding repository directory to the temporary git global config as a safe directory
+2025-08-19T13:10:13.6239609Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/RMNpy/RMNpy
+2025-08-19T13:10:13.6276256Z Deleting the contents of '/home/runner/work/RMNpy/RMNpy'
+2025-08-19T13:10:13.6280087Z ##[group]Initializing the repository
+2025-08-19T13:10:13.6284430Z [command]/usr/bin/git init /home/runner/work/RMNpy/RMNpy
+2025-08-19T13:10:13.6368214Z hint: Using 'master' as the name for the initial branch. This default branch name
+2025-08-19T13:10:13.6370488Z hint: is subject to change. To configure the initial branch name to use in all
+2025-08-19T13:10:13.6372347Z hint: of your new repositories, which will suppress this warning, call:
+2025-08-19T13:10:13.6373705Z hint:
+2025-08-19T13:10:13.6374722Z hint: 	git config --global init.defaultBranch <name>
+2025-08-19T13:10:13.6375785Z hint:
+2025-08-19T13:10:13.6376425Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2025-08-19T13:10:13.6378236Z hint: 'development'. The just-created branch can be renamed via this command:
+2025-08-19T13:10:13.6379139Z hint:
+2025-08-19T13:10:13.6379702Z hint: 	git branch -m <name>
+2025-08-19T13:10:13.6380460Z hint:
+2025-08-19T13:10:13.6381614Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2025-08-19T13:10:13.6383526Z Initialized empty Git repository in /home/runner/work/RMNpy/RMNpy/.git/
+2025-08-19T13:10:13.6389017Z [command]/usr/bin/git remote add origin https://github.com/pjgrandinetti/RMNpy
+2025-08-19T13:10:13.6432818Z ##[endgroup]
+2025-08-19T13:10:13.6434209Z ##[group]Disabling automatic garbage collection
+2025-08-19T13:10:13.6438884Z [command]/usr/bin/git config --local gc.auto 0
+2025-08-19T13:10:13.6466022Z ##[endgroup]
+2025-08-19T13:10:13.6466957Z ##[group]Setting up auth
+2025-08-19T13:10:13.6472521Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-08-19T13:10:13.6503930Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-08-19T13:10:13.6842207Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-08-19T13:10:13.6874869Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-08-19T13:10:13.7117417Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2025-08-19T13:10:13.7154293Z ##[endgroup]
+2025-08-19T13:10:13.7156114Z ##[group]Fetching the repository
+2025-08-19T13:10:13.7164285Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +7832b5d6651f3a549487c4c1846b5619df14b4f6:refs/tags/v0.1.31
+2025-08-19T13:10:13.9296355Z From https://github.com/pjgrandinetti/RMNpy
+2025-08-19T13:10:13.9297778Z  * [new ref]         7832b5d6651f3a549487c4c1846b5619df14b4f6 -> v0.1.31
+2025-08-19T13:10:13.9320676Z ##[endgroup]
+2025-08-19T13:10:13.9321881Z ##[group]Determining the checkout info
+2025-08-19T13:10:13.9323239Z ##[endgroup]
+2025-08-19T13:10:13.9327631Z [command]/usr/bin/git sparse-checkout disable
+2025-08-19T13:10:13.9367948Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2025-08-19T13:10:13.9394315Z ##[group]Checking out the ref
+2025-08-19T13:10:13.9398812Z [command]/usr/bin/git checkout --progress --force refs/tags/v0.1.31
+2025-08-19T13:10:13.9491128Z Note: switching to 'refs/tags/v0.1.31'.
+2025-08-19T13:10:13.9492323Z
+2025-08-19T13:10:13.9493003Z You are in 'detached HEAD' state. You can look around, make experimental
+2025-08-19T13:10:13.9494088Z changes and commit them, and you can discard any commits you make in this
+2025-08-19T13:10:13.9495183Z state without impacting any branches by switching back to a branch.
+2025-08-19T13:10:13.9496280Z
+2025-08-19T13:10:13.9497204Z If you want to create a new branch to retain commits you create, you may
+2025-08-19T13:10:13.9498932Z do so (now or later) by using -c with the switch command. Example:
+2025-08-19T13:10:13.9499932Z
+2025-08-19T13:10:13.9500328Z   git switch -c <new-branch-name>
+2025-08-19T13:10:13.9500978Z
+2025-08-19T13:10:13.9501331Z Or undo this operation with:
+2025-08-19T13:10:13.9501917Z
+2025-08-19T13:10:13.9502225Z   git switch -
+2025-08-19T13:10:13.9502653Z
+2025-08-19T13:10:13.9503397Z Turn off this advice by setting config variable advice.detachedHead to false
+2025-08-19T13:10:13.9504949Z
+2025-08-19T13:10:13.9505404Z HEAD is now at 7832b5d Bump version to 0.1.31
+2025-08-19T13:10:13.9508182Z ##[endgroup]
+2025-08-19T13:10:13.9537049Z [command]/usr/bin/git log -1 --format=%H
+2025-08-19T13:10:13.9558649Z 7832b5d6651f3a549487c4c1846b5619df14b4f6
+2025-08-19T13:10:13.9842924Z ##[group]Run pypa/cibuildwheel@v2.21.0
+2025-08-19T13:10:13.9843561Z with:
+2025-08-19T13:10:13.9843960Z   package-dir: .
+2025-08-19T13:10:13.9844393Z   output-dir: wheelhouse
+2025-08-19T13:10:13.9844850Z env:
+2025-08-19T13:10:13.9845234Z   CIBW_BUILD_VERBOSITY: 1
+2025-08-19T13:10:13.9845694Z ##[endgroup]
+2025-08-19T13:10:13.9966407Z ##[group]Run actions/setup-python@v5
+2025-08-19T13:10:14.0031841Z with:
+2025-08-19T13:10:14.0032362Z   python-version: 3.12
+2025-08-19T13:10:14.0032901Z   update-environment: false
+2025-08-19T13:10:14.0033491Z   check-latest: false
+2025-08-19T13:10:14.0034185Z   token: ***
+2025-08-19T13:10:14.0034632Z   allow-prereleases: false
+2025-08-19T13:10:14.0035191Z   freethreaded: false
+2025-08-19T13:10:14.0035641Z env:
+2025-08-19T13:10:14.0036025Z   CIBW_BUILD_VERBOSITY: 1
+2025-08-19T13:10:14.0036500Z ##[endgroup]
+2025-08-19T13:10:14.1674797Z ##[group]Installed versions
+2025-08-19T13:10:14.1778609Z Successfully set up CPython (3.12.11)
+2025-08-19T13:10:14.1780365Z ##[endgroup]
+2025-08-19T13:10:14.1935150Z ##[group]Run # Install cibuildwheel
+2025-08-19T13:10:14.1935876Z [36;1m# Install cibuildwheel[0m
+2025-08-19T13:10:14.1936842Z [36;1m"/opt/hostedtoolcache/Python/3.12.11/x64/bin/python" -u << "EOF"[0m
+2025-08-19T13:10:14.1937666Z [36;1mimport os[0m
+2025-08-19T13:10:14.1938137Z [36;1mimport shutil[0m
+2025-08-19T13:10:14.1938629Z [36;1mimport sys[0m
+2025-08-19T13:10:14.1939083Z [36;1mimport venv[0m
+2025-08-19T13:10:14.1939539Z [36;1m[0m
+2025-08-19T13:10:14.1939969Z [36;1mfrom pathlib import Path[0m
+2025-08-19T13:10:14.1940554Z [36;1mfrom subprocess import run[0m
+2025-08-19T13:10:14.1941095Z [36;1m[0m
+2025-08-19T13:10:14.1941514Z [36;1m[0m
+2025-08-19T13:10:14.1941954Z [36;1mclass EnvBuilder(venv.EnvBuilder):[0m
+2025-08-19T13:10:14.1942573Z [36;1m    def __init__(self):[0m
+2025-08-19T13:10:14.1943138Z [36;1m        super().__init__()[0m
+2025-08-19T13:10:14.1943690Z [36;1m[0m
+2025-08-19T13:10:14.1944148Z [36;1m    def setup_scripts(self, context):[0m
+2025-08-19T13:10:14.1944757Z [36;1m        pass[0m
+2025-08-19T13:10:14.1945222Z [36;1m[0m
+2025-08-19T13:10:14.1945672Z [36;1m    def post_setup(self, context):[0m
+2025-08-19T13:10:14.1946325Z [36;1m        super().post_setup(context)[0m
+2025-08-19T13:10:14.1947128Z [36;1m        self.bin_path = Path(context.env_exe).parent[0m
+2025-08-19T13:10:14.1948485Z [36;1m        run([sys.executable, "-m", "pip", "--python", context.env_exe, "install", r"/home/runner/work/_actions/pypa/cibuildwheel/v2.21.0"], check=True)[0m
+2025-08-19T13:10:14.1949718Z [36;1m[0m
+2025-08-19T13:10:14.1950104Z [36;1m[0m
+2025-08-19T13:10:14.1950572Z [36;1mprint("::group::Install cibuildwheel")[0m
+2025-08-19T13:10:14.1951365Z [36;1mvenv_path = Path(r"/home/runner/work/_temp") / "cibw"[0m
+2025-08-19T13:10:14.1952092Z [36;1mif venv_path.exists():[0m
+2025-08-19T13:10:14.1952651Z [36;1m    shutil.rmtree(venv_path)[0m
+2025-08-19T13:10:14.1953233Z [36;1mbuilder = EnvBuilder()[0m
+2025-08-19T13:10:14.1953795Z [36;1mbuilder.create(venv_path)[0m
+2025-08-19T13:10:14.1954815Z [36;1mcibw_path = [path for path in builder.bin_path.glob("cibuildwheel*") if path.stem == "cibuildwheel"][0][0m
+2025-08-19T13:10:14.1955968Z [36;1mwith open(os.environ["GITHUB_OUTPUT"], "at") as f:[0m
+2025-08-19T13:10:14.1956796Z [36;1m    f.write(f"cibw-path={cibw_path}\n")[0m
+2025-08-19T13:10:14.1957446Z [36;1mprint("::endgroup::")[0m
+2025-08-19T13:10:14.1957958Z [36;1mEOF[0m
+2025-08-19T13:10:14.2033606Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2025-08-19T13:10:14.2034360Z env:
+2025-08-19T13:10:14.2034769Z   CIBW_BUILD_VERBOSITY: 1
+2025-08-19T13:10:14.2035267Z ##[endgroup]
+2025-08-19T13:10:14.7061656Z ##[group]Install cibuildwheel
+2025-08-19T13:10:16.5132809Z Processing /home/runner/work/_actions/pypa/cibuildwheel/v2.21.0
+2025-08-19T13:10:16.5166073Z   Installing build dependencies: started
+2025-08-19T13:10:17.3764309Z   Installing build dependencies: finished with status 'done'
+2025-08-19T13:10:17.3771641Z   Getting requirements to build wheel: started
+2025-08-19T13:10:17.5091697Z   Getting requirements to build wheel: finished with status 'done'
+2025-08-19T13:10:17.5099910Z   Preparing metadata (pyproject.toml): started
+2025-08-19T13:10:17.7233764Z   Preparing metadata (pyproject.toml): finished with status 'done'
+2025-08-19T13:10:17.7762024Z Collecting bashlex!=0.13 (from cibuildwheel==2.21.0)
+2025-08-19T13:10:17.8092012Z   Downloading bashlex-0.18-py2.py3-none-any.whl.metadata (1.1 kB)
+2025-08-19T13:10:17.8231888Z Collecting bracex (from cibuildwheel==2.21.0)
+2025-08-19T13:10:17.8273944Z   Downloading bracex-2.6-py3-none-any.whl.metadata (3.6 kB)
+2025-08-19T13:10:17.8495565Z Collecting certifi (from cibuildwheel==2.21.0)
+2025-08-19T13:10:17.8531314Z   Downloading certifi-2025.8.3-py3-none-any.whl.metadata (2.4 kB)
+2025-08-19T13:10:17.8746264Z Collecting filelock (from cibuildwheel==2.21.0)
+2025-08-19T13:10:17.8782378Z   Downloading filelock-3.19.1-py3-none-any.whl.metadata (2.1 kB)
+2025-08-19T13:10:17.8957498Z Collecting packaging>=20.9 (from cibuildwheel==2.21.0)
+2025-08-19T13:10:17.8969392Z   Using cached packaging-25.0-py3-none-any.whl.metadata (3.3 kB)
+2025-08-19T13:10:17.9132959Z Collecting platformdirs (from cibuildwheel==2.21.0)
+2025-08-19T13:10:17.9172178Z   Downloading platformdirs-4.3.8-py3-none-any.whl.metadata (12 kB)
+2025-08-19T13:10:17.9295363Z Downloading bashlex-0.18-py2.py3-none-any.whl (69 kB)
+2025-08-19T13:10:17.9404740Z Using cached packaging-25.0-py3-none-any.whl (66 kB)
+2025-08-19T13:10:17.9440012Z Downloading bracex-2.6-py3-none-any.whl (11 kB)
+2025-08-19T13:10:17.9506421Z Downloading certifi-2025.8.3-py3-none-any.whl (161 kB)
+2025-08-19T13:10:17.9593554Z Downloading filelock-3.19.1-py3-none-any.whl (15 kB)
+2025-08-19T13:10:17.9646039Z Downloading platformdirs-4.3.8-py3-none-any.whl (18 kB)
+2025-08-19T13:10:17.9760567Z Building wheels for collected packages: cibuildwheel
+2025-08-19T13:10:17.9771155Z   Building wheel for cibuildwheel (pyproject.toml): started
+2025-08-19T13:10:18.0091157Z   Building wheel for cibuildwheel (pyproject.toml): finished with status 'done'
+2025-08-19T13:10:18.0098722Z   Created wheel for cibuildwheel: filename=cibuildwheel-2.21.0-py3-none-any.whl size=88836 sha256=cff98474643a8ab85000bf4974803f1f0734c243fdb482664bc5188fdfd3ff8e
+2025-08-19T13:10:18.0102011Z   Stored in directory: /tmp/pip-ephem-wheel-cache-wbjz59jg/wheels/ee/27/40/9277dc18aa5748b79538adc2193d8e9cf2844d7a68a77921bc
+2025-08-19T13:10:18.0152471Z Successfully built cibuildwheel
+2025-08-19T13:10:18.0344699Z Installing collected packages: platformdirs, packaging, filelock, certifi, bracex, bashlex, cibuildwheel
+2025-08-19T13:10:18.2536841Z
+2025-08-19T13:10:18.2550240Z Successfully installed bashlex-0.18 bracex-2.6 certifi-2025.8.3 cibuildwheel-2.21.0 filelock-3.19.1 packaging-25.0 platformdirs-4.3.8
+2025-08-19T13:10:18.3236910Z ##[endgroup]
+2025-08-19T13:10:18.3343614Z ##[group]Run "/home/runner/work/_temp/cibw/bin/cibuildwheel" "." --output-dir "wheelhouse"   2>&1
+2025-08-19T13:10:18.3344249Z [36;1m"/home/runner/work/_temp/cibw/bin/cibuildwheel" "." --output-dir "wheelhouse"   2>&1[0m
+2025-08-19T13:10:18.3386877Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2025-08-19T13:10:18.3387188Z env:
+2025-08-19T13:10:18.3387355Z   CIBW_BUILD_VERBOSITY: 1
+2025-08-19T13:10:18.3387557Z ##[endgroup]
+2025-08-19T13:10:18.8576543Z
+2025-08-19T13:10:18.8577350Z      _ _       _ _   _       _           _
+2025-08-19T13:10:18.8579066Z  ___|_| |_ _ _|_| |_| |_ _ _| |_ ___ ___| |
+2025-08-19T13:10:18.8579671Z |  _| | . | | | | | . | | | |   | -_| -_| |
+2025-08-19T13:10:18.8580211Z |___|_|___|___|_|_|___|_____|_|_|___|___|_|
+2025-08-19T13:10:18.8580590Z
+2025-08-19T13:10:18.8581192Z cibuildwheel version 2.21.0
+2025-08-19T13:10:18.8581523Z
+2025-08-19T13:10:18.8581691Z Build options:
+2025-08-19T13:10:18.8582077Z   platform: linux
+2025-08-19T13:10:18.8641680Z   [38;5;244mallow_empty: False[0m
+2025-08-19T13:10:18.8642445Z   [38;5;244marchitectures: i686, x86_64[0m
+2025-08-19T13:10:18.8642902Z   build_selector:
+2025-08-19T13:10:18.8643565Z     build_config: cp311-* cp312-*
+2025-08-19T13:10:18.8644146Z     skip_config: pp* *-win32 *-manylinux_i686 *-musllinux_*
+2025-08-19T13:10:18.8644697Z     requires_python: >=3.11
+2025-08-19T13:10:18.8645093Z     prerelease_pythons: False
+2025-08-19T13:10:18.8645625Z     free_threaded_support: False[0m
+2025-08-19T13:10:18.8646272Z   output_dir: /home/runner/work/RMNpy/RMNpy/wheelhouse[0m
+2025-08-19T13:10:18.8647167Z   package_dir: /home/runner/work/RMNpy/RMNpy[0m
+2025-08-19T13:10:18.8647741Z   [38;5;244mtest_selector:
+2025-08-19T13:10:18.8648207Z [38;5;244m    skip_config:[0m
+2025-08-19T13:10:18.8657984Z   before_all: yum install -y flex bison curl-devel openblas-devel lapack-devel atlas-devel netlib-lapack-devel && OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | cut -f2 | sed 's|refs/tags/||' | sed 's|\^{}||') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes && cd /tmp/octypes && make CC=gcc -j$(nproc) && make CC=gcc install INSTALL_DIR=/tmp/install && SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git | head -1 | cut -f2 | sed 's|refs/tags/||' | sed 's|\^{}||') && git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes && mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib && cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/ && cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/lib/ && cd /tmp/sitypes && make CC=gcc -j$(nproc) && make CC=gcc install INSTALL_DIR=/tmp/install && RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | cut -f2 | sed 's|refs/tags/||' | sed 's|\^{}||') && git clone --depth 1 --branch $RMNLIB_TAG https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib && cd /tmp/rmnlib && make CC=gcc -j$(nproc) && make CC=gcc install INSTALL_DIR=/tmp/install[0m
+2025-08-19T13:10:18.8666053Z   [38;5;244mbefore_build: [0m
+2025-08-19T13:10:18.8666562Z   [38;5;244mbefore_test: [0m
+2025-08-19T13:10:18.8667254Z   [38;5;244mbuild_frontend: None[0m
+2025-08-19T13:10:18.8667776Z   build_verbosity: 1[0m
+2025-08-19T13:10:18.8668281Z   [38;5;244mconfig_settings: [0m
+2025-08-19T13:10:18.8668804Z   [38;5;244mcontainer_engine: docker[0m
+2025-08-19T13:10:18.8669373Z   [38;5;244mdependency_constraints: pinned[0m
+2025-08-19T13:10:18.8669921Z   [38;5;244menvironment: [0m
+2025-08-19T13:10:18.8670367Z   [38;5;244mmanylinux_images:
+2025-08-19T13:10:18.8670996Z [38;5;244m    x86_64: quay.io/pypa/manylinux2014_x86_64:2024.09.09-0
+2025-08-19T13:10:18.8671786Z [38;5;244m    i686: quay.io/pypa/manylinux2014_i686:2024.09.09-0
+2025-08-19T13:10:18.8672588Z [38;5;244m    pypy_x86_64: quay.io/pypa/manylinux2014_x86_64:2024.09.09-0
+2025-08-19T13:10:18.8673428Z [38;5;244m    aarch64: quay.io/pypa/manylinux2014_aarch64:2024.09.09-0
+2025-08-19T13:10:18.8674261Z [38;5;244m    ppc64le: quay.io/pypa/manylinux2014_ppc64le:2024.09.09-0
+2025-08-19T13:10:18.8675060Z [38;5;244m    s390x: quay.io/pypa/manylinux2014_s390x:2024.09.09-0
+2025-08-19T13:10:18.8675905Z [38;5;244m    pypy_aarch64: quay.io/pypa/manylinux2014_aarch64:2024.09.09-0
+2025-08-19T13:10:18.8676942Z [38;5;244m    pypy_i686: quay.io/pypa/manylinux2014_i686:2024.09.09-0[0m
+2025-08-19T13:10:18.8677592Z   [38;5;244mmusllinux_images:
+2025-08-19T13:10:18.8678201Z [38;5;244m    x86_64: quay.io/pypa/musllinux_1_2_x86_64:2024.09.09-0
+2025-08-19T13:10:18.8678937Z [38;5;244m    i686: quay.io/pypa/musllinux_1_2_i686:2024.09.09-0
+2025-08-19T13:10:18.8679716Z [38;5;244m    aarch64: quay.io/pypa/musllinux_1_2_aarch64:2024.09.09-0
+2025-08-19T13:10:18.8680796Z [38;5;244m    ppc64le: quay.io/pypa/musllinux_1_2_ppc64le:2024.09.09-0
+2025-08-19T13:10:18.8681625Z [38;5;244m    s390x: quay.io/pypa/musllinux_1_2_s390x:2024.09.09-0[0m
+2025-08-19T13:10:18.8682690Z   [38;5;244mrepair_command: auditwheel repair -w {dest_dir} {wheel}[0m
+2025-08-19T13:10:18.8683431Z   [38;5;244mtest_command: [0m
+2025-08-19T13:10:18.8683892Z   [38;5;244mtest_extras: [0m
+2025-08-19T13:10:18.8684362Z   [38;5;244mtest_requires: [0m
+2025-08-19T13:10:18.8684625Z
+2025-08-19T13:10:18.8684830Z Cache folder: /home/runner/.cache/cibuildwheel
+2025-08-19T13:10:18.8685199Z
+2025-08-19T13:10:18.8685318Z Here we go!
+2025-08-19T13:10:18.8685484Z
+2025-08-19T13:10:18.9555294Z ##[group]Starting container image quay.io/pypa/manylinux2014_x86_64:2024.09.09-0...
+2025-08-19T13:10:18.9555847Z
+2025-08-19T13:10:18.9556295Z info: This container will host the build for cp311-manylinux_x86_64, cp312-manylinux_x86_64...
+2025-08-19T13:10:18.9557225Z + docker version -f '{{json .}}'
+2025-08-19T13:10:18.9768613Z + docker image inspect quay.io/pypa/manylinux2014_x86_64:2024.09.09-0 --format '{{.Os}}/{{.Architecture}}'
+2025-08-19T13:10:18.9881895Z Error response from daemon: No such image: quay.io/pypa/manylinux2014_x86_64:2024.09.09-0
+2025-08-19T13:10:19.6241783Z 2024.09.09-0: Pulling from pypa/manylinux2014_x86_64
+2025-08-19T13:10:19.6247458Z 2d473b07cdd5: Pulling fs layer
+2025-08-19T13:10:19.6248334Z d47dcc08403a: Pulling fs layer
+2025-08-19T13:10:19.6249774Z ac71875e365c: Pulling fs layer
+2025-08-19T13:10:19.6250271Z e9a89bd7d45e: Pulling fs layer
+2025-08-19T13:10:19.6250634Z 2872e051ad92: Pulling fs layer
+2025-08-19T13:10:19.6250992Z 8167d2e5a966: Pulling fs layer
+2025-08-19T13:10:19.6251343Z f04ae0e95984: Pulling fs layer
+2025-08-19T13:10:19.6251790Z eedd4d9b62aa: Pulling fs layer
+2025-08-19T13:10:19.6252166Z a9226c4ba0c6: Pulling fs layer
+2025-08-19T13:10:19.6252528Z 7a2d2a1bee79: Pulling fs layer
+2025-08-19T13:10:19.6252912Z 2c5a09eed11f: Pulling fs layer
+2025-08-19T13:10:19.6253274Z 411e3fdcc1b8: Pulling fs layer
+2025-08-19T13:10:19.6253618Z 9711aac4ffbe: Pulling fs layer
+2025-08-19T13:10:19.6253964Z 759910ab7952: Pulling fs layer
+2025-08-19T13:10:19.6254360Z e1c5847f39ca: Pulling fs layer
+2025-08-19T13:10:19.6254706Z 370a049cb01a: Pulling fs layer
+2025-08-19T13:10:19.6255049Z d4c63b0a4455: Pulling fs layer
+2025-08-19T13:10:19.6255404Z 55086129e52e: Pulling fs layer
+2025-08-19T13:10:19.6255759Z 4aa5748a544b: Pulling fs layer
+2025-08-19T13:10:19.6256102Z 9631b2e43fdb: Pulling fs layer
+2025-08-19T13:10:19.6256430Z 8167d2e5a966: Waiting
+2025-08-19T13:10:19.6256955Z f04ae0e95984: Waiting
+2025-08-19T13:10:19.6257262Z eedd4d9b62aa: Waiting
+2025-08-19T13:10:19.6257564Z e1c5847f39ca: Waiting
+2025-08-19T13:10:19.6257855Z 370a049cb01a: Waiting
+2025-08-19T13:10:19.6258164Z a9226c4ba0c6: Waiting
+2025-08-19T13:10:19.6258486Z d4c63b0a4455: Waiting
+2025-08-19T13:10:19.6258778Z 7a2d2a1bee79: Waiting
+2025-08-19T13:10:19.6259078Z 55086129e52e: Waiting
+2025-08-19T13:10:19.6259370Z 2c5a09eed11f: Waiting
+2025-08-19T13:10:19.6259647Z 4aa5748a544b: Waiting
+2025-08-19T13:10:19.6259933Z 411e3fdcc1b8: Waiting
+2025-08-19T13:10:19.6260207Z 9631b2e43fdb: Waiting
+2025-08-19T13:10:19.6260488Z 9711aac4ffbe: Waiting
+2025-08-19T13:10:19.6260775Z 759910ab7952: Waiting
+2025-08-19T13:10:19.6261071Z e9a89bd7d45e: Waiting
+2025-08-19T13:10:19.6261383Z 2872e051ad92: Waiting
+2025-08-19T13:10:19.8269867Z d47dcc08403a: Verifying Checksum
+2025-08-19T13:10:19.8271338Z d47dcc08403a: Download complete
+2025-08-19T13:10:20.0344702Z e9a89bd7d45e: Verifying Checksum
+2025-08-19T13:10:20.0345171Z e9a89bd7d45e: Download complete
+2025-08-19T13:10:20.0413445Z 2d473b07cdd5: Verifying Checksum
+2025-08-19T13:10:20.0413989Z 2d473b07cdd5: Download complete
+2025-08-19T13:10:20.0625911Z ac71875e365c: Verifying Checksum
+2025-08-19T13:10:20.0626518Z ac71875e365c: Download complete
+2025-08-19T13:10:20.1730791Z 8167d2e5a966: Verifying Checksum
+2025-08-19T13:10:20.1731271Z 8167d2e5a966: Download complete
+2025-08-19T13:10:20.4509262Z 2872e051ad92: Verifying Checksum
+2025-08-19T13:10:20.4509708Z 2872e051ad92: Download complete
+2025-08-19T13:10:20.9507951Z a9226c4ba0c6: Verifying Checksum
+2025-08-19T13:10:20.9508432Z a9226c4ba0c6: Download complete
+2025-08-19T13:10:21.0487387Z eedd4d9b62aa: Download complete
+2025-08-19T13:10:21.0767754Z 7a2d2a1bee79: Verifying Checksum
+2025-08-19T13:10:21.0768269Z 7a2d2a1bee79: Download complete
+2025-08-19T13:10:21.5890338Z 411e3fdcc1b8: Download complete
+2025-08-19T13:10:21.9631033Z 9711aac4ffbe: Verifying Checksum
+2025-08-19T13:10:21.9631544Z 9711aac4ffbe: Download complete
+2025-08-19T13:10:21.9872538Z 2c5a09eed11f: Download complete
+2025-08-19T13:10:22.8003022Z 759910ab7952: Verifying Checksum
+2025-08-19T13:10:22.8003624Z 759910ab7952: Download complete
+2025-08-19T13:10:22.9102242Z e1c5847f39ca: Verifying Checksum
+2025-08-19T13:10:22.9102700Z e1c5847f39ca: Download complete
+2025-08-19T13:10:22.9484574Z 2d473b07cdd5: Pull complete
+2025-08-19T13:10:23.0527080Z 370a049cb01a: Verifying Checksum
+2025-08-19T13:10:23.0527714Z 370a049cb01a: Download complete
+2025-08-19T13:10:23.4102752Z d47dcc08403a: Pull complete
+2025-08-19T13:10:23.4220107Z ac71875e365c: Pull complete
+2025-08-19T13:10:23.4347879Z e9a89bd7d45e: Pull complete
+2025-08-19T13:10:23.4457789Z 2872e051ad92: Pull complete
+2025-08-19T13:10:23.4559350Z 8167d2e5a966: Pull complete
+2025-08-19T13:10:25.6093087Z 55086129e52e: Verifying Checksum
+2025-08-19T13:10:25.6093536Z 55086129e52e: Download complete
+2025-08-19T13:10:25.8546985Z d4c63b0a4455: Verifying Checksum
+2025-08-19T13:10:25.8547410Z d4c63b0a4455: Download complete
+2025-08-19T13:10:25.9576996Z 4aa5748a544b: Verifying Checksum
+2025-08-19T13:10:25.9577426Z 4aa5748a544b: Download complete
+2025-08-19T13:10:38.6366920Z f04ae0e95984: Verifying Checksum
+2025-08-19T13:10:38.6367400Z f04ae0e95984: Download complete
+2025-08-19T13:10:45.6036911Z f04ae0e95984: Pull complete
+2025-08-19T13:10:45.6138261Z eedd4d9b62aa: Pull complete
+2025-08-19T13:10:45.6239485Z a9226c4ba0c6: Pull complete
+2025-08-19T13:10:45.6725435Z 7a2d2a1bee79: Pull complete
+2025-08-19T13:10:45.6836594Z 2c5a09eed11f: Pull complete
+2025-08-19T13:10:45.7385788Z 411e3fdcc1b8: Pull complete
+2025-08-19T13:10:45.7483324Z 9711aac4ffbe: Pull complete
+2025-08-19T13:10:45.7880026Z 759910ab7952: Pull complete
+2025-08-19T13:10:45.7980661Z e1c5847f39ca: Pull complete
+2025-08-19T13:10:45.8250675Z 370a049cb01a: Pull complete
+2025-08-19T13:10:46.0137984Z d4c63b0a4455: Pull complete
+2025-08-19T13:10:46.4263119Z 55086129e52e: Pull complete
+2025-08-19T13:10:46.4467291Z 4aa5748a544b: Pull complete
+2025-08-19T13:10:49.3251127Z 9631b2e43fdb: Verifying Checksum
+2025-08-19T13:10:49.3251707Z 9631b2e43fdb: Download complete
+2025-08-19T13:11:02.3706376Z 9631b2e43fdb: Pull complete
+2025-08-19T13:11:02.3749939Z Digest: sha256:f9274ea3d460654640130caf07dd331c011289c1812b5cfdbad5e360576012a0
+2025-08-19T13:11:02.3763540Z Status: Downloaded newer image for quay.io/pypa/manylinux2014_x86_64:2024.09.09-0
+2025-08-19T13:11:02.4064756Z 4ebd5928b7df4aa7352a5bf94c93bd62d037c51d39b36b9ca2801e02b0e31abe
+2025-08-19T13:11:02.4083328Z     + /bin/true
+2025-08-19T13:11:02.5781106Z     + mkdir -p /project
+2025-08-19T13:11:02.5810151Z     + manylinux-interpreters --help
+2025-08-19T13:11:02.8088693Z     + manylinux-interpreters ensure cp311-cp311
+2025-08-19T13:11:02.8497459Z 'cp311-cp311' already installed at '/opt/python/cp311-cp311'
+2025-08-19T13:11:02.8548500Z     + test -x /opt/python/cp311-cp311/bin/python
+2025-08-19T13:11:02.8571452Z     + manylinux-interpreters ensure cp312-cp312
+2025-08-19T13:11:02.8973663Z 'cp312-cp312' already installed at '/opt/python/cp312-cp312'
+2025-08-19T13:11:02.9023366Z     + test -x /opt/python/cp312-cp312/bin/python
+2025-08-19T13:11:02.9045345Z ##[endgroup]
+2025-08-19T13:11:02.9046390Z                                                              [32m✓ [0m43.95s
+2025-08-19T13:11:02.9047361Z ##[group]Copying project into container...
+2025-08-19T13:11:02.9047664Z
+2025-08-19T13:11:02.9047801Z     + mkdir -p /project
+2025-08-19T13:11:02.9072918Z + docker cp /home/runner/work/RMNpy/RMNpy/. cibuildwheel-abce2dd1-a05e-44af-bb9b-ab91228b8bcb:/project
+2025-08-19T13:11:02.9445873Z ##[endgroup]
+2025-08-19T13:11:02.9446983Z                                                               [32m✓ [0m0.04s
+2025-08-19T13:11:02.9447717Z ##[group]Running before_all...
+2025-08-19T13:11:02.9447877Z
+2025-08-19T13:11:02.9448448Z     + /opt/python/cp38-cp38/bin/python -c 'import sys, json, os; json.dump(os.environ.copy(), sys.stdout)'
+2025-08-19T13:11:03.0307481Z     + sh -c 'yum install -y flex bison curl-devel openblas-devel lapack-devel atlas-devel netlib-lapack-devel && OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | cut -f2 | sed '"'"'s|refs/tags/||'"'"' | sed '"'"'s|\^{}||'"'"') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes && cd /tmp/octypes && make CC=gcc -j$(nproc) && make CC=gcc install INSTALL_DIR=/tmp/install && SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git | head -1 | cut -f2 | sed '"'"'s|refs/tags/||'"'"' | sed '"'"'s|\^{}||'"'"') && git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes && mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib && cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/ && cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/lib/ && cd /tmp/sitypes && make CC=gcc -j$(nproc) && make CC=gcc install INSTALL_DIR=/tmp/install && RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | cut -f2 | sed '"'"'s|refs/tags/||'"'"' | sed '"'"'s|\^{}||'"'"') && git clone --depth 1 --branch $RMNLIB_TAG https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib && cd /tmp/rmnlib && make CC=gcc -j$(nproc) && make CC=gcc install INSTALL_DIR=/tmp/install'
+2025-08-19T13:11:03.1653258Z Loaded plugins: ovl
+2025-08-19T13:11:09.8146485Z Package bison-3.0.4-2.el7.x86_64 already installed and latest version
+2025-08-19T13:11:10.4463369Z No package netlib-lapack-devel available.
+2025-08-19T13:11:10.5903375Z Error: Not tolerating missing names on install, stopping.
+2025-08-19T13:11:10.7984861Z ##[endgroup]
+2025-08-19T13:11:10.7985608Z                                                               [31m✕ [0m7.85s
+2025-08-19T13:11:10.8013984Z ##[error]Command ['sh', '-c', "yum install -y flex bison curl-devel openblas-devel lapack-devel atlas-devel netlib-lapack-devel && OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | cut -f2 | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes && cd /tmp/octypes && make CC=gcc -j$(nproc) && make CC=gcc install INSTALL_DIR=/tmp/install && SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git | head -1 | cut -f2 | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes && mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib && cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/ && cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/lib/ && cd /tmp/sitypes && make CC=gcc -j$(nproc) && make CC=gcc install INSTALL_DIR=/tmp/install && RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | cut -f2 | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $RMNLIB_TAG https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib && cd /tmp/rmnlib && make CC=gcc -j$(nproc) && make CC=gcc install INSTALL_DIR=/tmp/install"] failed with code 1.
+2025-08-19T13:11:10.8018584Z
+2025-08-19T13:11:10.8173931Z ##[error]Process completed with exit code 1.
+2025-08-19T13:11:10.8283689Z Post job cleanup.
+2025-08-19T13:11:10.8343147Z Post job cleanup.
+2025-08-19T13:11:10.9129406Z [command]/usr/bin/git version
+2025-08-19T13:11:10.9164200Z git version 2.50.1
+2025-08-19T13:11:10.9201438Z Temporarily overriding HOME='/home/runner/work/_temp/3308363b-adf9-41fc-bdee-0a9f9f18c1bc' before making global git config changes
+2025-08-19T13:11:10.9202617Z Adding repository directory to the temporary git global config as a safe directory
+2025-08-19T13:11:10.9206810Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/RMNpy/RMNpy
+2025-08-19T13:11:10.9243797Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-08-19T13:11:10.9277739Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-08-19T13:11:10.9501291Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-08-19T13:11:10.9522627Z http.https://github.com/.extraheader
+2025-08-19T13:11:10.9531862Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2025-08-19T13:11:10.9561527Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-08-19T13:11:10.9880390Z Cleaning up orphan processes

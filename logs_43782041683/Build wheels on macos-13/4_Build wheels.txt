@@ -1,0 +1,504 @@
+﻿2025-08-19T13:10:17.4278190Z ##[group]Run pypa/cibuildwheel@v2.21.0
+2025-08-19T13:10:17.4278980Z with:
+2025-08-19T13:10:17.4279410Z   package-dir: .
+2025-08-19T13:10:17.4279940Z   output-dir: wheelhouse
+2025-08-19T13:10:17.4280450Z env:
+2025-08-19T13:10:17.4280930Z   CIBW_BUILD_VERBOSITY: 1
+2025-08-19T13:10:17.4281480Z ##[endgroup]
+2025-08-19T13:10:17.4486900Z ##[group]Run actions/setup-python@v5
+2025-08-19T13:10:17.4487760Z with:
+2025-08-19T13:10:17.4489280Z   python-version: 3.12
+2025-08-19T13:10:17.4489770Z   update-environment: false
+2025-08-19T13:10:17.4490290Z   check-latest: false
+2025-08-19T13:10:17.4490990Z   token: ***
+2025-08-19T13:10:17.4491420Z   allow-prereleases: false
+2025-08-19T13:10:17.4491930Z   freethreaded: false
+2025-08-19T13:10:17.4492360Z env:
+2025-08-19T13:10:17.4492740Z   CIBW_BUILD_VERBOSITY: 1
+2025-08-19T13:10:17.4493200Z ##[endgroup]
+2025-08-19T13:10:17.8399750Z ##[group]Installed versions
+2025-08-19T13:10:17.8498960Z Successfully set up CPython (3.12.10)
+2025-08-19T13:10:17.8501580Z ##[endgroup]
+2025-08-19T13:10:17.8713850Z ##[group]Run # Install cibuildwheel
+2025-08-19T13:10:17.8714740Z [36;1m# Install cibuildwheel[0m
+2025-08-19T13:10:17.8715720Z [36;1m"/Users/runner/hostedtoolcache/Python/3.12.10/x64/bin/python" -u << "EOF"[0m
+2025-08-19T13:10:17.8716750Z [36;1mimport os[0m
+2025-08-19T13:10:17.8717300Z [36;1mimport shutil[0m
+2025-08-19T13:10:17.8717860Z [36;1mimport sys[0m
+2025-08-19T13:10:17.8718420Z [36;1mimport venv[0m
+2025-08-19T13:10:17.8719040Z [36;1m[0m
+2025-08-19T13:10:17.8719520Z [36;1mfrom pathlib import Path[0m
+2025-08-19T13:10:17.8720200Z [36;1mfrom subprocess import run[0m
+2025-08-19T13:10:17.8720840Z [36;1m[0m
+2025-08-19T13:10:17.8721280Z [36;1m[0m
+2025-08-19T13:10:17.8721800Z [36;1mclass EnvBuilder(venv.EnvBuilder):[0m
+2025-08-19T13:10:17.8722480Z [36;1m    def __init__(self):[0m
+2025-08-19T13:10:17.8723110Z [36;1m        super().__init__()[0m
+2025-08-19T13:10:17.8723680Z [36;1m[0m
+2025-08-19T13:10:17.8724210Z [36;1m    def setup_scripts(self, context):[0m
+2025-08-19T13:10:17.8724880Z [36;1m        pass[0m
+2025-08-19T13:10:17.8726110Z [36;1m[0m
+2025-08-19T13:10:17.8726640Z [36;1m    def post_setup(self, context):[0m
+2025-08-19T13:10:17.8727370Z [36;1m        super().post_setup(context)[0m
+2025-08-19T13:10:17.8728160Z [36;1m        self.bin_path = Path(context.env_exe).parent[0m
+2025-08-19T13:10:17.8729670Z [36;1m        run([sys.executable, "-m", "pip", "--python", context.env_exe, "install", r"/Users/runner/work/_actions/pypa/cibuildwheel/v2.21.0"], check=True)[0m
+2025-08-19T13:10:17.8731090Z [36;1m[0m
+2025-08-19T13:10:17.8731740Z [36;1m[0m
+2025-08-19T13:10:17.8732670Z [36;1mprint("::group::Install cibuildwheel")[0m
+2025-08-19T13:10:17.8734250Z [36;1mvenv_path = Path(r"/Users/runner/work/_temp") / "cibw"[0m
+2025-08-19T13:10:17.8735140Z [36;1mif venv_path.exists():[0m
+2025-08-19T13:10:17.8735810Z [36;1m    shutil.rmtree(venv_path)[0m
+2025-08-19T13:10:17.8736450Z [36;1mbuilder = EnvBuilder()[0m
+2025-08-19T13:10:17.8737090Z [36;1mbuilder.create(venv_path)[0m
+2025-08-19T13:10:17.8738220Z [36;1mcibw_path = [path for path in builder.bin_path.glob("cibuildwheel*") if path.stem == "cibuildwheel"][0][0m
+2025-08-19T13:10:17.8739640Z [36;1mwith open(os.environ["GITHUB_OUTPUT"], "at") as f:[0m
+2025-08-19T13:10:17.8740550Z [36;1m    f.write(f"cibw-path={cibw_path}\n")[0m
+2025-08-19T13:10:17.8741240Z [36;1mprint("::endgroup::")[0m
+2025-08-19T13:10:17.8741840Z [36;1mEOF[0m
+2025-08-19T13:10:17.8885830Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2025-08-19T13:10:17.8886660Z env:
+2025-08-19T13:10:17.8887140Z   CIBW_BUILD_VERBOSITY: 1
+2025-08-19T13:10:17.8887710Z ##[endgroup]
+2025-08-19T13:10:18.2810480Z ##[group]Install cibuildwheel
+2025-08-19T13:10:20.4103220Z Processing /Users/runner/work/_actions/pypa/cibuildwheel/v2.21.0
+2025-08-19T13:10:20.4174820Z   Installing build dependencies: started
+2025-08-19T13:10:21.9187770Z   Installing build dependencies: finished with status 'done'
+2025-08-19T13:10:21.9203320Z   Getting requirements to build wheel: started
+2025-08-19T13:10:22.1324700Z   Getting requirements to build wheel: finished with status 'done'
+2025-08-19T13:10:22.1346970Z   Preparing metadata (pyproject.toml): started
+2025-08-19T13:10:22.4460240Z   Preparing metadata (pyproject.toml): finished with status 'done'
+2025-08-19T13:10:22.5252160Z Collecting bashlex!=0.13 (from cibuildwheel==2.21.0)
+2025-08-19T13:10:22.5435880Z   Downloading bashlex-0.18-py2.py3-none-any.whl.metadata (1.1 kB)
+2025-08-19T13:10:22.5747010Z Collecting bracex (from cibuildwheel==2.21.0)
+2025-08-19T13:10:22.5792040Z   Downloading bracex-2.6-py3-none-any.whl.metadata (3.6 kB)
+2025-08-19T13:10:22.6252000Z Collecting certifi (from cibuildwheel==2.21.0)
+2025-08-19T13:10:22.6285590Z   Using cached certifi-2025.8.3-py3-none-any.whl.metadata (2.4 kB)
+2025-08-19T13:10:22.6665060Z Collecting filelock (from cibuildwheel==2.21.0)
+2025-08-19T13:10:22.6713000Z   Downloading filelock-3.19.1-py3-none-any.whl.metadata (2.1 kB)
+2025-08-19T13:10:22.7048280Z Collecting packaging>=20.9 (from cibuildwheel==2.21.0)
+2025-08-19T13:10:22.7076510Z   Using cached packaging-25.0-py3-none-any.whl.metadata (3.3 kB)
+2025-08-19T13:10:22.7416270Z Collecting platformdirs (from cibuildwheel==2.21.0)
+2025-08-19T13:10:22.7462740Z   Downloading platformdirs-4.3.8-py3-none-any.whl.metadata (12 kB)
+2025-08-19T13:10:22.7709950Z Downloading bashlex-0.18-py2.py3-none-any.whl (69 kB)
+2025-08-19T13:10:22.7812030Z Using cached packaging-25.0-py3-none-any.whl (66 kB)
+2025-08-19T13:10:22.7860630Z Downloading bracex-2.6-py3-none-any.whl (11 kB)
+2025-08-19T13:10:22.7967910Z Using cached certifi-2025.8.3-py3-none-any.whl (161 kB)
+2025-08-19T13:10:22.8025360Z Downloading filelock-3.19.1-py3-none-any.whl (15 kB)
+2025-08-19T13:10:22.8140180Z Downloading platformdirs-4.3.8-py3-none-any.whl (18 kB)
+2025-08-19T13:10:22.8329960Z Building wheels for collected packages: cibuildwheel
+2025-08-19T13:10:22.8344790Z   Building wheel for cibuildwheel (pyproject.toml): started
+2025-08-19T13:10:22.8982380Z   Building wheel for cibuildwheel (pyproject.toml): finished with status 'done'
+2025-08-19T13:10:22.8997880Z   Created wheel for cibuildwheel: filename=cibuildwheel-2.21.0-py3-none-any.whl size=88836 sha256=cff98474643a8ab85000bf4974803f1f0734c243fdb482664bc5188fdfd3ff8e
+2025-08-19T13:10:22.9001500Z   Stored in directory: /private/var/folders/vk/nx37ffx50hv5djclhltc26vw0000gn/T/pip-ephem-wheel-cache-4ur5xqsg/wheels/7a/64/00/e02e8f4a5f9d8bb6696e071099ca0b4fdd92feabaa85c12012
+2025-08-19T13:10:22.9061290Z Successfully built cibuildwheel
+2025-08-19T13:10:22.9251730Z Installing collected packages: platformdirs, packaging, filelock, certifi, bracex, bashlex, cibuildwheel
+2025-08-19T13:10:23.2568240Z
+2025-08-19T13:10:23.2590360Z Successfully installed bashlex-0.18 bracex-2.6 certifi-2025.8.3 cibuildwheel-2.21.0 filelock-3.19.1 packaging-25.0 platformdirs-4.3.8
+2025-08-19T13:10:23.3829180Z ##[endgroup]
+2025-08-19T13:10:23.4012690Z ##[group]Run "/Users/runner/work/_temp/cibw/bin/cibuildwheel" "." --output-dir "wheelhouse"   2>&1
+2025-08-19T13:10:23.4014210Z [36;1m"/Users/runner/work/_temp/cibw/bin/cibuildwheel" "." --output-dir "wheelhouse"   2>&1[0m
+2025-08-19T13:10:23.4145520Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2025-08-19T13:10:23.4146250Z env:
+2025-08-19T13:10:23.4146690Z   CIBW_BUILD_VERBOSITY: 1
+2025-08-19T13:10:23.4147140Z ##[endgroup]
+2025-08-19T13:10:23.9758250Z
+2025-08-19T13:10:23.9873400Z      _ _       _ _   _       _           _
+2025-08-19T13:10:23.9942960Z  ___|_| |_ _ _|_| |_| |_ _ _| |_ ___ ___| |
+2025-08-19T13:10:23.9947030Z |  _| | . | | | | | . | | | |   | -_| -_| |
+2025-08-19T13:10:23.9972330Z |___|_|___|___|_|_|___|_____|_|_|___|___|_|
+2025-08-19T13:10:23.9984580Z
+2025-08-19T13:10:24.0026760Z cibuildwheel version 2.21.0
+2025-08-19T13:10:24.0035940Z
+2025-08-19T13:10:24.0042120Z Build options:
+2025-08-19T13:10:24.0063350Z   platform: macos
+2025-08-19T13:10:24.0081260Z   [38;5;244mallow_empty: False[0m
+2025-08-19T13:10:24.0092530Z   [38;5;244marchitectures: x86_64[0m
+2025-08-19T13:10:24.0095700Z   build_selector:
+2025-08-19T13:10:24.0105990Z     build_config: cp311-* cp312-*
+2025-08-19T13:10:24.0175840Z     skip_config: pp* *-win32 *-manylinux_i686 *-musllinux_*
+2025-08-19T13:10:24.0176820Z     requires_python: >=3.11
+2025-08-19T13:10:24.0193010Z     prerelease_pythons: False
+2025-08-19T13:10:24.0203090Z     free_threaded_support: False[0m
+2025-08-19T13:10:24.0205390Z   output_dir: /Users/runner/work/RMNpy/RMNpy/wheelhouse[0m
+2025-08-19T13:10:24.0220100Z   package_dir: /Users/runner/work/RMNpy/RMNpy[0m
+2025-08-19T13:10:24.0224980Z   [38;5;244mtest_selector:
+2025-08-19T13:10:24.0230860Z [38;5;244m    skip_config:[0m
+2025-08-19T13:10:24.0256560Z   before_all: brew install flex bison openblas lapack curl libomp && OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\^{}||') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes && cd /tmp/octypes && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install && SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\^{}||') && git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes && mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib && cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/ && cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/lib/ && cd /tmp/sitypes && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install && RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\^{}||') && git clone --depth 1 --branch $RMNLIB_TAG https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib && cd /tmp/rmnlib && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install[0m
+2025-08-19T13:10:24.0267180Z   [38;5;244mbefore_build: [0m
+2025-08-19T13:10:24.0267670Z   [38;5;244mbefore_test: [0m
+2025-08-19T13:10:24.0268210Z   [38;5;244mbuild_frontend: None[0m
+2025-08-19T13:10:24.0268790Z   build_verbosity: 1[0m
+2025-08-19T13:10:24.0269350Z   [38;5;244mconfig_settings: [0m
+2025-08-19T13:10:24.0269940Z   [38;5;244mcontainer_engine: docker[0m
+2025-08-19T13:10:24.0270640Z   [38;5;244mdependency_constraints: pinned[0m
+2025-08-19T13:10:24.0271330Z   environment:
+2025-08-19T13:10:24.0271800Z     MACOSX_DEPLOYMENT_TARGET="10.9"
+2025-08-19T13:10:24.0272720Z     DYLD_LIBRARY_PATH="/tmp/install/lib:/usr/local/lib:/opt/homebrew/lib"[0m
+2025-08-19T13:10:24.0273610Z   [38;5;244mmanylinux_images: None[0m
+2025-08-19T13:10:24.0274250Z   [38;5;244mmusllinux_images: None[0m
+2025-08-19T13:10:24.0275640Z   repair_command: delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel} || delocate-wheel -w {dest_dir} -v {wheel}[0m
+2025-08-19T13:10:24.0277470Z   [38;5;244mtest_command: [0m
+2025-08-19T13:10:24.0278040Z   [38;5;244mtest_extras: [0m
+2025-08-19T13:10:24.0278600Z   [38;5;244mtest_requires: [0m
+2025-08-19T13:10:24.0278930Z
+2025-08-19T13:10:24.0279270Z Cache folder: /Users/runner/Library/Caches/cibuildwheel
+2025-08-19T13:10:24.0279770Z
+2025-08-19T13:10:24.0279920Z Here we go!
+2025-08-19T13:10:24.0280160Z
+2025-08-19T13:10:24.0281030Z ##[group]Running before_all...
+2025-08-19T13:10:24.0281380Z
+2025-08-19T13:10:24.0291380Z + brew install flex bison openblas lapack curl libomp && OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\^{}||') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes && cd /tmp/octypes && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install && SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\^{}||') && git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes && mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib && cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/ && cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/lib/ && cd /tmp/sitypes && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install && RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\^{}||') && git clone --depth 1 --branch $RMNLIB_TAG https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib && cd /tmp/rmnlib && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install
+2025-08-19T13:10:30.2871340Z ##[warning]curl 8.15.0 is already installed and up-to-date.
+To reinstall 8.15.0, run:
+  brew reinstall curl
+
+2025-08-19T13:10:31.0529930Z [32m==>[0m [1mFetching downloads for: [32mflex[39m, [32mbison[39m, [32mopenblas[39m, [32mlapack[39m and [32mlibomp[39m[0m
+2025-08-19T13:10:31.0792620Z [34m==>[0m [1mDownloading https://ghcr.io/v2/homebrew/core/flex/manifests/2.6.4_2[0m
+2025-08-19T13:10:32.0740270Z [34m==>[0m [1mDownloading https://ghcr.io/v2/homebrew/core/bison/manifests/3.8.2[0m
+2025-08-19T13:10:34.7420130Z [34m==>[0m [1mDownloading https://ghcr.io/v2/homebrew/core/openblas/manifests/0.3.30[0m
+2025-08-19T13:10:35.0564980Z [34m==>[0m [1mDownloading https://ghcr.io/v2/homebrew/core/lapack/manifests/3.12.1[0m
+2025-08-19T13:10:35.3410240Z [34m==>[0m [1mDownloading https://ghcr.io/v2/homebrew/core/libomp/manifests/20.1.8[0m
+2025-08-19T13:10:36.0095530Z [32m==>[0m [1mFetching [32mflex[39m[0m
+2025-08-19T13:10:36.0111360Z [34m==>[0m [1mDownloading https://ghcr.io/v2/homebrew/core/flex/blobs/sha256:d4b974c982ab96f6d372d7e76b0a3965ae2afb084cb533a0abedc840979f78b9[0m
+2025-08-19T13:10:36.5375770Z [32m==>[0m [1mFetching [32mbison[39m[0m
+2025-08-19T13:10:36.5392850Z [34m==>[0m [1mDownloading https://ghcr.io/v2/homebrew/core/bison/blobs/sha256:fc0224d45c74ee561128eb9df366ccb08698b1d659cfb92ea746e57da0108806[0m
+2025-08-19T13:10:36.9208890Z [32m==>[0m [1mFetching dependencies for openblas: [32mgcc[39m[0m
+2025-08-19T13:10:36.9245180Z [34m==>[0m [1mDownloading https://ghcr.io/v2/homebrew/core/gcc/manifests/15.1.0[0m
+2025-08-19T13:10:37.4647120Z [32m==>[0m [1mFetching [32mgcc[39m[0m
+2025-08-19T13:10:37.4657600Z [34m==>[0m [1mDownloading https://ghcr.io/v2/homebrew/core/gcc/blobs/sha256:51491f90bea9c25ecd372ef13375232d8f75e3550e663021d3a5ecf6ed36bf46[0m
+2025-08-19T13:10:40.9245730Z [32m==>[0m [1mFetching [32mopenblas[39m[0m
+2025-08-19T13:10:40.9266660Z [34m==>[0m [1mDownloading https://ghcr.io/v2/homebrew/core/openblas/blobs/sha256:f6bb911cce1ea42486696f1dfc50bd22c8ec6ce6d972047a7c8ca58778c8d320[0m
+2025-08-19T13:10:41.7087650Z [32m==>[0m [1mFetching [32mlapack[39m[0m
+2025-08-19T13:10:41.7100720Z [34m==>[0m [1mDownloading https://ghcr.io/v2/homebrew/core/lapack/blobs/sha256:7d8b411cb368aaf73b9d16b83e5293aec80dd86a53696d35a8336ec013688369[0m
+2025-08-19T13:10:42.2374430Z [32m==>[0m [1mFetching [32mlibomp[39m[0m
+2025-08-19T13:10:42.2388320Z [34m==>[0m [1mDownloading https://ghcr.io/v2/homebrew/core/libomp/blobs/sha256:e918a431238234858ddab33d4ac383d4b33328ed0b5ac3e0cc0bb248e2076547[0m
+2025-08-19T13:10:42.6422330Z [34m==>[0m [1mPouring flex--2.6.4_2.ventura.bottle.tar.gz[0m
+2025-08-19T13:10:43.0881880Z [34m==>[0m [1mCaveats[0m
+2025-08-19T13:10:43.0882720Z flex is keg-only, which means it was not symlinked into /usr/local,
+2025-08-19T13:10:43.0883810Z because macOS already provides this software and installing another version in
+2025-08-19T13:10:43.0884780Z parallel can cause all kinds of trouble.
+2025-08-19T13:10:43.0885200Z
+2025-08-19T13:10:43.0885430Z If you need to have flex first in your PATH, run:
+2025-08-19T13:10:43.0886390Z   echo 'export PATH="/usr/local/opt/flex/bin:$PATH"' >> /Users/runner/.bash_profile
+2025-08-19T13:10:43.0887680Z
+2025-08-19T13:10:43.0887930Z For compilers to find flex you may need to set:
+2025-08-19T13:10:43.0888630Z   export LDFLAGS="-L/usr/local/opt/flex/lib"
+2025-08-19T13:10:43.0889290Z   export CPPFLAGS="-I/usr/local/opt/flex/include"
+2025-08-19T13:10:43.0890000Z [34m==>[0m [1mSummary[0m
+2025-08-19T13:10:43.0960670Z 🍺  /usr/local/Cellar/flex/2.6.4_2: 47 files, 1.5MB
+2025-08-19T13:10:43.1007850Z [34m==>[0m [1mPouring bison--3.8.2.ventura.bottle.tar.gz[0m
+2025-08-19T13:10:43.3059560Z [34m==>[0m [1mCaveats[0m
+2025-08-19T13:10:43.3060390Z bison is keg-only, which means it was not symlinked into /usr/local,
+2025-08-19T13:10:43.3061750Z because macOS already provides this software and installing another version in
+2025-08-19T13:10:43.3062760Z parallel can cause all kinds of trouble.
+2025-08-19T13:10:43.3063190Z
+2025-08-19T13:10:43.3063450Z If you need to have bison first in your PATH, run:
+2025-08-19T13:10:43.3064550Z   echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> /Users/runner/.bash_profile
+2025-08-19T13:10:43.3065340Z
+2025-08-19T13:10:43.3065590Z For compilers to find bison you may need to set:
+2025-08-19T13:10:43.3066330Z   export LDFLAGS="-L/usr/local/opt/bison/lib"
+2025-08-19T13:10:43.3067030Z [34m==>[0m [1mSummary[0m
+2025-08-19T13:10:43.3149310Z 🍺  /usr/local/Cellar/bison/3.8.2: 100 files, 3.7MB
+2025-08-19T13:10:43.4341030Z [32m==>[0m [1mInstalling openblas dependency: [32mgcc[39m[0m
+2025-08-19T13:10:43.4348090Z [34m==>[0m [1mDownloading https://ghcr.io/v2/homebrew/core/gcc/manifests/15.1.0[0m
+2025-08-19T13:10:43.4350410Z Already downloaded: /Users/runner/Library/Caches/Homebrew/downloads/f59a5c33a855112d033e927fd0312cdfb6b9ff1f802058a827efc9a693979da8--gcc-15.1.0.bottle_manifest.json
+2025-08-19T13:10:43.6311530Z [34m==>[0m [1mPouring gcc--15.1.0.ventura.bottle.tar.gz[0m
+2025-08-19T13:10:57.5564700Z 🍺  /usr/local/Cellar/gcc/15.1.0: 2,072 files, 532.3MB
+2025-08-19T13:10:57.5578390Z [34m==>[0m [1mPouring openblas--0.3.30.ventura.bottle.tar.gz[0m
+2025-08-19T13:10:59.3853640Z [34m==>[0m [1mCaveats[0m
+2025-08-19T13:10:59.3856570Z openblas is keg-only, which means it was not symlinked into /usr/local,
+2025-08-19T13:10:59.3863140Z because macOS provides BLAS in Accelerate.framework.
+2025-08-19T13:10:59.3864550Z
+2025-08-19T13:10:59.3867710Z For compilers to find openblas you may need to set:
+2025-08-19T13:10:59.3868570Z   export LDFLAGS="-L/usr/local/opt/openblas/lib"
+2025-08-19T13:10:59.3869500Z   export CPPFLAGS="-I/usr/local/opt/openblas/include"
+2025-08-19T13:10:59.3870010Z
+2025-08-19T13:10:59.3870670Z For pkg-config to find openblas you may need to set:
+2025-08-19T13:10:59.3871540Z   export PKG_CONFIG_PATH="/usr/local/opt/openblas/lib/pkgconfig"
+2025-08-19T13:10:59.3872800Z [34m==>[0m [1mSummary[0m
+2025-08-19T13:10:59.3882950Z 🍺  /usr/local/Cellar/openblas/0.3.30: 24 files, 133MB
+2025-08-19T13:10:59.4847470Z [34m==>[0m [1mPouring lapack--3.12.1.ventura.bottle.tar.gz[0m
+2025-08-19T13:11:00.6057190Z [34m==>[0m [1mCaveats[0m
+2025-08-19T13:11:00.6058050Z lapack is keg-only, which means it was not symlinked into /usr/local,
+2025-08-19T13:11:00.6059130Z because macOS provides LAPACK in Accelerate.framework.
+2025-08-19T13:11:00.6059730Z
+2025-08-19T13:11:00.6059990Z For compilers to find lapack you may need to set:
+2025-08-19T13:11:00.6060740Z   export LDFLAGS="-L/usr/local/opt/lapack/lib"
+2025-08-19T13:11:00.6061460Z   export CPPFLAGS="-I/usr/local/opt/lapack/include"
+2025-08-19T13:11:00.6062020Z
+2025-08-19T13:11:00.6062280Z For pkg-config to find lapack you may need to set:
+2025-08-19T13:11:00.6063110Z   export PKG_CONFIG_PATH="/usr/local/opt/lapack/lib/pkgconfig"
+2025-08-19T13:11:00.6063970Z [34m==>[0m [1mSummary[0m
+2025-08-19T13:11:00.6091520Z 🍺  /usr/local/Cellar/lapack/3.12.1: 30 files, 20.5MB
+2025-08-19T13:11:00.6343180Z [34m==>[0m [1mPouring libomp--20.1.8.ventura.bottle.tar.gz[0m
+2025-08-19T13:11:00.8110050Z [34m==>[0m [1mCaveats[0m
+2025-08-19T13:11:00.8110910Z libomp is keg-only, which means it was not symlinked into /usr/local,
+2025-08-19T13:11:00.8112630Z because it can override GCC headers and result in broken builds.
+2025-08-19T13:11:00.8113250Z
+2025-08-19T13:11:00.8113510Z For compilers to find libomp you may need to set:
+2025-08-19T13:11:00.8114240Z   export LDFLAGS="-L/usr/local/opt/libomp/lib"
+2025-08-19T13:11:00.8114940Z   export CPPFLAGS="-I/usr/local/opt/libomp/include"
+2025-08-19T13:11:00.8116120Z [34m==>[0m [1mSummary[0m
+2025-08-19T13:11:00.8127870Z 🍺  /usr/local/Cellar/libomp/20.1.8: 9 files, 1.7MB
+2025-08-19T13:11:00.8139840Z [34m==>[0m [1mNo outdated dependents to upgrade![0m
+2025-08-19T13:11:00.8140600Z [32m==>[0m [1mCaveats[0m
+2025-08-19T13:11:00.8141390Z [34m==>[0m [1mflex[0m
+2025-08-19T13:11:00.8142120Z flex is keg-only, which means it was not symlinked into /usr/local,
+2025-08-19T13:11:00.8143190Z because macOS already provides this software and installing another version in
+2025-08-19T13:11:00.8144170Z parallel can cause all kinds of trouble.
+2025-08-19T13:11:00.8144620Z
+2025-08-19T13:11:00.8144860Z If you need to have flex first in your PATH, run:
+2025-08-19T13:11:00.8145830Z   echo 'export PATH="/usr/local/opt/flex/bin:$PATH"' >> /Users/runner/.bash_profile
+2025-08-19T13:11:00.8146510Z
+2025-08-19T13:11:00.8146780Z For compilers to find flex you may need to set:
+2025-08-19T13:11:00.8147460Z   export LDFLAGS="-L/usr/local/opt/flex/lib"
+2025-08-19T13:11:00.8148170Z   export CPPFLAGS="-I/usr/local/opt/flex/include"
+2025-08-19T13:11:00.8148890Z [34m==>[0m [1mbison[0m
+2025-08-19T13:11:00.8149590Z bison is keg-only, which means it was not symlinked into /usr/local,
+2025-08-19T13:11:00.8150700Z because macOS already provides this software and installing another version in
+2025-08-19T13:11:00.8151630Z parallel can cause all kinds of trouble.
+2025-08-19T13:11:00.8152040Z
+2025-08-19T13:11:00.8152310Z If you need to have bison first in your PATH, run:
+2025-08-19T13:11:00.8153240Z   echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> /Users/runner/.bash_profile
+2025-08-19T13:11:00.8153990Z
+2025-08-19T13:11:00.8154240Z For compilers to find bison you may need to set:
+2025-08-19T13:11:00.8154950Z   export LDFLAGS="-L/usr/local/opt/bison/lib"
+2025-08-19T13:11:00.8155580Z [34m==>[0m [1mopenblas[0m
+2025-08-19T13:11:00.8156330Z openblas is keg-only, which means it was not symlinked into /usr/local,
+2025-08-19T13:11:00.8157250Z because macOS provides BLAS in Accelerate.framework.
+2025-08-19T13:11:00.8157800Z
+2025-08-19T13:11:00.8158070Z For compilers to find openblas you may need to set:
+2025-08-19T13:11:00.8158790Z   export LDFLAGS="-L/usr/local/opt/openblas/lib"
+2025-08-19T13:11:00.8159550Z   export CPPFLAGS="-I/usr/local/opt/openblas/include"
+2025-08-19T13:11:00.8160030Z
+2025-08-19T13:11:00.8160330Z For pkg-config to find openblas you may need to set:
+2025-08-19T13:11:00.8161150Z   export PKG_CONFIG_PATH="/usr/local/opt/openblas/lib/pkgconfig"
+2025-08-19T13:11:00.8161940Z [34m==>[0m [1mlapack[0m
+2025-08-19T13:11:00.8162610Z lapack is keg-only, which means it was not symlinked into /usr/local,
+2025-08-19T13:11:00.8163540Z because macOS provides LAPACK in Accelerate.framework.
+2025-08-19T13:11:00.8164050Z
+2025-08-19T13:11:00.8164310Z For compilers to find lapack you may need to set:
+2025-08-19T13:11:00.8165040Z   export LDFLAGS="-L/usr/local/opt/lapack/lib"
+2025-08-19T13:11:00.8165750Z   export CPPFLAGS="-I/usr/local/opt/lapack/include"
+2025-08-19T13:11:00.8166220Z
+2025-08-19T13:11:00.8166490Z For pkg-config to find lapack you may need to set:
+2025-08-19T13:11:00.8167310Z   export PKG_CONFIG_PATH="/usr/local/opt/lapack/lib/pkgconfig"
+2025-08-19T13:11:00.8168070Z [34m==>[0m [1mlibomp[0m
+2025-08-19T13:11:00.8168790Z libomp is keg-only, which means it was not symlinked into /usr/local,
+2025-08-19T13:11:00.8169750Z because it can override GCC headers and result in broken builds.
+2025-08-19T13:11:00.8170360Z
+2025-08-19T13:11:00.8170620Z For compilers to find libomp you may need to set:
+2025-08-19T13:11:00.8171300Z   export LDFLAGS="-L/usr/local/opt/libomp/lib"
+2025-08-19T13:11:00.8172710Z   export CPPFLAGS="-I/usr/local/opt/libomp/include"
+2025-08-19T13:11:01.2762140Z Cloning into '/tmp/octypes'...
+2025-08-19T13:11:03.3255850Z mkdir -p build/lib build build/obj build/gen build/bin
+2025-08-19T13:11:03.3577410Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/OCArray.o src/OCArray.c
+2025-08-19T13:11:03.3588200Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -Wno-unused-function -c -o build/obj/OCAutoreleasePool.o src/OCAutoreleasePool.c
+2025-08-19T13:11:03.3757820Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/OCBoolean.o src/OCBoolean.c
+2025-08-19T13:11:03.3852050Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/OCData.o src/OCData.c
+2025-08-19T13:11:03.8219500Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/OCDictionary.o src/OCDictionary.c
+2025-08-19T13:11:03.8446240Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/OCFileUtilities.o src/OCFileUtilities.c
+2025-08-19T13:11:03.9378740Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/OCIndexArray.o src/OCIndexArray.c
+2025-08-19T13:11:03.9474940Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/OCIndexPairSet.o src/OCIndexPairSet.c
+2025-08-19T13:11:03.9900010Z src/OCFileUtilities.c:556:14: warning: unused function '_readFile' [-Wunused-function]
+2025-08-19T13:11:03.9924080Z static char *_readFile(const char *path, OCStringRef *err) {
+2025-08-19T13:11:04.0190630Z              ^
+2025-08-19T13:11:04.0890100Z 1 warning generated.
+2025-08-19T13:11:04.0895410Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/OCIndexSet.o src/OCIndexSet.c
+2025-08-19T13:11:04.1206110Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/OCLeakTracker.o src/OCLeakTracker.c
+2025-08-19T13:11:04.1664730Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/OCMath.o src/OCMath.c
+2025-08-19T13:11:04.2122440Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/OCNumber.o src/OCNumber.c
+2025-08-19T13:11:04.3187710Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/OCSet.o src/OCSet.c
+2025-08-19T13:11:04.3521660Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -Wno-unused-but-set-variable -c -o build/obj/OCString.o src/OCString.c
+2025-08-19T13:11:04.5257940Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/OCType.o src/OCType.c
+2025-08-19T13:11:04.6308050Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -c -o build/obj/cJSON.o src/cJSON.c
+2025-08-19T13:11:04.6998450Z bison -d --defines=build/gen/OCComplexParser.tab.h -o build/gen/OCComplexParser.tab.c src/OCComplexParser.y
+2025-08-19T13:11:04.7062570Z bison -d --defines=build/gen/OCComplexParser.tab.h -o build/gen/OCComplexParser.tab.c src/OCComplexParser.y
+2025-08-19T13:11:08.5175100Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -Wno-unused-parameter -c -o build/obj/OCComplexParser.tab.o build/gen/OCComplexParser.tab.c
+2025-08-19T13:11:08.5203550Z flex -o build/gen/OCComplexScanner.c src/OCComplexScanner.l
+2025-08-19T13:11:11.0981210Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -Wno-sign-compare -Wno-unused-function -Wno-unneeded-internal-declaration -c -o build/obj/OCComplexScanner.o build/gen/OCComplexScanner.c
+2025-08-19T13:11:11.3939040Z ar rcs build/lib/libOCTypes.a build/obj/OCArray.o build/obj/OCAutoreleasePool.o build/obj/OCBoolean.o build/obj/OCData.o build/obj/OCDictionary.o build/obj/OCFileUtilities.o build/obj/OCIndexArray.o build/obj/OCIndexPairSet.o build/obj/OCIndexSet.o build/obj/OCLeakTracker.o build/obj/OCMath.o build/obj/OCNumber.o build/obj/OCSet.o build/obj/OCString.o build/obj/OCType.o build/obj/cJSON.o build/obj/OCComplexScanner.o build/obj/OCComplexParser.tab.o
+2025-08-19T13:11:11.4220380Z cc -fPIC -std=c99 -I . -I src -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -O3 -g -dynamiclib -fPIC -install_name @rpath/libOCTypes.dylib -current_version 0.1.7 -compatibility_version 0.1 -o build/lib/libOCTypes.dylib build/obj/OCArray.o build/obj/OCAutoreleasePool.o build/obj/OCBoolean.o build/obj/OCData.o build/obj/OCDictionary.o build/obj/OCFileUtilities.o build/obj/OCIndexArray.o build/obj/OCIndexPairSet.o build/obj/OCIndexSet.o build/obj/OCLeakTracker.o build/obj/OCMath.o build/obj/OCNumber.o build/obj/OCSet.o build/obj/OCString.o build/obj/OCType.o build/obj/cJSON.o build/obj/OCComplexScanner.o build/obj/OCComplexParser.tab.o
+2025-08-19T13:11:13.0146990Z mkdir -p build/lib build build/obj build/gen build/bin
+2025-08-19T13:11:13.0280520Z mkdir -p /tmp/install/lib /tmp/install/include/OCTypes
+2025-08-19T13:11:13.0371350Z cp build/lib/libOCTypes.a /tmp/install/lib/
+2025-08-19T13:11:13.0738090Z cp build/lib/libOCTypes.dylib               /tmp/install/lib/
+2025-08-19T13:11:13.0816740Z cp src/*.h                /tmp/install/include/OCTypes/
+2025-08-19T13:11:13.7220940Z Cloning into '/tmp/sitypes'...
+2025-08-19T13:11:14.7023360Z warning: refs/tags/v0.1.6 921e6edee4336437859530fd3bdad399d0ac1d21 is not a commit!
+2025-08-19T13:11:15.1125580Z mkdir -p build build/obj build/gen build/bin build/lib third_party/lib
+2025-08-19T13:11:15.1184470Z bison -d --defines=build/gen/SIDimensionalityParser.tab.h -o build/gen/SIDimensionalityParser.tab.c src/SIDimensionalityParser.y
+2025-08-19T13:11:15.1246950Z bison -d --defines=build/gen/SIScalarParser.tab.h -o build/gen/SIScalarParser.tab.c src/SIScalarParser.y
+2025-08-19T13:11:15.1252540Z OCTypes library already present. Set OCT_FORCE_FETCH=1 to refresh.
+2025-08-19T13:11:15.1257980Z OCTypes headers already present. Set OCT_FORCE_FETCH=1 to refresh.
+2025-08-19T13:11:15.1292950Z bison -d --defines=build/gen/SIUnitExpressionParser.tab.h -o build/gen/SIUnitExpressionParser.tab.c src/SIUnitExpressionParser.y
+2025-08-19T13:11:15.1394170Z bison -d --defines=build/gen/SIUnitParser.tab.h -o build/gen/SIUnitParser.tab.c src/SIUnitParser.y
+2025-08-19T13:11:15.2081850Z src/SIScalarParser.y: conflicts: 1 shift/reduce
+2025-08-19T13:11:15.2240940Z src/SIUnitExpressionParser.y:202.3-207.1: warning: unset value: $$
+2025-08-19T13:11:15.2249350Z src/SIUnitExpressionParser.y: conflicts: 4 shift/reduce, 3 reduce/reduce
+2025-08-19T13:11:15.2256520Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIDimensionality.o src/SIDimensionality.c
+2025-08-19T13:11:15.2302320Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIDimensionalityLib.o src/SIDimensionalityLib.c
+2025-08-19T13:11:15.2484000Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIQuantity.o src/SIQuantity.c
+2025-08-19T13:11:15.2687640Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIScalar.o src/SIScalar.c
+2025-08-19T13:11:15.4788130Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIScalarConstants.o src/SIScalarConstants.c
+2025-08-19T13:11:15.7997120Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIScalarParser.o src/SIScalarParser.c
+2025-08-19T13:11:16.0179580Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIScalarParserHelpers.o src/SIScalarParserHelpers.c
+2025-08-19T13:11:16.0264470Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SITypes.o src/SITypes.c
+2025-08-19T13:11:16.0328790Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIUnit.o src/SIUnit.c
+2025-08-19T13:11:16.1481610Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIUnitExpression.o src/SIUnitExpression.c
+2025-08-19T13:11:16.2136790Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIDimensionalityParser.tab.o build/gen/SIDimensionalityParser.tab.c
+2025-08-19T13:11:16.3728980Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIScalarParser.tab.o build/gen/SIScalarParser.tab.c
+2025-08-19T13:11:16.4307220Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIUnitExpressionParser.tab.o build/gen/SIUnitExpressionParser.tab.c
+2025-08-19T13:11:16.4873640Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIUnitParser.tab.o build/gen/SIUnitParser.tab.c
+2025-08-19T13:11:16.5868030Z flex -o build/gen/SIDimensionalityScanner.c src/SIDimensionalityScanner.l
+2025-08-19T13:11:16.6624450Z flex -o build/gen/SIFormulaScanner.c src/SIFormulaScanner.l
+2025-08-19T13:11:16.6740240Z src/SIDimensionalityScanner.l:24: warning, -s option given but default rule can be matched
+2025-08-19T13:11:16.6846810Z flex -o build/gen/SIScalarScanner.c src/SIScalarScanner.l
+2025-08-19T13:11:16.7072410Z flex -o build/gen/SIUnitExpressionScanner.c src/SIUnitExpressionScanner.l
+2025-08-19T13:11:16.7507970Z src/SIScalarScanner.l:168: warning, dangerous trailing context
+2025-08-19T13:11:16.7556180Z src/SIScalarScanner.l:168: warning, dangerous trailing context
+2025-08-19T13:11:16.7596770Z src/SIScalarScanner.l:173: warning, dangerous trailing context
+2025-08-19T13:11:16.7608000Z src/SIScalarScanner.l:163: warning, dangerous trailing context
+2025-08-19T13:11:16.7619290Z src/SIScalarScanner.l:168: warning, dangerous trailing context
+2025-08-19T13:11:16.7629990Z src/SIScalarScanner.l:163: warning, dangerous trailing context
+2025-08-19T13:11:16.7814850Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:16.7976510Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:16.8005100Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:16.8049260Z src/SIScalarScanner.l:168: warning, dangerous trailing context
+2025-08-19T13:11:16.8059680Z src/SIScalarScanner.l:188: warning, dangerous trailing context
+2025-08-19T13:11:16.8065290Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:16.8114560Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:16.8116690Z src/SIScalarScanner.l:188: warning, dangerous trailing context
+2025-08-19T13:11:16.8129100Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:16.8133470Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:16.8137810Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:16.8142230Z flex -o build/gen/SIUnitScanner.c src/SIUnitScanner.l
+2025-08-19T13:11:16.8146580Z src/SIUnitExpressionScanner.l:61: warning, -s option given but default rule can be matched
+2025-08-19T13:11:16.8159390Z OCTypes lib ready at third_party/lib/libOCTypes.a
+2025-08-19T13:11:16.8213810Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIDimensionalityScanner.o build/gen/SIDimensionalityScanner.c
+2025-08-19T13:11:16.8240200Z OCTypes headers ready under third_party/include/OCTypes
+2025-08-19T13:11:16.8345240Z src/SIUnitScanner.l:36: warning, -s option given but default rule can be matched
+2025-08-19T13:11:16.8374240Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIFormulaScanner.o build/gen/SIFormulaScanner.c
+2025-08-19T13:11:16.8441000Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIScalarScanner.o build/gen/SIScalarScanner.c
+2025-08-19T13:11:17.1860170Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIUnitExpressionScanner.o build/gen/SIUnitExpressionScanner.c
+2025-08-19T13:11:17.2161840Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIUnitScanner.o build/gen/SIUnitScanner.c
+2025-08-19T13:11:17.5745860Z ar rcs build/lib/libSITypes.a build/obj/SIDimensionality.o build/obj/SIDimensionalityLib.o build/obj/SIQuantity.o build/obj/SIScalar.o build/obj/SIScalarConstants.o build/obj/SIScalarParser.o build/obj/SIScalarParserHelpers.o build/obj/SITypes.o build/obj/SIUnit.o build/obj/SIUnitExpression.o build/obj/SIDimensionalityParser.tab.o build/obj/SIScalarParser.tab.o build/obj/SIUnitExpressionParser.tab.o build/obj/SIUnitParser.tab.o build/obj/SIDimensionalityScanner.o build/obj/SIFormulaScanner.o build/obj/SIScalarScanner.o build/obj/SIUnitExpressionScanner.o build/obj/SIUnitScanner.o
+2025-08-19T13:11:17.6045990Z clang -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -dynamiclib -fPIC -install_name @rpath/libSITypes.dylib -current_version 0.1.6 -compatibility_version 0.1 -o build/lib/libSITypes.dylib build/obj/SIDimensionality.o build/obj/SIDimensionalityLib.o build/obj/SIQuantity.o build/obj/SIScalar.o build/obj/SIScalarConstants.o build/obj/SIScalarParser.o build/obj/SIScalarParserHelpers.o build/obj/SITypes.o build/obj/SIUnit.o build/obj/SIUnitExpression.o build/obj/SIDimensionalityParser.tab.o build/obj/SIScalarParser.tab.o build/obj/SIUnitExpressionParser.tab.o build/obj/SIUnitParser.tab.o build/obj/SIDimensionalityScanner.o build/obj/SIFormulaScanner.o build/obj/SIScalarScanner.o build/obj/SIUnitExpressionScanner.o build/obj/SIUnitScanner.o -Lthird_party/lib -lOCTypes -lm
+2025-08-19T13:11:17.7243400Z rm build/gen/SIDimensionalityScanner.c build/gen/SIScalarScanner.c build/gen/SIUnitExpressionScanner.c build/gen/SIUnitScanner.c build/gen/SIFormulaScanner.c
+2025-08-19T13:11:17.9020180Z mkdir -p build build/obj build/gen build/bin build/lib third_party/lib
+2025-08-19T13:11:17.9145530Z OCTypes headers already present. Set OCT_FORCE_FETCH=1 to refresh.
+2025-08-19T13:11:17.9215830Z OCTypes headers ready under third_party/include/OCTypes
+2025-08-19T13:11:17.9229790Z flex -o build/gen/SIDimensionalityScanner.c src/SIDimensionalityScanner.l
+2025-08-19T13:11:17.9516540Z src/SIDimensionalityScanner.l:24: warning, -s option given but default rule can be matched
+2025-08-19T13:11:17.9813540Z flex -o build/gen/SIFormulaScanner.c src/SIFormulaScanner.l
+2025-08-19T13:11:18.0400080Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIFormulaScanner.o build/gen/SIFormulaScanner.c
+2025-08-19T13:11:18.4392690Z flex -o build/gen/SIScalarScanner.c src/SIScalarScanner.l
+2025-08-19T13:11:18.4701240Z src/SIScalarScanner.l:168: warning, dangerous trailing context
+2025-08-19T13:11:18.4705890Z src/SIScalarScanner.l:168: warning, dangerous trailing context
+2025-08-19T13:11:18.4707250Z src/SIScalarScanner.l:173: warning, dangerous trailing context
+2025-08-19T13:11:18.4709110Z src/SIScalarScanner.l:163: warning, dangerous trailing context
+2025-08-19T13:11:18.4715790Z src/SIScalarScanner.l:168: warning, dangerous trailing context
+2025-08-19T13:11:18.4717420Z src/SIScalarScanner.l:163: warning, dangerous trailing context
+2025-08-19T13:11:18.4722050Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:18.4723150Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:18.4725580Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:18.4727750Z src/SIScalarScanner.l:168: warning, dangerous trailing context
+2025-08-19T13:11:18.4729850Z src/SIScalarScanner.l:188: warning, dangerous trailing context
+2025-08-19T13:11:18.4733640Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:18.4735270Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:18.4738150Z src/SIScalarScanner.l:188: warning, dangerous trailing context
+2025-08-19T13:11:18.4741320Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:18.4744650Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:18.4747160Z src/SIScalarScanner.l:98: warning, dangerous trailing context
+2025-08-19T13:11:18.5053960Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIScalarScanner.o build/gen/SIScalarScanner.c
+2025-08-19T13:11:18.8018470Z flex -o build/gen/SIUnitExpressionScanner.c src/SIUnitExpressionScanner.l
+2025-08-19T13:11:18.8301830Z src/SIUnitExpressionScanner.l:61: warning, -s option given but default rule can be matched
+2025-08-19T13:11:18.8597210Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIUnitExpressionScanner.o build/gen/SIUnitExpressionScanner.c
+2025-08-19T13:11:19.1776120Z flex -o build/gen/SIUnitScanner.c src/SIUnitScanner.l
+2025-08-19T13:11:19.2082370Z src/SIUnitScanner.l:36: warning, -s option given but default rule can be matched
+2025-08-19T13:11:19.2390000Z clang -I. -Isrc -Ibuild/gen -Ithird_party/include -Ithird_party/include/OCTypes -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -c -o build/obj/SIUnitScanner.o build/gen/SIUnitScanner.c
+2025-08-19T13:11:19.5101300Z ar rcs build/lib/libSITypes.a build/obj/SIDimensionality.o build/obj/SIDimensionalityLib.o build/obj/SIQuantity.o build/obj/SIScalar.o build/obj/SIScalarConstants.o build/obj/SIScalarParser.o build/obj/SIScalarParserHelpers.o build/obj/SITypes.o build/obj/SIUnit.o build/obj/SIUnitExpression.o build/obj/SIDimensionalityParser.tab.o build/obj/SIScalarParser.tab.o build/obj/SIUnitExpressionParser.tab.o build/obj/SIUnitParser.tab.o build/obj/SIDimensionalityScanner.o build/obj/SIFormulaScanner.o build/obj/SIScalarScanner.o build/obj/SIUnitExpressionScanner.o build/obj/SIUnitScanner.o
+2025-08-19T13:11:19.6088870Z clang -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -dynamiclib -fPIC -install_name @rpath/libSITypes.dylib -current_version 0.1.6 -compatibility_version 0.1 -o build/lib/libSITypes.dylib build/obj/SIDimensionality.o build/obj/SIDimensionalityLib.o build/obj/SIQuantity.o build/obj/SIScalar.o build/obj/SIScalarConstants.o build/obj/SIScalarParser.o build/obj/SIScalarParserHelpers.o build/obj/SITypes.o build/obj/SIUnit.o build/obj/SIUnitExpression.o build/obj/SIDimensionalityParser.tab.o build/obj/SIScalarParser.tab.o build/obj/SIUnitExpressionParser.tab.o build/obj/SIUnitParser.tab.o build/obj/SIDimensionalityScanner.o build/obj/SIFormulaScanner.o build/obj/SIScalarScanner.o build/obj/SIUnitExpressionScanner.o build/obj/SIUnitScanner.o -Lthird_party/lib -lOCTypes -lm
+2025-08-19T13:11:19.7946650Z mkdir -p /tmp/install/lib /tmp/install/include/SITypes
+2025-08-19T13:11:19.8098330Z cp build/lib/libSITypes.a /tmp/install/lib/
+2025-08-19T13:11:19.8230610Z cp build/lib/libSITypes.dylib /tmp/install/lib/
+2025-08-19T13:11:19.8322620Z cp src/*.h /tmp/install/include/SITypes/
+2025-08-19T13:11:20.2123000Z Cloning into '/tmp/rmnlib'...
+2025-08-19T13:11:22.2755520Z warning: refs/tags/v0.1.9 1610b2deaf3be112d3a9f9a8c623567715d31cc7 is not a commit!
+2025-08-19T13:11:23.0369750Z mkdir -p build
+2025-08-19T13:11:23.0403960Z mkdir -p build/obj
+2025-08-19T13:11:23.0439820Z mkdir -p build/gen
+2025-08-19T13:11:23.0483280Z mkdir -p build/bin
+2025-08-19T13:11:23.0519240Z mkdir -p build/lib
+2025-08-19T13:11:23.0557920Z mkdir -p third_party
+2025-08-19T13:11:23.0593010Z mkdir -p third_party/lib
+2025-08-19T13:11:23.0621690Z mkdir -p third_party/include
+2025-08-19T13:11:23.0652940Z mkdir -p third_party/include/OCTypes
+2025-08-19T13:11:23.0682930Z mkdir -p third_party/include/SITypes
+2025-08-19T13:11:23.0732080Z mkdir -p build/obj/core
+2025-08-19T13:11:23.0760770Z mkdir -p build/obj/core/dependent_variable
+2025-08-19T13:11:23.0787760Z mkdir -p build/obj/core/dimension
+2025-08-19T13:11:23.0814600Z mkdir -p build/obj/importers
+2025-08-19T13:11:23.0845400Z mkdir -p build/obj/spectroscopy
+2025-08-19T13:11:23.0869600Z mkdir -p build/obj/utils
+2025-08-19T13:11:23.0972600Z Fetching OCTypes library: libOCTypes-macos-latest.zip
+2025-08-19T13:11:23.0976700Z Fetching OCTypes headers
+2025-08-19T13:11:23.0980660Z Fetching SITypes headers
+2025-08-19T13:11:23.0991150Z Fetching SITypes library: libSITypes-macos-latest.zip
+2025-08-19T13:11:23.1466090Z Warning: Failed to get filetime: No such file or directory
+2025-08-19T13:11:23.1478420Z Warning: Failed to get filetime: No such file or directory
+2025-08-19T13:11:23.1481410Z Warning: Illegal date format for -z, --time-cond (and not a filename).
+2025-08-19T13:11:23.1484620Z Warning: Disabling time condition. See curl_getdate(3) for valid date syntax.Warning: Warning: Failed to get filetime: No such file or directoryIllegal date format for -z, --time-cond (and not a filename).
+2025-08-19T13:11:23.1486850Z
+2025-08-19T13:11:23.1490180Z Warning: Disabling time condition. See curl_getdate(3) for valid date syntax.
+2025-08-19T13:11:23.1492630Z Warning: Illegal date format for -z, --time-cond (and not a filename).
+2025-08-19T13:11:23.1494060Z Warning: Disabling time condition. See curl_getdate(3) for valid date syntax.
+2025-08-19T13:11:23.1494800Z
+2025-08-19T13:11:23.1495170Z Warning: Failed to get filetime: No such file or directory
+2025-08-19T13:11:23.1497240Z Warning: Illegal date format for -z, --time-cond (and not a filename).
+2025-08-19T13:11:23.1499050Z Warning: Disabling time condition. See curl_getdate(3) for valid date syntax.
+2025-08-19T13:11:23.1500420Z   % Total    % Received % Xfe  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+2025-08-19T13:11:23.1502060Z                           % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+2025-08-19T13:11:23.1504600Z                  rd  Average Speed   Time    Time     Time  Cu  % Total    % Received % Xferd  Average S                 D l o a d     U pDllooaadd     UTpoltoaald      STpoetnatl       SLpeefntt    S p eLeedf
+2025-08-19T13:11:23.1506050Z t  Sp
+2025-08-19T13:11:23.1506370Z e e d0
+2025-08-19T13:11:23.1506860Z
+2025-08-19T13:11:23.1508170Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0rrent
+2025-08-19T13:11:23.1510120Z                   p   e e d       T i m e      D lToiame     Time  Current
+2025-08-19T13:11:23.1511080Z         d                         Dload  Upload   Total   Spent    Left  Speed
+2025-08-19T13:11:23.1511690Z
+2025-08-19T13:11:23.1513080Z   0     0    0     0    0     0      0      0 --:-  Upload   Total   S0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0-:--pent    Left  Speed
+2025-08-19T13:11:23.1514090Z
+2025-08-19T13:11:23.3241830Z   0--:--:-- --:--:--     0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+2025-08-19T13:11:23.3242690Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+2025-08-19T13:11:23.3251820Z
+2025-08-19T13:11:23.3252620Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+2025-08-19T13:11:23.3420970Z
+2025-08-19T13:11:23.3421840Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+2025-08-19T13:11:23.3548020Z
+2025-08-19T13:11:23.3548840Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+2025-08-19T13:11:23.4557160Z
+2025-08-19T13:11:23.4557850Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+2025-08-19T13:11:23.4696310Z
+2025-08-19T13:11:23.4697050Z 100 41266  100 41266    0     0   124k      0 --:--:-- --:--:-- --:--:--  124k
+2025-08-19T13:11:23.4725090Z
+2025-08-19T13:11:23.4725930Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+2025-08-19T13:11:23.4799280Z Extracting OCTypes headers (unix unzip)
+2025-08-19T13:11:23.4861110Z
+2025-08-19T13:11:23.4862210Z 100  477k  100  477k    0     0  1408k      0 --:--:-- --:--:-- --:--:-- 1408k
+2025-08-19T13:11:23.4915190Z
+2025-08-19T13:11:23.4935570Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+2025-08-19T13:11:23.4987160Z Extracting SITypes library (unix unzip)
+2025-08-19T13:11:23.5046790Z
+2025-08-19T13:11:23.5047830Z 100  341k  100  341k    0     0   953k      0 --:--:-- --:--:-- --:--:--  953k
+2025-08-19T13:11:23.5156810Z Extracting OCTypes library (unix unzip)
+2025-08-19T13:11:23.5229730Z
+2025-08-19T13:11:23.5231280Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+2025-08-19T13:11:23.5342500Z
+2025-08-19T13:11:23.5343870Z 100 84632  100 84632    0     0   213k      0 --:--:-- --:--:-- --:--:--  213k
+2025-08-19T13:11:23.5437290Z Extracting SITypes headers (unix unzip)
+2025-08-19T13:11:23.5599660Z clang -I. -Isrc -Isrc/core -Isrc/core/dependent_variable -Isrc/core/dimension -Isrc/importers -Isrc/spectroscopy -Isrc/utils -Isrc/third_party -Itests -Ithird_party/include/OCTypes -Ithird_party/include/SITypes  -I/usr/local/Cellar/curl/8.15.0/include -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -DSTB_IMAGE_AVAILABLE -DACCELERATE_NEW_LAPACK -DACCELERATE_LAPACK_ILP64 -c -o build/obj/RMNLibrary.o src/RMNLibrary.c
+2025-08-19T13:11:23.5622900Z clang -I. -Isrc -Isrc/core -Isrc/core/dependent_variable -Isrc/core/dimension -Isrc/importers -Isrc/spectroscopy -Isrc/utils -Isrc/third_party -Itests -Ithird_party/include/OCTypes -Ithird_party/include/SITypes  -I/usr/local/Cellar/curl/8.15.0/include -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -DSTB_IMAGE_AVAILABLE -DACCELERATE_NEW_LAPACK -DACCELERATE_LAPACK_ILP64 -c -o build/obj/core/Dataset.o src/core/Dataset.c
+2025-08-19T13:11:23.5644190Z clang -I. -Isrc -Isrc/core -Isrc/core/dependent_variable -Isrc/core/dimension -Isrc/importers -Isrc/spectroscopy -Isrc/utils -Isrc/third_party -Itests -Ithird_party/include/OCTypes -Ithird_party/include/SITypes  -I/usr/local/Cellar/curl/8.15.0/include -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -DSTB_IMAGE_AVAILABLE -DACCELERATE_NEW_LAPACK -DACCELERATE_LAPACK_ILP64 -c -o build/obj/core/Datum.o src/core/Datum.c
+2025-08-19T13:11:23.5669800Z clang -I. -Isrc -Isrc/core -Isrc/core/dependent_variable -Isrc/core/dimension -Isrc/importers -Isrc/spectroscopy -Isrc/utils -Isrc/third_party -Itests -Ithird_party/include/OCTypes -Ithird_party/include/SITypes  -I/usr/local/Cellar/curl/8.15.0/include -fPIC -O3 -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-function -MMD -MP -DSTB_IMAGE_AVAILABLE -DACCELERATE_NEW_LAPACK -DACCELERATE_LAPACK_ILP64 -c -o build/obj/core/GeographicCoordinate.o src/core/GeographicCoordinate.c
+2025-08-19T13:11:24.6567670Z ##[error]The operation was canceled.

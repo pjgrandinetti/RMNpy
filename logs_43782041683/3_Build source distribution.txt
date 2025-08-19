@@ -1,0 +1,435 @@
+﻿2025-08-19T13:10:12.3712424Z Current runner version: '2.327.1'
+2025-08-19T13:10:12.3742136Z ##[group]Runner Image Provisioner
+2025-08-19T13:10:12.3743879Z Hosted Compute Agent
+2025-08-19T13:10:12.3745074Z Version: 20250818.377
+2025-08-19T13:10:12.3745949Z Commit: 3c593e9f75fe0b87e893bca80d6e12ba089c61fc
+2025-08-19T13:10:12.3746984Z Build Date: 2025-08-18T14:52:18Z
+2025-08-19T13:10:12.3747841Z ##[endgroup]
+2025-08-19T13:10:12.3748876Z ##[group]Operating System
+2025-08-19T13:10:12.3749703Z Ubuntu
+2025-08-19T13:10:12.3750339Z 24.04.2
+2025-08-19T13:10:12.3751141Z LTS
+2025-08-19T13:10:12.3751775Z ##[endgroup]
+2025-08-19T13:10:12.3752505Z ##[group]Runner Image
+2025-08-19T13:10:12.3753398Z Image: ubuntu-24.04
+2025-08-19T13:10:12.3754346Z Version: 20250810.1.0
+2025-08-19T13:10:12.3755908Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20250810.1/images/ubuntu/Ubuntu2404-Readme.md
+2025-08-19T13:10:12.3758472Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20250810.1
+2025-08-19T13:10:12.3759941Z ##[endgroup]
+2025-08-19T13:10:12.3761543Z ##[group]GITHUB_TOKEN Permissions
+2025-08-19T13:10:12.3764342Z Contents: write
+2025-08-19T13:10:12.3765217Z Metadata: read
+2025-08-19T13:10:12.3765977Z ##[endgroup]
+2025-08-19T13:10:12.3768641Z Secret source: Actions
+2025-08-19T13:10:12.3770130Z Prepare workflow directory
+2025-08-19T13:10:12.4226250Z Prepare all required actions
+2025-08-19T13:10:12.4279863Z Getting action download info
+2025-08-19T13:10:12.7417941Z Download action repository 'actions/checkout@v5' (SHA:08c6903cd8c0fde910a37f88322edcfb5dd907a8)
+2025-08-19T13:10:13.3135756Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2025-08-19T13:10:13.4975214Z Complete job name: Build source distribution
+2025-08-19T13:10:13.5706948Z ##[group]Run actions/checkout@v5
+2025-08-19T13:10:13.5707764Z with:
+2025-08-19T13:10:13.5708162Z   repository: pjgrandinetti/RMNpy
+2025-08-19T13:10:13.5708776Z   token: ***
+2025-08-19T13:10:13.5709150Z   ssh-strict: true
+2025-08-19T13:10:13.5709541Z   ssh-user: git
+2025-08-19T13:10:13.5709926Z   persist-credentials: true
+2025-08-19T13:10:13.5710351Z   clean: true
+2025-08-19T13:10:13.5710748Z   sparse-checkout-cone-mode: true
+2025-08-19T13:10:13.5711201Z   fetch-depth: 1
+2025-08-19T13:10:13.5711591Z   fetch-tags: false
+2025-08-19T13:10:13.5711974Z   show-progress: true
+2025-08-19T13:10:13.5712360Z   lfs: false
+2025-08-19T13:10:13.5712711Z   submodules: false
+2025-08-19T13:10:13.5713093Z   set-safe-directory: true
+2025-08-19T13:10:13.5713733Z ##[endgroup]
+2025-08-19T13:10:13.6575653Z Syncing repository: pjgrandinetti/RMNpy
+2025-08-19T13:10:13.6577587Z ##[group]Getting Git version info
+2025-08-19T13:10:13.6578220Z Working directory is '/home/runner/work/RMNpy/RMNpy'
+2025-08-19T13:10:13.6579179Z [command]/usr/bin/git version
+2025-08-19T13:10:13.6630947Z git version 2.50.1
+2025-08-19T13:10:13.6655601Z ##[endgroup]
+2025-08-19T13:10:13.6663645Z Temporarily overriding HOME='/home/runner/work/_temp/42649f98-9a55-46c3-9157-d9cbaad6c4fb' before making global git config changes
+2025-08-19T13:10:13.6666038Z Adding repository directory to the temporary git global config as a safe directory
+2025-08-19T13:10:13.6668271Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/RMNpy/RMNpy
+2025-08-19T13:10:13.6703377Z Deleting the contents of '/home/runner/work/RMNpy/RMNpy'
+2025-08-19T13:10:13.6707343Z ##[group]Initializing the repository
+2025-08-19T13:10:13.6711760Z [command]/usr/bin/git init /home/runner/work/RMNpy/RMNpy
+2025-08-19T13:10:13.6807597Z hint: Using 'master' as the name for the initial branch. This default branch name
+2025-08-19T13:10:13.6808857Z hint: is subject to change. To configure the initial branch name to use in all
+2025-08-19T13:10:13.6809723Z hint: of your new repositories, which will suppress this warning, call:
+2025-08-19T13:10:13.6810852Z hint:
+2025-08-19T13:10:13.6811628Z hint: 	git config --global init.defaultBranch <name>
+2025-08-19T13:10:13.6812578Z hint:
+2025-08-19T13:10:13.6813557Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2025-08-19T13:10:13.6815757Z hint: 'development'. The just-created branch can be renamed via this command:
+2025-08-19T13:10:13.6817040Z hint:
+2025-08-19T13:10:13.6817775Z hint: 	git branch -m <name>
+2025-08-19T13:10:13.6818550Z hint:
+2025-08-19T13:10:13.6819536Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2025-08-19T13:10:13.6821183Z Initialized empty Git repository in /home/runner/work/RMNpy/RMNpy/.git/
+2025-08-19T13:10:13.6823893Z [command]/usr/bin/git remote add origin https://github.com/pjgrandinetti/RMNpy
+2025-08-19T13:10:13.6856295Z ##[endgroup]
+2025-08-19T13:10:13.6857481Z ##[group]Disabling automatic garbage collection
+2025-08-19T13:10:13.6860438Z [command]/usr/bin/git config --local gc.auto 0
+2025-08-19T13:10:13.6888124Z ##[endgroup]
+2025-08-19T13:10:13.6889327Z ##[group]Setting up auth
+2025-08-19T13:10:13.6894855Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-08-19T13:10:13.6924922Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-08-19T13:10:13.7239447Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-08-19T13:10:13.7268239Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-08-19T13:10:13.7483342Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2025-08-19T13:10:13.7516913Z ##[endgroup]
+2025-08-19T13:10:13.7517894Z ##[group]Fetching the repository
+2025-08-19T13:10:13.7525834Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +7832b5d6651f3a549487c4c1846b5619df14b4f6:refs/tags/v0.1.31
+2025-08-19T13:10:14.1356772Z From https://github.com/pjgrandinetti/RMNpy
+2025-08-19T13:10:14.1357745Z  * [new ref]         7832b5d6651f3a549487c4c1846b5619df14b4f6 -> v0.1.31
+2025-08-19T13:10:14.1382228Z ##[endgroup]
+2025-08-19T13:10:14.1383408Z ##[group]Determining the checkout info
+2025-08-19T13:10:14.1384934Z ##[endgroup]
+2025-08-19T13:10:14.1389479Z [command]/usr/bin/git sparse-checkout disable
+2025-08-19T13:10:14.1427666Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2025-08-19T13:10:14.1453252Z ##[group]Checking out the ref
+2025-08-19T13:10:14.1456416Z [command]/usr/bin/git checkout --progress --force refs/tags/v0.1.31
+2025-08-19T13:10:14.1548610Z Note: switching to 'refs/tags/v0.1.31'.
+2025-08-19T13:10:14.1549364Z
+2025-08-19T13:10:14.1550101Z You are in 'detached HEAD' state. You can look around, make experimental
+2025-08-19T13:10:14.1551672Z changes and commit them, and you can discard any commits you make in this
+2025-08-19T13:10:14.1553255Z state without impacting any branches by switching back to a branch.
+2025-08-19T13:10:14.1553955Z
+2025-08-19T13:10:14.1554592Z If you want to create a new branch to retain commits you create, you may
+2025-08-19T13:10:14.1555428Z do so (now or later) by using -c with the switch command. Example:
+2025-08-19T13:10:14.1556282Z
+2025-08-19T13:10:14.1556665Z   git switch -c <new-branch-name>
+2025-08-19T13:10:14.1557278Z
+2025-08-19T13:10:14.1557508Z Or undo this operation with:
+2025-08-19T13:10:14.1557833Z
+2025-08-19T13:10:14.1558009Z   git switch -
+2025-08-19T13:10:14.1558272Z
+2025-08-19T13:10:14.1558666Z Turn off this advice by setting config variable advice.detachedHead to false
+2025-08-19T13:10:14.1559225Z
+2025-08-19T13:10:14.1559490Z HEAD is now at 7832b5d Bump version to 0.1.31
+2025-08-19T13:10:14.1561159Z ##[endgroup]
+2025-08-19T13:10:14.1590630Z [command]/usr/bin/git log -1 --format=%H
+2025-08-19T13:10:14.1612623Z 7832b5d6651f3a549487c4c1846b5619df14b4f6
+2025-08-19T13:10:14.1797907Z ##[group]Run pipx run build --sdist
+2025-08-19T13:10:14.1798787Z [36;1mpipx run build --sdist[0m
+2025-08-19T13:10:14.1877603Z shell: /usr/bin/bash -e {0}
+2025-08-19T13:10:14.1878141Z ##[endgroup]
+2025-08-19T13:10:14.7918343Z creating virtual environment...
+2025-08-19T13:10:14.9763300Z installing build...
+2025-08-19T13:10:18.8145979Z * Creating isolated environment: venv+pip...
+2025-08-19T13:10:18.8191112Z * Installing packages in isolated environment:
+2025-08-19T13:10:21.6332334Z   - Cython>=0.29.36
+2025-08-19T13:10:21.6332931Z   - build>=1.2.1
+2025-08-19T13:10:21.6333369Z   - cibuildwheel>=2.21.0
+2025-08-19T13:10:21.6333831Z   - numpy>=1.21
+2025-08-19T13:10:21.6334425Z   - setuptools>=70
+2025-08-19T13:10:21.6335354Z   - wheel
+2025-08-19T13:10:21.6335794Z * Getting build dependencies for sdist...
+2025-08-19T13:10:24.9376751Z Using system-installed libraries
+2025-08-19T13:10:24.9377703Z Compiling src/rmnpy/wrappers/sitypes/dimensionality.pyx because it changed.
+2025-08-19T13:10:24.9378801Z Compiling src/rmnpy/wrappers/sitypes/scalar.pyx because it changed.
+2025-08-19T13:10:24.9379709Z Compiling src/rmnpy/wrappers/sitypes/unit.pyx because it changed.
+2025-08-19T13:10:24.9380654Z Compiling src/rmnpy/wrappers/rmnlib/dependent_variable.pyx because it changed.
+2025-08-19T13:10:24.9381724Z Compiling src/rmnpy/wrappers/rmnlib/dimension.pyx because it changed.
+2025-08-19T13:10:24.9382768Z Compiling src/rmnpy/wrappers/rmnlib/sparse_sampling.pyx because it changed.
+2025-08-19T13:10:24.9383673Z Compiling src/rmnpy/helpers/octypes.pyx because it changed.
+2025-08-19T13:10:24.9384759Z Compiling src/rmnpy/quantities.pyx because it changed.
+2025-08-19T13:10:24.9385489Z [1/8] Cythonizing src/rmnpy/helpers/octypes.pyx
+2025-08-19T13:10:24.9386105Z [2/8] Cythonizing src/rmnpy/quantities.pyx
+2025-08-19T13:10:24.9386828Z [3/8] Cythonizing src/rmnpy/wrappers/rmnlib/dependent_variable.pyx
+2025-08-19T13:10:24.9387771Z [4/8] Cythonizing src/rmnpy/wrappers/rmnlib/dimension.pyx
+2025-08-19T13:10:24.9388576Z [5/8] Cythonizing src/rmnpy/wrappers/rmnlib/sparse_sampling.pyx
+2025-08-19T13:10:24.9389442Z [6/8] Cythonizing src/rmnpy/wrappers/sitypes/dimensionality.pyx
+2025-08-19T13:10:24.9390237Z [7/8] Cythonizing src/rmnpy/wrappers/sitypes/scalar.pyx
+2025-08-19T13:10:24.9390950Z [8/8] Cythonizing src/rmnpy/wrappers/sitypes/unit.pyx
+2025-08-19T13:10:25.0059957Z /tmp/build-env-au5crj1l/lib/python3.12/site-packages/setuptools/config/_apply_pyprojecttoml.py:82: SetuptoolsDeprecationWarning: `project.license` as a TOML table is deprecated
+2025-08-19T13:10:25.0061347Z !!
+2025-08-19T13:10:25.0061544Z
+2025-08-19T13:10:25.0061792Z         ********************************************************************************
+2025-08-19T13:10:25.0063145Z         Please use a simple string containing a SPDX expression for `project.license`. You can also use `project.license-files`. (Both options available on setuptools>=77.0.0).
+2025-08-19T13:10:25.0064484Z
+2025-08-19T13:10:25.0064887Z         By 2026-Feb-18, you need to update your project and remove deprecated calls
+2025-08-19T13:10:25.0065589Z         or your builds will no longer be supported.
+2025-08-19T13:10:25.0066005Z
+2025-08-19T13:10:25.0066789Z         See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+2025-08-19T13:10:25.0067676Z         ********************************************************************************
+2025-08-19T13:10:25.0068023Z
+2025-08-19T13:10:25.0068154Z !!
+2025-08-19T13:10:25.0068467Z   corresp(dist, value, root_dir)
+2025-08-19T13:10:25.0752991Z /tmp/build-env-au5crj1l/lib/python3.12/site-packages/setuptools/config/_apply_pyprojecttoml.py:61: SetuptoolsDeprecationWarning: License classifiers are deprecated.
+2025-08-19T13:10:25.0754496Z !!
+2025-08-19T13:10:25.0754721Z
+2025-08-19T13:10:25.0754904Z         ********************************************************************************
+2025-08-19T13:10:25.0755701Z         Please consider removing the following classifiers in favor of a SPDX license expression:
+2025-08-19T13:10:25.0756781Z
+2025-08-19T13:10:25.0761761Z         License :: OSI Approved :: MIT License
+2025-08-19T13:10:25.0762405Z
+2025-08-19T13:10:25.0762924Z         See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+2025-08-19T13:10:25.0763751Z         ********************************************************************************
+2025-08-19T13:10:25.0764314Z
+2025-08-19T13:10:25.0764436Z !!
+2025-08-19T13:10:25.0764756Z   dist._finalize_license_expression()
+2025-08-19T13:10:25.0765962Z /tmp/build-env-au5crj1l/lib/python3.12/site-packages/setuptools/dist.py:759: SetuptoolsDeprecationWarning: License classifiers are deprecated.
+2025-08-19T13:10:25.0767067Z !!
+2025-08-19T13:10:25.0767238Z
+2025-08-19T13:10:25.0767406Z         ********************************************************************************
+2025-08-19T13:10:25.0768189Z         Please consider removing the following classifiers in favor of a SPDX license expression:
+2025-08-19T13:10:25.0768803Z
+2025-08-19T13:10:25.0769083Z         License :: OSI Approved :: MIT License
+2025-08-19T13:10:25.0769460Z
+2025-08-19T13:10:25.0769981Z         See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+2025-08-19T13:10:25.0770827Z         ********************************************************************************
+2025-08-19T13:10:25.0771176Z
+2025-08-19T13:10:25.0771301Z !!
+2025-08-19T13:10:25.0771626Z   self._finalize_license_expression()
+2025-08-19T13:10:25.0788961Z running egg_info
+2025-08-19T13:10:25.0812623Z creating src/rmnpy.egg-info
+2025-08-19T13:10:25.0813896Z writing src/rmnpy.egg-info/PKG-INFO
+2025-08-19T13:10:25.0841040Z writing dependency_links to src/rmnpy.egg-info/dependency_links.txt
+2025-08-19T13:10:25.0858549Z writing requirements to src/rmnpy.egg-info/requires.txt
+2025-08-19T13:10:25.0859643Z writing top-level names to src/rmnpy.egg-info/top_level.txt
+2025-08-19T13:10:25.0861118Z writing manifest file 'src/rmnpy.egg-info/SOURCES.txt'
+2025-08-19T13:10:25.0952312Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayobject.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.0954826Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayscalars.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.0957111Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarrayobject.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.0959336Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarraytypes.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.0961521Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/ufuncobject.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.0965585Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayobject.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.0967368Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayscalars.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.0969124Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarrayobject.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.0970847Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarraytypes.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.0972756Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/ufuncobject.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.0978491Z reading manifest file 'src/rmnpy.egg-info/SOURCES.txt'
+2025-08-19T13:10:25.0980305Z reading manifest template 'MANIFEST.in'
+2025-08-19T13:10:25.0981856Z warning: no files found matching 'src/rmnpy/_libs/*.so*'
+2025-08-19T13:10:25.0982441Z warning: no files found matching 'src/rmnpy/_libs/*.dylib'
+2025-08-19T13:10:25.0983418Z warning: no files found matching 'src/rmnpy/_libs/*.dll'
+2025-08-19T13:10:25.0984464Z warning: no files found matching 'src/rmnpy/py.typed'
+2025-08-19T13:10:25.1008604Z warning: no files found matching '*.pxi' under directory 'src'
+2025-08-19T13:10:25.1018099Z warning: no files found matching '*.h' under directory 'include'
+2025-08-19T13:10:25.1018959Z warning: no files found matching 'LICENSE'
+2025-08-19T13:10:25.1019835Z warning: no files found matching 'CHANGELOG.md'
+2025-08-19T13:10:25.1024895Z warning: no files found matching '*.rst'
+2025-08-19T13:10:25.1037088Z no previously-included directories found matching '.github'
+2025-08-19T13:10:25.1038463Z no previously-included directories found matching 'build'
+2025-08-19T13:10:25.1040129Z no previously-included directories found matching 'dist'
+2025-08-19T13:10:25.1041620Z no previously-included directories found matching 'htmlcov'
+2025-08-19T13:10:25.1043287Z no previously-included directories found matching '.mypy_cache'
+2025-08-19T13:10:25.1045374Z no previously-included directories found matching '__pycache__'
+2025-08-19T13:10:25.1048599Z warning: no previously-included files matching '*.pyc' found anywhere in distribution
+2025-08-19T13:10:25.1050266Z warning: no previously-included files matching '*.pyo' found anywhere in distribution
+2025-08-19T13:10:25.1052209Z warning: no previously-included files matching '*.orig' found anywhere in distribution
+2025-08-19T13:10:25.1054363Z warning: no previously-included files matching '*.rej' found anywhere in distribution
+2025-08-19T13:10:25.1056320Z warning: no previously-included files matching '*~' found anywhere in distribution
+2025-08-19T13:10:25.1067213Z writing manifest file 'src/rmnpy.egg-info/SOURCES.txt'
+2025-08-19T13:10:25.3238642Z * Building sdist...
+2025-08-19T13:10:25.6997745Z Using system-installed libraries
+2025-08-19T13:10:25.7175053Z /tmp/build-env-au5crj1l/lib/python3.12/site-packages/setuptools/config/_apply_pyprojecttoml.py:82: SetuptoolsDeprecationWarning: `project.license` as a TOML table is deprecated
+2025-08-19T13:10:25.7176524Z !!
+2025-08-19T13:10:25.7176696Z
+2025-08-19T13:10:25.7176877Z         ********************************************************************************
+2025-08-19T13:10:25.7177856Z         Please use a simple string containing a SPDX expression for `project.license`. You can also use `project.license-files`. (Both options available on setuptools>=77.0.0).
+2025-08-19T13:10:25.7178579Z
+2025-08-19T13:10:25.7178807Z         By 2026-Feb-18, you need to update your project and remove deprecated calls
+2025-08-19T13:10:25.7179261Z         or your builds will no longer be supported.
+2025-08-19T13:10:25.7179516Z
+2025-08-19T13:10:25.7179958Z         See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+2025-08-19T13:10:25.7180467Z         ********************************************************************************
+2025-08-19T13:10:25.7180678Z
+2025-08-19T13:10:25.7180745Z !!
+2025-08-19T13:10:25.7180929Z   corresp(dist, value, root_dir)
+2025-08-19T13:10:25.7324033Z /tmp/build-env-au5crj1l/lib/python3.12/site-packages/setuptools/config/_apply_pyprojecttoml.py:61: SetuptoolsDeprecationWarning: License classifiers are deprecated.
+2025-08-19T13:10:25.7325268Z !!
+2025-08-19T13:10:25.7325388Z
+2025-08-19T13:10:25.7325515Z         ********************************************************************************
+2025-08-19T13:10:25.7326146Z         Please consider removing the following classifiers in favor of a SPDX license expression:
+2025-08-19T13:10:25.7326647Z
+2025-08-19T13:10:25.7327098Z         License :: OSI Approved :: MIT License
+2025-08-19T13:10:25.7327421Z
+2025-08-19T13:10:25.7328310Z         See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+2025-08-19T13:10:25.7329616Z         ********************************************************************************
+2025-08-19T13:10:25.7330084Z
+2025-08-19T13:10:25.7330182Z !!
+2025-08-19T13:10:25.7330502Z   dist._finalize_license_expression()
+2025-08-19T13:10:25.7335600Z /tmp/build-env-au5crj1l/lib/python3.12/site-packages/setuptools/dist.py:759: SetuptoolsDeprecationWarning: License classifiers are deprecated.
+2025-08-19T13:10:25.7336851Z !!
+2025-08-19T13:10:25.7337015Z
+2025-08-19T13:10:25.7337226Z         ********************************************************************************
+2025-08-19T13:10:25.7338057Z         Please consider removing the following classifiers in favor of a SPDX license expression:
+2025-08-19T13:10:25.7338640Z
+2025-08-19T13:10:25.7338843Z         License :: OSI Approved :: MIT License
+2025-08-19T13:10:25.7339130Z
+2025-08-19T13:10:25.7339488Z         See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+2025-08-19T13:10:25.7340404Z         ********************************************************************************
+2025-08-19T13:10:25.7340782Z
+2025-08-19T13:10:25.7340898Z !!
+2025-08-19T13:10:25.7341196Z   self._finalize_license_expression()
+2025-08-19T13:10:25.7361443Z running sdist
+2025-08-19T13:10:25.7363154Z running egg_info
+2025-08-19T13:10:25.7405731Z writing src/rmnpy.egg-info/PKG-INFO
+2025-08-19T13:10:25.7430960Z writing dependency_links to src/rmnpy.egg-info/dependency_links.txt
+2025-08-19T13:10:25.7454762Z writing requirements to src/rmnpy.egg-info/requires.txt
+2025-08-19T13:10:25.7464922Z writing top-level names to src/rmnpy.egg-info/top_level.txt
+2025-08-19T13:10:25.7553256Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayobject.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.7555949Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayscalars.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.7558081Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarrayobject.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.7559696Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarraytypes.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.7561265Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/ufuncobject.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.7562828Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayobject.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.7564581Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayscalars.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.7566147Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarrayobject.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.7567703Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarraytypes.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.7569258Z dependency /tmp/build-env-au5crj1l/lib/python3.12/site-packages/numpy/_core/include/numpy/ufuncobject.h won't be automatically included in the manifest: the path must be relative
+2025-08-19T13:10:25.7665230Z reading manifest file 'src/rmnpy.egg-info/SOURCES.txt'
+2025-08-19T13:10:25.7674381Z reading manifest template 'MANIFEST.in'
+2025-08-19T13:10:25.7676233Z warning: no files found matching 'src/rmnpy/_libs/*.so*'
+2025-08-19T13:10:25.7676841Z warning: no files found matching 'src/rmnpy/_libs/*.dylib'
+2025-08-19T13:10:25.7677665Z warning: no files found matching 'src/rmnpy/_libs/*.dll'
+2025-08-19T13:10:25.7678224Z warning: no files found matching 'src/rmnpy/py.typed'
+2025-08-19T13:10:25.7709308Z warning: no files found matching '*.pxi' under directory 'src'
+2025-08-19T13:10:25.7718304Z warning: no files found matching '*.h' under directory 'include'
+2025-08-19T13:10:25.7719202Z warning: no files found matching 'LICENSE'
+2025-08-19T13:10:25.7719827Z warning: no files found matching 'CHANGELOG.md'
+2025-08-19T13:10:25.7724310Z warning: no files found matching '*.rst'
+2025-08-19T13:10:25.7735600Z no previously-included directories found matching '.github'
+2025-08-19T13:10:25.7736918Z no previously-included directories found matching 'build'
+2025-08-19T13:10:25.7738288Z no previously-included directories found matching 'dist'
+2025-08-19T13:10:25.7740262Z no previously-included directories found matching 'htmlcov'
+2025-08-19T13:10:25.7742204Z no previously-included directories found matching '.mypy_cache'
+2025-08-19T13:10:25.7743982Z no previously-included directories found matching '__pycache__'
+2025-08-19T13:10:25.7747834Z warning: no previously-included files matching '*.pyc' found anywhere in distribution
+2025-08-19T13:10:25.7750765Z warning: no previously-included files matching '*.pyo' found anywhere in distribution
+2025-08-19T13:10:25.7753713Z warning: no previously-included files matching '*.orig' found anywhere in distribution
+2025-08-19T13:10:25.7756963Z warning: no previously-included files matching '*.rej' found anywhere in distribution
+2025-08-19T13:10:25.7759594Z warning: no previously-included files matching '*~' found anywhere in distribution
+2025-08-19T13:10:25.7780182Z writing manifest file 'src/rmnpy.egg-info/SOURCES.txt'
+2025-08-19T13:10:25.7782659Z running check
+2025-08-19T13:10:25.7846389Z creating rmnpy-0.1.31
+2025-08-19T13:10:25.7850783Z creating rmnpy-0.1.31/scripts
+2025-08-19T13:10:25.7852731Z creating rmnpy-0.1.31/src/rmnpy
+2025-08-19T13:10:25.7855458Z creating rmnpy-0.1.31/src/rmnpy.egg-info
+2025-08-19T13:10:25.7857191Z creating rmnpy-0.1.31/src/rmnpy/_c_api
+2025-08-19T13:10:25.7858857Z creating rmnpy-0.1.31/src/rmnpy/helpers
+2025-08-19T13:10:25.7860545Z creating rmnpy-0.1.31/src/rmnpy/rmnlib
+2025-08-19T13:10:25.7862142Z creating rmnpy-0.1.31/src/rmnpy/sitypes
+2025-08-19T13:10:25.7863733Z creating rmnpy-0.1.31/src/rmnpy/wrappers
+2025-08-19T13:10:25.7865495Z creating rmnpy-0.1.31/src/rmnpy/wrappers/rmnlib
+2025-08-19T13:10:25.7867130Z creating rmnpy-0.1.31/src/rmnpy/wrappers/sitypes
+2025-08-19T13:10:25.7868667Z creating rmnpy-0.1.31/tests
+2025-08-19T13:10:25.7870274Z creating rmnpy-0.1.31/tests/test_csdmpy
+2025-08-19T13:10:25.7871773Z creating rmnpy-0.1.31/tests/test_helpers
+2025-08-19T13:10:25.7873428Z creating rmnpy-0.1.31/tests/test_rmnlib
+2025-08-19T13:10:25.7875265Z creating rmnpy-0.1.31/tests/test_sitypes
+2025-08-19T13:10:25.7876268Z copying files to rmnpy-0.1.31...
+2025-08-19T13:10:25.7877254Z copying MANIFEST.in -> rmnpy-0.1.31
+2025-08-19T13:10:25.7879614Z copying Makefile -> rmnpy-0.1.31
+2025-08-19T13:10:25.7881540Z copying MasterPlan.md -> rmnpy-0.1.31
+2025-08-19T13:10:25.7883504Z copying README.md -> rmnpy-0.1.31
+2025-08-19T13:10:25.7885596Z copying RELEASE_SETUP.md -> rmnpy-0.1.31
+2025-08-19T13:10:25.7887378Z copying pyproject.toml -> rmnpy-0.1.31
+2025-08-19T13:10:25.7889044Z copying requirements.txt -> rmnpy-0.1.31
+2025-08-19T13:10:25.7890626Z copying setup.cfg -> rmnpy-0.1.31
+2025-08-19T13:10:25.7892405Z copying setup.py -> rmnpy-0.1.31
+2025-08-19T13:10:25.7894410Z copying scripts/extract_si_constants.py -> rmnpy-0.1.31/scripts
+2025-08-19T13:10:25.7896137Z copying src/rmnpy/__init__.py -> rmnpy-0.1.31/src/rmnpy
+2025-08-19T13:10:25.7897764Z copying src/rmnpy/dll_loader.py -> rmnpy-0.1.31/src/rmnpy
+2025-08-19T13:10:25.7899499Z copying src/rmnpy/exceptions.py -> rmnpy-0.1.31/src/rmnpy
+2025-08-19T13:10:25.7901164Z copying src/rmnpy/math.py -> rmnpy-0.1.31/src/rmnpy
+2025-08-19T13:10:25.7903335Z copying src/rmnpy/quantities.c -> rmnpy-0.1.31/src/rmnpy
+2025-08-19T13:10:25.7909596Z copying src/rmnpy/quantities.pyi -> rmnpy-0.1.31/src/rmnpy
+2025-08-19T13:10:25.7911238Z copying src/rmnpy/quantities.pyx -> rmnpy-0.1.31/src/rmnpy
+2025-08-19T13:10:25.7913110Z copying src/rmnpy.egg-info/PKG-INFO -> rmnpy-0.1.31/src/rmnpy.egg-info
+2025-08-19T13:10:25.7915265Z copying src/rmnpy.egg-info/SOURCES.txt -> rmnpy-0.1.31/src/rmnpy.egg-info
+2025-08-19T13:10:25.7916943Z copying src/rmnpy.egg-info/dependency_links.txt -> rmnpy-0.1.31/src/rmnpy.egg-info
+2025-08-19T13:10:25.7918413Z copying src/rmnpy.egg-info/not-zip-safe -> rmnpy-0.1.31/src/rmnpy.egg-info
+2025-08-19T13:10:25.7920233Z copying src/rmnpy.egg-info/requires.txt -> rmnpy-0.1.31/src/rmnpy.egg-info
+2025-08-19T13:10:25.7921838Z copying src/rmnpy.egg-info/top_level.txt -> rmnpy-0.1.31/src/rmnpy.egg-info
+2025-08-19T13:10:25.7923493Z copying src/rmnpy/_c_api/__init__.py -> rmnpy-0.1.31/src/rmnpy/_c_api
+2025-08-19T13:10:25.7925415Z copying src/rmnpy/_c_api/octypes.pxd -> rmnpy-0.1.31/src/rmnpy/_c_api
+2025-08-19T13:10:25.7927277Z copying src/rmnpy/_c_api/rmnlib.pxd -> rmnpy-0.1.31/src/rmnpy/_c_api
+2025-08-19T13:10:25.7929285Z copying src/rmnpy/_c_api/sitypes.pxd -> rmnpy-0.1.31/src/rmnpy/_c_api
+2025-08-19T13:10:25.7931226Z copying src/rmnpy/helpers/__init__.py -> rmnpy-0.1.31/src/rmnpy/helpers
+2025-08-19T13:10:25.7932981Z copying src/rmnpy/helpers/octypes.c -> rmnpy-0.1.31/src/rmnpy/helpers
+2025-08-19T13:10:25.7951801Z copying src/rmnpy/helpers/octypes.pyx -> rmnpy-0.1.31/src/rmnpy/helpers
+2025-08-19T13:10:25.7954386Z copying src/rmnpy/rmnlib/__init__.py -> rmnpy-0.1.31/src/rmnpy/rmnlib
+2025-08-19T13:10:25.7956181Z copying src/rmnpy/sitypes/__init__.py -> rmnpy-0.1.31/src/rmnpy/sitypes
+2025-08-19T13:10:25.7957996Z copying src/rmnpy/wrappers/__init__.py -> rmnpy-0.1.31/src/rmnpy/wrappers
+2025-08-19T13:10:25.7959984Z copying src/rmnpy/wrappers/rmnlib/__init__.py -> rmnpy-0.1.31/src/rmnpy/wrappers/rmnlib
+2025-08-19T13:10:25.7962093Z copying src/rmnpy/wrappers/rmnlib/dependent_variable.c -> rmnpy-0.1.31/src/rmnpy/wrappers/rmnlib
+2025-08-19T13:10:25.7975949Z copying src/rmnpy/wrappers/rmnlib/dependent_variable.pxd -> rmnpy-0.1.31/src/rmnpy/wrappers/rmnlib
+2025-08-19T13:10:25.7978245Z copying src/rmnpy/wrappers/rmnlib/dependent_variable.pyx -> rmnpy-0.1.31/src/rmnpy/wrappers/rmnlib
+2025-08-19T13:10:25.7979533Z copying src/rmnpy/wrappers/rmnlib/dimension.c -> rmnpy-0.1.31/src/rmnpy/wrappers/rmnlib
+2025-08-19T13:10:25.7995159Z copying src/rmnpy/wrappers/rmnlib/dimension.pxd -> rmnpy-0.1.31/src/rmnpy/wrappers/rmnlib
+2025-08-19T13:10:25.7996818Z copying src/rmnpy/wrappers/rmnlib/dimension.pyx -> rmnpy-0.1.31/src/rmnpy/wrappers/rmnlib
+2025-08-19T13:10:25.7999409Z copying src/rmnpy/wrappers/rmnlib/sparse_sampling.c -> rmnpy-0.1.31/src/rmnpy/wrappers/rmnlib
+2025-08-19T13:10:25.8007473Z copying src/rmnpy/wrappers/rmnlib/sparse_sampling.pxd -> rmnpy-0.1.31/src/rmnpy/wrappers/rmnlib
+2025-08-19T13:10:25.8008896Z copying src/rmnpy/wrappers/rmnlib/sparse_sampling.pyx -> rmnpy-0.1.31/src/rmnpy/wrappers/rmnlib
+2025-08-19T13:10:25.8010625Z copying src/rmnpy/wrappers/sitypes/__init__.py -> rmnpy-0.1.31/src/rmnpy/wrappers/sitypes
+2025-08-19T13:10:25.8012393Z copying src/rmnpy/wrappers/sitypes/dimensionality.c -> rmnpy-0.1.31/src/rmnpy/wrappers/sitypes
+2025-08-19T13:10:25.8020287Z copying src/rmnpy/wrappers/sitypes/dimensionality.pxd -> rmnpy-0.1.31/src/rmnpy/wrappers/sitypes
+2025-08-19T13:10:25.8021872Z copying src/rmnpy/wrappers/sitypes/dimensionality.pyx -> rmnpy-0.1.31/src/rmnpy/wrappers/sitypes
+2025-08-19T13:10:25.8023471Z copying src/rmnpy/wrappers/sitypes/scalar.c -> rmnpy-0.1.31/src/rmnpy/wrappers/sitypes
+2025-08-19T13:10:25.8035065Z copying src/rmnpy/wrappers/sitypes/scalar.pxd -> rmnpy-0.1.31/src/rmnpy/wrappers/sitypes
+2025-08-19T13:10:25.8036611Z copying src/rmnpy/wrappers/sitypes/scalar.pyx -> rmnpy-0.1.31/src/rmnpy/wrappers/sitypes
+2025-08-19T13:10:25.8039094Z copying src/rmnpy/wrappers/sitypes/unit.c -> rmnpy-0.1.31/src/rmnpy/wrappers/sitypes
+2025-08-19T13:10:25.8048244Z copying src/rmnpy/wrappers/sitypes/unit.pxd -> rmnpy-0.1.31/src/rmnpy/wrappers/sitypes
+2025-08-19T13:10:25.8049513Z copying src/rmnpy/wrappers/sitypes/unit.pyx -> rmnpy-0.1.31/src/rmnpy/wrappers/sitypes
+2025-08-19T13:10:25.8051161Z copying tests/__init__.py -> rmnpy-0.1.31/tests
+2025-08-19T13:10:25.8052964Z copying tests/conftest.py -> rmnpy-0.1.31/tests
+2025-08-19T13:10:25.8054578Z copying tests/test_math.py -> rmnpy-0.1.31/tests
+2025-08-19T13:10:25.8056680Z copying tests/test_csdmpy/__init__.py -> rmnpy-0.1.31/tests/test_csdmpy
+2025-08-19T13:10:25.8058252Z copying tests/test_csdmpy/test_dimension_compatibility.py -> rmnpy-0.1.31/tests/test_csdmpy
+2025-08-19T13:10:25.8059855Z copying tests/test_helpers/__init__.py -> rmnpy-0.1.31/tests/test_helpers
+2025-08-19T13:10:25.8061477Z copying tests/test_helpers/test_minimal.pyx -> rmnpy-0.1.31/tests/test_helpers
+2025-08-19T13:10:25.8063069Z copying tests/test_helpers/test_octypes.py -> rmnpy-0.1.31/tests/test_helpers
+2025-08-19T13:10:25.8065002Z copying tests/test_helpers/test_octypes_linking.pyx -> rmnpy-0.1.31/tests/test_helpers
+2025-08-19T13:10:25.8066509Z copying tests/test_helpers/test_octypes_roundtrip.pyx -> rmnpy-0.1.31/tests/test_helpers
+2025-08-19T13:10:25.8068840Z copying tests/test_rmnlib/__init__.py -> rmnpy-0.1.31/tests/test_rmnlib
+2025-08-19T13:10:25.8070393Z copying tests/test_rmnlib/test_dependent_variable.py -> rmnpy-0.1.31/tests/test_rmnlib
+2025-08-19T13:10:25.8072033Z copying tests/test_rmnlib/test_dimension.py -> rmnpy-0.1.31/tests/test_rmnlib
+2025-08-19T13:10:25.8073862Z copying tests/test_rmnlib/test_sparse_sampling.py -> rmnpy-0.1.31/tests/test_rmnlib
+2025-08-19T13:10:25.8075744Z copying tests/test_sitypes/__init__.py -> rmnpy-0.1.31/tests/test_sitypes
+2025-08-19T13:10:25.8077380Z copying tests/test_sitypes/test_dimensionality.py -> rmnpy-0.1.31/tests/test_sitypes
+2025-08-19T13:10:25.8079098Z copying tests/test_sitypes/test_scalar.py -> rmnpy-0.1.31/tests/test_sitypes
+2025-08-19T13:10:25.8081572Z copying tests/test_sitypes/test_sitypes_linking.pyx -> rmnpy-0.1.31/tests/test_sitypes
+2025-08-19T13:10:25.8082926Z copying tests/test_sitypes/test_unit.py -> rmnpy-0.1.31/tests/test_sitypes
+2025-08-19T13:10:25.8085406Z copying src/rmnpy.egg-info/SOURCES.txt -> rmnpy-0.1.31/src/rmnpy.egg-info
+2025-08-19T13:10:25.8113842Z Writing rmnpy-0.1.31/setup.cfg
+2025-08-19T13:10:25.8116505Z Creating tar archive
+2025-08-19T13:10:26.2757136Z removing 'rmnpy-0.1.31' (and everything under it)
+2025-08-19T13:10:26.3884578Z Successfully built rmnpy-0.1.31.tar.gz
+2025-08-19T13:10:26.4075244Z ##[group]Run actions/upload-artifact@v4
+2025-08-19T13:10:26.4075520Z with:
+2025-08-19T13:10:26.4075688Z   name: cibw-sdist
+2025-08-19T13:10:26.4075878Z   path: dist/*.tar.gz
+2025-08-19T13:10:26.4076075Z   if-no-files-found: warn
+2025-08-19T13:10:26.4076293Z   compression-level: 6
+2025-08-19T13:10:26.4076480Z   overwrite: false
+2025-08-19T13:10:26.4136797Z   include-hidden-files: false
+2025-08-19T13:10:26.4137051Z ##[endgroup]
+2025-08-19T13:10:26.6216396Z With the provided path, there will be 1 file uploaded
+2025-08-19T13:10:26.6221839Z Artifact name is valid!
+2025-08-19T13:10:26.6223122Z Root directory input is valid!
+2025-08-19T13:10:26.8184960Z Beginning upload of artifact content to blob storage
+2025-08-19T13:10:27.2891864Z Uploaded bytes 1048179
+2025-08-19T13:10:27.3429164Z Finished uploading artifact content to blob storage!
+2025-08-19T13:10:27.3432686Z SHA256 digest of uploaded artifact zip is 99db7a07b0327bc16d71c696fc26c6c3847b0caa99dad5045b9c655dc63680ee
+2025-08-19T13:10:27.3434893Z Finalizing artifact upload
+2025-08-19T13:10:27.4640037Z Artifact cibw-sdist.zip successfully finalized. Artifact ID 3798658299
+2025-08-19T13:10:27.4641191Z Artifact cibw-sdist has been successfully uploaded! Final size is 1048179 bytes. Artifact ID is 3798658299
+2025-08-19T13:10:27.4647885Z Artifact download URL: https://github.com/pjgrandinetti/RMNpy/actions/runs/17070622246/artifacts/3798658299
+2025-08-19T13:10:27.4797494Z Post job cleanup.
+2025-08-19T13:10:27.5560828Z [command]/usr/bin/git version
+2025-08-19T13:10:27.5595347Z git version 2.50.1
+2025-08-19T13:10:27.5630346Z Temporarily overriding HOME='/home/runner/work/_temp/ae2ee740-d3fc-451e-8821-102daa14626c' before making global git config changes
+2025-08-19T13:10:27.5632003Z Adding repository directory to the temporary git global config as a safe directory
+2025-08-19T13:10:27.5634927Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/RMNpy/RMNpy
+2025-08-19T13:10:27.5669056Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-08-19T13:10:27.5702597Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-08-19T13:10:27.5920529Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-08-19T13:10:27.5942322Z http.https://github.com/.extraheader
+2025-08-19T13:10:27.5952061Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2025-08-19T13:10:27.5982522Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-08-19T13:10:27.6302141Z Cleaning up orphan processes

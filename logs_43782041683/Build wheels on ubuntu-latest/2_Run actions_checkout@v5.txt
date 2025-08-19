@@ -1,0 +1,85 @@
+﻿2025-08-19T13:10:13.5225188Z ##[group]Run actions/checkout@v5
+2025-08-19T13:10:13.5226108Z with:
+2025-08-19T13:10:13.5226582Z   repository: pjgrandinetti/RMNpy
+2025-08-19T13:10:13.5227511Z   token: ***
+2025-08-19T13:10:13.5227949Z   ssh-strict: true
+2025-08-19T13:10:13.5228389Z   ssh-user: git
+2025-08-19T13:10:13.5228842Z   persist-credentials: true
+2025-08-19T13:10:13.5229353Z   clean: true
+2025-08-19T13:10:13.5229804Z   sparse-checkout-cone-mode: true
+2025-08-19T13:10:13.5230356Z   fetch-depth: 1
+2025-08-19T13:10:13.5230796Z   fetch-tags: false
+2025-08-19T13:10:13.5231244Z   show-progress: true
+2025-08-19T13:10:13.5231703Z   lfs: false
+2025-08-19T13:10:13.5232119Z   submodules: false
+2025-08-19T13:10:13.5232631Z   set-safe-directory: true
+2025-08-19T13:10:13.5233371Z ##[endgroup]
+2025-08-19T13:10:13.6133442Z Syncing repository: pjgrandinetti/RMNpy
+2025-08-19T13:10:13.6135350Z ##[group]Getting Git version info
+2025-08-19T13:10:13.6136114Z Working directory is '/home/runner/work/RMNpy/RMNpy'
+2025-08-19T13:10:13.6137402Z [command]/usr/bin/git version
+2025-08-19T13:10:13.6201155Z git version 2.50.1
+2025-08-19T13:10:13.6222089Z ##[endgroup]
+2025-08-19T13:10:13.6235172Z Temporarily overriding HOME='/home/runner/work/_temp/df855478-4477-4a63-b50f-1f9e735ccfdc' before making global git config changes
+2025-08-19T13:10:13.6237784Z Adding repository directory to the temporary git global config as a safe directory
+2025-08-19T13:10:13.6239591Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/RMNpy/RMNpy
+2025-08-19T13:10:13.6276227Z Deleting the contents of '/home/runner/work/RMNpy/RMNpy'
+2025-08-19T13:10:13.6280071Z ##[group]Initializing the repository
+2025-08-19T13:10:13.6284414Z [command]/usr/bin/git init /home/runner/work/RMNpy/RMNpy
+2025-08-19T13:10:13.6368185Z hint: Using 'master' as the name for the initial branch. This default branch name
+2025-08-19T13:10:13.6370467Z hint: is subject to change. To configure the initial branch name to use in all
+2025-08-19T13:10:13.6372296Z hint: of your new repositories, which will suppress this warning, call:
+2025-08-19T13:10:13.6373692Z hint:
+2025-08-19T13:10:13.6374711Z hint: 	git config --global init.defaultBranch <name>
+2025-08-19T13:10:13.6375777Z hint:
+2025-08-19T13:10:13.6376421Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2025-08-19T13:10:13.6378219Z hint: 'development'. The just-created branch can be renamed via this command:
+2025-08-19T13:10:13.6379135Z hint:
+2025-08-19T13:10:13.6379693Z hint: 	git branch -m <name>
+2025-08-19T13:10:13.6380450Z hint:
+2025-08-19T13:10:13.6381597Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2025-08-19T13:10:13.6383517Z Initialized empty Git repository in /home/runner/work/RMNpy/RMNpy/.git/
+2025-08-19T13:10:13.6388988Z [command]/usr/bin/git remote add origin https://github.com/pjgrandinetti/RMNpy
+2025-08-19T13:10:13.6432793Z ##[endgroup]
+2025-08-19T13:10:13.6434191Z ##[group]Disabling automatic garbage collection
+2025-08-19T13:10:13.6438828Z [command]/usr/bin/git config --local gc.auto 0
+2025-08-19T13:10:13.6466001Z ##[endgroup]
+2025-08-19T13:10:13.6466951Z ##[group]Setting up auth
+2025-08-19T13:10:13.6472493Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-08-19T13:10:13.6503904Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-08-19T13:10:13.6842152Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-08-19T13:10:13.6874836Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-08-19T13:10:13.7117383Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2025-08-19T13:10:13.7154264Z ##[endgroup]
+2025-08-19T13:10:13.7155716Z ##[group]Fetching the repository
+2025-08-19T13:10:13.7164257Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +7832b5d6651f3a549487c4c1846b5619df14b4f6:refs/tags/v0.1.31
+2025-08-19T13:10:13.9296304Z From https://github.com/pjgrandinetti/RMNpy
+2025-08-19T13:10:13.9297770Z  * [new ref]         7832b5d6651f3a549487c4c1846b5619df14b4f6 -> v0.1.31
+2025-08-19T13:10:13.9320651Z ##[endgroup]
+2025-08-19T13:10:13.9321873Z ##[group]Determining the checkout info
+2025-08-19T13:10:13.9323232Z ##[endgroup]
+2025-08-19T13:10:13.9327613Z [command]/usr/bin/git sparse-checkout disable
+2025-08-19T13:10:13.9367918Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2025-08-19T13:10:13.9394289Z ##[group]Checking out the ref
+2025-08-19T13:10:13.9398782Z [command]/usr/bin/git checkout --progress --force refs/tags/v0.1.31
+2025-08-19T13:10:13.9491097Z Note: switching to 'refs/tags/v0.1.31'.
+2025-08-19T13:10:13.9492311Z
+2025-08-19T13:10:13.9492970Z You are in 'detached HEAD' state. You can look around, make experimental
+2025-08-19T13:10:13.9494084Z changes and commit them, and you can discard any commits you make in this
+2025-08-19T13:10:13.9495175Z state without impacting any branches by switching back to a branch.
+2025-08-19T13:10:13.9496257Z
+2025-08-19T13:10:13.9497181Z If you want to create a new branch to retain commits you create, you may
+2025-08-19T13:10:13.9498895Z do so (now or later) by using -c with the switch command. Example:
+2025-08-19T13:10:13.9499911Z
+2025-08-19T13:10:13.9500319Z   git switch -c <new-branch-name>
+2025-08-19T13:10:13.9500971Z
+2025-08-19T13:10:13.9501324Z Or undo this operation with:
+2025-08-19T13:10:13.9501910Z
+2025-08-19T13:10:13.9502219Z   git switch -
+2025-08-19T13:10:13.9502648Z
+2025-08-19T13:10:13.9503385Z Turn off this advice by setting config variable advice.detachedHead to false
+2025-08-19T13:10:13.9504924Z
+2025-08-19T13:10:13.9505388Z HEAD is now at 7832b5d Bump version to 0.1.31
+2025-08-19T13:10:13.9508146Z ##[endgroup]
+2025-08-19T13:10:13.9537021Z [command]/usr/bin/git log -1 --format=%H
+2025-08-19T13:10:13.9558621Z 7832b5d6651f3a549487c4c1846b5619df14b4f6

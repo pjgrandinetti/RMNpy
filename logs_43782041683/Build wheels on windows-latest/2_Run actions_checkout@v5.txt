@@ -1,0 +1,73 @@
+﻿2025-08-19T13:10:13.2207151Z ##[group]Run actions/checkout@v5
+2025-08-19T13:10:13.2208600Z with:
+2025-08-19T13:10:13.2209356Z   repository: pjgrandinetti/RMNpy
+2025-08-19T13:10:13.2210579Z   token: ***
+2025-08-19T13:10:13.2211306Z   ssh-strict: true
+2025-08-19T13:10:13.2212065Z   ssh-user: git
+2025-08-19T13:10:13.2212841Z   persist-credentials: true
+2025-08-19T13:10:13.2213696Z   clean: true
+2025-08-19T13:10:13.2214457Z   sparse-checkout-cone-mode: true
+2025-08-19T13:10:13.2215400Z   fetch-depth: 1
+2025-08-19T13:10:13.2216134Z   fetch-tags: false
+2025-08-19T13:10:13.2216902Z   show-progress: true
+2025-08-19T13:10:13.2217696Z   lfs: false
+2025-08-19T13:10:13.2218401Z   submodules: false
+2025-08-19T13:10:13.2219182Z   set-safe-directory: true
+2025-08-19T13:10:13.2220245Z ##[endgroup]
+2025-08-19T13:10:13.3552679Z Syncing repository: pjgrandinetti/RMNpy
+2025-08-19T13:10:13.3555102Z ##[group]Getting Git version info
+2025-08-19T13:10:13.3556141Z Working directory is 'D:\a\RMNpy\RMNpy'
+2025-08-19T13:10:13.4647907Z [command]"C:\Program Files\Git\bin\git.exe" version
+2025-08-19T13:10:13.7521523Z git version 2.50.1.windows.1
+2025-08-19T13:10:13.7562070Z ##[endgroup]
+2025-08-19T13:10:13.7579529Z Temporarily overriding HOME='D:\a\_temp\64348280-e350-42e2-9143-3ab786147236' before making global git config changes
+2025-08-19T13:10:13.7581841Z Adding repository directory to the temporary git global config as a safe directory
+2025-08-19T13:10:13.7588915Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\RMNpy\RMNpy
+2025-08-19T13:10:13.7960493Z Deleting the contents of 'D:\a\RMNpy\RMNpy'
+2025-08-19T13:10:13.7965110Z ##[group]Initializing the repository
+2025-08-19T13:10:13.7973137Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\RMNpy\RMNpy
+2025-08-19T13:10:13.8576606Z Initialized empty Git repository in D:/a/RMNpy/RMNpy/.git/
+2025-08-19T13:10:13.8612697Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/pjgrandinetti/RMNpy
+2025-08-19T13:10:13.9095203Z ##[endgroup]
+2025-08-19T13:10:13.9097249Z ##[group]Disabling automatic garbage collection
+2025-08-19T13:10:13.9102114Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2025-08-19T13:10:13.9318140Z ##[endgroup]
+2025-08-19T13:10:13.9319356Z ##[group]Setting up auth
+2025-08-19T13:10:13.9328501Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2025-08-19T13:10:13.9547218Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2025-08-19T13:10:15.1161420Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-08-19T13:10:15.1389356Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2025-08-19T13:10:15.5438821Z [command]"C:\Program Files\Git\bin\git.exe" config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2025-08-19T13:10:15.5667573Z ##[endgroup]
+2025-08-19T13:10:15.5668337Z ##[group]Fetching the repository
+2025-08-19T13:10:15.5686059Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +7832b5d6651f3a549487c4c1846b5619df14b4f6:refs/tags/v0.1.31
+2025-08-19T13:10:16.3078361Z From https://github.com/pjgrandinetti/RMNpy
+2025-08-19T13:10:16.3079286Z  * [new ref]         7832b5d6651f3a549487c4c1846b5619df14b4f6 -> v0.1.31
+2025-08-19T13:10:16.3304066Z ##[endgroup]
+2025-08-19T13:10:16.3304758Z ##[group]Determining the checkout info
+2025-08-19T13:10:16.3307575Z ##[endgroup]
+2025-08-19T13:10:16.3316423Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2025-08-19T13:10:16.3611390Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2025-08-19T13:10:16.3817929Z ##[group]Checking out the ref
+2025-08-19T13:10:16.3830688Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force refs/tags/v0.1.31
+2025-08-19T13:10:16.4387475Z Note: switching to 'refs/tags/v0.1.31'.
+2025-08-19T13:10:16.4387924Z
+2025-08-19T13:10:16.4388253Z You are in 'detached HEAD' state. You can look around, make experimental
+2025-08-19T13:10:16.4389312Z changes and commit them, and you can discard any commits you make in this
+2025-08-19T13:10:16.4389943Z state without impacting any branches by switching back to a branch.
+2025-08-19T13:10:16.4390285Z
+2025-08-19T13:10:16.4390506Z If you want to create a new branch to retain commits you create, you may
+2025-08-19T13:10:16.4391034Z do so (now or later) by using -c with the switch command. Example:
+2025-08-19T13:10:16.4391329Z
+2025-08-19T13:10:16.4391491Z   git switch -c <new-branch-name>
+2025-08-19T13:10:16.4391749Z
+2025-08-19T13:10:16.4391886Z Or undo this operation with:
+2025-08-19T13:10:16.4392075Z
+2025-08-19T13:10:16.4392169Z   git switch -
+2025-08-19T13:10:16.4392342Z
+2025-08-19T13:10:16.4392614Z Turn off this advice by setting config variable advice.detachedHead to false
+2025-08-19T13:10:16.4392969Z
+2025-08-19T13:10:16.4393103Z HEAD is now at 7832b5d Bump version to 0.1.31
+2025-08-19T13:10:16.4410761Z ##[endgroup]
+2025-08-19T13:10:16.4649904Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2025-08-19T13:10:16.4840179Z 7832b5d6651f3a549487c4c1846b5619df14b4f6
