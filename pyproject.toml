@@ -48,8 +48,8 @@ before-all = [
     "RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $RMNLIB_TAG https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
     "cd /tmp/rmnlib && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install",
 ]
-repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
-environment = { MACOSX_DEPLOYMENT_TARGET = "10.9" }
+repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel} || delocate-wheel -w {dest_dir} -v {wheel}"
+environment = { MACOSX_DEPLOYMENT_TARGET = "10.9", DYLD_LIBRARY_PATH = "/tmp/install/lib:/usr/local/lib:/opt/homebrew/lib" }
 
 # Windows-specific settings
 [tool.cibuildwheel.windows]
