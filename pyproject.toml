@@ -36,11 +36,17 @@ repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
 before-all = [
     "brew install flex bison openblas lapack curl libomp",
     # Build OCTypes from source (latest stable release) - combine tag fetch and clone with robust tag parsing
-    "OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes && cd /tmp/octypes && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install",
+    "OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
+    "cd /tmp/octypes && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install",
     # Build SITypes from source - combine tag fetch and clone with robust tag parsing, set up OCTypes dependencies
-    "SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes && mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib && cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/ && cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/lib/ && cd /tmp/sitypes && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install",
+    "SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
+    "mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib",
+    "cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/",
+    "cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/lib/",
+    "cd /tmp/sitypes && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install",
     # Build RMNLib from source (latest stable release) - combine tag fetch and clone with robust tag parsing
-    "RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $RMNLIB_TAG https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib && cd /tmp/rmnlib && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install",
+    "RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $RMNLIB_TAG https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib",
+    "cd /tmp/rmnlib && make -j$(sysctl -n hw.ncpu) && make install INSTALL_DIR=/tmp/install",
 ]
 repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
 environment = { MACOSX_DEPLOYMENT_TARGET = "10.9" }
