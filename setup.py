@@ -151,13 +151,16 @@ except Exception:
     pass
 
 # Link against the libraries in dependency order
+# For minimal testing, only link against OCTypes and SITypes (no RMNLib)
 if sys.platform == "win32":
     # Windows: explicitly link against import libraries using -l:filename syntax
     # This ensures proper symbol resolution for shared libraries
-    LIBS = [":libRMN.dll.a", ":libSITypes.dll.a", ":libOCTypes.dll.a"]
+    # MINIMAL BUILD: Only OCTypes + SITypes (no RMNLib)
+    LIBS = [":libSITypes.dll.a", ":libOCTypes.dll.a"]
 else:
     # Unix-like systems: standard library naming
-    LIBS = ["RMN", "SITypes", "OCTypes"]
+    # MINIMAL BUILD: Only OCTypes + SITypes (no RMNLib)
+    LIBS = ["SITypes", "OCTypes"]
 
 # Platform-specific linking
 EXTRA_LINK = []
@@ -209,34 +212,34 @@ exts = [
         extra_compile_args=EXTRA_COMPILE,
         extra_link_args=EXTRA_LINK,
     ),
-    # RMNLib wrappers
-    Extension(
-        "rmnpy.wrappers.rmnlib.dependent_variable",
-        ["src/rmnpy/wrappers/rmnlib/dependent_variable.pyx"],
-        include_dirs=INC,
-        libraries=LIBS,
-        library_dirs=LIBDIRS,
-        extra_compile_args=EXTRA_COMPILE,
-        extra_link_args=EXTRA_LINK,
-    ),
-    Extension(
-        "rmnpy.wrappers.rmnlib.dimension",
-        ["src/rmnpy/wrappers/rmnlib/dimension.pyx"],
-        include_dirs=INC,
-        libraries=LIBS,
-        library_dirs=LIBDIRS,
-        extra_compile_args=EXTRA_COMPILE,
-        extra_link_args=EXTRA_LINK,
-    ),
-    Extension(
-        "rmnpy.wrappers.rmnlib.sparse_sampling",
-        ["src/rmnpy/wrappers/rmnlib/sparse_sampling.pyx"],
-        include_dirs=INC,
-        libraries=LIBS,
-        library_dirs=LIBDIRS,
-        extra_compile_args=EXTRA_COMPILE,
-        extra_link_args=EXTRA_LINK,
-    ),
+    # RMNLib wrappers - DISABLED for minimal build
+    # Extension(
+    #     "rmnpy.wrappers.rmnlib.dependent_variable",
+    #     ["src/rmnpy/wrappers/rmnlib/dependent_variable.pyx"],
+    #     include_dirs=INC,
+    #     libraries=LIBS,
+    #     library_dirs=LIBDIRS,
+    #     extra_compile_args=EXTRA_COMPILE,
+    #     extra_link_args=EXTRA_LINK,
+    # ),
+    # Extension(
+    #     "rmnpy.wrappers.rmnlib.dimension",
+    #     ["src/rmnpy/wrappers/rmnlib/dimension.pyx"],
+    #     include_dirs=INC,
+    #     libraries=LIBS,
+    #     library_dirs=LIBDIRS,
+    #     extra_compile_args=EXTRA_COMPILE,
+    #     extra_link_args=EXTRA_LINK,
+    # ),
+    # Extension(
+    #     "rmnpy.wrappers.rmnlib.sparse_sampling",
+    #     ["src/rmnpy/wrappers/rmnlib/sparse_sampling.pyx"],
+    #     include_dirs=INC,
+    #     libraries=LIBS,
+    #     library_dirs=LIBDIRS,
+    #     extra_compile_args=EXTRA_COMPILE,
+    #     extra_link_args=EXTRA_LINK,
+    # ),
     # Helpers / quantities
     Extension(
         "rmnpy.helpers.octypes",
