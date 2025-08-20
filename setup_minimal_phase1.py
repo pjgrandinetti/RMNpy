@@ -4,6 +4,7 @@
 import os
 import sys
 from distutils.sysconfig import get_python_inc
+from typing import List
 
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
@@ -34,6 +35,53 @@ if sys.platform == "win32" and os.environ.get("CIBUILDWHEEL"):
 
 class MinimalBuildExt(build_ext):
     def build_extensions(self) -> None:
+        """Override build_extensions with comprehensive MinGW debugging and numpy exclusion"""
+
+        # The logs show numpy includes are being auto-added and may cause issues
+        # Let's temporarily exclude numpy to test if that's the problem
+        print("\n" + "=" * 80)
+        print("PHASE 1A: Ultra-minimal build with numpy exclusion test")
+        print("=" * 80)
+
+        # Check if numpy is causing the issue by temporarily removing it
+        original_extensions = list(self.extensions)
+
+        for ext in self.extensions:  # type: ignore[attr-defined]
+            print(f"Processing extension: {ext.name}")
+            print(f"Original include_dirs: {ext.include_dirs}")
+
+            # Filter out numpy includes to test if that's the issue
+            if ext.include_dirs:
+                numpy_includes = [inc for inc in ext.include_dirs if "numpy" in inc]
+                non_numpy_includes = [
+                    inc for inc in ext.include_dirs if "numpy" not in inc
+                ]
+
+                if numpy_includes:
+                    print(f"Found numpy includes: {numpy_includes}")
+                    print("Testing without numpy includes first...")
+                    ext.include_dirs = non_numpy_includes
+                    print(f"Modified include_dirs: {ext.include_dirs}")
+
+        try:
+            # Try building without numpy includes first
+            super().build_extensions()
+            print("SUCCESS: Build completed without numpy includes!")
+
+        except Exception as e:
+            print(f"Build failed even without numpy: {e}")
+            print("Restoring original extensions and doing detailed debugging...")
+
+            # Restore original extensions
+            self.extensions = original_extensions  # type: ignore[attr-defined]
+
+            # Do detailed debugging
+            self._detailed_debugging()
+
+            # Try the build again with full debugging
+            super().build_extensions()
+
+    def _detailed_debugging(self) -> None:
         print(f"Building extensions with compiler: {self.compiler}")
 
         # Force MinGW on Windows during cibuildwheel
