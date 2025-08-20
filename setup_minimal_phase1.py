@@ -83,7 +83,7 @@ class MinimalBuildExt(build_ext):
                 test_file = "test_minimal.c"
                 if os.path.exists(test_file):
                     print(f"Found test file: {test_file}")
-                    # Try to compile manually to see the actual error
+                    # Try simple compilation first (without verbose to avoid too much output)
                     try:
                         result = subprocess.run(
                             [
@@ -95,15 +95,45 @@ class MinimalBuildExt(build_ext):
                                 "-o",
                                 "test_manual.o",
                                 "-std=gnu99",
-                                "-v",  # Verbose output
                             ],
                             capture_output=True,
                             text=True,
                             timeout=30,
                         )
-                        print(f"Manual compilation: {result.returncode}")
-                        print(f"Manual stdout: {result.stdout}")
-                        print(f"Manual stderr: {result.stderr}")
+                        print(f"Simple compilation: {result.returncode}")
+                        if result.stdout:
+                            print(f"Simple stdout: {result.stdout}")
+                        if result.stderr:
+                            print(f"Simple stderr: {result.stderr}")
+
+                        # If simple compilation failed, try with just Python.h test
+                        if result.returncode != 0:
+                            print(
+                                "Simple compilation failed, trying minimal Python.h test..."
+                            )
+                            with open("test_python_h.c", "w") as f:
+                                f.write(
+                                    "#include <Python.h>\nint main() { return 0; }\n"
+                                )
+
+                            result2 = subprocess.run(
+                                [
+                                    "C:/msys64/mingw64/bin/gcc.exe",
+                                    "-I",
+                                    r"C:\Users\runneradmin\AppData\Local\pypa\cibuildwheel\Cache\nuget-cpython\python.3.12.6\tools\include",
+                                    "-c",
+                                    "test_python_h.c",
+                                    "-o",
+                                    "test_python_h.o",
+                                ],
+                                capture_output=True,
+                                text=True,
+                                timeout=30,
+                            )
+                            print(f"Python.h test: {result2.returncode}")
+                            if result2.stderr:
+                                print(f"Python.h stderr: {result2.stderr}")
+
                     except Exception as manual_test_error:
                         print(f"Manual compilation test failed: {manual_test_error}")
                 else:
