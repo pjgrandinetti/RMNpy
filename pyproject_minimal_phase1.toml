@@ -38,8 +38,8 @@ before-all = [
 ]
 
 [tool.cibuildwheel.windows.environment]
-# Test MinGW Python discovery
-PATH = "C:/msys64/mingw64/bin;C:/msys64/usr/bin;${PATH}"
+# Test MinGW compiler discovery - APPEND to PATH to avoid Python conflicts
+PATH = "${PATH};C:/msys64/mingw64/bin;C:/msys64/usr/bin"
 CC = "C:/msys64/mingw64/bin/gcc.exe"
 CXX = "C:/msys64/mingw64/bin/g++.exe"
 
