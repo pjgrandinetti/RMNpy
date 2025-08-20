@@ -122,6 +122,48 @@ class MinimalBuildExt(build_ext):
                                 print(f"  Sample files: {files}")
                             except Exception as e:
                                 print(f"  Error listing: {e}")
+                
+                # Try even more basic debugging
+                print("\nTrying ultra-basic GCC tests...")
+                
+                # Test 1: Can we compile the simplest possible C file?
+                simple_c = "int main() { return 0; }"
+                with open("ultra_simple.c", "w") as f:
+                    f.write(simple_c)
+                
+                simple_result = subprocess.run([
+                    "C:/msys64/mingw64/bin/gcc.exe", 
+                    "ultra_simple.c", 
+                    "-o", "ultra_simple.exe"
+                ], capture_output=True, text=True)
+                
+                print(f"Ultra-simple compile: {simple_result.returncode}")
+                print(f"Ultra-simple stderr: '{simple_result.stderr}'")
+                
+                # Test 2: Can we compile with just Python.h?
+                python_c = '#include <Python.h>\nint main() { return 0; }'
+                with open("python_simple.c", "w") as f:
+                    f.write(python_c)
+                
+                python_result = subprocess.run([
+                    "C:/msys64/mingw64/bin/gcc.exe",
+                    "-I", ext.include_dirs[0] if ext.include_dirs else "",
+                    "python_simple.c",
+                    "-o", "python_simple.exe"
+                ], capture_output=True, text=True)
+                
+                print(f"Python.h simple compile: {python_result.returncode}")
+                print(f"Python.h simple stderr: '{python_result.stderr}'")
+                
+                # Test 3: Try compiling our test_minimal.c without any includes
+                no_include_result = subprocess.run([
+                    "C:/msys64/mingw64/bin/gcc.exe",
+                    "-c", "test_minimal.c",
+                    "-o", "test_no_include.o"
+                ], capture_output=True, text=True)
+                
+                print(f"No includes compile: {no_include_result.returncode}")
+                print(f"No includes stderr: '{no_include_result.stderr}'")
                                 
         except Exception as debug_error:
             print(f"Debug command failed: {debug_error}")
