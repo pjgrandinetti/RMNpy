@@ -80,6 +80,21 @@ except ImportError:
 # No external libraries for Phase 1A - just test Python extension building
 LIBS: list[str] = []
 LIBDIRS: list[str] = []
+
+# Add Python library for linking on Windows
+if sys.platform == "win32":
+    from distutils.sysconfig import get_config_var
+
+    python_lib = get_config_var("LIBDIR")
+    if python_lib:
+        LIBDIRS.append(python_lib)
+        print(f"Python library dir: {python_lib}")
+
+    # Add python library name
+    python_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    LIBS.append(python_version)
+    print(f"Python library: {python_version}")
+
 EXTRA_LINK: list[str] = []
 EXTRA_COMPILE: list[str] = []
 
