@@ -83,8 +83,20 @@ class MinimalBuildExt(build_ext):
                 test_file = "test_minimal.c"
                 if os.path.exists(test_file):
                     print(f"Found test file: {test_file}")
+                    print(f"File size: {os.path.getsize(test_file)} bytes")
+
+                    # Check if we can read the file
+                    try:
+                        with open(test_file, "r") as f:
+                            content = f.read()
+                            print(f"File content length: {len(content)} chars")
+                            print(f"First 100 chars: {content[:100]}")
+                    except Exception as read_error:
+                        print(f"File read error: {read_error}")
+
                     # Try simple compilation first (without verbose to avoid too much output)
                     try:
+                        print("Attempting simple compilation...")
                         result = subprocess.run(
                             [
                                 "C:/msys64/mingw64/bin/gcc.exe",
@@ -101,14 +113,32 @@ class MinimalBuildExt(build_ext):
                             timeout=30,
                         )
                         print(f"Simple compilation: {result.returncode}")
-                        print(f"Simple stdout: {result.stdout}")
-                        print(f"Simple stderr: {result.stderr}")
+                        print(f"Simple stdout: '{result.stdout}'")
+                        print(f"Simple stderr: '{result.stderr}'")
 
-                        # If simple compilation failed, try with just Python.h test
+                        # If simple compilation failed, try even simpler test
                         if result.returncode != 0:
-                            print(
-                                "Simple compilation failed, trying minimal Python.h test..."
+                            print("Simple compilation failed, trying hello world...")
+                            with open("test_hello.c", "w") as f:
+                                f.write("int main() { return 0; }\n")
+
+                            result3 = subprocess.run(
+                                [
+                                    "C:/msys64/mingw64/bin/gcc.exe",
+                                    "-c",
+                                    "test_hello.c",
+                                    "-o",
+                                    "test_hello.o",
+                                ],
+                                capture_output=True,
+                                text=True,
+                                timeout=30,
                             )
+                            print(f"Hello world test: {result3.returncode}")
+                            print(f"Hello world stderr: '{result3.stderr}'")
+
+                            # Try with just Python.h test
+                            print("Trying minimal Python.h test...")
                             with open("test_python_h.c", "w") as f:
                                 f.write(
                                     "#include <Python.h>\nint main() { return 0; }\n"
@@ -129,8 +159,8 @@ class MinimalBuildExt(build_ext):
                                 timeout=30,
                             )
                             print(f"Python.h test: {result2.returncode}")
-                            print(f"Python.h stdout: {result2.stdout}")
-                            print(f"Python.h stderr: {result2.stderr}")
+                            print(f"Python.h stdout: '{result2.stdout}'")
+                            print(f"Python.h stderr: '{result2.stderr}'")
 
                     except Exception as manual_test_error:
                         print(f"Manual compilation test failed: {manual_test_error}")
