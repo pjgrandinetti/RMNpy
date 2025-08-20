@@ -85,10 +85,22 @@ LIBDIRS: list[str] = []
 if sys.platform == "win32":
     from distutils.sysconfig import get_config_var
 
+    # Try to get library directory from config
     python_lib = get_config_var("LIBDIR")
     if python_lib:
         LIBDIRS.append(python_lib)
         print(f"Python library dir: {python_lib}")
+    else:
+        # In cibuildwheel, LIBDIR might be None, so construct it manually
+        python_exe = sys.executable
+        python_lib_dir = os.path.join(os.path.dirname(python_exe), "libs")
+        if os.path.exists(python_lib_dir):
+            LIBDIRS.append(python_lib_dir)
+            print(f"Python library dir (constructed): {python_lib_dir}")
+        else:
+            print(
+                f"WARNING: Could not find Python library directory at {python_lib_dir}"
+            )
 
     # Add python library name
     python_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
