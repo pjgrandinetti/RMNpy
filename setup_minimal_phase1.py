@@ -59,8 +59,74 @@ class MinimalBuildExt(build_ext):
         except Exception as e:
             print(f"Build failed with MinGW: {e}")
             print("Doing detailed debugging...")
+            
+            # CRITICAL: Run the exact same command that just failed
+            self._debug_exact_gcc_command()
+            
             self._detailed_debugging()
             raise
+
+    def _debug_exact_gcc_command(self) -> None:
+        """Debug by running the exact GCC command that just failed"""
+        import subprocess
+        
+        print("\n" + "="*60)
+        print("DEBUGGING: Running exact GCC command that failed")
+        print("="*60)
+        
+        # Get the actual include directories from the extension
+        ext = self.extensions[0] if self.extensions else None  # type: ignore[attr-defined]
+        if not ext:
+            print("No extensions found for debugging")
+            return
+            
+        include_args = []
+        if hasattr(ext, 'include_dirs') and ext.include_dirs:
+            for inc_dir in ext.include_dirs:
+                include_args.extend(["-I", inc_dir])
+                
+        print(f"Extension include dirs: {ext.include_dirs if hasattr(ext, 'include_dirs') else 'None'}")
+        
+        # Build the exact command that should match what distutils runs
+        gcc_cmd = [
+            "C:/msys64/mingw64/bin/gcc.exe"
+        ] + include_args + [
+            "-c", "test_minimal.c",
+            "-o", "test_debug.o",
+            "-std=gnu99"
+        ]
+        
+        print(f"Running exact command: {' '.join(gcc_cmd)}")
+        
+        try:
+            result = subprocess.run(gcc_cmd, capture_output=True, text=True, timeout=30)
+            print(f"Exit code: {result.returncode}")
+            print(f"STDOUT: '{result.stdout}'")
+            print(f"STDERR: '{result.stderr}'")
+            
+            if result.returncode != 0 and result.stderr:
+                print("FOUND THE ERROR:")
+                print(result.stderr)
+            elif result.returncode != 0:
+                print("GCC failed silently - checking if directories exist...")
+                
+                # Check if the include directories exist
+                import os
+                if hasattr(ext, 'include_dirs') and ext.include_dirs:
+                    for inc_dir in ext.include_dirs:
+                        exists = os.path.exists(inc_dir)
+                        print(f"Include dir exists {inc_dir}: {exists}")
+                        if exists:
+                            try:
+                                files = os.listdir(inc_dir)[:5]  # First 5 files
+                                print(f"  Sample files: {files}")
+                            except Exception as e:
+                                print(f"  Error listing: {e}")
+                                
+        except Exception as debug_error:
+            print(f"Debug command failed: {debug_error}")
+        
+        print("="*60)
 
     def _force_mingw_compiler(self) -> None:
         """Force MinGW compiler on Windows instead of MSVC"""
