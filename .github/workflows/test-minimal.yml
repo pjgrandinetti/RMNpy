@@ -1,0 +1,64 @@
+name: Test Minimal Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [test-minimal]
+
+jobs:
+  test_minimal_build:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2 (Windows only)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: git
+
+      - name: Test build with minimal config
+        uses: pypa/cibuildwheel@v2.21.0
+        env:
+          CIBW_CONFIG_FILE: pyproject_minimal.toml
+          CIBW_BUILD_VERBOSITY: 3
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: ./wheelhouse/*.whl
+
+  test_wheels:
+    name: Test wheel installation
+    needs: test_minimal_build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Download wheels
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: ./wheels
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test wheel installation
+        run: |
+          pip install ./wheels/*.whl
+          python -c "import rmnpy; print('✅ RMNpy import successful')"
