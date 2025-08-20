@@ -58,7 +58,17 @@ class MinimalBuildExt(build_ext):
                 except Exception as e:
                     print(f"MinGW switch failed: {e}")
 
-        super().build_extensions()
+        # Try to build extensions and capture any errors
+        try:
+            super().build_extensions()
+        except Exception as e:
+            print(f"Extension building failed with error: {e}")
+            # Try to get more details about the failure
+            import traceback
+
+            print("Full traceback:")
+            traceback.print_exc()
+            raise
 
 
 # Minimal includes - Python headers and numpy
@@ -91,21 +101,50 @@ if sys.platform == "win32":
         LIBDIRS.append(python_lib)
         print(f"Python library dir: {python_lib}")
     else:
-        # In cibuildwheel, LIBDIR might be None, so construct it manually
+        # In cibuildwheel, LIBDIR might be None, so try multiple locations
         python_exe = sys.executable
-        python_lib_dir = os.path.join(os.path.dirname(python_exe), "libs")
-        if os.path.exists(python_lib_dir):
-            LIBDIRS.append(python_lib_dir)
-            print(f"Python library dir (constructed): {python_lib_dir}")
+        print(f"Python executable: {python_exe}")
+
+        # Try common library locations
+        potential_dirs = [
+            # Standard installation: libs next to exe
+            os.path.join(os.path.dirname(python_exe), "libs"),
+            # Virtual env: libs in base Python
+            (
+                os.path.join(sys.base_prefix, "libs")
+                if hasattr(sys, "base_prefix")
+                else None
+            ),
+            # Alternative: libs in prefix
+            os.path.join(sys.prefix, "libs"),
+            # cibuildwheel nuget cache location (from log path pattern)
+            r"C:\Users\runneradmin\AppData\Local\pypa\cibuildwheel\Cache\nuget-cpython\python.3.12.6\tools\libs",
+        ]
+
+        for lib_dir in potential_dirs:
+            if lib_dir and os.path.exists(lib_dir):
+                LIBDIRS.append(lib_dir)
+                print(f"Python library dir (found): {lib_dir}")
+                break
         else:
             print(
-                f"WARNING: Could not find Python library directory at {python_lib_dir}"
+                f"WARNING: Could not find Python library directory in any of: {potential_dirs}"
+            )
+            # On Windows with MinGW, we might not need explicit library linking
+            print(
+                "Continuing without explicit Python library - MinGW may handle this automatically"
             )
 
-    # Add python library name
-    python_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
-    LIBS.append(python_version)
-    print(f"Python library: {python_version}")
+    # Add python library name - but only if we found a library directory
+    if LIBDIRS:
+        python_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+        LIBS.append(python_version)
+        print(f"Python library: {python_version}")
+    else:
+        print(
+            "No Python library directory found - skipping explicit Python library linking"
+        )
+        print("MinGW should automatically handle Python API linking for extensions")
 
 EXTRA_LINK: list[str] = []
 EXTRA_COMPILE: list[str] = []
