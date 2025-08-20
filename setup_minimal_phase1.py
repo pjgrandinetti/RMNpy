@@ -60,6 +60,57 @@ class MinimalBuildExt(build_ext):
 
         # Try to build extensions and capture any errors
         try:
+            # On Windows, let's try to run the GCC command manually to see the actual error
+            if sys.platform == "win32" and os.environ.get("CIBUILDWHEEL"):
+                print("Testing GCC manually before building extensions...")
+                import subprocess
+
+                # Test basic GCC functionality
+                try:
+                    result = subprocess.run(
+                        ["C:/msys64/mingw64/bin/gcc.exe", "--version"],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+                    print(f"GCC version test: {result.returncode}")
+                    print(f"GCC stdout: {result.stdout}")
+                    print(f"GCC stderr: {result.stderr}")
+                except Exception as gcc_test_error:
+                    print(f"GCC version test failed: {gcc_test_error}")
+
+                # Test if we can find the test file
+                test_file = "test_minimal.c"
+                if os.path.exists(test_file):
+                    print(f"Found test file: {test_file}")
+                    # Try to compile manually to see the actual error
+                    try:
+                        result = subprocess.run(
+                            [
+                                "C:/msys64/mingw64/bin/gcc.exe",
+                                "-I",
+                                r"C:\Users\runneradmin\AppData\Local\pypa\cibuildwheel\Cache\nuget-cpython\python.3.12.6\tools\include",
+                                "-c",
+                                test_file,
+                                "-o",
+                                "test_manual.o",
+                                "-std=gnu99",
+                                "-v",  # Verbose output
+                            ],
+                            capture_output=True,
+                            text=True,
+                            timeout=30,
+                        )
+                        print(f"Manual compilation: {result.returncode}")
+                        print(f"Manual stdout: {result.stdout}")
+                        print(f"Manual stderr: {result.stderr}")
+                    except Exception as manual_test_error:
+                        print(f"Manual compilation test failed: {manual_test_error}")
+                else:
+                    print(f"ERROR: Could not find test file: {test_file}")
+                    print(f"Current directory: {os.getcwd()}")
+                    print(f"Directory contents: {os.listdir('.')}")
+
             super().build_extensions()
         except Exception as e:
             print(f"Extension building failed with error: {e}")
