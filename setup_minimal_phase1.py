@@ -3,6 +3,7 @@
 
 import os
 import sys
+from distutils.sysconfig import get_python_inc
 
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
@@ -60,8 +61,14 @@ class MinimalBuildExt(build_ext):
         super().build_extensions()
 
 
-# Minimal includes - just try to find numpy
+# Minimal includes - Python headers and numpy
 INC: list[str] = []
+
+# Add Python include directory
+python_inc = get_python_inc()
+INC.append(python_inc)
+print(f"Python include: {python_inc}")
+
 try:
     import numpy as np
 
