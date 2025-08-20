@@ -1,0 +1,108 @@
+# setup_minimal_phase1.py — Ultra-minimal setup for Phase 1A testing
+# Goal: Test basic Python extension building without full dependency chain
+
+import os
+import sys
+
+from setuptools import Extension, find_packages, setup
+from setuptools.command.build_ext import build_ext
+
+print("=" * 50)
+print("Phase 1A: Ultra-minimal build test")
+print("Goal: Test basic extension building")
+print("=" * 50)
+
+# Force MinGW compiler on Windows for cibuildwheel builds
+if sys.platform == "win32" and os.environ.get("CIBUILDWHEEL"):
+    print("Windows cibuildwheel detected - forcing MinGW...")
+    os.environ["CC"] = "C:/msys64/mingw64/bin/gcc.exe"
+    os.environ["CXX"] = "C:/msys64/mingw64/bin/g++.exe"
+    os.environ["DISTUTILS_USE_SDK"] = "1"
+    os.environ["MSSdk"] = "1"
+
+    try:
+        from distutils import ccompiler
+
+        def get_default_compiler(plat=None) -> str:
+            return "mingw32"
+
+        ccompiler.get_default_compiler = get_default_compiler
+    except ImportError:
+        pass
+
+
+class MinimalBuildExt(build_ext):
+    def build_extensions(self) -> None:
+        print(f"Building extensions with compiler: {self.compiler}")
+
+        # Force MinGW on Windows during cibuildwheel
+        if sys.platform == "win32" and os.environ.get("CIBUILDWHEEL"):
+            if (
+                hasattr(self.compiler, "compiler_type")
+                and self.compiler.compiler_type == "msvc"
+            ):
+                print("WARNING: MSVC detected, attempting MinGW switch...")
+                try:
+                    from distutils.cygwinccompiler import Mingw32CCompiler
+
+                    self.compiler = Mingw32CCompiler()
+                    self.compiler.set_executables(
+                        compiler="C:/msys64/mingw64/bin/gcc.exe",
+                        compiler_so="C:/msys64/mingw64/bin/gcc.exe",
+                        compiler_cxx="C:/msys64/mingw64/bin/g++.exe",
+                        linker_exe="C:/msys64/mingw64/bin/gcc.exe",
+                        linker_so="C:/msys64/mingw64/bin/gcc.exe",
+                    )
+                    print("Successfully switched to MinGW compiler")
+                except Exception as e:
+                    print(f"MinGW switch failed: {e}")
+
+        super().build_extensions()
+
+
+# Minimal includes - just try to find numpy
+INC: list[str] = []
+try:
+    import numpy as np
+
+    INC.append(np.get_include())
+    print(f"Found numpy include: {np.get_include()}")
+except ImportError:
+    print("WARNING: numpy not found")
+
+# No external libraries for Phase 1A - just test Python extension building
+LIBS: list[str] = []
+LIBDIRS: list[str] = []
+EXTRA_LINK: list[str] = []
+EXTRA_COMPILE: list[str] = []
+
+if sys.platform == "win32":
+    EXTRA_COMPILE = ["-std=gnu99"]
+else:
+    EXTRA_COMPILE = ["-std=c99"]
+
+print(f"Platform: {sys.platform}")
+print(f"Include dirs: {INC}")
+print(f"Libraries: {LIBS}")
+print(f"Library dirs: {LIBDIRS}")
+print(f"Extra compile args: {EXTRA_COMPILE}")
+
+# Create a minimal test extension that doesn't require external libraries
+# This will test if the basic build system works
+test_extension = Extension(
+    "rmnpy._test_minimal",
+    ["test_minimal.c"],  # We'll create this
+    include_dirs=INC,
+    libraries=LIBS,
+    library_dirs=LIBDIRS,
+    extra_compile_args=EXTRA_COMPILE,
+    extra_link_args=EXTRA_LINK,
+)
+
+setup(
+    packages=find_packages(where="src"),
+    package_dir={"": "src"},
+    include_package_data=True,
+    cmdclass={"build_ext": MinimalBuildExt},
+    ext_modules=[test_extension],
+)

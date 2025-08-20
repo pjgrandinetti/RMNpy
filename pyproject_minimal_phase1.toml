@@ -1,0 +1,62 @@
+# Ultra-minimal pyproject.toml for RMNpy - Phase 1A: Basic build test
+# Goal: Test if basic Python extension building works without complex dependencies
+
+[build-system]
+requires = ["setuptools>=70", "wheel", "Cython>=0.29.36", "numpy>=1.21", "cibuildwheel>=2.21.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.cibuildwheel]
+# Python 3.12 only - proven to work on local dev
+build = "cp312-*"
+skip = "pp* *-win32 *-manylinux_i686 *-musllinux_*"
+
+# Build verbosity for debugging
+build-verbosity = 3
+
+# Linux: Absolute minimal - just install basic build tools
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux2014"
+before-all = [
+    "echo 'Phase 1A: Testing basic build system only'",
+    "echo 'No dependency building - using simplified setup'",
+]
+
+# macOS: Minimal - just install basic build tools
+[tool.cibuildwheel.macos]
+before-all = [
+    "echo 'Phase 1A: Testing basic build system only'",
+    "echo 'No dependency building - using simplified setup'",
+]
+
+# Windows: Test MinGW setup only
+[tool.cibuildwheel.windows]
+build = "cp312-*"
+before-all = [
+    "echo 'Phase 1A: Testing MinGW setup only'",
+    "echo 'Installing minimal MinGW packages'",
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-python",
+]
+
+[tool.cibuildwheel.windows.environment]
+# Test MinGW Python discovery
+PATH = "C:/msys64/mingw64/bin;C:/msys64/usr/bin;${PATH}"
+CC = "C:/msys64/mingw64/bin/gcc.exe"
+CXX = "C:/msys64/mingw64/bin/g++.exe"
+
+[project]
+name = "rmnpy"
+version = "0.1.0"
+description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Philip Grandinetti", email = "grandinetti.1@osu.edu"}]
+keywords = ["scientific-computing", "units", "dimensional-analysis"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.12"
+dependencies = ["numpy>=1.21"]

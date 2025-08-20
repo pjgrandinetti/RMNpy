@@ -1,4 +1,4 @@
-name: Test Minimal Build
+name: Test Minimal Build - Phase 1A
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   test_minimal_build:
-    name: Test on ${{ matrix.os }}
+    name: Phase 1A Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -26,21 +26,23 @@ jobs:
           update: true
           install: git
 
-      - name: Test build with minimal config
+      - name: Phase 1A - Test ultra-minimal build
         uses: pypa/cibuildwheel@v2.21.0
         with:
-          config-file: pyproject_minimal.toml
+          config-file: pyproject_minimal_phase1.toml
         env:
           CIBW_BUILD_VERBOSITY: 3
+          # Override setup.py for Phase 1A testing
+          CIBW_BEFORE_BUILD: "cp setup_minimal_phase1.py setup.py"
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}
+          name: wheels-phase1a-${{ matrix.os }}
           path: ./wheelhouse/*.whl
 
   test_wheels:
-    name: Test wheel installation
+    name: Test Phase 1A wheel installation
     needs: test_minimal_build
     runs-on: ${{ matrix.os }}
     strategy:
@@ -51,7 +53,7 @@ jobs:
       - name: Download wheels
         uses: actions/download-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}
+          name: wheels-phase1a-${{ matrix.os }}
           path: ./wheels
 
       - name: Set up Python 3.12
@@ -59,7 +61,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Test wheel installation
+      - name: Test Phase 1A wheel installation
         run: |
           pip install ./wheels/*.whl
-          python -c "import rmnpy; print('✅ RMNpy import successful')"
+          python -c "import rmnpy._test_minimal; print('✅ Phase 1A: C99 compiler:', rmnpy._test_minimal.test_compiler_info()); print('✅ Phase 1A: C99 VLA test:', rmnpy._test_minimal.test_c99_features())"
