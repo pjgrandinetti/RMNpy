@@ -101,10 +101,8 @@ class MinimalBuildExt(build_ext):
                             timeout=30,
                         )
                         print(f"Simple compilation: {result.returncode}")
-                        if result.stdout:
-                            print(f"Simple stdout: {result.stdout}")
-                        if result.stderr:
-                            print(f"Simple stderr: {result.stderr}")
+                        print(f"Simple stdout: {result.stdout}")
+                        print(f"Simple stderr: {result.stderr}")
 
                         # If simple compilation failed, try with just Python.h test
                         if result.returncode != 0:
@@ -131,8 +129,8 @@ class MinimalBuildExt(build_ext):
                                 timeout=30,
                             )
                             print(f"Python.h test: {result2.returncode}")
-                            if result2.stderr:
-                                print(f"Python.h stderr: {result2.stderr}")
+                            print(f"Python.h stdout: {result2.stdout}")
+                            print(f"Python.h stderr: {result2.stderr}")
 
                     except Exception as manual_test_error:
                         print(f"Manual compilation test failed: {manual_test_error}")
