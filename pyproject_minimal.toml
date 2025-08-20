@@ -23,10 +23,13 @@ before-all = [
     "echo \"Building OCTypes version: $OCTYPES_TAG\"",
     "git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
     "cd /tmp/octypes && make CC=gcc -j$(nproc) && make CC=gcc install INSTALL_DIR=/tmp/install",
-    # Build SITypes (required by RMNpy even in minimal mode)
+    # Build SITypes (required by RMNpy even in minimal mode) - set up OCTypes in expected location for Makefile
     "SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git 2>/dev/null | grep -E 'refs/tags/v[0-9]' | head -1 | sed 's/.*refs\\/tags\\///' | sed 's/\\^{}.*//')",
     "echo \"Building SITypes version: $SITYPES_TAG\"",
     "git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
+    "mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib",
+    "cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/",
+    "cp /tmp/install/lib/libOCTypes.a /tmp/sitypes/third_party/lib/",
     "cd /tmp/sitypes && make CC=gcc -j$(nproc) && make CC=gcc install INSTALL_DIR=/tmp/install",
     # Note: RMNLib intentionally omitted to keep build minimal
 ]
@@ -43,10 +46,13 @@ before-all = [
     "echo \"Building OCTypes version: $OCTYPES_TAG\"",
     "git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
     "cd /tmp/octypes && make CC=clang -j$(sysctl -n hw.ncpu) && make CC=clang install INSTALL_DIR=/tmp/install",
-    # Build SITypes (required by RMNpy even in minimal mode)
+    # Build SITypes (required by RMNpy even in minimal mode) - set up OCTypes in expected location for Makefile
     "SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git 2>/dev/null | grep -E 'refs/tags/v[0-9]' | head -1 | sed 's/.*refs\\/tags\\///' | sed 's/\\^{}.*//')",
     "echo \"Building SITypes version: $SITYPES_TAG\"",
     "git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes",
+    "mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib",
+    "cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/",
+    "cp /tmp/install/lib/libOCTypes.* /tmp/sitypes/third_party/lib/",
     "cd /tmp/sitypes && make CC=clang -j$(sysctl -n hw.ncpu) && make CC=clang install INSTALL_DIR=/tmp/install",
     # Note: RMNLib intentionally omitted to keep build minimal
 ]
@@ -67,8 +73,11 @@ before-all = [
     # Build OCTypes (robust tag detection)
     "C:\\msys64\\usr\\bin\\bash.exe -lc \"OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git 2>/dev/null | grep -E 'refs/tags/v[0-9]' | head -1 | sed 's/.*refs\\/tags\\///' | sed 's/\\^{}.*//') && echo \\\"Building OCTypes version: $OCTYPES_TAG\\\" && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes\"",
     "C:\\msys64\\usr\\bin\\bash.exe -lc \"cd /tmp/octypes && PATH=/mingw64/bin:$PATH make CC=gcc -j4 && PATH=/mingw64/bin:$PATH make CC=gcc install INSTALL_DIR=/mingw64\"",
-    # Build SITypes (required by RMNpy even in minimal mode)
+    # Build SITypes (required by RMNpy even in minimal mode) - set up OCTypes in expected location for Makefile
     "C:\\msys64\\usr\\bin\\bash.exe -lc \"SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git 2>/dev/null | grep -E 'refs/tags/v[0-9]' | head -1 | sed 's/.*refs\\/tags\\///' | sed 's/\\^{}.*//') && echo \\\"Building SITypes version: $SITYPES_TAG\\\" && git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes\"",
+    "C:\\msys64\\usr\\bin\\bash.exe -lc \"mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib\"",
+    "C:\\msys64\\usr\\bin\\bash.exe -lc \"cp /mingw64/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/\"",
+    "C:\\msys64\\usr\\bin\\bash.exe -lc \"cp /mingw64/lib/libOCTypes.* /tmp/sitypes/third_party/lib/\"",
     "C:\\msys64\\usr\\bin\\bash.exe -lc \"cd /tmp/sitypes && PATH=/mingw64/bin:$PATH make CC=gcc -j4 && PATH=/mingw64/bin:$PATH make CC=gcc install INSTALL_DIR=/mingw64\"",
     # Note: RMNLib intentionally omitted to keep build minimal
 ]
