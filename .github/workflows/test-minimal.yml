@@ -28,8 +28,9 @@ jobs:
 
       - name: Test build with minimal config
         uses: pypa/cibuildwheel@v2.21.0
+        with:
+          config-file: pyproject_minimal.toml
         env:
-          CIBW_CONFIG_FILE: pyproject_minimal.toml
           CIBW_BUILD_VERBOSITY: 3
 
       - name: Upload wheels
