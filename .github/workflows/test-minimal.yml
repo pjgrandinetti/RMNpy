@@ -32,8 +32,8 @@ jobs:
           config-file: pyproject_minimal_phase1.toml
         env:
           CIBW_BUILD_VERBOSITY: 3
-          # Override setup.py for Phase 1A testing and ensure C file is available
-          CIBW_BEFORE_BUILD: "cp setup_minimal_phase1.py setup.py && cp test_minimal.c ."
+          # Override setup.py for Phase 1A testing
+          CIBW_BEFORE_BUILD: "cp setup_minimal_phase1.py setup.py"
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
