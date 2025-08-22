@@ -25,7 +25,7 @@ python:
   install:
     - requirements: docs/requirements.txt
     - method: pip
-      path: rmnpy
+      path: .
 
 # Optional: specify the formats you want to build
 formats:
