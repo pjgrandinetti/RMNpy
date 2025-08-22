@@ -10,7 +10,7 @@ UNAME_S := $(shell uname -s)
 IS_MINGW := $(findstring MINGW,$(UNAME_S))
 
 .PHONY: synclib download-libs clean-libs clean clean-all rebuild \
-        generate-constants test status test-wheel check-wheel help bridge
+        generate-constants test status test-wheel check-wheel help
 
 help:
 	@echo "RMNpy Makefile"
@@ -116,16 +116,3 @@ test-wheel:
 
 check-wheel:
 	@python scripts/check_wheel_libraries.py
-
-# Deprecated Windows DLL build (use WSL2 instead)
-bridge:
-	@echo "→ Building Windows bridge DLL (DEPRECATED - use WSL2)…"
-	@if [ ! -f "$(LIBDIR)/libOCTypes.a" ] || [ ! -f "$(LIBDIR)/libSITypes.a" ] || [ ! -f "$(LIBDIR)/libRMN.a" ]; then \
-	  echo "✗ Need libOCTypes.a, libSITypes.a, libRMN.a in $(LIBDIR)/"; exit 1; \
-	fi
-	@x86_64-w64-mingw32-gcc -shared -o $(LIBDIR)/rmnstack_bridge.dll \
-	  -Wl,--out-implib,$(LIBDIR)/rmnstack_bridge.dll.a \
-	  -Wl,--export-all-symbols \
-	  $(LIBDIR)/libRMN.a $(LIBDIR)/libSITypes.a $(LIBDIR)/libOCTypes.a \
-	  -lopenblas -llapack -lcurl -lgcc_s -lwinpthread -lquadmath -lgomp -lm
-	@echo "✓ bridge: $(LIBDIR)/rmnstack_bridge.dll"
