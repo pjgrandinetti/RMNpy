@@ -15,9 +15,9 @@
                └── dataset.pyx          # 🔮 Dataset wrapper - FUTUREs Completed ✅
 
 #### **Phase 0: CI/Build Infrastructure** ✅ **COMPLETE**
-- Cross-platform GitHub Actions (Linux, macOS, Windows with MSYS2)
+- Cross-platform GitHub Actions (Linux, macOS; Windows via WSL2)
 - Automated library management and dependency resolution
-- Windows bridge DLL strategy with --whole-archive linking fixes
+- Switched from Windows/MinGW to WSL2 strategy for better compatibility
 
 #### **Phase 1: OCTypes Foundation** ✅ **COMPLETE**
 - Complete C API declarations (285+ lines)
@@ -140,7 +140,7 @@ RMNpy/                                    # 📁 Root project directory
 │   ├── libOCTypes.a                     # 🚫 OCTypes static library
 │   ├── libSITypes.a                     # 🚫 SITypes static library
 │   ├── libRMN.a                         # 🚫 RMNLib static library
-│   └── rmnstack_bridge.dll              # 🚫 Windows bridge DLL (MinGW)
+│   └── rmnstack_bridge.dll              # 🚫 Deprecated Windows DLL (use WSL2)
 │
 ├── include/                             # 🚫 C header files (gitignored)
 │   ├── OCTypes/                         # 🚫 OCTypes headers
