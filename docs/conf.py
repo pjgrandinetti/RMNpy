@@ -33,6 +33,20 @@ extensions = [
     "nbsphinx",  # Jupyter notebook support
 ]
 
+# -- Autodoc configuration -------------------------------------------------
+
+# Mock imports for compiled extensions that can't be built during documentation
+autodoc_mock_imports = [
+    "rmnpy.wrappers.sitypes.dimensionality",
+    "rmnpy.wrappers.sitypes.scalar",
+    "rmnpy.wrappers.sitypes.unit",
+    "rmnpy.wrappers.rmnlib.dependent_variable",
+    "rmnpy.wrappers.rmnlib.dimension",
+    "rmnpy.wrappers.rmnlib.sparse_sampling",
+    "rmnpy.helpers.octypes",
+    "rmnpy.quantities",
+]
+
 # -- nbsphinx configuration -------------------------------------------------
 
 # Allow errors in notebook execution so docs can build without the library installed
