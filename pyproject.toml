@@ -9,7 +9,7 @@ skip = "pp* *-win32 *-manylinux_i686 *-musllinux_*"
 
 # Linux-specific settings
 [tool.cibuildwheel.linux]
-# Use manylinux2014 for broad compatibility
+# Use manylinux2014 for good compatibility and Python 3.11/3.12 support
 manylinux-x86_64-image = "manylinux2014"
 manylinux-aarch64-image = "manylinux2014"
 # Install system dependencies in manylinux container
