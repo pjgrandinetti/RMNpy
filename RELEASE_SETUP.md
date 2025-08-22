@@ -1,450 +1,123 @@
-# RMNpy GitHub Release Setup Guide
+# RMNpy Release Guide
 
-This document outlines the steps needed to set up automated GitHub releases for RMNpy, including PyPI publishing and wheel building for multiple platforms.
+This document outlines the release strategy for RMNpy with automated GitHub releases and PyPI publishing.
 
-## Overview
+## 🎯 Release Strategy
 
-Currently, RMNpy has only CI testing. To enable releases, we need to:
-1. Add release workflow triggers
-2. Build wheels for multiple platforms
-3. Set up PyPI publishing
-4. Create GitHub releases with artifacts
+RMNpy uses a **dual-tier release strategy**:
 
-## 📋 Step-by-Step Setup
+1. **📦 GitHub Releases**: Created for **every tagged commit** (patch, minor, major)
+   - Includes: Wheels for Linux/macOS + source distribution
+   - Artifacts: Available for immediate download
+   - Use case: Development builds, patch releases, immediate access
 
-### Step 1: Create PyPI Account and API Token
+2. **🐍 PyPI Releases**: Only for **minor version updates** (ending in `.0`)
+   - Examples: `v1.0.0`, `v0.2.0`, `v2.1.0` ✅
+   - Not: `v0.1.1`, `v0.1.2`, `v1.0.1` ❌
+   - Use case: Stable releases for pip installation
 
-1. **Create PyPI account** (if you don't have one):
-   - Go to https://pypi.org/account/register/
-   - Verify your email
+## 🏗️ Current Implementation Status
 
+✅ **COMPLETED**: Automated release workflow is fully implemented
+- Combined CI/Release workflow in `.github/workflows/build-and-release.yml`
+- Tests run on every push/PR
+- Wheels built and released on every tag
+- PyPI uploads only for minor versions
+- Windows support via WSL2 (no MinGW complexity)
+
+## 📋 How to Make a Release
+
+### Making a Release
+
+1. **Prepare the release**:
+   ```bash
+   # Update version in pyproject.toml and src/rmnpy/_version.py
+   # Update CHANGELOG.md
+   # Commit changes
+   git add .
+   git commit -m "Prepare release v1.2.0"
+   ```
+
+2. **Create and push tag**:
+   ```bash
+   # For patch releases (GitHub release only):
+   git tag v1.2.1
+   git push origin v1.2.1
+
+   # For minor releases (GitHub + PyPI):
+   git tag v1.3.0
+   git push origin v1.3.0
+   ```
+
+3. **Automated workflow will**:
+   - ✅ Run tests on Linux/macOS + Python 3.11/3.12
+   - ✅ Build wheels using cibuildwheel
+   - ✅ Create GitHub release with artifacts
+   - ✅ Upload to PyPI (only for `.0` versions)
+
+## 🔧 Technical Details
+
+### Supported Platforms
+- **Linux**: manylinux2014 (x86_64, aarch64)
+- **macOS**: 11.0+ (x86_64, arm64)
+- **Windows**: Use Linux wheels via WSL2
+
+### Dependencies
+- C libraries built from source (OCTypes → SITypes → RMNLib)
+- Dynamic version detection from GitHub releases
+- cibuildwheel handles library bundling automatically
+
+## 🛠️ Setup Requirements (One-time)
+
+### PyPI API Token Setup
+
+If not already configured, you need to set up PyPI credentials:
+
+1. **Create PyPI account**: Go to https://pypi.org/account/register/
 2. **Generate API Token**:
-   - Log into PyPI
-   - Go to Account settings → API tokens
+   - Log into PyPI → Account settings → API tokens
    - Click "Add API token"
    - Name: `RMNpy-GitHub-Actions`
-   - Scope: `Entire account` (or specific to RMNpy project if it exists)
+   - Scope: `Entire account` (or project-specific)
    - Copy the token (starts with `pypi-`)
 
-### Step 2: Add PyPI Token to GitHub Secrets
-
-1. **Navigate to GitHub repository**:
+3. **Add to GitHub Secrets**:
    - Go to https://github.com/pjgrandinetti/RMNpy
-   - Click Settings → Secrets and variables → Actions
+   - Settings → Secrets and variables → Actions
+   - New repository secret: `PYPI_API_TOKEN`
+   - Paste your PyPI token
 
-2. **Add new repository secret**:
-   - Click "New repository secret"
-   - Name: `PYPI_API_TOKEN`
-   - Value: Paste your PyPI token from Step 1
-   - Click "Add secret"
+## 📊 Workflow Summary
 
-### Step 3: Create Release Workflow
+The combined workflow (`.github/workflows/build-and-release.yml`) handles:
 
-Create a new file: `.github/workflows/release.yml`
+### On Every Push/PR:
+- ✅ Tests on Linux/macOS with Python 3.11/3.12
+- ✅ Builds and installs dependencies from source
+- ✅ Runs smoke tests and full test suite
 
-```yaml
-name: Build & Release
+### On Tagged Releases:
+- ✅ All testing steps above
+- ✅ Builds wheels for Linux (manylinux2014) and macOS
+- ✅ Creates source distribution
+- ✅ Uploads artifacts to GitHub release (ALL tags)
+- ✅ Uploads to PyPI (only minor versions ending in `.0`)
 
-on:
-  push:
-    tags:
-      - 'v*.*.*'
-  workflow_dispatch:
+## 🏷️ Version Tagging Examples
 
-jobs:
-  build_wheels:
-    name: Build wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-        exclude:
-          # Reduce Windows build matrix to save CI time
-          - os: windows-latest
-            python-version: "3.8"
-          - os: windows-latest
-            python-version: "3.9"
-          - os: windows-latest
-            python-version: "3.10"
-          - os: windows-latest
-            python-version: "3.11"
+| Tag | GitHub Release | PyPI Upload | Use Case |
+|-----|---------------|-------------|----------|
+| `v1.0.0` | ✅ | ✅ | Major release |
+| `v1.1.0` | ✅ | ✅ | Minor release |
+| `v1.1.1` | ✅ | ❌ | Patch/hotfix |
+| `v1.1.2` | ✅ | ❌ | Another patch |
+| `v1.2.0` | ✅ | ✅ | Next minor |
 
-    steps:
-    - name: Checkout RMNpy
-      uses: actions/checkout@v5
-
-    - name: Set up Python ${{ matrix.python-version }}
-      if: runner.os != 'Windows'
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Install system dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" --wait /bin/true
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev libcurl4-openssl-dev libomp5
-
-    - name: Install system dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install cmake flex bison openblas lapack curl libomp
-
-    - name: Setup MSYS2 (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        update: true
-        install: |
-          mingw-w64-x86_64-toolchain
-          mingw-w64-x86_64-python
-          mingw-w64-x86_64-python-pip
-          mingw-w64-x86_64-python-numpy
-          mingw-w64-x86_64-cython
-          mingw-w64-x86_64-curl
-          mingw-w64-x86_64-openblas
-          mingw-w64-x86_64-lapack
-          mingw-w64-x86_64-openmp
-
-    # Download dependencies (same as CI workflow)
-    - name: Download OCTypes from GitHub releases
-      run: |
-        mkdir -p lib include/OCTypes
-        if [[ "${{ runner.os }}" == "Linux" ]]; then
-          LIB_FILE="libOCTypes-ubuntu-latest.x64.zip"
-        elif [[ "${{ runner.os }}" == "macOS" ]]; then
-          LIB_FILE="libOCTypes-macos-latest.zip"
-        elif [[ "${{ runner.os }}" == "Windows" ]]; then
-          LIB_FILE="libOCTypes-windows-latest.zip"
-        fi
-        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/${LIB_FILE} -o octypes-lib.zip
-        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-headers.zip -o octypes-headers.zip
-        unzip -o -j -q octypes-lib.zip -d lib/
-        unzip -o -j -q octypes-headers.zip -d include/OCTypes/
-        rm octypes-lib.zip octypes-headers.zip
-      shell: bash
-
-    - name: Download SITypes from GitHub releases
-      run: |
-        mkdir -p include/SITypes
-        if [[ "${{ runner.os }}" == "Linux" ]]; then
-          LIB_FILE="libSITypes-ubuntu-latest.x64.zip"
-        elif [[ "${{ runner.os }}" == "macOS" ]]; then
-          LIB_FILE="libSITypes-macos-latest.zip"
-        elif [[ "${{ runner.os }}" == "Windows" ]]; then
-          LIB_FILE="libSITypes-windows-latest.zip"
-        fi
-        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/${LIB_FILE} -o sitypes-lib.zip
-        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-headers.zip -o sitypes-headers.zip
-        unzip -o -j -q sitypes-lib.zip -d lib/
-        unzip -o -j -q sitypes-headers.zip -d include/SITypes/
-        rm sitypes-lib.zip sitypes-headers.zip
-      shell: bash
-
-    - name: Download RMNLib from GitHub releases
-      run: |
-        mkdir -p include/RMNLib
-        if [[ "${{ runner.os }}" == "Linux" ]]; then
-          LIB_FILE="libRMN-ubuntu-latest.x64.zip"
-        elif [[ "${{ runner.os }}" == "macOS" ]]; then
-          LIB_FILE="libRMN-macos-latest.zip"
-        elif [[ "${{ runner.os }}" == "Windows" ]]; then
-          LIB_FILE="libRMN-windows-latest.zip"
-        fi
-        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/${LIB_FILE} -o rmnlib-lib.zip
-        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-headers.zip -o rmnlib-headers.zip
-        unzip -o -j -q rmnlib-lib.zip -d lib/
-        unzip -o -q rmnlib-headers.zip -d .
-        rm rmnlib-lib.zip rmnlib-headers.zip
-      shell: bash
-
-    - name: Create Windows Bridge DLL
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: |
-        if [ -f lib/libOCTypes.a ] && [ -f lib/libSITypes.a ] && [ -f lib/libRMN.a ]; then
-          x86_64-w64-mingw32-gcc -shared -o lib/rmnstack_bridge.dll \
-            -Wl,--out-implib,lib/rmnstack_bridge.dll.a \
-            -Wl,--whole-archive \
-              lib/libRMN.a lib/libSITypes.a lib/libOCTypes.a \
-            -Wl,--no-whole-archive \
-            -Wl,--export-all-symbols \
-            -lopenblas -llapack -lcurl -lgcc_s -lwinpthread -lquadmath -lgomp -lm
-        fi
-
-    - name: Install build dependencies (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        python -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2" build
-
-    - name: Generate constants (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        make generate-constants
-
-    - name: Generate constants (Windows)
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: |
-        python scripts/extract_si_constants.py
-
-    - name: Build wheel (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        python -m build --wheel
-
-    - name: Build wheel (Windows)
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: |
-        python setup.py build_ext --inplace
-        python -m pip wheel . --no-deps --wheel-dir dist/
-
-    - name: Upload wheels
-      uses: actions/upload-artifact@v4
-      with:
-        name: wheels-${{ matrix.os }}-py${{ matrix.python-version }}
-        path: dist/*.whl
-
-  build_sdist:
-    name: Build source distribution
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout RMNpy
-      uses: actions/checkout@v5
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
-
-    - name: Install system dependencies
-      run: |
-        sudo systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" --wait /bin/true
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev libcurl4-openssl-dev libomp5
-
-    - name: Download dependencies
-      run: |
-        mkdir -p lib include/OCTypes include/SITypes include/RMNLib
-        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-ubuntu-latest.x64.zip -o octypes-lib.zip
-        curl -L https://github.com/pjgrandinetti/OCTypes/releases/download/v0.1.0/libOCTypes-headers.zip -o octypes-headers.zip
-        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-ubuntu-latest.x64.zip -o sitypes-lib.zip
-        curl -L https://github.com/pjgrandinetti/SITypes/releases/download/v0.1.0/libSITypes-headers.zip -o sitypes-headers.zip
-        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-ubuntu-latest.x64.zip -o rmnlib-lib.zip
-        curl -L https://github.com/pjgrandinetti/RMNLib/releases/download/v0.1.0/libRMN-headers.zip -o rmnlib-headers.zip
-        unzip -o -j -q octypes-lib.zip -d lib/
-        unzip -o -j -q octypes-headers.zip -d include/OCTypes/
-        unzip -o -j -q sitypes-lib.zip -d lib/
-        unzip -o -j -q sitypes-headers.zip -d include/SITypes/
-        unzip -o -j -q rmnlib-lib.zip -d lib/
-        unzip -o -q rmnlib-headers.zip -d .
-        rm *.zip
-
-    - name: Install build dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools wheel Cython "numpy>=1.21,<2" build
-
-    - name: Generate constants
-      run: |
-        make generate-constants
-
-    - name: Build source distribution
-      run: |
-        python -m build --sdist
-
-    - name: Upload sdist
-      uses: actions/upload-artifact@v4
-      with:
-        name: sdist
-        path: dist/*.tar.gz
-
-  publish:
-    name: Publish to PyPI and GitHub
-    needs: [build_wheels, build_sdist]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
-    steps:
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: dist-artifacts/
-
-    - name: Flatten artifact directory
-      run: |
-        mkdir -p dist
-        find dist-artifacts -name "*.whl" -exec mv {} dist/ \;
-        find dist-artifacts -name "*.tar.gz" -exec mv {} dist/ \;
-        ls -la dist/
-
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@v1.8.11
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
-        packages_dir: dist/
-
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: dist/*
-        generate_release_notes: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-```
-
-### Step 4: Update pyproject.toml (if needed)
-
-Ensure your `pyproject.toml` has proper metadata for PyPI:
-
-```toml
-[project]
-name = "rmnpy"
-version = "0.1.0"  # This should match your git tag
-description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis"
-authors = [
-    {name = "Philip Grandinetti", email = "grandinetti.1@osu.edu"}
-]
-readme = "README.md"
-license = {text = "MIT"}
-keywords = ["nmr", "scientific-computing", "chemistry", "physics", "units", "dimensional-analysis"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: POSIX :: Linux",
-    "Operating System :: MacOS",
-    "Operating System :: Microsoft :: Windows",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3 :: Only",
-    "Topic :: Scientific/Engineering :: Chemistry",
-    "Topic :: Scientific/Engineering :: Physics",
-]
-requires-python = ">=3.8"
-dependencies = [
-    "numpy>=1.20.0",
-    "cython>=0.29.24",
-]
-
-# Note: Windows builds are only available for Python 3.12 due to MSYS2 constraints
-# Linux and macOS support Python 3.8-3.12
-
-[project.urls]
-Homepage = "https://github.com/pjgrandinetti/RMNpy"
-Repository = "https://github.com/pjgrandinetti/RMNpy"
-Documentation = "https://rmnpy.readthedocs.io"  # If you have docs
-Issues = "https://github.com/pjgrandinetti/RMNpy/issues"
-```
-
-### Step 5: Test the Release Process
-
-1. **Test locally first**:
-   ```bash
-   # Make sure everything builds
-   python -m build --wheel --sdist
-
-   # Check the built packages
-   python -m twine check dist/*
-   ```
-
-2. **Create a test release**:
-   ```bash
-   # Create and push a test tag
-   git tag v0.1.0-test
-   git push origin v0.1.0-test
-   ```
-
-3. **Monitor the GitHub Actions**:
-   - Go to your repository → Actions tab
-   - Watch the release workflow run
-   - Check for any failures
-
-### Step 6: Create Your First Release
-
-1. **Update version number**:
-   - Update `version` in `pyproject.toml`
-   - Update `__version__` in `src/rmnpy/__init__.py`
-   - Commit these changes
-
-2. **Create and push release tag**:
-   ```bash
-   git tag v0.1.0
-   git push origin v0.1.0
-   ```
-
-3. **Monitor the release**:
-   - Check GitHub Actions for successful completion
-   - Verify package appears on PyPI
-   - Verify GitHub release is created with artifacts
-
-## 🔧 Alternative: Modify Existing CI Workflow
-
-If you prefer to modify the existing `.github/workflows/ci.yml` instead of creating a separate release workflow:
-
-1. **Add tag trigger** to the `on:` section:
-   ```yaml
-   on:
-     push:
-       branches: [ master, main, develop ]
-       tags: [ 'v*.*.*' ]  # Add this line
-   ```
-
-2. **Add a release job** at the end of the file (after the test job).
-
-## 📝 Additional Considerations
-
-### Security Notes
-- Never commit API tokens to git
-- Use GitHub Secrets for all sensitive data
-- Consider using trusted publishing instead of API tokens
-
-### Version Management
-- Keep versions consistent across `pyproject.toml`, `__init__.py`, and git tags
-- Follow semantic versioning (v1.0.0, v1.0.1, etc.)
-- Consider using `setuptools-scm` for automatic version management
-
-### Testing Strategy
-- Test releases on TestPyPI first
-- Use pre-releases for beta versions (v1.0.0-beta1)
-- Monitor download statistics and user feedback
-
-## 🎯 Next Steps
-
-1. Complete Steps 1-2 (PyPI account and GitHub secrets)
-2. Choose between new release workflow or modifying existing CI
-3. Create the workflow file
-4. Test with a pre-release tag
-5. Create your first official release!
-
-## 🆘 Troubleshooting
-
-**Common Issues:**
-- **Build failures**: Check that all dependencies are correctly specified
-- **PyPI upload fails**: Verify your API token and package metadata
-- **Windows builds fail**: MSYS2 setup can be complex, check dependency paths
-- **Version conflicts**: Ensure git tag matches version in package files
-
-**Useful Commands:**
-```bash
-# Check built packages
-python -m twine check dist/*
-
-# Test upload to TestPyPI
-python -m twine upload --repository testpypi dist/*
-
-# Install from TestPyPI
-pip install --index-url https://test.pypi.org/simple/ rmnpy
-```
+This strategy ensures:
+- 📦 **All releases** get GitHub artifacts for immediate access
+- 🐍 **Stable releases** get PyPI distribution for pip install
+- 🚀 **Rapid patches** don't clutter PyPI but are available via GitHub
 
 ---
 
-*This setup follows the patterns used by SpinOps and OCTypes in your ecosystem, adapted for RMNpy's specific build requirements.*
+**Note**: This implementation replaces the previous separate CI and release workflows with a single, comprehensive workflow that handles both testing and releasing based on the event trigger.

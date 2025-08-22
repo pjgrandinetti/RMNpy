@@ -1,0 +1,193 @@
+name: Build, Test & Release
+
+on:
+  push:
+    branches: [ master, main, develop ]
+    tags:
+      - "v*.*.*"
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }} - Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux: Python 3.11 & 3.12
+          - os: ubuntu-latest
+            python-version: "3.11"
+          - os: ubuntu-latest
+            python-version: "3.12"
+          # macOS: Python 3.11 & 3.12
+          - os: macos-latest
+            python-version: "3.11"
+          - os: macos-latest
+            python-version: "3.12"
+
+    steps:
+      - name: Checkout RMNpy
+        uses: actions/checkout@v5
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install system dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" --wait /bin/true || true
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config flex bison libopenblas-dev liblapacke-dev libcurl4-openssl-dev libomp5 unzip
+
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake flex bison openblas lapack curl libomp unzip
+
+      - name: Download OCTypes (latest)
+        run: |
+          curl -s https://api.github.com/repos/pjgrandinetti/OCTypes/releases/latest | \
+          python -c "import sys, json; data = json.load(sys.stdin); asset = next((a for a in data['assets'] if 'lib' in a['name'] and 'bin' in a['name']), None); print(asset['browser_download_url'])" | \
+          xargs curl -L -o octypes.tar.gz
+          tar -xzf octypes.tar.gz -C .
+          rm octypes.tar.gz
+
+      - name: Download SITypes (latest)
+        run: |
+          curl -s https://api.github.com/repos/pjgrandinetti/SITypes/releases/latest | \
+          python -c "import sys, json; data = json.load(sys.stdin); asset = next((a for a in data['assets'] if 'lib' in a['name'] and 'bin' in a['name']), None); print(asset['browser_download_url'])" | \
+          xargs curl -L -o sitypes.tar.gz
+          tar -xzf sitypes.tar.gz -C .
+          rm sitypes.tar.gz
+
+      - name: Download RMNLib (latest)
+        run: |
+          curl -s https://api.github.com/repos/pjgrandinetti/RMNLib/releases/latest | \
+          python -c "import sys, json; data = json.load(sys.stdin); asset = next((a for a in data['assets'] if 'lib' in a['name'] and 'bin' in a['name']), None); print(asset['browser_download_url'])" | \
+          xargs curl -L -o rmnlib.tar.gz
+          tar -xzf rmnlib.tar.gz -C .
+          rm rmnlib.tar.gz
+
+      - name: Install Python deps
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.LD_LIBRARY_PATH }}
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.DYLD_LIBRARY_PATH }}
+        run: |
+          python -m pip install --upgrade pip setuptools wheel "numpy>=1.21,<2" cython
+          python -m pip install -e .[test]
+
+      - name: Generate constants
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.LD_LIBRARY_PATH }}
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.DYLD_LIBRARY_PATH }}
+        run: make generate-constants
+
+      - name: Smoke import test
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.LD_LIBRARY_PATH }}
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.DYLD_LIBRARY_PATH }}
+        run: python -c "import rmnpy; print('RMNpy:', rmnpy.__version__)"
+
+      - name: Run test suite
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.LD_LIBRARY_PATH }}
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.DYLD_LIBRARY_PATH }}
+        run: python -m pytest --maxfail=1 --disable-warnings -q
+
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    # Only build wheels on tags
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.21.0
+        env:
+          # Build from source instead of using prebuilt libraries
+          CIBW_BUILD_VERBOSITY: 1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl
+
+  build_sdist:
+    name: Build source distribution
+    # Only build sdist on tags
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build sdist
+        run: pipx run build --sdist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-sdist
+          path: dist/*.tar.gz
+
+  upload_pypi:
+    name: Upload to PyPI (minor releases only)
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    # Upload to PyPI only on major/minor version releases (not patch releases)
+    # Examples: v1.0.0, v0.2.0, v2.1.0 (YES) vs v0.1.1, v0.1.2, v1.0.1 (NO)
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && endsWith(github.ref, '.0')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          # unpacks all CIBW artifacts into dist/
+          pattern: cibw-*
+          path: dist
+          merge-multiple: true
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  github_release:
+    name: Create GitHub Release (all tags)
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    # Create GitHub releases for ALL tagged versions
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cibw-*
+          path: wheels
+          merge-multiple: true
+
+      - name: Extract tag name
+        id: tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create/Update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Release ${{ steps.tag.outputs.tag }}
+          files: wheels/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
