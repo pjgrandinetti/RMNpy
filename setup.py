@@ -1,11 +1,17 @@
 # setup.py — build Cython extensions with flexible library detection
+import os
 import sys
 from pathlib import Path
 
-from Cython.Build import cythonize
 from setuptools import Extension, find_packages, setup
 
 # Note: Windows support provided via WSL2 - use Linux wheels
+
+# Skip building C extensions for documentation builds
+SKIP_CYTHON = os.environ.get("READTHEDOCS") == "True" or "--help" in sys.argv
+
+if not SKIP_CYTHON:
+    from Cython.Build import cythonize
 
 ROOT = Path(__file__).parent.resolve()
 SRC = ROOT / "src"
@@ -161,16 +167,24 @@ exts = [
 
 
 # Standard setup - cibuildwheel handles library bundling
-setup(
-    packages=find_packages(where="src"),
-    package_dir={"": "src"},
-    include_package_data=True,
-    ext_modules=cythonize(
-        exts,
-        language_level=3,
-        annotate=False,
-        compiler_directives=dict(
-            boundscheck=False, wraparound=False, initializedcheck=False
+if SKIP_CYTHON:
+    print("Skipping Cython extensions for documentation build")
+    setup(
+        packages=find_packages(where="src"),
+        package_dir={"": "src"},
+        include_package_data=True,
+    )
+else:
+    setup(
+        packages=find_packages(where="src"),
+        package_dir={"": "src"},
+        include_package_data=True,
+        ext_modules=cythonize(
+            exts,
+            language_level=3,
+            annotate=False,
+            compiler_directives=dict(
+                boundscheck=False, wraparound=False, initializedcheck=False
+            ),
         ),
-    ),
-)
+    )
