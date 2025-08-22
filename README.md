@@ -52,53 +52,26 @@ pip install rmnpy
 ```
 
 **Platform Support:**
-- ## Requirements
+- **Linux**: Python 3.11-3.12 (native wheels)
+- **macOS**: Python 3.11-3.12 (native wheels)
+- **Windows**: Use Linux wheels via WSL2
 
-- **Linux/macOS**: Python 3.11-3.12
-- **Windows**: Python 3.12 only (requires MSYS2 environment)
+### Windows Installation via WSL2
 
-### Windows (MSYS2/Mingw-w64 Python)
+RMNpy provides native Linux and macOS wheels, but no Windows wheels. Windows users should install via WSL2:
 
-To install RMNpy with C99-based Cython extensions on Windows you must use the MSYS2 MINGW64 Python runtime:
-
-1. Install [MSYS2](https://www.msys2.org/) and open the **MSYS2 MinGW64** shell.
-2. Update packages and install dependencies:
-
-   ```bash
-   pacman -Syu             # first-time update
-   pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-python-pip \
-                mingw-w64-x86_64-openblas mingw-w64-x86_64-lapack \
-                mingw-w64-x86_64-curl mingw-w64-x86_64-make
-   ```
-
-3. Create and activate a virtual environment (so pip can install into it):
+1. **Install WSL2** following [Microsoft's guide](https://docs.microsoft.com/en-us/windows/wsl/install)
+2. **Install a Linux distribution** (e.g., Ubuntu) from the Microsoft Store
+3. **Install RMNpy in WSL2**:
 
    ```bash
-   python -m pip install --upgrade pip virtualenv
-   python -m virtualenv venv
-   source venv/bin/activate
+   # In your WSL2 Linux terminal
+   pip install rmnpy
    ```
 
-4. Install RMNpy and test extras:
+4. **Access from Windows**: Your WSL2 environment can access Windows files via `/mnt/c/` and vice versa
 
-   ```bash
-   pip install numpy pytest pytest-cov
-   pip install -e .[test]
-   ```
-
-5. Run your scripts or pytest from this venv; it uses MinGW-built extensions compatible with Windows.
-
-#### Using Conda-forge MSYS2 Environment (Optional)
-If you prefer managing dependencies with conda, you can provision an MSYS2 toolchain via conda-forge:
-
-```bash
-conda create -n rmnpy-win python=3.12 pip m2-msys2-runtime m2-gcc m2-gcc-fortran m2-openblas m2-lapack m2-curl m2-make virtualenv -c conda-forge
-conda activate rmnpy-win
-# (Optional) isolate further via virtualenv within conda env:
-python -m venv venv
-source venv/bin/activate
-pip install -e .[test]
-```
+This approach provides better compatibility and performance than MinGW-based builds.
 
 ## Quick Start
 

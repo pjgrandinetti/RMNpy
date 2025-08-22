@@ -69,23 +69,23 @@ RMNpy uses a **dual-tier release strategy**:
 
 ## 🛠️ Setup Requirements (One-time)
 
-### PyPI API Token Setup
+### PyPI Trusted Publishing Setup
 
-If not already configured, you need to set up PyPI credentials:
+RMNpy uses **Trusted Publishing** (OIDC) for secure PyPI uploads without API tokens:
 
 1. **Create PyPI account**: Go to https://pypi.org/account/register/
-2. **Generate API Token**:
-   - Log into PyPI → Account settings → API tokens
-   - Click "Add API token"
-   - Name: `RMNpy-GitHub-Actions`
-   - Scope: `Entire account` (or project-specific)
-   - Copy the token (starts with `pypi-`)
+2. **Configure Trusted Publisher**:
+   - Go to https://pypi.org/manage/project/rmnpy/settings/publishing/
+   - Click "Add a new pending publisher"
+   - Fill in:
+     - **Owner**: `pjgrandinetti`
+     - **Repository name**: `RMNpy`
+     - **Workflow filename**: `build-and-release.yml`
+     - **Environment name**: *(leave blank)*
 
-3. **Add to GitHub Secrets**:
-   - Go to https://github.com/pjgrandinetti/RMNpy
-   - Settings → Secrets and variables → Actions
-   - New repository secret: `PYPI_API_TOKEN`
-   - Paste your PyPI token
+3. **No GitHub Secrets Required**: Trusted Publishing uses OpenID Connect, eliminating the need for long-lived API tokens
+
+This approach is more secure than API tokens and recommended by PyPI.
 
 ## 📊 Workflow Summary
 

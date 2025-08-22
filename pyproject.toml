@@ -59,7 +59,7 @@ DYLD_LIBRARY_PATH = "/tmp/install/lib:/usr/local/lib:/opt/homebrew/lib"
 [project]
 name = "rmnpy"
 version = "0.2.0"
-description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis"
+description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis. Linux and macOS native support; Windows via WSL2."
 readme = "README.md"
 license = {text = "MIT"}
 authors = [{name = "Philip Grandinetti", email = "grandinetti.1@osu.edu"}]
@@ -71,7 +71,6 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: POSIX :: Linux",
   "Operating System :: MacOS",
-  "Operating System :: Microsoft :: Windows",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",

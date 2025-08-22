@@ -11,7 +11,7 @@ This guide explains how to recreate the development environment for RMNpy on a n
 - **C compiler**:
   - **macOS**: Xcode Command Line Tools → `xcode-select --install`
   - **Linux**: Build essentials → `sudo apt-get install build-essential`
-  - **Windows**: Visual Studio Build Tools or MSVC
+  - **Windows**: Use WSL2 with Linux development environment
 
 ## 🚨 Common First-Time Issues
 
@@ -136,10 +136,8 @@ pip install -e .
 # Create virtual environment
 python -m venv rmnpy-env
 
-# Activate (Linux/macOS)
+# Activate environment
 source rmnpy-env/bin/activate
-# OR Windows
-# rmnpy-env\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -209,7 +207,7 @@ conda install -c conda-forge jupyter
 
 - **macOS**: Requires Xcode Command Line Tools: `xcode-select --install`
 - **Linux**: Requires build essentials: `sudo apt-get install build-essential`
-- **Windows**: Requires Visual Studio Build Tools or MSVC
+- **Windows**: Use WSL2 with Linux development tools (follow Linux instructions within WSL2)
 
 ## Environment Files
 
