@@ -58,7 +58,7 @@ DYLD_LIBRARY_PATH = "/tmp/install/lib:/usr/local/lib:/opt/homebrew/lib"
 
 [project]
 name = "rmnpy"
-version = "0.1.2"
+version = "0.1.3"
 description = "Python bindings for OCTypes, SITypes, and RMNLib C libraries for scientific computing with units and dimensional analysis"
 readme = "README.md"
 license = {text = "MIT"}
