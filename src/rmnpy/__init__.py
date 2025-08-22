@@ -38,42 +38,32 @@ def _existing_dirs() -> list[Path]:
     return out
 
 
-if sys.platform == "win32":
-    # Centralized Windows handling (PATH, add_dll_directory, bridge DLL, runtimes)
-    try:
-        from .dll_loader import setup_dll_paths
+# Preload libs on Linux/macOS (and WSL2) so that Cython extensions can resolve symbols
+lib_ext = ".so" if sys.platform.startswith("linux") else ".dylib"
+lib_names = [f"libOCTypes{lib_ext}", f"libSITypes{lib_ext}", f"libRMN{lib_ext}"]
 
-        setup_dll_paths()
-    except Exception as e:
-        # Keep import working even if optional loader setup fails
-        sys.stderr.write(f"[RMNpy] dll_loader setup failed: {e}\n")
-else:
-    # Preload libs on Linux/macOS so that Cython extensions can resolve symbols
-    lib_ext = ".so" if sys.platform.startswith("linux") else ".dylib"
-    lib_names = [f"libOCTypes{lib_ext}", f"libSITypes{lib_ext}", f"libRMN{lib_ext}"]
+loaded_any = False
+for d in _existing_dirs():
+    for name in lib_names:
+        p = d / name
+        if p.exists():
+            try:
+                # RTLD_GLOBAL makes symbols visible to subsequently loaded modules
+                ctypes.CDLL(str(p), mode=ctypes.RTLD_GLOBAL)
+                loaded_any = True
+            except OSError:
+                # Continue; the next dir may have a working copy
+                pass
 
-    loaded_any = False
-    for d in _existing_dirs():
-        for name in lib_names:
-            p = d / name
-            if p.exists():
-                try:
-                    # RTLD_GLOBAL makes symbols visible to subsequently loaded modules
-                    ctypes.CDLL(str(p), mode=ctypes.RTLD_GLOBAL)
-                    loaded_any = True
-                except OSError:
-                    # Continue; the next dir may have a working copy
-                    pass
-
-    # On Linux, optionally add the first valid dir to LD_LIBRARY_PATH for subprocesses
-    if sys.platform.startswith("linux"):
-        dirs = _existing_dirs()
-        if dirs:
-            current = os.environ.get("LD_LIBRARY_PATH", "")
-            if str(dirs[0]) not in current.split(os.pathsep):
-                os.environ["LD_LIBRARY_PATH"] = (
-                    f"{dirs[0]}{os.pathsep}{current}" if current else str(dirs[0])
-                )
+# On Linux (including WSL2), optionally add the first valid dir to LD_LIBRARY_PATH for subprocesses
+if sys.platform.startswith("linux"):
+    dirs = _existing_dirs()
+    if dirs:
+        current = os.environ.get("LD_LIBRARY_PATH", "")
+        if str(dirs[0]) not in current.split(os.pathsep):
+            os.environ["LD_LIBRARY_PATH"] = (
+                f"{dirs[0]}{os.pathsep}{current}" if current else str(dirs[0])
+            )
 
 # -------------------------------
 # Package metadata

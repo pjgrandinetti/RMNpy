@@ -7,7 +7,6 @@ Goals for wheels and editable installs on Windows (Py>=3.11):
 - Fall back to project-root ./lib/ during local dev
 - Avoid PATH pollution; use os.add_dll_directory
 - Be quiet by default; opt-in logs via RMNPY_DLL_LOG=1 (or DEBUG with RMNPY_DLL_DEBUG=1)
-- Optionally load a bridge DLL if present (rmnstack_bridge.dll)
 """
 
 from __future__ import annotations
@@ -87,23 +86,6 @@ def _set_safe_search_mode() -> None:
         _logger.debug(f"SetDefaultDllDirectories not applied: {e}")
 
 
-def _maybe_load_bridge(base_dirs: List[Path]) -> None:
-    # Optional, non-fatal: load rmnstack_bridge.dll if present.
-    bridge = "rmnstack_bridge.dll"
-    for d in base_dirs:
-        p = d / bridge
-        if p.exists():
-            try:
-                import ctypes
-
-                ctypes.CDLL(str(p))
-                _logger.info(f"Loaded bridge DLL: {p}")
-                return
-            except Exception as e:  # pragma: no cover
-                _logger.warning(f"Bridge DLL found but failed to load ({p}): {e}")
-    _logger.debug("Bridge DLL not found; continuing without it")
-
-
 # -----------------------------------------------------------------------------
 # Public API
 # -----------------------------------------------------------------------------
@@ -119,7 +101,7 @@ def setup_dll_paths() -> None:
         _dll_setup_completed = True
         return
 
-    _logger.info("Starting Windows DLL setup for RMNpy")
+    _logger.info("Starting Windows DLL setup for RMNpy")  # type: ignore[unreachable]
     _set_safe_search_mode()
 
     # Package layout
@@ -130,7 +112,7 @@ def setup_dll_paths() -> None:
     # Fallback for editable/developer layout:
     dev_libs_dir = repo_root / "lib"
 
-    # User-provided extra directories (e.g., MSYS2 mingw64/bin)
+    # User-provided extra directories (environment variable RMNPY_DLL_DIRS)
     # Accept pathsep-separated list (;) on Windows
     extra_env = os.environ.get("RMNPY_DLL_DIRS", "")
     extra_dirs = [Path(p.strip()) for p in extra_env.split(os.pathsep) if p.strip()]
@@ -150,9 +132,6 @@ def setup_dll_paths() -> None:
 
     registered = _register_dirs(dirs)
     _logger.info(f"Registered {registered} DLL directories")
-
-    # Optional: load the bridge DLL if present
-    _maybe_load_bridge(dirs)
 
     # Optional: explicitly load Python runtime DLL (rarely necessary on 3.11+)
     if _env_true("RMNPY_LOAD_PY_DLL"):

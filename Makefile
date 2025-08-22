@@ -1,8 +1,8 @@
 # RMNpy Makefile — sync shared libs/headers and helper tasks
 # IMPORTANT: recipe lines start with TABs.
 
-SHELL := /bin/bash
-.SHELLFLAGS := -eu -o pipefail -c
+SHELL := /bin/test:
+	python -m pytest tests/ -vLAGS := -eu -o pipefail -c
 .DEFAULT_GOAL := help
 
 # Cross-platform detection
@@ -16,7 +16,6 @@ help:
 	@echo "RMNpy Makefile"
 	@echo "  synclib         - Copy SHARED libs/headers from ../OCTypes, ../SITypes, ../RMNLib"
 	@echo "  download-libs   - Purge lib/include; next build/wheel should bundle fresh libs"
-	@echo "  bridge          - Create Windows bridge DLL from static libs in lib/ (MSYS2/MinGW64)"
 	@echo "  clean-libs      - Remove lib/ and include/"
 	@echo "  clean           - Remove build artifacts (keeps lib/include)"
 	@echo "  clean-all       - Clean + remove lib/include"
