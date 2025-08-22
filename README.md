@@ -3,6 +3,11 @@
 Python bindings for OCTypes, SITypes, and RMNLib C libraries.
 
 ![CI Status](https://github.com/pjgrandinetti/RMNpy/actions/workflows/build-and-release.yml/badge.svg)
+[![Documentation Status](https://readthedocs.org/projects/rmnpy/badge/?version=latest)](https://rmnpy.readthedocs.io/en/latest/?badge=latest)
+[![PyPI version](https://badge.fury.io/py/rmnpy.svg)](https://badge.fury.io/py/rmnpy)
+[![Python versions](https://img.shields.io/pypi/pyversions/rmnpy.svg)](https://pypi.org/project/rmnpy/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Downloads](https://pepy.tech/badge/rmnpy)](https://pepy.tech/project/rmnpy)
 
 > **🚀 Setting up on a new computer?** See **[docs/development/NEW_COMPUTER_SETUP.md](docs/development/NEW_COMPUTER_SETUP.md)** for quick setup or **[docs/development/ENVIRONMENT_SETUP.md](docs/development/ENVIRONMENT_SETUP.md)** for detailed instructions.
 
