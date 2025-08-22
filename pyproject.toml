@@ -15,6 +15,8 @@ manylinux-aarch64-image = "manylinux2014"
 # Install system dependencies in manylinux container
 before-all = [
     "yum install -y flex bison curl-devel openblas-devel lapack-devel atlas-devel",
+    # Clean up any existing build directories
+    "rm -rf /tmp/octypes /tmp/sitypes /tmp/rmnlib /tmp/install",
     # Build OCTypes from source (latest stable release) - robust tag parsing to handle annotated tags
     "OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | cut -f2 | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes",
     "cd /tmp/octypes && make CC=gcc -j$(nproc) && make CC=gcc install INSTALL_DIR=/tmp/install",
@@ -38,6 +40,8 @@ LD_LIBRARY_PATH = "/tmp/install/lib:/usr/local/lib"
 # Install dependencies via homebrew
 before-all = [
     "brew install flex bison openblas lapack curl libomp",
+    # Clean up any existing build directories
+    "rm -rf /tmp/octypes /tmp/sitypes /tmp/rmnlib /tmp/install",
     # Build dependencies with architecture-specific flags in a single command chain
     "ARCHFLAGS=$(if [[ $(uname -m) == 'x86_64' ]]; then echo '-arch x86_64'; else echo '-arch arm64'; fi) && OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes && cd /tmp/octypes && make CC=\"clang $ARCHFLAGS\" LDFLAGS=\"$ARCHFLAGS\" -j$(sysctl -n hw.ncpu) && make CC=\"clang $ARCHFLAGS\" LDFLAGS=\"$ARCHFLAGS\" install INSTALL_DIR=/tmp/install",
     "ARCHFLAGS=$(if [[ $(uname -m) == 'x86_64' ]]; then echo '-arch x86_64'; else echo '-arch arm64'; fi) && SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git | head -1 | awk '{print $2}' | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes && mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib && cp /tmp/install/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/ && cp /tmp/install/lib/libOCTypes.* /tmp/sitypes/third_party/lib/ && cd /tmp/sitypes && make CC=\"clang $ARCHFLAGS\" LDFLAGS=\"$ARCHFLAGS\" -j$(sysctl -n hw.ncpu) && make CC=\"clang $ARCHFLAGS\" LDFLAGS=\"$ARCHFLAGS\" install INSTALL_DIR=/tmp/install",
@@ -49,40 +53,8 @@ repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest
 MACOSX_DEPLOYMENT_TARGET = "13.0"
 DYLD_LIBRARY_PATH = "/tmp/install/lib:/usr/local/lib:/opt/homebrew/lib"
 
-# Windows-specific settings
-[tool.cibuildwheel.windows]
-# Only build Python 3.12 on Windows (MinGW only has Python 3.12 available)
-build = "cp312-*"
-# Use MSYS2/MinGW for Windows builds to match your current setup
-before-all = [
-    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-openblas mingw-w64-x86_64-curl mingw-w64-x86_64-make mingw-w64-x86_64-cblas bison flex git",
-    # Build OCTypes from source using MinGW (latest stable release) - dynamic tag detection
-    "C:\\msys64\\usr\\bin\\bash.exe -lc \"OCTYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/OCTypes.git | head -1 | cut -f2 | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $OCTYPES_TAG https://github.com/pjgrandinetti/OCTypes.git /tmp/octypes\"",
-    "C:\\msys64\\usr\\bin\\bash.exe -lc \"cd /tmp/octypes && PATH=/mingw64/bin:/usr/bin:$PATH /mingw64/bin/mingw32-make -j4 && PATH=/mingw64/bin:/usr/bin:$PATH /mingw64/bin/mingw32-make install INSTALL_DIR=/mingw64\"",
-    # Build SITypes from source - set up OCTypes in expected location for Makefile, dynamic tag detection
-    "C:\\msys64\\usr\\bin\\bash.exe -lc \"SITYPES_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/SITypes.git | head -1 | cut -f2 | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $SITYPES_TAG https://github.com/pjgrandinetti/SITypes.git /tmp/sitypes\"",
-    "C:\\msys64\\usr\\bin\\bash.exe -lc \"mkdir -p /tmp/sitypes/third_party/include/OCTypes && mkdir -p /tmp/sitypes/third_party/lib\"",
-    "C:\\msys64\\usr\\bin\\bash.exe -lc \"cp /mingw64/include/OCTypes/*.h /tmp/sitypes/third_party/include/OCTypes/\"",
-    "C:\\msys64\\usr\\bin\\bash.exe -lc \"cp /mingw64/lib/libOCTypes.a /tmp/sitypes/third_party/lib/\"",
-    "C:\\msys64\\usr\\bin\\bash.exe -lc \"cd /tmp/sitypes && PATH=/mingw64/bin:/usr/bin:$PATH CC=gcc /mingw64/bin/mingw32-make -j4 && PATH=/mingw64/bin:/usr/bin:$PATH CC=gcc /mingw64/bin/mingw32-make install INSTALL_DIR=/mingw64\"",
-    # Build RMNLib from source (latest stable release) - dynamic tag detection
-    "C:\\msys64\\usr\\bin\\bash.exe -lc \"RMNLIB_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/pjgrandinetti/RMNLib.git | head -1 | cut -f2 | sed 's|refs/tags/||' | sed 's|\\^{}||') && git clone --depth 1 --branch $RMNLIB_TAG https://github.com/pjgrandinetti/RMNLib.git /tmp/rmnlib\"",
-    "C:\\msys64\\usr\\bin\\bash.exe -lc \"cd /tmp/rmnlib && PATH=/mingw64/bin:/usr/bin:$PATH CC=gcc /mingw64/bin/mingw32-make -j4 && PATH=/mingw64/bin:/usr/bin:$PATH CC=gcc /mingw64/bin/mingw32-make install INSTALL_DIR=/mingw64\"",
-]
-repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
-
-[tool.cibuildwheel.windows.environment]
-# Force use of MinGW/GCC for Python extension compilation to match dependency libraries
-# This is required because our C code uses C99 VLA and complex.h which MSVC doesn't support
-# Append MinGW to PATH (not prepend) to avoid Python conflicts
-PATH = "${PATH};C:/msys64/mingw64/bin;C:/msys64/usr/bin"
-CC = "C:/msys64/mingw64/bin/gcc.exe"
-CXX = "C:/msys64/mingw64/bin/g++.exe"
-# Flag to tell setup.py that we're running under cibuildwheel
-CIBUILDWHEEL = "1"
-# Additional environment variables to force compiler selection
-DISTUTILS_USE_SDK = "1"
-MSSdk = "1"
+# Note: Windows support provided via WSL2 (use Linux wheels)
+# No native Windows builds - users should install in WSL environment
 
 [project]
 name = "rmnpy"
