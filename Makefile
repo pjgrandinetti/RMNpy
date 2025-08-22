@@ -1,8 +1,8 @@
 # RMNpy Makefile — sync shared libs/headers and helper tasks
 # IMPORTANT: recipe lines start with TABs.
 
-SHELL := /bin/test:
-	python -m pytest tests/ -vLAGS := -eu -o pipefail -c
+SHELL := /bin/bash
+MAKEFLAGS := -eu -o pipefail -c
 .DEFAULT_GOAL := help
 
 # Cross-platform detection
