@@ -118,9 +118,9 @@ test-wheel:
 check-wheel:
 	@python scripts/check_wheel_libraries.py
 
-# Windows-only: build a bridge DLL from static libs (optional)
+# Deprecated Windows DLL build (use WSL2 instead)
 bridge:
-	@echo "→ Building Windows bridge DLL (MSYS2/MinGW64)…"
+	@echo "→ Building Windows bridge DLL (DEPRECATED - use WSL2)…"
 	@if [ ! -f "$(LIBDIR)/libOCTypes.a" ] || [ ! -f "$(LIBDIR)/libSITypes.a" ] || [ ! -f "$(LIBDIR)/libRMN.a" ]; then \
 	  echo "✗ Need libOCTypes.a, libSITypes.a, libRMN.a in $(LIBDIR)/"; exit 1; \
 	fi
