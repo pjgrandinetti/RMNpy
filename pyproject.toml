@@ -9,8 +9,8 @@ skip = "pp* *-win32 *-manylinux_i686 *-musllinux_*"
 
 # Linux-specific settings
 [tool.cibuildwheel.linux]
-# Use manylinux2014 for broad compatibility
-manylinux-x86_64-image = "manylinux2014"
+# Use manylinux_2_5 for broader compatibility while maintaining modern build tools
+manylinux-x86_64-image = "manylinux_2_5"
 manylinux-aarch64-image = "manylinux2014"
 # Install system dependencies in manylinux container
 before-all = [
