@@ -115,9 +115,9 @@ cdef class Dimensionality:
 
         Examples:
             >>> # Import quantity constants
-            >>> from rmnpy.quantities import kSIQuantityPressure, kSIQuantityEnergy
-            >>> pressure_dim = Dimensionality.for_quantity(kSIQuantityPressure)
-            >>> energy_dim = Dimensionality.for_quantity(kSIQuantityEnergy)
+            >>> from rmnpy.sitypes import quantity as q
+            >>> pressure_dim = Dimensionality.for_quantity(q.Pressure)
+            >>> energy_dim = Dimensionality.for_quantity(q.Energy)
             >>>
             >>> # Also works with strings directly:
             >>> pressure_dim2 = Dimensionality.for_quantity("pressure")

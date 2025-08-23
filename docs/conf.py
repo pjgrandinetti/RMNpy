@@ -44,7 +44,7 @@ autodoc_mock_imports = [
     "rmnpy.wrappers.rmnlib.dimension",
     "rmnpy.wrappers.rmnlib.sparse_sampling",
     "rmnpy.helpers.octypes",
-    "rmnpy.quantities",
+    "rmnpy.sitypes.quantity",
 ]
 
 # -- nbsphinx configuration -------------------------------------------------

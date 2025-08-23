@@ -97,6 +97,7 @@ cdef extern from "SITypes/SIDimensionality.h":
     OCArrayRef SIDimensionalityCreateArrayWithSameReducedDimensionality(SIDimensionalityRef theDim)
     OCArrayRef SIDimensionalityCreateArrayOfQuantityNames(SIDimensionalityRef dim)
     OCArrayRef SIDimensionalityCreateArrayOfQuantityNamesWithSameReducedDimensionality(SIDimensionalityRef dim)
+    OCArrayRef SIDimensionalityCreateArrayOfAllQuantityNames()
 
     # Display
     void SIDimensionalityShow(SIDimensionalityRef theDim)
@@ -193,6 +194,9 @@ cdef extern from "SITypes/SIUnit.h":
     OCArrayRef SIUnitCreateArrayOfUnitsForSameReducedDimensionality(SIDimensionalityRef theDim)
     OCArrayRef SIUnitCreateArrayOfConversionUnits(SIUnitRef theUnit)
     OCArrayRef SIUnitCreateArrayOfEquivalentUnits(SIUnitRef theUnit)
+
+    # Token symbol discovery
+    OCMutableArrayRef SIUnitGetTokenSymbolsLib()
 
 # ====================================================================================
 #  SIQuantity & SIScalar API (depends on both above)

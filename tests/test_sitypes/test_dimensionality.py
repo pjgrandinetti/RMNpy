@@ -584,13 +584,13 @@ def test_for_quantity_with_constants():
     """
     Test Dimensionality.for_quantity with SI quantity constants and error on string input.
     """
-    from rmnpy.quantities import kSIQuantityDimensionless, kSIQuantityLength
+    from rmnpy.sitypes import quantity as q
     from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
 
     # Should work with SI quantity constants (now Python strings)
-    length_dim = Dimensionality.for_quantity(kSIQuantityLength)
+    length_dim = Dimensionality.for_quantity(q.Length)
     assert str(length_dim) == "L"
-    dimless_dim = Dimensionality.for_quantity(kSIQuantityDimensionless)
+    dimless_dim = Dimensionality.for_quantity(q.Dimensionless)
     assert dimless_dim.is_dimensionless
 
     # Should also work if given the same string directly

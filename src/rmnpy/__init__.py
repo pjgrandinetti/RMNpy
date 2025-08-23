@@ -98,8 +98,4 @@ except Exception:  # pragma: no cover
         return False
 
 
-# Optional compiled quantities module
-try:
-    from . import quantities  # noqa: F401,E402
-except Exception:
-    pass
+# Note: quantity constants are now available via rmnpy.sitypes.quantity

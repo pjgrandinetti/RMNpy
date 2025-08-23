@@ -5,7 +5,7 @@ Test suite for DependentVariable wrapper based on the C test suite
 import numpy as np
 
 from rmnpy import DependentVariable
-from rmnpy.quantities import kSIQuantityDimensionless, kSIQuantityLengthRatio
+from rmnpy.sitypes import quantity as q
 from rmnpy.sitypes import Unit
 
 
@@ -18,12 +18,13 @@ class TestDependentVariableBasics:
         data = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
 
         # Create DependentVariable with minimal parameters (like _make_internal_scalar)
+        # Test DependentVariable creation like in C tests
         dv = DependentVariable(
-            components=[data],  # Required: array of data
+            components=[data],
             name="",  # Empty string like C test
             description="",  # Empty string like C test
             unit=" ",  # dimensionless
-            quantity_name=kSIQuantityDimensionless,
+            quantity_name=q.Dimensionless,
             quantity_type="scalar",  # Default from C test
             element_type="float64",  # Default from C test
         )
@@ -46,7 +47,7 @@ class TestDependentVariableBasics:
             name="",
             description="",
             unit=" ",  # dimensionless
-            quantity_name=kSIQuantityDimensionless,
+            quantity_name=q.Dimensionless,
             quantity_type="scalar",  # Default from C test
             element_type="float64",  # Default from C test
         )
@@ -64,13 +65,13 @@ class TestDependentVariableBasics:
 
         # Test quantity name setter and getter
         current_quantity_name = dv.quantity_name
-        assert current_quantity_name == kSIQuantityDimensionless
+        assert current_quantity_name == q.Dimensionless
 
         # Test quantity name setter
-        dv.quantity_name = kSIQuantityLengthRatio
+        dv.quantity_name = q.LengthRatio
         assert (
-            dv.quantity_name == kSIQuantityLengthRatio
-        ), f"Expected '{kSIQuantityLengthRatio}', got '{dv.quantity_name}'"
+            dv.quantity_name == q.LengthRatio
+        ), f"Expected '{q.LengthRatio}', got '{dv.quantity_name}'"
 
     def test_size_property_setter(self):
         """Test size property getter and setter functionality"""
@@ -81,7 +82,7 @@ class TestDependentVariableBasics:
             name="test_data",
             description="Test data for size manipulation",
             unit=" ",  # dimensionless
-            quantity_name=kSIQuantityDimensionless,
+            quantity_name=q.Dimensionless,
             quantity_type="scalar",
             element_type="float64",
         )
@@ -121,7 +122,7 @@ class TestDependentVariableAppend:
             name="data1",
             description="First dataset",
             unit=" ",  # dimensionless
-            quantity_name=kSIQuantityDimensionless,
+            quantity_name=q.Dimensionless,
             quantity_type="scalar",
             element_type="float64",
         )
@@ -133,7 +134,7 @@ class TestDependentVariableAppend:
             name="data2",
             description="Second dataset",
             unit=" ",  # dimensionless
-            quantity_name=kSIQuantityDimensionless,
+            quantity_name=q.Dimensionless,
             quantity_type="scalar",
             element_type="float64",
         )
@@ -156,7 +157,7 @@ class TestDependentVariableAppend:
             name="test",
             description="Test data",
             unit=" ",
-            quantity_name=kSIQuantityDimensionless,
+            quantity_name=q.Dimensionless,
             quantity_type="scalar",
             element_type="float64",
         )
@@ -263,7 +264,7 @@ class TestDependentVariableImportStyles:
             name="test_components",
             description="Test components property",
             unit=" ",  # dimensionless
-            quantity_name=kSIQuantityDimensionless,
+            quantity_name=q.Dimensionless,
             quantity_type="scalar",
             element_type="float64",
         )
@@ -325,5 +326,6 @@ class TestDependentVariableImportStyles:
         assert dv.name == "pressure_data"
         assert dv.unit.symbol == "Pa"
 
-        # Test accessing quantities through namespace
-        assert hasattr(rmn.quantities, "kSIQuantityDimensionless")
+        # Test accessing quantities through new namespace
+        assert hasattr(rmn.sitypes.quantity, "Dimensionless")
+        assert rmn.sitypes.quantity.Dimensionless == "dimensionless"

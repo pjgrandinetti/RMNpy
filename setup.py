@@ -155,8 +155,8 @@ exts = [
         extra_link_args=EXTRA_LINK,
     ),
     Extension(
-        "rmnpy.quantities",
-        ["src/rmnpy/quantities.pyx"],
+        "rmnpy.sitypes.quantity",
+        ["src/rmnpy/sitypes/quantity.pyx"],
         include_dirs=INC,
         libraries=LIBS,
         library_dirs=LIBDIRS,

@@ -345,7 +345,7 @@ cdef class Unit:
         Get the scale factor to convert from this unit to another compatible unit.
 
         Args:
-            other (Unit): Target unit to convert to
+            other (Unit or str): Target unit to convert to. Can be a Unit object or string expression.
 
         Returns:
             float: Scale factor (multiply by this to convert from self to other)
@@ -355,9 +355,16 @@ cdef class Unit:
             >>> kilometer = Unit("km")
             >>> factor = meter.scale_to(kilometer)
             >>> # factor should be 0.001 (1 m = 0.001 km)
+            >>>
+            >>> # Can also use string expressions
+            >>> factor2 = meter.scale_to("km")
+            >>> # factor2 should be 0.001 (1 m = 0.001 km)
         """
-        if not isinstance(other, Unit):
-            raise TypeError("Can only get scale factor with another Unit")
+        # Convert other to Unit if it's a string
+        if isinstance(other, str):
+            other = Unit(other)
+        elif not isinstance(other, Unit):
+            raise TypeError("Can only get scale factor with another Unit or string expression")
 
         cdef double conversion_factor = SIUnitConversion(self._c_ref, (<Unit>other)._c_ref)
 
@@ -760,3 +767,26 @@ def siunit_to_pyunit(uint64_t si_unit_ptr):
     # Use the Unit class's _from_c_ref method to create a proper Unit object
     # No retention needed since SIUnitRef are singletons managed by SILibrary
     return Unit._from_c_ref(si_unit)
+
+
+def get_unit_symbol_tokens_lib():
+    """
+    Get all possible unit symbol tokens for derived units from the SITypes library.
+
+    Returns:
+        list: List of unit symbol token strings
+
+    Raises:
+        RuntimeError: If unable to get unit symbol tokens from the library
+    """
+    cdef OCMutableArrayRef symbols_array = SIUnitGetTokenSymbolsLib()
+    
+    if symbols_array == NULL:
+        raise RuntimeError("Failed to get unit symbol tokens from SITypes library")
+    
+    # Convert OCMutableArrayRef to Python list
+    try:
+        return ocarray_to_pylist(<uint64_t>symbols_array)
+    finally:
+        # The array is owned by the library, so we don't need to release it
+        pass
