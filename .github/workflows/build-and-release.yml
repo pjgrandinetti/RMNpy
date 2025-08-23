@@ -113,12 +113,6 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel "numpy>=1.21,<2" cython
           python -m pip install -e .[test]
 
-      - name: Generate constants
-        env:
-          LD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.LD_LIBRARY_PATH }}
-          DYLD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.DYLD_LIBRARY_PATH }}
-        run: make generate-constants
-
       - name: Smoke import test
         env:
           LD_LIBRARY_PATH: ${{ github.workspace }}/lib:${{ env.LD_LIBRARY_PATH }}
