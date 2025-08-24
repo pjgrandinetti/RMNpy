@@ -314,46 +314,46 @@ cdef extern from "RMNLibrary.h":
     # Phase 3D: Dataset API (Depends on all previous components)
     # ====================================================================================
 
-    # Dataset - High-level data container and workflow orchestration
+    # Dataset creation and basic operations
     OCTypeID DatasetGetTypeID()
-    DatasetRef DatasetCreate(OCStringRef name, OCStringRef description, OCStringRef *outError)
+    DatasetRef DatasetCreate(OCArrayRef dimensions, OCIndexArrayRef dimensionPrecedence,
+                           OCArrayRef dependentVariables, OCArrayRef tags,
+                           OCStringRef description, OCStringRef title,
+                           DatumRef focus, DatumRef previousFocus,
+                           OCDictionaryRef metaData, OCStringRef *outError)
+    DatasetRef DatasetCreateMinimal(OCArrayRef dimensions, OCArrayRef dependentVariables, OCStringRef *outError)
+    DatasetRef DatasetCreateEmpty(OCStringRef *outError)
     DatasetRef DatasetCreateFromDictionary(OCDictionaryRef dict, OCStringRef *outError)
     DatasetRef DatasetCreateCopy(DatasetRef ds)
     DatasetRef DatasetCreateWithImport(const char *json_path, const char *binary_dir, OCStringRef *outError)
     OCDictionaryRef DatasetCopyAsDictionary(DatasetRef dataset)
     bint DatasetExport(DatasetRef ds, const char *json_path, const char *binary_dir, OCStringRef *outError)
 
-    # Dataset basic accessors
-    OCStringRef DatasetGetName(DatasetRef dataset)
-    bint DatasetSetName(DatasetRef dataset, OCStringRef name, OCStringRef *outError)
-    OCStringRef DatasetGetDescription(DatasetRef dataset)
-    bint DatasetSetDescription(DatasetRef dataset, OCStringRef description, OCStringRef *outError)
-
-    # Dataset dimensions management
-    OCArrayRef DatasetGetDimensions(DatasetRef dataset)
-    bint DatasetSetDimensions(DatasetRef dataset, OCArrayRef dimensions, OCStringRef *outError)
-    bint DatasetAddDimension(DatasetRef dataset, DimensionRef dimension, OCStringRef *outError)
-    OCIndexArrayRef DatasetGetDimensionPrecedence(DatasetRef dataset)
-    bint DatasetSetDimensionPrecedence(DatasetRef dataset, OCIndexArrayRef precedence)
-
-    # Dataset dependent variables management
-    OCArrayRef DatasetGetDependentVariables(DatasetRef dataset)
-    bint DatasetSetDependentVariables(DatasetRef dataset, OCArrayRef variables, OCStringRef *outError)
-    bint DatasetAddDependentVariable(DatasetRef dataset, DependentVariableRef variable, OCStringRef *outError)
+    # Dataset accessors and mutators
+    OCMutableArrayRef DatasetGetDimensions(DatasetRef dataset)
+    bint DatasetSetDimensions(DatasetRef dataset, OCMutableArrayRef dims)
+    OCMutableIndexArrayRef DatasetGetDimensionPrecedence(DatasetRef dataset)
+    bint DatasetSetDimensionPrecedence(DatasetRef dataset, OCMutableIndexArrayRef order)
+    OCMutableArrayRef DatasetGetDependentVariables(DatasetRef dataset)
+    bint DatasetSetDependentVariables(DatasetRef dataset, OCMutableArrayRef dvs)
     OCIndex DatasetGetDependentVariableCount(DatasetRef dataset)
     DependentVariableRef DatasetGetDependentVariableAtIndex(DatasetRef dataset, OCIndex index)
     DependentVariableRef DatasetAddEmptyDependentVariable(DatasetRef dataset, OCStringRef quantityType,
                                                           OCNumberType elementType, OCIndex size)
 
     # Dataset metadata
-    OCDictionaryRef DatasetGetApplicationMetaData(DatasetRef dataset)
-    bint DatasetSetApplicationMetaData(DatasetRef dataset, OCDictionaryRef metadata, OCStringRef *outError)
-
-    # Dataset focus management
+    OCMutableArrayRef DatasetGetTags(DatasetRef ds)
+    bint DatasetSetTags(DatasetRef ds, OCMutableArrayRef tags)
+    OCStringRef DatasetGetDescription(DatasetRef ds)
+    bint DatasetSetDescription(DatasetRef ds, OCStringRef desc)
+    OCStringRef DatasetGetTitle(DatasetRef ds)
+    bint DatasetSetTitle(DatasetRef ds, OCStringRef title)
     DatumRef DatasetGetFocus(DatasetRef ds)
     bint DatasetSetFocus(DatasetRef ds, DatumRef focus)
     DatumRef DatasetGetPreviousFocus(DatasetRef ds)
     bint DatasetSetPreviousFocus(DatasetRef ds, DatumRef previousFocus)
+    OCDictionaryRef DatasetGetApplicationMetaData(DatasetRef dataset)
+    bint DatasetSetApplicationMetaData(DatasetRef dataset, OCDictionaryRef md)
 
     # Dataset CSDM-1.0 fields
     OCStringRef DatasetGetVersion(DatasetRef ds)
@@ -363,9 +363,7 @@ cdef extern from "RMNLibrary.h":
     GeographicCoordinateRef DatasetGetGeographicCoordinate(DatasetRef ds)
     bint DatasetSetGeographicCoordinate(DatasetRef ds, GeographicCoordinateRef gc)
     bint DatasetGetReadOnly(DatasetRef ds)
-    bint DatasetSetReadOnly(DatasetRef ds, bint readOnly)
-
-    # ====================================================================================
+    bint DatasetSetReadOnly(DatasetRef ds, bint readOnly)    # ====================================================================================
     # DependentVariable API - Dataset variables with metadata and components
     # ====================================================================================
 
