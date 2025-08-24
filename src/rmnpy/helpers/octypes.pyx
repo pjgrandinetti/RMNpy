@@ -130,24 +130,10 @@ cdef uint64_t convert_python_to_octype(object item) except 0:
         return ocnumber_create_from_pynumber(item)
     elif isinstance(item, np.ndarray):
         return ocdata_create_from_numpy_array(item)
-    # Handle Scalar objects from RMNpy wrappers using duck typing
-    # We use hasattr instead of isinstance for better Cython performance
-    # and to avoid circular import issues with dynamically imported classes
-    elif hasattr(item, 'value') and hasattr(item, 'unit'):
-        # This looks like a Scalar object - convert to SIScalar
-        from rmnpy.wrappers.sitypes.scalar import siscalar_create_from_pyscalar
-        return siscalar_create_from_pyscalar(item)
-    # Handle Unit objects from RMNpy wrappers using duck typing
-    elif hasattr(item, '_c_ref') and hasattr(item, 'name'):
-        # This looks like a Unit object - get the C reference directly
-        return <uint64_t>(<object>item)._c_ref
-    # Handle Dimensionality objects from RMNpy wrappers using duck typing
-    elif hasattr(item, '_c_ref') and hasattr(item, 'dimensionality_string'):
-        # This looks like a Dimensionality object - get the C reference directly
-        return <uint64_t>(<object>item)._c_ref
-    # Handle Dimension objects from RMNpy wrappers using duck typing
-    elif hasattr(item, '_c_ref') and hasattr(item, 'count'):
-        # This looks like a Dimension object - get the C reference directly
+    # Handle all wrapped OCTypes that have _c_ref property
+    elif hasattr(item, '_c_ref'):
+        # All wrapped OCTypes (Scalar, Unit, Dimensionality, Dimension, DependentVariable, Dataset, SparseSampling)
+        # store their C reference in _c_ref property
         return <uint64_t>(<object>item)._c_ref
     else:
         raise TypeError(f"Unsupported item type: {type(item)}. For collections, use specific conversion functions. For OCTypes from other libraries, pass as integer pointer.")
@@ -158,7 +144,8 @@ cdef object convert_octype_to_python(const void* oc_ptr):
 
     This function handles:
     1. Known OCTypes (String, Number, Boolean, Data, Array, Dictionary, Set)
-    2. Unknown OCTypes (returns as integer pointer for use by other libraries)
+    2. Wrapped OCTypes (using _from_c_ref pattern)
+    3. Unknown OCTypes (returns as integer pointer for use by other libraries)
 
     Args:
         oc_ptr: OCType pointer to convert
@@ -171,7 +158,7 @@ cdef object convert_octype_to_python(const void* oc_ptr):
 
     cdef OCTypeID type_id = OCGetTypeID(oc_ptr)
 
-    # Handle known OCTypes
+    # Handle basic OCTypes with direct conversion functions
     if type_id == OCStringGetTypeID():
         return ocstring_to_pystring(<uint64_t>oc_ptr)
     elif type_id == OCNumberGetTypeID():
@@ -179,7 +166,6 @@ cdef object convert_octype_to_python(const void* oc_ptr):
     elif type_id == OCBooleanGetTypeID():
         return ocboolean_to_pybool(<uint64_t>oc_ptr)
     elif type_id == OCDataGetTypeID():
-        # Default to uint8 array for OCData
         return ocdata_to_numpy_array(<uint64_t>oc_ptr, np.uint8)
     elif type_id == OCArrayGetTypeID():
         return ocarray_to_pylist(<uint64_t>oc_ptr)
@@ -193,31 +179,43 @@ cdef object convert_octype_to_python(const void* oc_ptr):
         return ocindexset_to_pyset(<uint64_t>oc_ptr)
     elif type_id == OCIndexPairSetGetTypeID():
         return ocindexpairset_to_pydict(<uint64_t>oc_ptr)
+
+    # Handle wrapped OCTypes using _from_c_ref pattern
+    # SITypes wrappers
     elif type_id == SIScalarGetTypeID():
-        from rmnpy.wrappers.sitypes.scalar import siscalar_to_scalar
-        return siscalar_to_scalar(<uint64_t>oc_ptr)
+        from rmnpy.wrappers.sitypes.scalar import Scalar
+        return Scalar._from_c_ref(<SIScalarRef>oc_ptr)
     elif type_id == SIUnitGetTypeID():
-        from rmnpy.wrappers.sitypes.unit import siunit_to_pyunit
-        return siunit_to_pyunit(<uint64_t>oc_ptr)
+        from rmnpy.wrappers.sitypes.unit import Unit
+        return Unit._from_c_ref(<SIUnitRef>oc_ptr)
     elif type_id == SIDimensionalityGetTypeID():
-        # Use lazy import to avoid circular import
-        from rmnpy.wrappers.sitypes.dimensionality import (
-            sidimensionality_to_dimensionality,
-        )
-        return sidimensionality_to_dimensionality(<uint64_t>oc_ptr)
-    # Handle RMNLib Dimension types
-    elif type_id == DimensionGetTypeID():
-        return dimension_to_pydimension(<uint64_t>oc_ptr)
-    elif type_id == LabeledDimensionGetTypeID():
-        return dimension_to_pydimension(<uint64_t>oc_ptr)
-    elif type_id == SIDimensionGetTypeID():
-        return dimension_to_pydimension(<uint64_t>oc_ptr)
-    elif type_id == SILinearDimensionGetTypeID():
-        return dimension_to_pydimension(<uint64_t>oc_ptr)
-    elif type_id == SIMonotonicDimensionGetTypeID():
-        return dimension_to_pydimension(<uint64_t>oc_ptr)
+        from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
+        return Dimensionality._from_c_ref(<SIDimensionalityRef>oc_ptr)
+
+    # RMNLib wrappers - All dimension types use BaseDimension
+    elif (type_id == DimensionGetTypeID() or type_id == LabeledDimensionGetTypeID() or
+          type_id == SIDimensionGetTypeID() or type_id == SILinearDimensionGetTypeID() or
+          type_id == SIMonotonicDimensionGetTypeID()):
+        from rmnpy.wrappers.rmnlib.dimension import BaseDimension
+        return BaseDimension._from_c_ref(<DimensionRef>oc_ptr)
+    elif type_id == DependentVariableGetTypeID():
+        from rmnpy.wrappers.rmnlib.dependent_variable import DependentVariable
+        return DependentVariable._from_c_ref(<DependentVariableRef>oc_ptr)
+    elif type_id == DatasetGetTypeID():
+        from rmnpy.wrappers.rmnlib.dataset import Dataset
+        return Dataset._from_c_ref(<DatasetRef>oc_ptr)
+    elif type_id == DatumGetTypeID():
+        from rmnpy.wrappers.rmnlib.datum import Datum
+        return Datum._from_c_ref(<DatumRef>oc_ptr)
+    elif type_id == GeographicCoordinateGetTypeID():
+        from rmnpy.wrappers.rmnlib.geographic_coordinate import GeographicCoordinate
+        return GeographicCoordinate._from_c_ref(<GeographicCoordinateRef>oc_ptr)
+    elif type_id == SparseSamplingGetTypeID():
+        from rmnpy.wrappers.rmnlib.sparse_sampling import SparseSampling
+        return SparseSampling._from_c_ref(<SparseSamplingRef>oc_ptr)
+
     else:
-        # Unknown OCType (could be from SITypes or other extensions)
+        # Unknown OCType (could be from other extensions)
         # Return as integer pointer for use by other libraries
         return <uint64_t>oc_ptr
 
@@ -585,16 +583,9 @@ def ocarray_create_from_pylist(py_list):
                 oc_item_ptr = ocdict_create_from_pydict(item)
             elif isinstance(item, set):
                 oc_item_ptr = ocset_create_from_pyset(item)
-            elif isinstance(item, str):
-                oc_item_ptr = ocstring_create_from_pystring(item)
-            elif isinstance(item, bool):  # Check bool before int (bool is subclass of int)
-                oc_item_ptr = pybool_to_ocboolean(item)
-            elif isinstance(item, (int, float, complex)):
-                oc_item_ptr = ocnumber_create_from_pynumber(item)
-            elif isinstance(item, np.ndarray):
-                oc_item_ptr = ocdata_create_from_numpy_array(item)
             else:
-                raise TypeError(f"Unsupported item type for array: {type(item)}")
+                # Use the generic converter for basic types and all wrapped OCTypes (including Scalar)
+                oc_item_ptr = convert_python_to_octype(item)
 
             # Add to array
             OCArrayAppendValue(mutable_array, <const void*>oc_item_ptr)
@@ -647,59 +638,8 @@ def ocarray_to_pylist(uint64_t oc_array_ptr):
             result.append(None)
             continue
 
-        # Direct conversion instead of using convert_octype_to_python to avoid recursion issues
-        type_id = OCGetTypeID(item_ptr)
-
-        # Handle known OCTypes directly
-        if type_id == OCStringGetTypeID():
-            py_item = ocstring_to_pystring(<uint64_t>item_ptr)
-        elif type_id == OCNumberGetTypeID():
-            py_item = ocnumber_to_pynumber(<uint64_t>item_ptr)
-        elif type_id == OCBooleanGetTypeID():
-            py_item = ocboolean_to_pybool(<uint64_t>item_ptr)
-        elif type_id == OCDataGetTypeID():
-            # Default to uint8 array for OCData
-            py_item = ocdata_to_numpy_array(<uint64_t>item_ptr, np.uint8)
-        elif type_id == OCArrayGetTypeID():
-            # Recursive call - this could be the source of issues
-            py_item = ocarray_to_pylist(<uint64_t>item_ptr)
-        elif type_id == OCDictionaryGetTypeID():
-            py_item = ocdict_to_pydict(<uint64_t>item_ptr)
-        elif type_id == OCSetGetTypeID():
-            py_item = ocset_to_pyset(<uint64_t>item_ptr)
-        elif type_id == OCIndexArrayGetTypeID():
-            py_item = ocindexarray_to_pylist(<uint64_t>item_ptr)
-        elif type_id == OCIndexSetGetTypeID():
-            py_item = ocindexset_to_pyset(<uint64_t>item_ptr)
-        elif type_id == OCIndexPairSetGetTypeID():
-            py_item = ocindexpairset_to_pydict(<uint64_t>item_ptr)
-        elif type_id == SIScalarGetTypeID():
-            from rmnpy.wrappers.sitypes.scalar import siscalar_to_scalar
-            py_item = siscalar_to_scalar(<uint64_t>item_ptr)
-        elif type_id == SIUnitGetTypeID():
-            from rmnpy.wrappers.sitypes.unit import siunit_to_pyunit
-            py_item = siunit_to_pyunit(<uint64_t>item_ptr)
-        elif type_id == SIDimensionalityGetTypeID():
-            # Use lazy import to avoid circular import
-            from rmnpy.wrappers.sitypes.dimensionality import (
-                sidimensionality_to_dimensionality,
-            )
-            py_item = sidimensionality_to_dimensionality(<uint64_t>item_ptr)
-        # Handle RMNLib Dimension types
-        elif type_id == DimensionGetTypeID():
-            py_item = dimension_to_pydimension(<uint64_t>item_ptr)
-        elif type_id == LabeledDimensionGetTypeID():
-            py_item = dimension_to_pydimension(<uint64_t>item_ptr)
-        elif type_id == SIDimensionGetTypeID():
-            py_item = dimension_to_pydimension(<uint64_t>item_ptr)
-        elif type_id == SILinearDimensionGetTypeID():
-            py_item = dimension_to_pydimension(<uint64_t>item_ptr)
-        elif type_id == SIMonotonicDimensionGetTypeID():
-            py_item = dimension_to_pydimension(<uint64_t>item_ptr)
-        else:
-            # Unknown OCType - return as integer pointer
-            py_item = <uint64_t>item_ptr
-
+        # Use the universal converter which handles all OCTypes consistently
+        py_item = convert_octype_to_python(item_ptr)
         result.append(py_item)
 
     return result
@@ -1053,44 +993,14 @@ def ocset_to_pyset(uint64_t oc_set_ptr):
         if item_ptr == NULL:
             continue
 
-        type_id = OCGetTypeID(item_ptr)
-
-        # Convert based on type (only hashable types for sets)
-        if type_id == OCStringGetTypeID():
-            result.add(ocstring_to_pystring(<uint64_t>item_ptr))
-        elif type_id == OCNumberGetTypeID():
-            result.add(ocnumber_to_pynumber(<uint64_t>item_ptr))
-        elif type_id == OCBooleanGetTypeID():
-            result.add(ocboolean_to_pybool(<uint64_t>item_ptr))
-        elif type_id == SIScalarGetTypeID():
-            # Convert SIScalar to Scalar object
-            from rmnpy.wrappers.sitypes.scalar import siscalar_to_scalar
-            scalar_obj = siscalar_to_scalar(<uint64_t>item_ptr)
-            result.add(scalar_obj)
-        elif type_id == SIUnitGetTypeID():
-            # Convert SIUnit to Unit object (if hashable)
-            from rmnpy.wrappers.sitypes.unit import siunit_to_pyunit
-            unit_obj = siunit_to_pyunit(<uint64_t>item_ptr)
-            try:
-                result.add(unit_obj)
-            except TypeError:
-                # If Unit objects aren't hashable, convert to string representation
-                # For now, add as integer pointer - this could be improved with string conversion
-                result.add(f"SIUnit({<uint64_t>item_ptr})")
-        elif type_id == SIDimensionalityGetTypeID():
-            # Convert SIDimensionality to Dimensionality object (if hashable)
-            # Use lazy import to avoid circular import
-            from rmnpy.wrappers.sitypes.dimensionality import (
-                sidimensionality_to_dimensionality,
-            )
-            dim_obj = sidimensionality_to_dimensionality(<uint64_t>item_ptr)
-            try:
-                result.add(dim_obj)
-            except TypeError:
-                # If Dimensionality objects aren't hashable, convert to string representation
-                # For now, add as integer pointer - this could be improved with string conversion
-                result.add(f"SIDimensionality({<uint64_t>item_ptr})")
-        # Note: Can't add arrays/dicts to sets as they're not hashable
+        # Use the universal converter which handles all OCTypes consistently
+        try:
+            py_item = convert_octype_to_python(item_ptr)
+            result.add(py_item)
+        except TypeError:
+            # If the object isn't hashable, convert to string representation
+            # This handles wrapped OCTypes that may not be hashable
+            result.add(f"OCType({<uint64_t>item_ptr})")
 
     OCRelease(<const void*>values_array)
     return result
@@ -1416,67 +1326,8 @@ def ocmutabledata_create_from_numpy_array(object numpy_array):
     return <uint64_t>oc_mutable_data
 
 # ====================================================================================
-# Dimension Helper Functions (RMNLib)
+# Utility Functions
 # ====================================================================================
-
-def dimension_to_pydimension(uint64_t dimension_ptr):
-    """
-    Convert an RMNLib dimension pointer to the appropriate Python dimension object.
-
-    Args:
-        dimension_ptr (uint64_t): Pointer to RMNLib dimension reference
-
-    Returns:
-        BaseDimension subclass: Appropriate Python dimension wrapper
-
-    Raises:
-        ValueError: If dimension_ptr is NULL
-        RuntimeError: If dimension type is unknown
-    """
-    if dimension_ptr == 0:
-        raise ValueError("Dimension pointer is NULL")
-
-    if not DIMENSION_AVAILABLE:
-        # Fall back to returning the raw pointer if dimension classes not available
-        return dimension_ptr
-
-    cdef const void* dim_ptr = <const void*>dimension_ptr
-    cdef OCTypeID type_id = OCGetTypeID(dim_ptr)
-
-    # Determine the specific dimension type and create appropriate wrapper
-    if type_id == DimensionGetTypeID():
-        # Generic BaseDimension (shouldn't happen in practice, but handle it)
-        return DIMENSION_CLASSES['BaseDimension']._from_c_ref(dimension_ptr)
-    elif type_id == LabeledDimensionGetTypeID():
-        return DIMENSION_CLASSES['LabeledDimension']._from_c_ref(dimension_ptr)
-    elif type_id == SIDimensionGetTypeID():
-        return DIMENSION_CLASSES['SIDimension']._from_c_ref(dimension_ptr)
-    elif type_id == SILinearDimensionGetTypeID():
-        return DIMENSION_CLASSES['SILinearDimension']._from_c_ref(dimension_ptr)
-    elif type_id == SIMonotonicDimensionGetTypeID():
-        return DIMENSION_CLASSES['SIMonotonicDimension']._from_c_ref(dimension_ptr)
-    else:
-        # Unknown dimension type - fall back to raw pointer
-        return dimension_ptr
-
-def pydimension_to_dimension_ptr(object dimension_obj):
-    """
-    Extract the C dimension pointer from a Python dimension object.
-
-    Args:
-        dimension_obj: Python dimension object with _c_ref attribute
-
-    Returns:
-        uint64_t: C dimension pointer
-
-    Raises:
-        TypeError: If object doesn't have _c_ref attribute
-    """
-    if not hasattr(dimension_obj, '_c_ref'):
-        raise TypeError(f"Object {type(dimension_obj)} doesn't have _c_ref attribute")
-
-    return <uint64_t>dimension_obj._c_ref
-
 
 def element_type_to_numpy_dtype(str element_type_str):
     """Convert OCNumberType name to corresponding NumPy dtype.

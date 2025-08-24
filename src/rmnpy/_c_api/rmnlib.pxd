@@ -318,7 +318,10 @@ cdef extern from "RMNLibrary.h":
     OCTypeID DatasetGetTypeID()
     DatasetRef DatasetCreate(OCStringRef name, OCStringRef description, OCStringRef *outError)
     DatasetRef DatasetCreateFromDictionary(OCDictionaryRef dict, OCStringRef *outError)
+    DatasetRef DatasetCreateCopy(DatasetRef ds)
+    DatasetRef DatasetCreateWithImport(const char *json_path, const char *binary_dir, OCStringRef *outError)
     OCDictionaryRef DatasetCopyAsDictionary(DatasetRef dataset)
+    bint DatasetExport(DatasetRef ds, const char *json_path, const char *binary_dir, OCStringRef *outError)
 
     # Dataset basic accessors
     OCStringRef DatasetGetName(DatasetRef dataset)
@@ -330,15 +333,37 @@ cdef extern from "RMNLibrary.h":
     OCArrayRef DatasetGetDimensions(DatasetRef dataset)
     bint DatasetSetDimensions(DatasetRef dataset, OCArrayRef dimensions, OCStringRef *outError)
     bint DatasetAddDimension(DatasetRef dataset, DimensionRef dimension, OCStringRef *outError)
+    OCIndexArrayRef DatasetGetDimensionPrecedence(DatasetRef dataset)
+    bint DatasetSetDimensionPrecedence(DatasetRef dataset, OCIndexArrayRef precedence)
 
     # Dataset dependent variables management
     OCArrayRef DatasetGetDependentVariables(DatasetRef dataset)
     bint DatasetSetDependentVariables(DatasetRef dataset, OCArrayRef variables, OCStringRef *outError)
     bint DatasetAddDependentVariable(DatasetRef dataset, DependentVariableRef variable, OCStringRef *outError)
+    OCIndex DatasetGetDependentVariableCount(DatasetRef dataset)
+    DependentVariableRef DatasetGetDependentVariableAtIndex(DatasetRef dataset, OCIndex index)
+    DependentVariableRef DatasetAddEmptyDependentVariable(DatasetRef dataset, OCStringRef quantityType,
+                                                          OCNumberType elementType, OCIndex size)
 
     # Dataset metadata
     OCDictionaryRef DatasetGetApplicationMetaData(DatasetRef dataset)
     bint DatasetSetApplicationMetaData(DatasetRef dataset, OCDictionaryRef metadata, OCStringRef *outError)
+
+    # Dataset focus management
+    DatumRef DatasetGetFocus(DatasetRef ds)
+    bint DatasetSetFocus(DatasetRef ds, DatumRef focus)
+    DatumRef DatasetGetPreviousFocus(DatasetRef ds)
+    bint DatasetSetPreviousFocus(DatasetRef ds, DatumRef previousFocus)
+
+    # Dataset CSDM-1.0 fields
+    OCStringRef DatasetGetVersion(DatasetRef ds)
+    bint DatasetSetVersion(DatasetRef ds, OCStringRef version)
+    OCStringRef DatasetGetTimestamp(DatasetRef ds)
+    bint DatasetSetTimestamp(DatasetRef ds, OCStringRef timestamp)
+    GeographicCoordinateRef DatasetGetGeographicCoordinate(DatasetRef ds)
+    bint DatasetSetGeographicCoordinate(DatasetRef ds, GeographicCoordinateRef gc)
+    bint DatasetGetReadOnly(DatasetRef ds)
+    bint DatasetSetReadOnly(DatasetRef ds, bint readOnly)
 
     # ====================================================================================
     # DependentVariable API - Dataset variables with metadata and components
@@ -381,6 +406,48 @@ cdef extern from "RMNLibrary.h":
     OCTypeID SILinearDimensionGetTypeID()
     OCTypeID SIMonotonicDimensionGetTypeID()
     OCTypeID DependentVariableGetTypeID()
+
+    # GeographicCoordinate API
+    OCTypeID GeographicCoordinateGetTypeID()
+    GeographicCoordinateRef GeographicCoordinateCreate(SIScalarRef latitude, SIScalarRef longitude,
+                                                       SIScalarRef altitude, OCDictionaryRef metadata)
+    GeographicCoordinateRef GeographicCoordinateCreateFromDictionary(OCDictionaryRef dict, OCStringRef *outError)
+    OCDictionaryRef GeographicCoordinateCopyAsDictionary(GeographicCoordinateRef gc)
+    GeographicCoordinateRef GeographicCoordinateCreateCopy(GeographicCoordinateRef gc)
+
+    # GeographicCoordinate getters
+    SIScalarRef GeographicCoordinateGetLatitude(GeographicCoordinateRef gc)
+    SIScalarRef GeographicCoordinateGetLongitude(GeographicCoordinateRef gc)
+    SIScalarRef GeographicCoordinateGetAltitude(GeographicCoordinateRef gc)
+    OCDictionaryRef GeographicCoordinateGetApplicationMetaData(GeographicCoordinateRef gc)
+
+    # GeographicCoordinate setters
+    bint GeographicCoordinateSetLatitude(GeographicCoordinateRef gc, SIScalarRef latitude)
+    bint GeographicCoordinateSetLongitude(GeographicCoordinateRef gc, SIScalarRef longitude)
+    bint GeographicCoordinateSetAltitude(GeographicCoordinateRef gc, SIScalarRef altitude)
+    bint GeographicCoordinateSetApplicationMetaData(GeographicCoordinateRef gc, OCDictionaryRef metadata)
+
+    # Datum API
+    OCTypeID DatumGetTypeID()
+    DatumRef DatumCreate(SIScalarRef response, OCArrayRef coordinates,
+                        OCIndex dependentVariableIndex, OCIndex componentIndex, OCIndex memOffset)
+    DatumRef DatumCopy(DatumRef theDatum)
+    bint DatumHasSameReducedDimensionalities(DatumRef input1, DatumRef input2)
+    OCDictionaryRef DatumCopyAsDictionary(DatumRef theDatum)
+    DatumRef DatumCreateFromDictionary(OCDictionaryRef dictionary, OCStringRef *error)
+
+    # Datum getters
+    OCIndex DatumGetComponentIndex(DatumRef theDatum)
+    OCIndex DatumGetDependentVariableIndex(DatumRef theDatum)
+    OCIndex DatumGetMemOffset(DatumRef theDatum)
+    SIScalarRef DatumGetCoordinateAtIndex(DatumRef theDatum, OCIndex index)
+    SIScalarRef DatumCreateResponse(DatumRef theDatum)
+    OCIndex DatumCoordinatesCount(DatumRef theDatum)
+
+    # Datum setters
+    void DatumSetComponentIndex(DatumRef theDatum, OCIndex componentIndex)
+    void DatumSetDependentVariableIndex(DatumRef theDatum, OCIndex dependentVariableIndex)
+    void DatumSetMemOffset(DatumRef theDatum, OCIndex memOffset)
 
     # ====================================================================================
     # Utility Functions and Metadata Handling

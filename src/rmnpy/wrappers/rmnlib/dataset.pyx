@@ -30,8 +30,10 @@ from rmnpy.helpers.octypes import (
 
 # Import wrapper classes for cross-component integration
 
+from rmnpy.wrappers.rmnlib.datum cimport Datum
 from rmnpy.wrappers.rmnlib.dependent_variable cimport DependentVariable
 from rmnpy.wrappers.rmnlib.dimension cimport BaseDimension
+from rmnpy.wrappers.rmnlib.geographic_coordinate cimport GeographicCoordinate
 
 
 cdef class Dataset:
@@ -67,9 +69,9 @@ cdef class Dataset:
         of their original reference and can safely release it.
         """
         cdef Dataset result = Dataset.__new__(Dataset)
-        cdef DatasetRef copied_ref = DatasetCreateCopy(dataset_ref)
         if dataset_ref == NULL:
             raise RMNError("Cannot create wrapper from NULL dataset reference")
+        cdef DatasetRef copied_ref = DatasetCreateCopy(dataset_ref)
 
         if copied_ref == NULL:
             raise RMNError("Failed to create copy of Dataset")
@@ -112,7 +114,7 @@ cdef class Dataset:
             if name is not None:
                 if not isinstance(name, str):
                     raise TypeError("name must be a string")
-                name_ref = ocstring_create_from_pystring(name)
+                name_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(name)
                 if name_ref == NULL:
                     raise RMNError("Failed to create name string")
 
@@ -120,7 +122,7 @@ cdef class Dataset:
             if description is not None:
                 if not isinstance(description, str):
                     raise TypeError("description must be a string")
-                desc_ref = ocstring_create_from_pystring(description)
+                desc_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(description)
                 if desc_ref == NULL:
                     raise RMNError("Failed to create description string")
 
@@ -182,7 +184,7 @@ cdef class Dataset:
 
         try:
             # Convert Python dictionary to OCDictionary
-            dict_ref = ocdict_create_from_pydict(data_dict)
+            dict_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(data_dict)
             if dict_ref == NULL:
                 raise RMNError("Failed to convert dictionary to OCDictionary")
 
@@ -224,7 +226,7 @@ cdef class Dataset:
         cdef OCStringRef err_ocstr = NULL
 
         try:
-            name_ref = ocstring_create_from_pystring(value)
+            name_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
             if name_ref == NULL:
                 raise RMNError("Failed to create name string")
 
@@ -256,7 +258,7 @@ cdef class Dataset:
         cdef OCStringRef err_ocstr = NULL
 
         try:
-            desc_ref = ocstring_create_from_pystring(value)
+            desc_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
             if desc_ref == NULL:
                 raise RMNError("Failed to create description string")
 
@@ -269,6 +271,257 @@ cdef class Dataset:
                 OCRelease(<OCTypeRef>desc_ref)
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
+
+    @property
+    def title(self):
+        """Get the title of the dataset."""
+        cdef OCStringRef title_ref = DatasetGetTitle(self._c_ref)
+        if title_ref == NULL:
+            return ""  # Return empty string for datasets without titles
+        return ocstring_to_pystring(<uint64_t>title_ref)
+
+    @title.setter
+    def title(self, value):
+        """Set the title of the dataset."""
+        if not isinstance(value, str):
+            raise TypeError("title must be a string")
+
+        cdef OCStringRef title_ref = NULL
+        cdef OCStringRef err_ocstr = NULL
+
+        try:
+            title_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
+            if title_ref == NULL:
+                raise RMNError("Failed to create title string")
+
+            if not DatasetSetTitle(self._c_ref, title_ref, &err_ocstr):
+                error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
+                raise RMNError(f"Failed to set dataset title: {error_msg}")
+
+        finally:
+            if title_ref != NULL:
+                OCRelease(<OCTypeRef>title_ref)
+            if err_ocstr != NULL:
+                OCRelease(<OCTypeRef>err_ocstr)
+
+    @property
+    def read_only(self):
+        """Get the read-only flag of the dataset."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+        return DatasetGetReadOnly(self._c_ref)
+
+    @read_only.setter
+    def read_only(self, value):
+        """Set the read-only flag of the dataset."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+
+        if not isinstance(value, bool):
+            raise TypeError("read_only must be a boolean")
+
+        if not DatasetSetReadOnly(self._c_ref, value):
+            raise RMNError("Failed to set dataset read-only flag")
+
+    @property
+    def tags(self):
+        """Get the list of tags for the dataset."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+
+        cdef OCMutableArrayRef tags_ref = DatasetGetTags(self._c_ref)
+        if tags_ref == NULL:
+            return []  # Return empty list if no tags
+
+        return ocarray_to_pylist(<uint64_t>tags_ref)
+
+    @tags.setter
+    def tags(self, value):
+        """Set the tags for the dataset."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+
+        if not isinstance(value, (list, tuple)):
+            raise TypeError("tags must be a list or tuple")
+
+        cdef OCMutableArrayRef tags_ref = NULL
+
+        try:
+            # Convert Python list to OCMutableArray
+            tags_ref = <OCMutableArrayRef><uint64_t>ocarray_create_from_pylist(list(value))
+            if tags_ref == NULL:
+                raise RMNError("Failed to create tags array")
+
+            if not DatasetSetTags(self._c_ref, tags_ref):
+                raise RMNError("Failed to set dataset tags")
+
+        finally:
+            if tags_ref != NULL:
+                OCRelease(<OCTypeRef>tags_ref)
+
+    @property
+    def version(self):
+        """Get the version string of the dataset (always '1.0' for CSDM-1.0)."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+
+        cdef OCStringRef version_ref = DatasetGetVersion(self._c_ref)
+        if version_ref == NULL:
+            return "1.0"  # Default version for CSDM-1.0
+        return ocstring_to_pystring(<uint64_t>version_ref)
+
+    @version.setter
+    def version(self, value):
+        """Set the version string of the dataset (rarely needed)."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+
+        if not isinstance(value, str):
+            raise TypeError("version must be a string")
+
+        cdef OCStringRef version_ref = NULL
+
+        try:
+            version_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
+            if version_ref == NULL:
+                raise RMNError("Failed to create version string")
+
+            if not DatasetSetVersion(self._c_ref, version_ref):
+                raise RMNError("Failed to set dataset version")
+
+        finally:
+            if version_ref != NULL:
+                OCRelease(<OCTypeRef>version_ref)
+
+    @property
+    def timestamp(self):
+        """Get the ISO-8601 timestamp of serialization."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+
+        cdef OCStringRef timestamp_ref = DatasetGetTimestamp(self._c_ref)
+        if timestamp_ref == NULL:
+            return ""  # Return empty string if no timestamp set
+        return ocstring_to_pystring(<uint64_t>timestamp_ref)
+
+    @timestamp.setter
+    def timestamp(self, value):
+        """Set the ISO-8601 timestamp of serialization (rarely needed)."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+
+        if not isinstance(value, str):
+            raise TypeError("timestamp must be a string")
+
+        cdef OCStringRef timestamp_ref = NULL
+
+        try:
+            timestamp_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
+            if timestamp_ref == NULL:
+                raise RMNError("Failed to create timestamp string")
+
+            if not DatasetSetTimestamp(self._c_ref, timestamp_ref):
+                raise RMNError("Failed to set dataset timestamp")
+
+        finally:
+            if timestamp_ref != NULL:
+                OCRelease(<OCTypeRef>timestamp_ref)
+
+    @property
+    def geographic_coordinate(self):
+        """Get the geographic coordinate, if set."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+
+        cdef GeographicCoordinateRef geo_ref = DatasetGetGeographicCoordinate(self._c_ref)
+        if geo_ref == NULL:
+            return None  # Return None if no geographic coordinate set
+
+        return GeographicCoordinate._from_c_ref(geo_ref)
+
+    @geographic_coordinate.setter
+    def geographic_coordinate(self, value):
+        """Set the geographic coordinate."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+
+        cdef GeographicCoordinateRef geo_ref = NULL
+
+        if value is None:
+            # Setting to None clears the coordinate
+            geo_ref = NULL
+        elif isinstance(value, GeographicCoordinate):
+            # Extract C reference from GeographicCoordinate object
+            geo_ref = (<GeographicCoordinate>value)._c_ref
+        else:
+            raise TypeError("geographic_coordinate must be a GeographicCoordinate object or None")
+
+        if not DatasetSetGeographicCoordinate(self._c_ref, geo_ref):
+            raise RMNError("Failed to set dataset geographic coordinate")
+
+    @property
+    def focus(self):
+        """Get the focus datum, if set."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+
+        cdef DatumRef focus_ref = DatasetGetFocus(self._c_ref)
+        if focus_ref == NULL:
+            return None  # Return None if no focus datum set
+
+        return Datum._from_c_ref(focus_ref)
+
+    @focus.setter
+    def focus(self, value):
+        """Set the focus datum."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+
+        cdef DatumRef focus_ref = NULL
+
+        if value is None:
+            # Setting to None clears the focus
+            focus_ref = NULL
+        elif isinstance(value, Datum):
+            # Extract C reference from Datum object
+            focus_ref = (<Datum>value)._c_ref
+        else:
+            raise TypeError("focus must be a Datum object or None")
+
+        if not DatasetSetFocus(self._c_ref, focus_ref):
+            raise RMNError("Failed to set dataset focus")
+
+    @property
+    def previous_focus(self):
+        """Get the previous focus datum, if set."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+
+        cdef DatumRef prev_focus_ref = DatasetGetPreviousFocus(self._c_ref)
+        if prev_focus_ref == NULL:
+            return None  # Return None if no previous focus datum set
+
+        return Datum._from_c_ref(prev_focus_ref)
+
+    @previous_focus.setter
+    def previous_focus(self, value):
+        """Set the previous focus datum."""
+        if self._c_ref == NULL:
+            raise ValueError("Dataset not initialized")
+
+        cdef DatumRef prev_focus_ref = NULL
+
+        if value is None:
+            # Setting to None clears the previous focus
+            prev_focus_ref = NULL
+        elif isinstance(value, Datum):
+            # Extract C reference from Datum object
+            prev_focus_ref = (<Datum>value)._c_ref
+        else:
+            raise TypeError("previous_focus must be a Datum object or None")
+
+        if not DatasetSetPreviousFocus(self._c_ref, prev_focus_ref):
+            raise RMNError("Failed to set dataset previous focus")
 
     # Dimensions management
 
@@ -314,7 +567,7 @@ cdef class Dataset:
                 c_refs.append(<uintptr_t>(<BaseDimension>dim)._c_ref)
 
             # Create OCArray from C references
-            dims_ref = ocarray_create_from_pylist(c_refs)
+            dims_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(c_refs)
             if dims_ref == NULL:
                 raise RMNError("Failed to create dimensions array")
 
@@ -354,6 +607,39 @@ cdef class Dataset:
         finally:
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
+
+    @property
+    def dimension_precedence(self):
+        """Get the dimension precedence ordering."""
+        cdef OCIndexArrayRef precedence_ref = DatasetGetDimensionPrecedence(self._c_ref)
+        if precedence_ref == NULL:
+            return []  # Return empty list if no precedence set
+
+        # Convert OCIndexArray to Python list
+        from rmnpy.helpers.octypes import ocindexarray_to_pylist
+        return ocindexarray_to_pylist(<uint64_t>precedence_ref)
+
+    @dimension_precedence.setter
+    def dimension_precedence(self, value):
+        """Set the dimension precedence ordering."""
+        if not isinstance(value, (list, tuple)):
+            raise TypeError("dimension_precedence must be a list or tuple")
+
+        cdef OCIndexArrayRef precedence_ref = NULL
+
+        try:
+            # Convert Python list to OCIndexArray
+            from rmnpy.helpers.octypes import ocindexarray_create_from_pylist
+            precedence_ref = <OCIndexArrayRef><uint64_t>ocindexarray_create_from_pylist(list(value))
+            if precedence_ref == NULL:
+                raise RMNError("Failed to create precedence array")
+
+            if not DatasetSetDimensionPrecedence(self._c_ref, precedence_ref):
+                raise RMNError("Failed to set dimension precedence")
+
+        finally:
+            if precedence_ref != NULL:
+                OCRelease(<OCTypeRef>precedence_ref)
 
     # Dependent variables management
 
@@ -399,7 +685,7 @@ cdef class Dataset:
                 c_refs.append(<uintptr_t>(<DependentVariable>var)._c_ref)
 
             # Create OCArray from C references
-            vars_ref = ocarray_create_from_pylist(c_refs)
+            vars_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(c_refs)
             if vars_ref == NULL:
                 raise RMNError("Failed to create dependent variables array")
 
@@ -440,6 +726,90 @@ cdef class Dataset:
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
 
+    def get_dependent_variable_count(self):
+        """
+        Get the number of dependent variables in the dataset.
+
+        Returns:
+            int: Number of dependent variables
+        """
+        return <int>DatasetGetDependentVariableCount(self._c_ref)
+
+    def get_dependent_variable_at_index(self, index):
+        """
+        Get a dependent variable by index.
+
+        Parameters:
+            index : int
+                Zero-based index of the dependent variable
+
+        Returns:
+            DependentVariable: The dependent variable at the specified index
+
+        Raises:
+            IndexError: If index is out of range
+            TypeError: If index is not an integer
+        """
+        if not isinstance(index, int):
+            raise TypeError("index must be an integer")
+
+        cdef OCIndex count = DatasetGetDependentVariableCount(self._c_ref)
+        if index < 0 or index >= count:
+            raise IndexError(f"Dependent variable index {index} out of range (0-{count-1})")
+
+        cdef DependentVariableRef dv_ref = DatasetGetDependentVariableAtIndex(self._c_ref, <OCIndex>index)
+        if dv_ref == NULL:
+            raise RMNError(f"Failed to get dependent variable at index {index}")
+
+        return DependentVariable._from_c_ref(dv_ref)
+
+    def add_empty_dependent_variable(self, quantity_type, element_type, size):
+        """
+        Add an empty dependent variable to the dataset.
+
+        Parameters:
+            quantity_type : str
+                The quantity type for the dependent variable
+            element_type : OCNumberType or int
+                The element type for the data
+            size : int
+                The size of the dependent variable
+
+        Returns:
+            DependentVariable: The newly created dependent variable
+
+        Raises:
+            RMNError: If creation fails
+            TypeError: If parameters have incorrect types
+        """
+        if not isinstance(quantity_type, str):
+            raise TypeError("quantity_type must be a string")
+        if not isinstance(size, int) or size < 0:
+            raise TypeError("size must be a non-negative integer")
+
+        cdef OCStringRef qty_type_ref = NULL
+        cdef DependentVariableRef dv_ref = NULL
+
+        try:
+            qty_type_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(quantity_type)
+            if qty_type_ref == NULL:
+                raise RMNError("Failed to create quantity type string")
+
+            dv_ref = DatasetAddEmptyDependentVariable(
+                self._c_ref,
+                qty_type_ref,
+                <OCNumberType>element_type,
+                <OCIndex>size
+            )
+            if dv_ref == NULL:
+                raise RMNError("Failed to add empty dependent variable")
+
+            return DependentVariable._from_c_ref(dv_ref)
+
+        finally:
+            if qty_type_ref != NULL:
+                OCRelease(<OCTypeRef>qty_type_ref)
+
     # Application metadata management
 
     @property
@@ -462,7 +832,7 @@ cdef class Dataset:
 
         try:
             # Convert Python dictionary to OCDictionary
-            metadata_ref = ocdict_create_from_pydict(value)
+            metadata_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(value)
             if metadata_ref == NULL:
                 raise RMNError("Failed to create metadata dictionary")
 
@@ -506,6 +876,110 @@ cdef class Dataset:
             dict: Dictionary representation of the dataset
         """
         return self.to_dict()
+
+    def copy(self):
+        """
+        Create a deep copy of the dataset.
+
+        Returns:
+            Dataset: New dataset instance (deep copy)
+
+        Raises:
+            RMNError: If copying fails
+        """
+        cdef DatasetRef copied_ref = DatasetCreateCopy(self._c_ref)
+        if copied_ref == NULL:
+            raise RMNError("Failed to create copy of Dataset")
+
+        return Dataset._from_c_ref(copied_ref)
+
+    # File I/O methods
+
+    def export(self, json_path, binary_dir=None):
+        """
+        Export dataset to disk (.csdf/.csdfe format).
+
+        Parameters:
+            json_path : str
+                Full path to JSON file (must end in .csdf or .csdfe)
+            binary_dir : str, optional
+                Directory for external data files (default: same as json_path directory)
+
+        Raises:
+            RMNError: If export fails
+            TypeError: If paths are not strings
+        """
+        if not isinstance(json_path, str):
+            raise TypeError("json_path must be a string")
+        if binary_dir is not None and not isinstance(binary_dir, str):
+            raise TypeError("binary_dir must be a string or None")
+
+        cdef bytes json_path_bytes = json_path.encode('utf-8')
+        cdef const char* c_json_path = json_path_bytes
+        cdef bytes binary_dir_bytes
+        cdef const char* c_binary_dir = NULL
+        cdef OCStringRef err_ocstr = NULL
+
+        try:
+            if binary_dir is not None:
+                binary_dir_bytes = binary_dir.encode('utf-8')
+                c_binary_dir = binary_dir_bytes
+
+            if not DatasetExport(self._c_ref, c_json_path, c_binary_dir, &err_ocstr):
+                error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
+                raise RMNError(f"Dataset export failed: {error_msg}")
+
+        finally:
+            if err_ocstr != NULL:
+                OCRelease(<OCTypeRef>err_ocstr)
+
+    @classmethod
+    def from_file(cls, json_path, binary_dir=None):
+        """
+        Load dataset from disk (.csdf/.csdfe format).
+
+        Parameters:
+            json_path : str
+                Path to JSON file (.csdf/.csdfe)
+            binary_dir : str, optional
+                Directory containing external data files (default: same as json_path directory)
+
+        Returns:
+            Dataset: Loaded dataset instance
+
+        Raises:
+            RMNError: If loading fails
+            TypeError: If paths are not strings
+        """
+        if not isinstance(json_path, str):
+            raise TypeError("json_path must be a string")
+        if binary_dir is not None and not isinstance(binary_dir, str):
+            raise TypeError("binary_dir must be a string or None")
+
+        cdef bytes json_path_bytes = json_path.encode('utf-8')
+        cdef const char* c_json_path = json_path_bytes
+        cdef bytes binary_dir_bytes
+        cdef const char* c_binary_dir = NULL
+        cdef OCStringRef err_ocstr = NULL
+        cdef DatasetRef dataset_ref = NULL
+
+        try:
+            if binary_dir is not None:
+                binary_dir_bytes = binary_dir.encode('utf-8')
+                c_binary_dir = binary_dir_bytes
+
+            dataset_ref = DatasetCreateWithImport(c_json_path, c_binary_dir, &err_ocstr)
+            if dataset_ref == NULL:
+                error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
+                raise RMNError(f"Dataset import failed: {error_msg}")
+
+            return cls._from_c_ref(dataset_ref)
+
+        finally:
+            if err_ocstr != NULL:
+                OCRelease(<OCTypeRef>err_ocstr)
+            if dataset_ref != NULL:
+                OCRelease(<OCTypeRef>dataset_ref)
 
     # Utility methods
 

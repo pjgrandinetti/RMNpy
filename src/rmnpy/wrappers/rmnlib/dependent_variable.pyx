@@ -13,9 +13,6 @@ cimport numpy as cnp
 
 cnp.import_array()
 
-from cpython.mem cimport PyMem_Free, PyMem_Malloc
-from libc.stdlib cimport free, malloc
-
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.rmnlib cimport *
 from rmnpy._c_api.sitypes cimport *
@@ -112,15 +109,7 @@ cdef class DependentVariable:
         cdef OCArrayRef component_labels_array = NULL
         cdef OCArrayRef components_array = NULL
         cdef OCStringRef err_ocstr = NULL
-        cdef uint64_t num_components
-        cdef const void **value_array
         cdef DependentVariableRef result = NULL
-        cdef bint success = False
-        cdef const unsigned char* data_ptr
-        cdef uint64_t length
-        cdef OCDataRef oc_data_ref
-        cdef OCTypeID type_id
-        cdef const char* type_name
 
         try:
             # Convert parameters to C types using the exact pattern from dimension.pyx
@@ -144,39 +133,9 @@ cdef class DependentVariable:
             if component_labels is not None:
                 component_labels_array = <OCArrayRef><uint64_t>ocarray_create_from_pylist(component_labels)
 
-            # Convert components if provided - each component must be converted to OCDataRef
+            # Convert components if provided using optimized helper function
             if components is not None:
-                # Create a mutable array and append each OCDataRef
-                components_array = <OCArrayRef>OCArrayCreateMutable(0, &kOCTypeArrayCallBacks)
-                if components_array == NULL:
-                    raise RMNError("Failed to create components array")
-
-                for component in components:
-                    # Create OCData directly without going through uint64_t conversion
-                    if not isinstance(component, np.ndarray):
-                        raise TypeError(f"Expected numpy.ndarray, got {type(component)}. Use numpy arrays for OCData.")
-
-                    # Ensure array is contiguous
-                    if not component.flags.c_contiguous:
-                        component = np.ascontiguousarray(component)
-
-                    data_ptr = <const unsigned char*>cnp.PyArray_DATA(component)
-                    length = component.nbytes
-
-                    oc_data_ref = OCDataCreate(data_ptr, length)
-
-                    if oc_data_ref == NULL:
-                        raise RMNError("Failed to create OCData from NumPy array")
-
-                    # Debug: Check TypeID of created OCData
-                    type_id = OCGetTypeID(oc_data_ref)
-                    type_name = OCTypeNameFromTypeID(type_id)
-                    if type_name == NULL:
-                        print(f"DEBUG: Created OCData with TypeID: {type_id}, but type name is NULL")
-
-                    success = OCArrayAppendValue(<OCMutableArrayRef>components_array, <const void*>oc_data_ref)
-                    if not success:
-                        raise RMNError("Failed to append component to array")
+                components_array = <OCArrayRef><uint64_t>ocarray_create_from_pylist(components)
 
             # Call the core C API creator
             result = DependentVariableCreate(

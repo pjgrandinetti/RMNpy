@@ -30,3 +30,19 @@ try:
 except ImportError:
     # Dataset wrapper not yet built/available
     pass
+
+try:
+    from .geographic_coordinate import GeographicCoordinate
+
+    __all__.append("GeographicCoordinate")
+except ImportError:
+    # GeographicCoordinate wrapper not yet built/available
+    pass
+
+try:
+    from .datum import Datum
+
+    __all__.append("Datum")
+except ImportError:
+    # Datum wrapper not yet built/available
+    pass
