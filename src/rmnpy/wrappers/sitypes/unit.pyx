@@ -148,8 +148,17 @@ cdef class Unit:
     cdef Unit _from_c_ref(SIUnitRef unit_ref):
         """Create Unit wrapper from C reference (internal use)."""
         cdef Unit result = Unit()
-        result._c_ref = unit_ref
+        # Make a copy to avoid shared ownership issues
+        cdef SIUnitRef copied_ref = <SIUnitRef>OCTypeDeepCopy(<OCTypeRef>unit_ref)
+        if copied_ref == NULL:
+            raise MemoryError("Failed to copy unit reference")
+        result._c_ref = copied_ref
         return result
+
+    @staticmethod
+    def from_c_ref(uint64_t unit_ref_ptr):
+        """Create Unit wrapper from C reference pointer (Python-accessible)."""
+        return Unit._from_c_ref(<SIUnitRef>unit_ref_ptr)
 
     @classmethod
     def from_name(cls, name):
@@ -578,13 +587,13 @@ cdef class Unit:
     def __eq__(self, other):
         """Equality operator (==)."""
         if isinstance(other, Unit):
-            # Simple pointer comparison since SIUnitRef are singletons
-            return self._c_ref == (<Unit>other)._c_ref
+            # Use proper C API function for unit equality comparison
+            return SIUnitEqual(self._c_ref, (<Unit>other)._c_ref)
         elif isinstance(other, str):
-            # Try to parse string as a unit and compare pointers
+            # Try to parse string as a unit and compare using C API
             try:
                 other_unit = Unit(other)
-                return self._c_ref == other_unit._c_ref
+                return SIUnitEqual(self._c_ref, other_unit._c_ref)
             except (RMNError, TypeError, ValueError):
                 # If parsing fails, units are not equal
                 return False
@@ -780,10 +789,10 @@ def get_unit_symbol_tokens_lib():
         RuntimeError: If unable to get unit symbol tokens from the library
     """
     cdef OCMutableArrayRef symbols_array = SIUnitGetTokenSymbolsLib()
-    
+
     if symbols_array == NULL:
         raise RuntimeError("Failed to get unit symbol tokens from SITypes library")
-    
+
     # Convert OCMutableArrayRef to Python list
     try:
         return ocarray_to_pylist(<uint64_t>symbols_array)
