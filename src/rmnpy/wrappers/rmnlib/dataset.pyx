@@ -66,12 +66,11 @@ cdef class Dataset:
         Creates a copy of the dataset reference, so caller retains ownership
         of their original reference and can safely release it.
         """
+        cdef Dataset result = Dataset.__new__(Dataset)
+        cdef DatasetRef copied_ref = DatasetCreateCopy(dataset_ref)
         if dataset_ref == NULL:
             raise RMNError("Cannot create wrapper from NULL dataset reference")
 
-        cdef Dataset result = Dataset.__new__(Dataset)
-        # Dataset doesn't have a copy function, so we use OCTypeDeepCopy
-        cdef DatasetRef copied_ref = <DatasetRef>OCTypeDeepCopy(<OCTypeRef>dataset_ref)
         if copied_ref == NULL:
             raise RMNError("Failed to create copy of Dataset")
         result._c_ref = copied_ref
