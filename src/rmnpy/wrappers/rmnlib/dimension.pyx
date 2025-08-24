@@ -136,7 +136,8 @@ cdef class BaseDimension:
         """Get the description of the dimension."""
         desc_ocstr = DimensionCopyDescription(self._c_ref)
         if desc_ocstr == NULL:
-            raise RMNError("C API returned NULL description (dimension may be corrupted or uninitialized)")
+            # Return empty string for dimensions created without descriptions
+            return ""
         try:
             result = ocstring_to_pystring(<uint64_t>desc_ocstr)
             if result is None:
@@ -173,7 +174,8 @@ cdef class BaseDimension:
         """Get the label of the dimension."""
         label_ocstr = DimensionCopyLabel(self._c_ref)
         if label_ocstr == NULL:
-            raise RMNError("C API returned NULL label (dimension may be corrupted or uninitialized)")
+            # Return empty string for dimensions created without labels
+            return ""
         try:
             return ocstring_to_pystring(<uint64_t>label_ocstr)
         finally:
@@ -564,8 +566,9 @@ cdef class SIDimension(BaseDimension):
         Initialize SI dimension.
 
         C API Requirements (SIDimensionCreate):
-        - ALL parameters are OPTIONAL (function provides intelligent defaults)
-        - Derives units from first non-NULL scalar (priority: coordinates_offset → origin_offset → period → quantityName → dimensionless)
+        - AT LEAST ONE parameter must be provided to determine units and dimensionality
+        - Derives units from first non-NULL scalar (priority: coordinates_offset → origin_offset → period → quantity_name → dimensionless)
+        - If ALL parameters are NULL, defaults to dimensionless quantity
         - Creates zero scalars in appropriate units for NULL parameters
         - Periodicity is determined automatically: period exists and is finite → periodic, otherwise non-periodic
 
@@ -574,20 +577,22 @@ cdef class SIDimension(BaseDimension):
             description (str, optional): Description of the dimension
             application (dict, optional): Application metadata
             quantity_name (str, optional): Physical quantity name (e.g., "frequency", "time")
-                If None, derived from first available scalar's dimensionality
+                Recommended to provide at least this parameter for meaningful dimensions
             period (str or Scalar, optional): SIScalar period value for periodic dimensions
-                Defaults to zero in derived base unit
+                Can be used to determine units if other scalar parameters are None
             scaling (DimensionScaling or int, optional): Dimension scaling type
                 (default: DimensionScaling.NONE). Use DimensionScaling.NONE or DimensionScaling.NMR
             coordinates_offset (str or Scalar, optional): SIScalar coordinates offset value
-                Defaults to zero in derived base unit
+                Can be used to determine units if other scalar parameters are None
             origin_offset (str or Scalar, optional): SIScalar origin offset value
-                Defaults to zero in derived base unit
+                Can be used to determine units if other scalar parameters are None
             **kwargs: Additional keyword arguments (for compatibility)
 
         Note:
             SIDimension is abstract - use LinearDimension or MonotonicDimension instead.
             This class provides common SI dimension functionality and default parameter handling.
+            For meaningful dimensions, provide at least quantity_name or one of the scalar parameters
+            (coordinates_offset, origin_offset, period) to determine appropriate units.
         """
         cdef OCStringRef label_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(label)
         cdef OCStringRef desc_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(description)

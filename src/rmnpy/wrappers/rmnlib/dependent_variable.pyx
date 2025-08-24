@@ -171,9 +171,7 @@ cdef class DependentVariable:
                     # Debug: Check TypeID of created OCData
                     type_id = OCGetTypeID(oc_data_ref)
                     type_name = OCTypeNameFromTypeID(type_id)
-                    if type_name != NULL:
-                        print(f"DEBUG: Created OCData with TypeID: {type_id}, Type name: {type_name.decode('utf-8')}")
-                    else:
+                    if type_name == NULL:
                         print(f"DEBUG: Created OCData with TypeID: {type_id}, but type name is NULL")
 
                     success = OCArrayAppendValue(<OCMutableArrayRef>components_array, <const void*>oc_data_ref)
