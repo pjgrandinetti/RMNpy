@@ -24,9 +24,9 @@ except ImportError:
     pass
 
 try:
-    from .dependent_variable import DependentVariable, dependent_variable_from_dict
+    from .dataset import Dataset
 
-    __all__.extend(["DependentVariable", "dependent_variable_from_dict"])
+    __all__.append("Dataset")
 except ImportError:
-    # DependentVariable wrapper not yet built/available
+    # Dataset wrapper not yet built/available
     pass

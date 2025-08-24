@@ -127,6 +127,15 @@ exts = [
         extra_link_args=EXTRA_LINK,
     ),
     Extension(
+        "rmnpy.wrappers.rmnlib.dataset",
+        ["src/rmnpy/wrappers/rmnlib/dataset.pyx"],
+        include_dirs=INC,
+        libraries=LIBS,
+        library_dirs=LIBDIRS,
+        extra_compile_args=EXTRA_COMPILE,
+        extra_link_args=EXTRA_LINK,
+    ),
+    Extension(
         "rmnpy.wrappers.rmnlib.dimension",
         ["src/rmnpy/wrappers/rmnlib/dimension.pyx"],
         include_dirs=INC,

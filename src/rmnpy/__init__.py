@@ -82,7 +82,7 @@ __email__ = "grandinetti.1@osu.edu"
 # Public API imports
 # -------------------------------
 from . import rmnlib, sitypes  # noqa: E402
-from .rmnlib import DependentVariable  # noqa: E402
+from .rmnlib import Dataset, DependentVariable  # noqa: E402
 
 # Optional helpers (graceful fallback in editable/dev installs)
 try:
