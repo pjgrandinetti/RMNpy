@@ -108,17 +108,19 @@ cdef class Scalar:
 
     @staticmethod
     cdef Scalar _from_c_ref(SIScalarRef scalar_ref):
-        """Create Scalar wrapper from C reference (internal use).
-
-        Creates a copy of the scalar reference, so caller retains ownership
-        of their original reference and can safely release it.
-        """
-        cdef Scalar result = Scalar.__new__(Scalar)
-        cdef SIScalarRef copied_ref = SIScalarCreateCopy(scalar_ref)
+        """Create Scalar wrapper from C reference (internal use)."""
+        cdef Scalar result = Scalar()
+        # Make a copy to avoid shared ownership issues
+        cdef SIScalarRef copied_ref = <SIScalarRef>OCTypeDeepCopy(<OCTypeRef>scalar_ref)
         if copied_ref == NULL:
-            raise RMNError("Failed to create copy of SIScalar")
+            raise MemoryError("Failed to copy scalar reference")
         result._c_ref = copied_ref
         return result
+
+    @staticmethod
+    def from_c_ref(uint64_t scalar_ref_ptr):
+        """Create Scalar wrapper from C reference pointer (Python-accessible)."""
+        return Scalar._from_c_ref(<SIScalarRef>scalar_ref_ptr)
 
     def __init__(self, value=1.0, expression=None):
         """

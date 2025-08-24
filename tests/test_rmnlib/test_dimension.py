@@ -49,12 +49,18 @@ class TestLinearDimension:
         )
         coords = dim.coordinates
 
-        # Should generate: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90] (no origin offset in basic coords)
-        expected = np.arange(10) * 10.0
-        np.testing.assert_array_almost_equal(coords, expected)
+        # coords is now a list of Scalar objects - test basic properties
+        assert len(coords) == 10
+        assert all(hasattr(coord, "value") for coord in coords)
 
-        # coords should be alias for coordinates
-        np.testing.assert_array_equal(dim.coords, dim.coordinates)
+        # Test coordinate values match expected progression
+        expected_values = np.arange(10) * 10.0
+        actual_values = [coord.value for coord in coords]
+        np.testing.assert_array_almost_equal(actual_values, expected_values)
+
+        # coords should be alias for coordinates (both return lists of Scalars)
+        assert len(dim.coords) == len(dim.coordinates)
+        assert all(c1.value == c2.value for c1, c2 in zip(dim.coords, dim.coordinates))
 
     def test_linear_type_immutable(self):
         """Test that dimension type cannot be changed."""
@@ -77,7 +83,8 @@ class TestLinearDimension:
         # Coordinates should update
         coords = dim.coordinates
         expected = np.arange(10) * 20.0
-        np.testing.assert_array_almost_equal(coords, expected)
+        coords_values = np.array([coord.value for coord in coords])
+        np.testing.assert_array_almost_equal(coords_values, expected)
 
     def test_linear_count_modification(self):
         """Test count property modification."""
@@ -92,7 +99,8 @@ class TestLinearDimension:
         # Coordinates should update
         coords = dim.coordinates
         expected = np.arange(12) * 20.0  # origin offset handled by absolute_coordinates
-        np.testing.assert_array_almost_equal(coords, expected)
+        coords_values = np.array([coord.value for coord in coords])
+        np.testing.assert_array_almost_equal(coords_values, expected)
 
     def test_linear_origin_offset(self):
         """Test origin offset for absolute coordinates."""
@@ -104,7 +112,8 @@ class TestLinearDimension:
         abs_coords = dim.absolute_coordinates
 
         # Absolute coordinates = coordinates + origin_offset
-        expected_abs = coords + 1000.0
+        coords_values = np.array([coord.value for coord in coords])
+        expected_abs = coords_values + 1000.0
         np.testing.assert_array_almost_equal(abs_coords, expected_abs)
 
         # Test setting origin offset
@@ -121,7 +130,8 @@ class TestLinearDimension:
         # Normal coordinates: [5, 25, 45, ..., 185]
         coords_normal = dim.coordinates
         expected_normal = np.arange(10) * 20.0 + 5.0
-        np.testing.assert_array_almost_equal(coords_normal, expected_normal)
+        coords_values = np.array([coord.value for coord in coords_normal])
+        np.testing.assert_array_almost_equal(coords_values, expected_normal)
 
         # Enable complex FFT
         dim.complex_fft = True
@@ -212,8 +222,11 @@ class TestLinearDimension:
         assert dim_copy.label == dim.label
         assert dim_copy.description == dim.description
 
-        # Coordinates should be equal
-        np.testing.assert_array_equal(dim_copy.coordinates, dim.coordinates)
+        # Coordinates should be equal (compare Scalar values)
+        coords1 = dim_copy.coordinates
+        coords2 = dim.coordinates
+        assert len(coords1) == len(coords2)
+        assert all(c1.value == c2.value for c1, c2 in zip(coords1, coords2))
 
     def test_linear_reciprocal_methods(self):
         """Test reciprocal methods for linear dimensions."""
@@ -279,13 +292,19 @@ class TestMonotonicDimension:
 
         dim = MonotonicDimension(coordinates=coordinates)
 
-        # Test coordinates property - should extract numeric values
+        # Test coordinates property - returns list of Scalar objects
         coords = dim.coordinates
-        expected = [0, 1, 3, 7, 15, 31]
-        np.testing.assert_array_almost_equal(coords, expected)
+        assert len(coords) == len(coordinates)
+        assert all(hasattr(coord, "value") for coord in coords)
 
-        # Test coords alias
-        np.testing.assert_array_equal(dim.coords, dim.coordinates)
+        # Test coordinate values match expected progression
+        expected_values = [0, 1, 3, 7, 15, 31]
+        actual_values = [coord.value for coord in coords]
+        np.testing.assert_array_almost_equal(actual_values, expected_values)
+
+        # Test coords alias (both return lists of Scalars)
+        assert len(dim.coords) == len(dim.coordinates)
+        assert all(c1.value == c2.value for c1, c2 in zip(dim.coords, dim.coordinates))
 
         # Test count
         assert dim.count == len(coordinates)
@@ -322,7 +341,8 @@ class TestMonotonicDimension:
         # Test absolute coordinates
         abs_coords = dim.absolute_coordinates
         coords = dim.coordinates
-        expected = coords + 1000.0
+        coords_values = np.array([coord.value for coord in coords])
+        expected = coords_values + 1000.0
         np.testing.assert_array_almost_equal(abs_coords, expected)
 
         # Test setting origin offset
@@ -410,8 +430,11 @@ class TestMonotonicDimension:
         assert dim_copy.description == dim.description
         assert dim_copy.origin_offset == dim.origin_offset
 
-        # Coordinates should be equal
-        np.testing.assert_array_equal(dim_copy.coordinates, dim.coordinates)
+        # Coordinates should be equal (compare Scalar values)
+        coords1 = dim_copy.coordinates
+        coords2 = dim.coordinates
+        assert len(coords1) == len(coords2)
+        assert all(c1.value == c2.value for c1, c2 in zip(coords1, coords2))
 
 
 class TestLabeledDimension:
@@ -764,7 +787,13 @@ class TestRegressionAndEdgeCases:
         coords_two = [42.0, 43.0]
         dim = MonotonicDimension(coordinates=coords_two)
         assert dim.count == 2
-        np.testing.assert_array_equal(dim.coordinates, coords_two)
+
+        # Test coordinates are Scalar objects with correct values
+        coords = dim.coordinates
+        assert len(coords) == 2
+        assert all(hasattr(coord, "value") for coord in coords)
+        actual_values = [coord.value for coord in coords]
+        np.testing.assert_array_equal(actual_values, coords_two)
 
         # Minimum 2 coordinates linear dimension
         linear_dim = LinearDimension(count=2, increment="5.0")
@@ -783,8 +812,8 @@ class TestRegressionAndEdgeCases:
         assert large_dim.count == 10000
         coords = large_dim.coordinates
         assert len(coords) == 10000
-        assert coords[0] == 0.0
-        assert coords[-1] == pytest.approx(9999 * 0.1)
+        assert coords[0].value == 0.0
+        assert coords[-1].value == pytest.approx(9999 * 0.1)
 
     def test_string_parsing_edge_cases(self):
         """Test edge cases in string value parsing."""

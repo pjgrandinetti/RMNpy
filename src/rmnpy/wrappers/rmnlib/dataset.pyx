@@ -14,6 +14,7 @@ into a cohesive, serializable container.
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
+
 from libc.stdint cimport uintptr_t
 
 from rmnpy._c_api.octypes cimport *
@@ -31,10 +32,12 @@ from rmnpy.helpers.octypes import (
 
 # Import wrapper classes for cross-component integration
 
-from rmnpy.wrappers.rmnlib.datum cimport Datum
+# from rmnpy.wrappers.rmnlib.datum cimport Datum  # TODO: Add when datum module is compiled
+
 from rmnpy.wrappers.rmnlib.dependent_variable cimport DependentVariable
 from rmnpy.wrappers.rmnlib.dimension cimport BaseDimension
-from rmnpy.wrappers.rmnlib.geographic_coordinate cimport GeographicCoordinate
+
+# from rmnpy.wrappers.rmnlib.geographic_coordinate cimport GeographicCoordinate  # TODO: Add when geographic_coordinate module is compiled
 
 
 cdef class Dataset:
@@ -79,6 +82,11 @@ cdef class Dataset:
         result._c_ref = copied_ref
         return result
 
+    @staticmethod
+    def from_c_ref(uint64_t dataset_ref_ptr):
+        """Create Dataset wrapper from C reference pointer (Python-accessible)."""
+        return Dataset._from_c_ref(<DatasetRef>dataset_ref_ptr)
+
     def __init__(self, title=None, description=None, dimensions=None,
                  dependent_variables=None, application_metadata=None):
         """
@@ -113,8 +121,10 @@ cdef class Dataset:
                 error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
                 raise RMNError(f"Dataset creation failed: {error_msg}")
 
-                # Store the C reference
-                self._c_ref = dataset_ref            # Set title if provided
+            # Store the C reference
+            self._c_ref = dataset_ref
+
+            # Set title if provided
             if title is not None:
                 if not isinstance(title, str):
                     raise TypeError("title must be a string")
@@ -391,7 +401,9 @@ cdef class Dataset:
         if geo_ref == NULL:
             return None  # Return None if no geographic coordinate set
 
-        return GeographicCoordinate._from_c_ref(geo_ref)
+        # TODO: Uncomment when geographic_coordinate module is compiled
+        # return GeographicCoordinate._from_c_ref(geo_ref)
+        return None  # Temporary placeholder
 
     @geographic_coordinate.setter
     def geographic_coordinate(self, value):
@@ -404,11 +416,13 @@ cdef class Dataset:
         if value is None:
             # Setting to None clears the coordinate
             geo_ref = NULL
-        elif isinstance(value, GeographicCoordinate):
-            # Extract C reference from GeographicCoordinate object
-            geo_ref = (<GeographicCoordinate>value)._c_ref
+        # TODO: Uncomment when geographic_coordinate module is compiled
+        # elif isinstance(value, GeographicCoordinate):
+        #     # Extract C reference from GeographicCoordinate object
+        #     geo_ref = (<GeographicCoordinate>value)._c_ref
         else:
-            raise TypeError("geographic_coordinate must be a GeographicCoordinate object or None")
+            # raise TypeError("geographic_coordinate must be a GeographicCoordinate object or None")
+            raise TypeError("geographic_coordinate setter temporarily disabled - module not compiled")
 
         if not DatasetSetGeographicCoordinate(self._c_ref, geo_ref):
             raise RMNError("Failed to set dataset geographic coordinate")
@@ -423,7 +437,9 @@ cdef class Dataset:
         if focus_ref == NULL:
             return None  # Return None if no focus datum set
 
-        return Datum._from_c_ref(focus_ref)
+        # TODO: Uncomment when datum module is compiled
+        # return Datum._from_c_ref(focus_ref)
+        return None  # Temporary placeholder
 
     @focus.setter
     def focus(self, value):
@@ -436,11 +452,13 @@ cdef class Dataset:
         if value is None:
             # Setting to None clears the focus
             focus_ref = NULL
-        elif isinstance(value, Datum):
-            # Extract C reference from Datum object
-            focus_ref = (<Datum>value)._c_ref
+        # TODO: Uncomment when datum module is compiled
+        # elif isinstance(value, Datum):
+        #     # Extract C reference from Datum object
+        #     focus_ref = (<Datum>value)._c_ref
         else:
-            raise TypeError("focus must be a Datum object or None")
+            # raise TypeError("focus must be a Datum object or None")
+            raise TypeError("focus setter temporarily disabled - datum module not compiled")
 
         if not DatasetSetFocus(self._c_ref, focus_ref):
             raise RMNError("Failed to set dataset focus")
@@ -455,7 +473,9 @@ cdef class Dataset:
         if prev_focus_ref == NULL:
             return None  # Return None if no previous focus datum set
 
-        return Datum._from_c_ref(prev_focus_ref)
+        # TODO: Uncomment when datum module is compiled
+        # return Datum._from_c_ref(prev_focus_ref)
+        return None  # Temporary placeholder
 
     @previous_focus.setter
     def previous_focus(self, value):
@@ -468,11 +488,13 @@ cdef class Dataset:
         if value is None:
             # Setting to None clears the previous focus
             prev_focus_ref = NULL
-        elif isinstance(value, Datum):
-            # Extract C reference from Datum object
-            prev_focus_ref = (<Datum>value)._c_ref
+        # TODO: Uncomment when datum module is compiled
+        # elif isinstance(value, Datum):
+        #     # Extract C reference from Datum object
+        #     prev_focus_ref = (<Datum>value)._c_ref
         else:
-            raise TypeError("previous_focus must be a Datum object or None")
+            # raise TypeError("previous_focus must be a Datum object or None")
+            raise TypeError("previous_focus setter temporarily disabled - datum module not compiled")
 
         if not DatasetSetPreviousFocus(self._c_ref, prev_focus_ref):
             raise RMNError("Failed to set dataset previous focus")
@@ -629,35 +651,12 @@ cdef class Dataset:
         Returns:
             int: Number of dependent variables
         """
-        return <int>DatasetGetDependentVariableCount(self._c_ref)
+        cdef OCMutableArrayRef vars_ref = DatasetGetDependentVariables(self._c_ref)
+        if vars_ref == NULL:
+            return 0
 
-    def get_dependent_variable_at_index(self, index):
-        """
-        Get a dependent variable by index.
-
-        Parameters:
-            index : int
-                Zero-based index of the dependent variable
-
-        Returns:
-            DependentVariable: The dependent variable at the specified index
-
-        Raises:
-            IndexError: If index is out of range
-            TypeError: If index is not an integer
-        """
-        if not isinstance(index, int):
-            raise TypeError("index must be an integer")
-
-        cdef OCIndex count = DatasetGetDependentVariableCount(self._c_ref)
-        if index < 0 or index >= count:
-            raise IndexError(f"Dependent variable index {index} out of range (0-{count-1})")
-
-        cdef DependentVariableRef dv_ref = DatasetGetDependentVariableAtIndex(self._c_ref, <OCIndex>index)
-        if dv_ref == NULL:
-            raise RMNError(f"Failed to get dependent variable at index {index}")
-
-        return DependentVariable._from_c_ref(dv_ref)
+        cdef OCIndex count = OCArrayGetCount(<OCArrayRef>vars_ref)
+        return <int>count
 
     def add_empty_dependent_variable(self, quantity_type, element_type, size):
         """
@@ -783,7 +782,10 @@ cdef class Dataset:
         if copied_ref == NULL:
             raise RMNError("Failed to create copy of Dataset")
 
-        return Dataset._from_c_ref(copied_ref)
+        # Create new Python object directly with copied reference (no additional copying)
+        cdef Dataset new_dataset = Dataset.__new__(Dataset)
+        new_dataset._c_ref = copied_ref
+        return new_dataset
 
     # File I/O methods
 

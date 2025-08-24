@@ -179,8 +179,17 @@ cdef class Dimensionality:
     cdef Dimensionality _from_c_ref(SIDimensionalityRef c_ref):
         """Create Dimensionality wrapper from C reference (internal use)."""
         cdef Dimensionality result = Dimensionality()
-        result._c_ref = c_ref
+        # Make a copy to avoid shared ownership issues
+        cdef SIDimensionalityRef copied_ref = <SIDimensionalityRef>OCTypeDeepCopy(<OCTypeRef>c_ref)
+        if copied_ref == NULL:
+            raise MemoryError("Failed to copy dimensionality reference")
+        result._c_ref = copied_ref
         return result
+
+    @staticmethod
+    def from_c_ref(uint64_t c_ref_ptr):
+        """Create Dimensionality wrapper from C reference pointer (Python-accessible)."""
+        return Dimensionality._from_c_ref(<SIDimensionalityRef>c_ref_ptr)
 
     @property
     def is_dimensionless(self):
@@ -421,31 +430,3 @@ cdef class Dimensionality:
             raise RMNError("Dimensionality power operation failed")
 
         return Dimensionality._from_c_ref(result)
-
-
-# ====================================================================================
-# SIDimensionality Helper Functions
-# ====================================================================================
-
-def sidimensionality_to_dimensionality(uint64_t si_dimensionality_ptr):
-    """
-    Convert an SIDimensionalityRef to a Python Dimensionality object.
-
-    Args:
-        si_dimensionality_ptr (uint64_t): Pointer to SIDimensionalityRef
-
-    Returns:
-        Dimensionality: Python Dimensionality object
-
-    Raises:
-        ValueError: If the SIDimensionalityRef is NULL
-        RuntimeError: If Dimensionality class is not available or conversion fails
-    """
-    cdef SIDimensionalityRef si_dimensionality = <SIDimensionalityRef>si_dimensionality_ptr
-
-    if si_dimensionality == NULL:
-        raise ValueError("SIDimensionalityRef is NULL")
-
-    # Use the Dimensionality class's _from_c_ref method to create a proper Dimensionality object
-    # No retention needed since SIDimensionalityRef are singletons managed by SILibrary
-    return Dimensionality._from_c_ref(si_dimensionality)

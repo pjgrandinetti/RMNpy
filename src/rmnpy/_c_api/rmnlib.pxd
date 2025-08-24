@@ -337,7 +337,6 @@ cdef extern from "RMNLibrary.h":
     OCMutableArrayRef DatasetGetDependentVariables(DatasetRef dataset)
     bint DatasetSetDependentVariables(DatasetRef dataset, OCMutableArrayRef dvs)
     OCIndex DatasetGetDependentVariableCount(DatasetRef dataset)
-    DependentVariableRef DatasetGetDependentVariableAtIndex(DatasetRef dataset, OCIndex index)
     DependentVariableRef DatasetAddEmptyDependentVariable(DatasetRef dataset, OCStringRef quantityType,
                                                           OCNumberType elementType, OCIndex size)
 

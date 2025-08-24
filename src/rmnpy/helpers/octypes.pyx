@@ -29,9 +29,8 @@ from rmnpy._c_api.rmnlib cimport *
 from rmnpy._c_api.sitypes cimport *
 
 import cython
-import numpy as np
+import numpy as np  # Import moved inside functions to avoid circular import
 
-# Import moved inside functions to avoid circular import
 # from rmnpy.wrappers.sitypes.dimensionality import sidimensionality_to_dimensionality
 
 # Comment out imports that create circular dependencies
@@ -180,39 +179,39 @@ cdef object convert_octype_to_python(const void* oc_ptr):
     elif type_id == OCIndexPairSetGetTypeID():
         return ocindexpairset_to_pydict(<uint64_t>oc_ptr)
 
-    # Handle wrapped OCTypes using _from_c_ref pattern
+    # Handle wrapped OCTypes using lazy imports (accessing Python-accessible methods)
     # SITypes wrappers
     elif type_id == SIScalarGetTypeID():
         from rmnpy.wrappers.sitypes.scalar import Scalar
-        return Scalar._from_c_ref(<uint64_t>oc_ptr)
+        return Scalar.from_c_ref(<uint64_t>oc_ptr)
     elif type_id == SIUnitGetTypeID():
         from rmnpy.wrappers.sitypes.unit import Unit
-        return Unit._from_c_ref(<uint64_t>oc_ptr)
+        return Unit.from_c_ref(<uint64_t>oc_ptr)
     elif type_id == SIDimensionalityGetTypeID():
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
-        return Dimensionality._from_c_ref(<uint64_t>oc_ptr)
+        return Dimensionality.from_c_ref(<uint64_t>oc_ptr)
 
-    # RMNLib wrappers - All dimension types use BaseDimension
+    # RMNLib wrappers
     elif (type_id == DimensionGetTypeID() or type_id == LabeledDimensionGetTypeID() or
           type_id == SIDimensionGetTypeID() or type_id == SILinearDimensionGetTypeID() or
           type_id == SIMonotonicDimensionGetTypeID()):
         from rmnpy.wrappers.rmnlib.dimension import BaseDimension
-        return BaseDimension._from_c_ref(<uint64_t>oc_ptr)
+        return BaseDimension.from_c_ref(<uint64_t>oc_ptr)
     elif type_id == DependentVariableGetTypeID():
         from rmnpy.wrappers.rmnlib.dependent_variable import DependentVariable
-        return DependentVariable._from_c_ref(<uint64_t>oc_ptr)
+        return DependentVariable.from_c_ref(<uint64_t>oc_ptr)
     elif type_id == DatasetGetTypeID():
         from rmnpy.wrappers.rmnlib.dataset import Dataset
-        return Dataset._from_c_ref(<uint64_t>oc_ptr)
+        return Dataset.from_c_ref(<uint64_t>oc_ptr)
     elif type_id == DatumGetTypeID():
         from rmnpy.wrappers.rmnlib.datum import Datum
-        return Datum._from_c_ref(<uint64_t>oc_ptr)
+        return Datum.from_c_ref(<uint64_t>oc_ptr)
     elif type_id == GeographicCoordinateGetTypeID():
         from rmnpy.wrappers.rmnlib.geographic_coordinate import GeographicCoordinate
-        return GeographicCoordinate._from_c_ref(<uint64_t>oc_ptr)
+        return GeographicCoordinate.from_c_ref(<uint64_t>oc_ptr)
     elif type_id == SparseSamplingGetTypeID():
         from rmnpy.wrappers.rmnlib.sparse_sampling import SparseSampling
-        return SparseSampling._from_c_ref(<uint64_t>oc_ptr)
+        return SparseSampling.from_c_ref(<uint64_t>oc_ptr)
 
     else:
         # Unknown OCType (could be from other extensions)

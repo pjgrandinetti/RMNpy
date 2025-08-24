@@ -61,6 +61,11 @@ cdef class SparseSampling:
         result._c_ref = copied_ref
         return result
 
+    @staticmethod
+    def from_c_ref(uint64_t sparse_ref_ptr):
+        """Create SparseSampling wrapper from C reference pointer (Python-accessible)."""
+        return SparseSampling._from_c_ref(<SparseSamplingRef>sparse_ref_ptr)
+
     def __init__(self, dimension_indexes, sparse_grid_vertices,
                  unsigned_integer_type="uint32", encoding="none",
                  description=None, metadata=None):

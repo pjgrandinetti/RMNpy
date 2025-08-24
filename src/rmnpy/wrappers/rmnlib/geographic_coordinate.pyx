@@ -66,6 +66,11 @@ cdef class GeographicCoordinate:
         result._c_ref = copied_ref
         return result
 
+    @staticmethod
+    def from_c_ref(uint64_t geo_ref_ptr):
+        """Create GeographicCoordinate wrapper from C reference pointer (Python-accessible)."""
+        return GeographicCoordinate._from_c_ref(<GeographicCoordinateRef>geo_ref_ptr)
+
     def __init__(self, latitude, longitude, altitude=None, metadata=None):
         """
         Create a new GeographicCoordinate.

@@ -123,6 +123,11 @@ cdef class BaseDimension:
             (<BaseDimension>wrapper)._c_ref = copied_ref
             return wrapper
 
+    @staticmethod
+    def from_c_ref(uint64_t dim_ref_ptr):
+        """Create appropriate dimension wrapper from C reference pointer (Python-accessible)."""
+        return BaseDimension._from_c_ref(<DimensionRef>dim_ref_ptr)
+
     @property
     def type(self):
         """Get the type of the dimension."""
@@ -331,7 +336,7 @@ cdef class BaseDimension:
                 try:
                     coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
                     if coords_list:
-                        return np.array(coords_list, dtype=np.float64)
+                        return np.array([scalar.value for scalar in coords_list], dtype=np.float64)
                 finally:
                     OCRelease(<OCTypeRef>coords_ref)
         elif dim_type == "monotonic":
@@ -340,15 +345,15 @@ cdef class BaseDimension:
                 try:
                     coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
                     if coords_list:
-                        return np.array(coords_list, dtype=np.float64)
+                        return np.array([scalar.value for scalar in coords_list], dtype=np.float64)
                 finally:
                     OCRelease(<OCTypeRef>coords_ref)
 
         raise RMNError(f"C API returned NULL absolute coordinates for {dim_type} dimension (dimension may be corrupted or uninitialized)")
 
     @property
-    def coordinates(self) -> np.ndarray:
-        """Get coordinates along the dimension."""
+    def coordinates(self):
+        """Get coordinates along the dimension as a list of Scalar objects."""
         # Dispatch to appropriate C API function based on dimension type
         dim_type = self.type
         cdef OCArrayRef coords_ref = NULL
@@ -360,7 +365,7 @@ cdef class BaseDimension:
                 try:
                     coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
                     if coords_list:
-                        return np.array(coords_list)  # Keep original data type for labels
+                        return coords_list  # Return the list of Scalar objects directly
                 finally:
                     OCRelease(<OCTypeRef>coords_ref)
         elif dim_type == "linear":
@@ -369,7 +374,7 @@ cdef class BaseDimension:
                 try:
                     coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
                     if coords_list:
-                        return np.array(coords_list, dtype=np.float64)
+                        return coords_list  # Return the list of Scalar objects directly
                 finally:
                     OCRelease(<OCTypeRef>coords_ref)
         elif dim_type == "monotonic":
@@ -378,14 +383,14 @@ cdef class BaseDimension:
                 try:
                     coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
                     if coords_list:
-                        return np.array(coords_list, dtype=np.float64)
+                        return coords_list  # Return the list of Scalar objects directly
                 finally:
                     OCRelease(<OCTypeRef>coords_ref)
 
         raise RMNError(f"C API returned NULL coordinates for {dim_type} dimension (dimension may be corrupted or uninitialized)")
 
     @property
-    def coords(self) -> np.ndarray:
+    def coords(self) -> list:
         """Alias for coordinates."""
         return self.coordinates
 
@@ -394,12 +399,47 @@ cdef class BaseDimension:
         if self._c_ref == NULL:
             raise RMNError("Cannot copy null dimension")
 
-        cdef void *copied_dimension = OCTypeDeepCopy(self._c_ref)
+        cdef DimensionRef copied_dimension = <DimensionRef>OCTypeDeepCopy(<OCTypeRef>self._c_ref)
         if copied_dimension == NULL:
             raise RMNError("Failed to create dimension copy")
 
-        # Use the _from_c_ref static method to create the appropriate wrapper
-        return BaseDimension._from_c_ref(<DimensionRef>copied_dimension)
+        # Determine the appropriate wrapper type and create it directly
+        # without going through _from_c_ref to avoid double-copying
+        cdef OCStringRef type_ref = DimensionGetType(copied_dimension)
+        if type_ref == NULL:
+            OCRelease(<OCTypeRef>copied_dimension)
+            raise RMNError("C API returned NULL type for dimension reference")
+
+        try:
+            type_str = ocstring_to_pystring(<uint64_t>type_ref)
+        finally:
+            OCRelease(<OCTypeRef>type_ref)
+
+        if type_str == "labeled":
+            wrapper = LabeledDimension.__new__(LabeledDimension)
+            (<LabeledDimension>wrapper)._c_ref = copied_dimension
+            return wrapper
+        elif type_str == "linear":
+            wrapper = LinearDimension.__new__(LinearDimension)
+            (<LinearDimension>wrapper)._c_ref = copied_dimension
+            return wrapper
+        elif type_str == "monotonic":
+            wrapper = MonotonicDimension.__new__(MonotonicDimension)
+            (<MonotonicDimension>wrapper)._c_ref = copied_dimension
+            return wrapper
+        elif type_str == "si_dimension":
+            wrapper = SIDimension.__new__(SIDimension)
+            (<SIDimension>wrapper)._c_ref = copied_dimension
+            return wrapper
+        elif type_str == "dimension":
+            wrapper = BaseDimension.__new__(BaseDimension)
+            (<BaseDimension>wrapper)._c_ref = copied_dimension
+            return wrapper
+        else:
+            # Fallback for unknown types
+            wrapper = BaseDimension.__new__(BaseDimension)
+            (<BaseDimension>wrapper)._c_ref = copied_dimension
+            return wrapper
 
 cdef class LabeledDimension(BaseDimension):
     """

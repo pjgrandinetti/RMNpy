@@ -39,10 +39,11 @@
 - Working tutorial notebooks demonstrating functionality
 
 ### Current Test Statistics
-- **Total Tests**: 336 tests (comprehensive coverage)
+- **Total Tests**: 309 tests (comprehensive coverage)
 - **Complete Stack**: OCTypes + SITypes + RMNLib (Dimension + SparseSampling + DependentVariable)
 - **Production Ready**: Memory-safe, comprehensive API coverage with tutorial documentation
 - **Version**: v0.2.2 released with comprehensive tutorial notebooks
+- **Latest Fix**: SITypes unit equality comparison using proper SIUnitEqual C API function
 
 ---
 
@@ -160,32 +161,44 @@ RMNpy/                                    # 📁 Root project directory
 
 ---
 
-## Phase 4: Dataset Implementation - Next Priority 🔮
+## Phase 4: Dataset Implementation - Current Priority (ACTIVE)
 
 **Goal**: Implement Dataset wrapper as the top-level container for complete scientific datasets
 
-**Status**: 🔮 **READY TO BEGIN** - All prerequisites complete (Dimension, SparseSampling, DependentVariable)
+**Status**: ACTIVE - Dataset wrapper has been implemented with extensive functionality
 
-**Dependencies**: ✅ OCTypes + SITypes + Dimension + SparseSampling + DependentVariable
+**Dependencies**: OCTypes + SITypes + Dimension + SparseSampling + DependentVariable
 
-**Implementation Plan**:
-- Follow proven inheritance pattern established in previous wrappers
-- Dataset as container for multiple DependentVariable objects with shared Dimensions
-- Support for both dense and sparse data layouts via integrated SparseSampling
+**Implementation Status**:
+- Dataset wrapper implementation: IN PROGRESS
+- Core container functionality for DependentVariable collections
 - Metadata management and serialization capabilities
-- Integration with existing csdmpy ecosystem for NMR/scientific data
+- Integration with existing dimension infrastructure
+- Additional RMNLib wrappers (Datum, GeographicCoordinate) added
 
-**Files to create**:
-- `src/rmnpy/wrappers/rmnlib/dataset.pyx` (~500+ lines)
-- `tests/test_rmnlib/test_dataset.py` (~25+ tests)
+**Files Modified**:
+- `src/rmnpy/wrappers/rmnlib/dataset.pyx` - Dataset container implementation
+- `src/rmnpy/wrappers/rmnlib/datum.pyx` - Data point wrapper
+- `src/rmnpy/wrappers/rmnlib/geographic_coordinate.pyx` - Geographic data support
+- `src/rmnpy/_c_api/rmnlib.pxd` - Extended C API declarations
+- Multiple wrapper files enhanced with additional functionality
+- `tests/test_rmnlib/test_dimension.py` - Updated test coverage
 
-**Core functionality**:
+**Current Functionality**:
 - Multi-dimensional dataset container with shared dimension infrastructure
 - DependentVariable collection management
 - Sparse sampling integration for compressed datasets
-- Serialization and deserialization capabilities
-- csdmpy compatibility for scientific data exchange
-- NumPy integration for efficient data access
+- Geographic coordinate system support
+- Enhanced metadata handling
+
+**Next Steps**:
+1. Complete Dataset test suite implementation
+2. Add comprehensive Dataset tests (~25+ tests)
+3. Create test files for new wrappers:
+   - `tests/test_rmnlib/test_datum.py` (needed)
+   - `tests/test_rmnlib/test_geographic_coordinate.py` (needed)
+4. Finalize documentation and examples
+5. Integration testing with complete workflow
 
 ---
 
@@ -200,18 +213,27 @@ RMNpy/                                    # 📁 Root project directory
 - **Phase 3B**: SparseSampling Implementation
 - **Phase 3C**: DependentVariable Implementation
 
-### Next Phase 🔮
-- **Phase 4**: Dataset Implementation (~2 weeks)
+### Next Phase - ACTIVE
+- **Phase 4**: Dataset Implementation (ACTIVE - substantial progress made)
+  - Dataset wrapper: IN PROGRESS with core functionality implemented
+  - Additional RMNLib wrappers: Datum, GeographicCoordinate added
+  - Extended C API declarations and test coverage improvements
+  - Estimated completion: 1-2 weeks for tests and final integration
+
+### Future Phase
 - **Phase 5**: Final integration, documentation, and release (~1 week)
 
-**Current Progress**: ~90% complete
-**Estimated Completion**: 3 weeks remaining
+**Current Progress**: ~95% complete
+**Estimated Completion**: 1-2 weeks remaining
 
-**Major Achievement**: Comprehensive scientific computing stack with full RMNLib core functionality (Dimension, SparseSampling, DependentVariable) implemented and tested. Ready for final Dataset container implementation to complete the scientific data management ecosystem.
-   **Estimated Timeline**: 3 weeks remaining for Dataset implementation and final release
+**Major Achievement**: Comprehensive scientific computing stack with full RMNLib core functionality implemented and tested. Dataset implementation is actively in progress with substantial functionality already completed. Unit equality comparison fixed using proper SIUnitEqual C API.
 
 **Next Steps**:
-1. Dataset wrapper implementation (~2 weeks)
-2. Final integration, documentation updates, and packaging (~1 week)
+1. Create missing test files for new wrappers (PREREQUISITES):
+   - `tests/test_rmnlib/test_datum.py` (required for Datum wrapper) - **MUST COMPLETE FIRST**
+   - `tests/test_rmnlib/test_geographic_coordinate.py` (required for GeographicCoordinate wrapper) - **MUST COMPLETE FIRST**
+2. Complete Dataset test suite implementation (~1 week) - depends on above prerequisites
+3. Final integration testing and documentation updates (~1 week)
+4. Package final release
 
-**Current Status Summary**: RMNpy has achieved substantial completion with a fully functional scientific computing stack. The core components (Dimension, SparseSampling, DependentVariable) are implemented, tested, and documented with tutorial notebooks. Only the top-level Dataset container remains to complete the full scientific data management ecosystem.
+**Current Status Summary**: RMNpy has achieved near-complete status with a fully functional scientific computing stack. All core components (Dimension, SparseSampling, DependentVariable) are implemented and tested. Dataset implementation is actively in progress with substantial functionality completed. Only test suite completion and final integration remain to complete the full scientific data management ecosystem.

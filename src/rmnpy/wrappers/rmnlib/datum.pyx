@@ -72,6 +72,11 @@ cdef class Datum:
         result._c_ref = copied_ref
         return result
 
+    @staticmethod
+    def from_c_ref(uint64_t datum_ref_ptr):
+        """Create Datum wrapper from C reference pointer (Python-accessible)."""
+        return Datum._from_c_ref(<DatumRef>datum_ref_ptr)
+
     def __init__(self, response, coordinates=None, dependent_variable_index=0,
                  component_index=0, mem_offset=0):
         """

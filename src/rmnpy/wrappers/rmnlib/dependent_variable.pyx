@@ -61,11 +61,18 @@ cdef class DependentVariable:
         of their original reference and can safely release it.
         """
         cdef DependentVariable result = DependentVariable.__new__(DependentVariable)
+        if dep_var_ref == NULL:
+            raise RMNError("Cannot create wrapper from NULL dependent variable reference")
         cdef DependentVariableRef copied_ref = DependentVariableCopy(dep_var_ref)
         if copied_ref == NULL:
             raise RMNError("Failed to create copy of DependentVariable")
         result._c_ref = copied_ref
         return result
+
+    @staticmethod
+    def from_c_ref(uint64_t dep_var_ref_ptr):
+        """Create DependentVariable wrapper from C reference pointer (Python-accessible)."""
+        return DependentVariable._from_c_ref(<DependentVariableRef>dep_var_ref_ptr)
 
     def __init__(self,
                  components,
