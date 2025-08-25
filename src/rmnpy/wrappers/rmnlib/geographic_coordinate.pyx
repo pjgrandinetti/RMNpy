@@ -75,11 +75,11 @@ cdef class GeographicCoordinate:
         Create a new GeographicCoordinate.
 
         Parameters:
-            latitude : Scalar or numeric
+            latitude : Scalar, String, or numeric
                 Latitude in degrees (positive = north, negative = south)
-            longitude : Scalar or numeric
+            longitude : Scalar, String, or numeric
                 Longitude in degrees (positive = east, negative = west)
-            altitude : Scalar or numeric, optional
+            altitude : Scalar, String, or numeric, optional
                 Altitude in meters above sea level (default: None)
             metadata : dict, optional
                 Application-specific metadata dictionary (default: None)
@@ -178,6 +178,12 @@ cdef class GeographicCoordinate:
                 OCRelease(<OCTypeRef>err_ocstr)
             if coord_ref != NULL:
                 OCRelease(<OCTypeRef>coord_ref)
+
+    @property
+    def data_structure(self):
+        """JSON serialized string of dimension object (csdmpy compatibility)."""
+        import json
+        return json.dumps(self.to_dict(), ensure_ascii=False, sort_keys=False, indent=2)
 
     # Property accessors
 
@@ -340,8 +346,17 @@ cdef class GeographicCoordinate:
         Raises:
             RMNError: If conversion to dictionary fails
         """
-        # Temporary implementation to test compilation
-        raise NotImplementedError("to_dict temporarily disabled for debugging")
+        if self._c_ref == NULL:
+            raise ValueError("GeographicCoordinate not initialized")
+
+        cdef OCDictionaryRef dict_ref = GeographicCoordinateCopyAsDictionary(self._c_ref)
+        if dict_ref == NULL:
+            raise RMNError("Failed to convert geographic coordinate to dictionary")
+
+        try:
+            return ocdict_to_pydict(<uint64_t>dict_ref)
+        finally:
+            OCRelease(<OCTypeRef>dict_ref)
 
     def dict(self):
         """
@@ -351,6 +366,15 @@ cdef class GeographicCoordinate:
             dict: Dictionary representation of the coordinate
         """
         return self.to_dict()
+
+    def __eq__(self, other):
+        """Compare geographic coordinates for equality using OCTypes C API."""
+        if not isinstance(other, GeographicCoordinate):
+            return False
+
+        cdef GeographicCoordinate other_coord = <GeographicCoordinate>other
+
+        return OCTypeEqual(<OCTypeRef>self._c_ref, <OCTypeRef>other_coord._c_ref)
 
     # Utility methods
 
@@ -373,27 +397,3 @@ cdef class GeographicCoordinate:
     def __str__(self):
         """Return string representation of the geographic coordinate."""
         return self.__repr__()
-
-    @property
-    def summary(self):
-        """
-        Get a summary of the geographic coordinate.
-
-        Returns:
-            dict: Summary information about the coordinate
-        """
-        try:
-            lat = self.latitude
-            lon = self.longitude
-            alt = self.altitude
-            metadata = self.metadata
-
-            return {
-                'latitude': str(lat) if lat is not None else None,
-                'longitude': str(lon) if lon is not None else None,
-                'altitude': str(alt) if alt is not None else None,
-                'has_metadata': len(metadata) > 0 if metadata else False,
-                'metadata_keys': list(metadata.keys()) if metadata else []
-            }
-        except Exception as e:
-            return {'error': f"Failed to generate summary: {str(e)}"}

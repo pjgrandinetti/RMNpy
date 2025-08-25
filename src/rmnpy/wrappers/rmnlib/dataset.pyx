@@ -32,8 +32,7 @@ from rmnpy.helpers.octypes import (
 
 # Import wrapper classes for cross-component integration
 
-# from rmnpy.wrappers.rmnlib.datum cimport Datum  # TODO: Add when datum module is compiled
-
+from rmnpy.wrappers.rmnlib.datum cimport Datum
 from rmnpy.wrappers.rmnlib.dependent_variable cimport DependentVariable
 from rmnpy.wrappers.rmnlib.dimension cimport BaseDimension
 
@@ -88,7 +87,8 @@ cdef class Dataset:
         return Dataset._from_c_ref(<DatasetRef>dataset_ref_ptr)
 
     def __init__(self, title=None, description=None, dimensions=None,
-                 dependent_variables=None, application_metadata=None):
+                 dependent_variables, application_metadata=None,
+                 dimension_precedence=None, tags=None, focus=None, previous_focus=None):
         """
         Create a new Dataset.
 
@@ -103,6 +103,14 @@ cdef class Dataset:
                 List of dependent variable objects containing the data
             application_metadata : dict, optional
                 Dictionary of application-specific metadata
+            dimension_precedence : list of int, optional
+                List of dimension indices specifying precedence ordering
+            tags : list of str, optional
+                List of string tags for the dataset
+            focus : Datum, optional
+                Focus datum for the dataset
+            previous_focus : Datum, optional
+                Previous focus datum for the dataset
 
         Raises:
             RMNError: If dataset creation fails
@@ -112,54 +120,93 @@ cdef class Dataset:
             return  # Already initialized by _from_c_ref
 
         cdef OCStringRef err_ocstr = NULL
-        cdef DatasetRef dataset_ref = NULL
+        cdef OCArrayRef dims_ref = NULL
+        cdef OCIndexArrayRef precedence_ref = NULL
+        cdef OCArrayRef deps_ref = NULL
+        cdef OCArrayRef tags_ref = NULL
+        cdef OCStringRef desc_ref = NULL
+        cdef OCStringRef title_ref = NULL
+        cdef DatumRef focus_ref = NULL
+        cdef DatumRef prev_focus_ref = NULL
+        cdef OCDictionaryRef metadata_ref = NULL
 
         try:
-            # Create an empty dataset first
-            dataset_ref = DatasetCreateEmpty(&err_ocstr)
-            if dataset_ref == NULL:
+            # Convert dimensions to OCArray
+            if dimensions is not None:
+                dims_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(dimensions)
+
+            # Convert dimension precedence to OCIndexArray
+            if dimension_precedence is not None:
+                from rmnpy.helpers.octypes import ocindexarray_create_from_pylist
+                precedence_ref = <OCIndexArrayRef><uint64_t>ocindexarray_create_from_pylist(list(dimension_precedence))
+
+            # Convert dependent variables to OCArray
+            if dependent_variables is not None:
+                deps_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(dependent_variables)
+
+            # Convert tags to OCArray
+            if tags is not None:
+                tags_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(list(tags))
+
+            # Convert description to OCString
+            if description is not None:
+                desc_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(description)
+
+            # Convert title to OCString
+            if title is not None:
+                title_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(title)
+
+            # Handle focus datum
+            if focus is not None:
+                focus_ref = (<Datum>focus)._c_ref
+
+            # Handle previous focus datum
+            if previous_focus is not None:
+                prev_focus_ref = (<Datum>previous_focus)._c_ref
+
+            # Convert application metadata to OCDictionary
+            if application_metadata is not None:
+                metadata_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(application_metadata)
+
+            # Create dataset using DatasetCreate
+            self._c_ref = DatasetCreate(
+                dims_ref,
+                precedence_ref,
+                deps_ref,
+                tags_ref,
+                desc_ref,
+                title_ref,
+                focus_ref,
+                prev_focus_ref,
+                metadata_ref,
+                &err_ocstr
+            )
+            if self._c_ref == NULL:
                 error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
                 raise RMNError(f"Dataset creation failed: {error_msg}")
 
-            # Store the C reference
-            self._c_ref = dataset_ref
-
-            # Set title if provided
-            if title is not None:
-                if not isinstance(title, str):
-                    raise TypeError("title must be a string")
-                self.title = title
-
-            # Set description if provided
-            if description is not None:
-                if not isinstance(description, str):
-                    raise TypeError("description must be a string")
-                self.description = description
-
-            # Set dimensions if provided
-            if dimensions is not None:
-                if not isinstance(dimensions, (list, tuple)):
-                    raise TypeError("dimensions must be a list or tuple")
-                self.dimensions = dimensions
-
-            # Set dependent variables if provided
-            if dependent_variables is not None:
-                if not isinstance(dependent_variables, (list, tuple)):
-                    raise TypeError("dependent_variables must be a list or tuple")
-                self.dependent_variables = dependent_variables
-
-            # Set application metadata if provided
-            if application_metadata is not None:
-                if not isinstance(application_metadata, dict):
-                    raise TypeError("application_metadata must be a dictionary")
-                self.application_metadata = application_metadata
-
         except:
             # Clean up on failure
-            if dataset_ref != NULL:
-                OCRelease(<OCTypeRef>dataset_ref)
+            if self._c_ref != NULL:
+                OCRelease(<OCTypeRef>self._c_ref)
+                self._c_ref = NULL
             raise
         finally:
+            # Clean up temporary references
+            if dims_ref != NULL:
+                OCRelease(<OCTypeRef>dims_ref)
+            if precedence_ref != NULL:
+                OCRelease(<OCTypeRef>precedence_ref)
+            if deps_ref != NULL:
+                OCRelease(<OCTypeRef>deps_ref)
+            if tags_ref != NULL:
+                OCRelease(<OCTypeRef>tags_ref)
+            if desc_ref != NULL:
+                OCRelease(<OCTypeRef>desc_ref)
+            if title_ref != NULL:
+                OCRelease(<OCTypeRef>title_ref)
+            if metadata_ref != NULL:
+                OCRelease(<OCTypeRef>metadata_ref)
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
 
@@ -437,9 +484,7 @@ cdef class Dataset:
         if focus_ref == NULL:
             return None  # Return None if no focus datum set
 
-        # TODO: Uncomment when datum module is compiled
-        # return Datum._from_c_ref(focus_ref)
-        return None  # Temporary placeholder
+        return Datum._from_c_ref(focus_ref)
 
     @focus.setter
     def focus(self, value):
@@ -452,13 +497,11 @@ cdef class Dataset:
         if value is None:
             # Setting to None clears the focus
             focus_ref = NULL
-        # TODO: Uncomment when datum module is compiled
-        # elif isinstance(value, Datum):
-        #     # Extract C reference from Datum object
-        #     focus_ref = (<Datum>value)._c_ref
+        elif isinstance(value, Datum):
+            # Extract C reference from Datum object
+            focus_ref = (<Datum>value)._c_ref
         else:
-            # raise TypeError("focus must be a Datum object or None")
-            raise TypeError("focus setter temporarily disabled - datum module not compiled")
+            raise TypeError("focus must be a Datum object or None")
 
         if not DatasetSetFocus(self._c_ref, focus_ref):
             raise RMNError("Failed to set dataset focus")
@@ -473,9 +516,7 @@ cdef class Dataset:
         if prev_focus_ref == NULL:
             return None  # Return None if no previous focus datum set
 
-        # TODO: Uncomment when datum module is compiled
-        # return Datum._from_c_ref(prev_focus_ref)
-        return None  # Temporary placeholder
+        return Datum._from_c_ref(prev_focus_ref)
 
     @previous_focus.setter
     def previous_focus(self, value):
@@ -488,13 +529,11 @@ cdef class Dataset:
         if value is None:
             # Setting to None clears the previous focus
             prev_focus_ref = NULL
-        # TODO: Uncomment when datum module is compiled
-        # elif isinstance(value, Datum):
-        #     # Extract C reference from Datum object
-        #     prev_focus_ref = (<Datum>value)._c_ref
+        elif isinstance(value, Datum):
+            # Extract C reference from Datum object
+            prev_focus_ref = (<Datum>value)._c_ref
         else:
-            # raise TypeError("previous_focus must be a Datum object or None")
-            raise TypeError("previous_focus setter temporarily disabled - datum module not compiled")
+            raise TypeError("previous_focus must be a Datum object or None")
 
         if not DatasetSetPreviousFocus(self._c_ref, prev_focus_ref):
             raise RMNError("Failed to set dataset previous focus")

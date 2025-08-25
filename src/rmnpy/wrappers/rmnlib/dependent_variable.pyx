@@ -145,7 +145,7 @@ cdef class DependentVariable:
                 components_array = <OCArrayRef><uint64_t>ocarray_create_from_pylist(components)
 
             # Call the core C API creator
-            result = DependentVariableCreate(
+            self._c_ref = DependentVariableCreate(
                 name_ocstr,
                 desc_ocstr,
                 unit_ref,
@@ -157,14 +157,12 @@ cdef class DependentVariable:
                 &err_ocstr
             )
 
-            if result == NULL:
+            if self._c_ref == NULL:
                 if err_ocstr != NULL:
                     error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
                     raise RMNError(f"Failed to create DependentVariable: {error_msg}")
                 else:
                     raise RMNError("Failed to create DependentVariable")
-
-            self._c_ref = result
 
         finally:
             # Clean up temporary OCTypes
