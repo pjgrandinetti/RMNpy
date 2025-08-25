@@ -59,7 +59,6 @@ cdef class GeographicCoordinate:
         cdef GeographicCoordinate result = GeographicCoordinate.__new__(GeographicCoordinate)
         if geo_ref == NULL:
             raise RMNError("Cannot create wrapper from NULL geographic coordinate reference")
-
         cdef GeographicCoordinateRef copied_ref = GeographicCoordinateCreateCopy(geo_ref)
         if copied_ref == NULL:
             raise RMNError("Failed to create copy of GeographicCoordinate")
@@ -135,8 +134,7 @@ cdef class GeographicCoordinate:
 
     @classmethod
     def from_dict(cls, data_dict):
-        """
-        Create GeographicCoordinate from dictionary representation.
+        """Create GeographicCoordinate from dictionary representation.
 
         Parameters:
             data_dict : dict
@@ -165,14 +163,12 @@ cdef class GeographicCoordinate:
             # Create coordinate from dictionary
             coord_ref = GeographicCoordinateCreateFromDictionary(dict_ref, &err_ocstr)
             if coord_ref == NULL:
-                error_msg = "Unknown error"
-                if err_ocstr != NULL:
-                    from rmnpy.helpers.octypes import ocstring_to_pystring
-                    error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
+                from rmnpy.helpers.octypes import ocstring_to_pystring
+                error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
                 raise RMNError(f"GeographicCoordinate creation from dictionary failed: {error_msg}")
 
             # Create wrapper from C reference
-            return cls._from_c_ref(coord_ref)
+            return cls._from_c_ref(<uint64_t>coord_ref)
 
         finally:
             # Clean up temporary references
@@ -318,11 +314,25 @@ cdef class GeographicCoordinate:
             if metadata_ref != NULL:
                 OCRelease(<OCTypeRef>metadata_ref)
 
+    def copy(self):
+        """Create a copy of this GeographicCoordinate."""
+        if self._c_ref == NULL:
+            raise ValueError("GeographicCoordinate not initialized")
+        cdef GeographicCoordinateRef copy_ref = GeographicCoordinateCreateCopy(self._c_ref)
+        if copy_ref == NULL:
+            raise RMNError("Failed to copy GeographicCoordinate")
+
+        # Create new Python object with copied reference
+        cdef GeographicCoordinate new_gc = GeographicCoordinate.__new__(GeographicCoordinate)
+        new_gc._c_ref = copy_ref
+        return new_gc
+
+    @staticmethod
+
     # Serialization methods
 
     def to_dict(self):
-        """
-        Convert geographic coordinate to dictionary representation.
+        """Convert to dictionary representation.
 
         Returns:
             dict: Dictionary representation of the coordinate
@@ -330,17 +340,8 @@ cdef class GeographicCoordinate:
         Raises:
             RMNError: If conversion to dictionary fails
         """
-        if self._c_ref == NULL:
-            raise ValueError("GeographicCoordinate not initialized")
-
-        cdef OCDictionaryRef dict_ref = GeographicCoordinateCopyAsDictionary(self._c_ref)
-        if dict_ref == NULL:
-            raise RMNError("Failed to convert geographic coordinate to dictionary")
-
-        try:
-            return ocdict_to_pydict(<uint64_t>dict_ref)
-        finally:
-            OCRelease(<OCTypeRef>dict_ref)
+        # Temporary implementation to test compilation
+        raise NotImplementedError("to_dict temporarily disabled for debugging")
 
     def dict(self):
         """

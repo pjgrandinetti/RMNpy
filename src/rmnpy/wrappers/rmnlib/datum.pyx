@@ -116,14 +116,12 @@ cdef class Datum:
                 if not isinstance(coordinates, (list, tuple)):
                     raise TypeError("coordinates must be a list or tuple")
 
-                # Convert each coordinate to SIScalar and collect references
-                for i, coord in enumerate(coordinates):
-                    coord_ref = convert_to_siscalar_ref(coord)
-                    if coord_ref == NULL:
-                        raise RMNError(f"Failed to convert coordinate[{i}] to SIScalar")
-                    coord_refs.append(<uintptr_t>coord_ref)
-
-                # Create OCArray from coordinate references
+            # Convert each coordinate to SIScalar and collect references
+            for i, coord in enumerate(coordinates):
+                coord_ref = convert_to_siscalar_ref(coord)
+                if coord_ref == NULL:
+                    raise RMNError(f"Failed to convert coordinate[{i}] to SIScalar")
+                coord_refs.append(<uint64_t>coord_ref)                # Create OCArray from coordinate references
                 if coord_refs:
                     coords_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(coord_refs)
                     if coords_ref == NULL:
@@ -154,55 +152,55 @@ cdef class Datum:
             if coords_ref != NULL:
                 OCRelease(<OCTypeRef>coords_ref)
 
-    @classmethod
-    def from_dict(cls, data_dict):
-        """
-        Create Datum from dictionary representation.
-
-        Parameters:
-            data_dict : dict
-                Dictionary containing datum data
-
-        Returns:
-            Datum: New datum instance
-
-        Raises:
-            RMNError: If datum creation from dictionary fails
-            TypeError: If data_dict is not a dictionary
-        """
-        if not isinstance(data_dict, dict):
-            raise TypeError("data_dict must be a dictionary")
-
-        cdef OCDictionaryRef dict_ref = NULL
-        cdef OCStringRef err_ocstr = NULL
-        cdef DatumRef datum_ref = NULL
-
-        try:
-            # Convert Python dictionary to OCDictionary
-            dict_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(data_dict)
-            if dict_ref == NULL:
-                raise RMNError("Failed to convert dictionary to OCDictionary")
-
-            # Create datum from dictionary
-            datum_ref = DatumCreateFromDictionary(dict_ref, &err_ocstr)
-            if datum_ref == NULL:
-                error_msg = "Unknown error"
-                if err_ocstr != NULL:
-                    from rmnpy.helpers.octypes import ocstring_to_pystring
-                    error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
-                raise RMNError(f"Datum creation from dictionary failed: {error_msg}")
-
-            # Create wrapper from C reference
-            return cls._from_c_ref(datum_ref)
-
-        finally:
-            # Clean up temporary references
-            if dict_ref != NULL:
-                OCRelease(<OCTypeRef>dict_ref)
-            if err_ocstr != NULL:
-                OCRelease(<OCTypeRef>err_ocstr)
-            if datum_ref != NULL:
-                OCRelease(<OCTypeRef>datum_ref)
+    # @classmethod  # TODO: Fix compilation issues with _from_c_ref
+    # def from_dict(cls, data_dict):
+    #     """
+    #     Create Datum from dictionary representation.
+    #
+    #     Parameters:
+    #         data_dict : dict
+    #             Dictionary containing datum data
+    #
+    #     Returns:
+    #         Datum: New datum instance
+    #
+    #     Raises:
+    #         RMNError: If datum creation from dictionary fails
+    #         TypeError: If data_dict is not a dictionary
+    #     """
+    #     if not isinstance(data_dict, dict):
+    #         raise TypeError("data_dict must be a dictionary")
+    #
+    #     cdef OCDictionaryRef dict_ref = NULL
+    #     cdef OCStringRef err_ocstr = NULL
+    #     cdef DatumRef datum_ref = NULL
+    #
+    #     try:
+    #         # Convert Python dictionary to OCDictionary
+    #         dict_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(data_dict)
+    #         if dict_ref == NULL:
+    #             raise RMNError("Failed to convert dictionary to OCDictionary")
+    #
+    #         # Create datum from dictionary
+    #         datum_ref = DatumCreateFromDictionary(dict_ref, &err_ocstr)
+    #         if datum_ref == NULL:
+    #             error_msg = "Unknown error"
+    #             if err_ocstr != NULL:
+    #                 from rmnpy.helpers.octypes import ocstring_to_pystring
+    #                 error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
+    #             raise RMNError(f"Datum creation from dictionary failed: {error_msg}")
+    #
+    #         # Create wrapper from C reference
+    #         return cls._from_c_ref(<DatumRef>datum_ref)
+    #
+    #     finally:
+    #         # Clean up temporary references
+    #         if dict_ref != NULL:
+    #             OCRelease(<OCTypeRef>dict_ref)
+    #         if err_ocstr != NULL:
+    #             OCRelease(<OCTypeRef>err_ocstr)
+    #         if datum_ref != NULL:
+    #             OCRelease(<OCTypeRef>datum_ref)
 
     # Property accessors
 

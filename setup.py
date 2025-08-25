@@ -153,6 +153,24 @@ exts = [
         extra_compile_args=EXTRA_COMPILE,
         extra_link_args=EXTRA_LINK,
     ),
+    Extension(
+        "rmnpy.wrappers.rmnlib.datum",
+        ["src/rmnpy/wrappers/rmnlib/datum.pyx"],
+        include_dirs=INC,
+        libraries=LIBS,
+        library_dirs=LIBDIRS,
+        extra_compile_args=EXTRA_COMPILE,
+        extra_link_args=EXTRA_LINK,
+    ),
+    Extension(
+        "rmnpy.wrappers.rmnlib.geographic_coordinate",
+        ["src/rmnpy/wrappers/rmnlib/geographic_coordinate.pyx"],
+        include_dirs=INC,
+        libraries=LIBS,
+        library_dirs=LIBDIRS,
+        extra_compile_args=EXTRA_COMPILE,
+        extra_link_args=EXTRA_LINK,
+    ),
     # Helpers / quantities
     Extension(
         "rmnpy.helpers.octypes",

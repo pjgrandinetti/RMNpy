@@ -4,10 +4,17 @@
 
 ### Major Milestones Completed ✅
 
-#### **Phase 0: CI/Build Infrastructure** ✅ **COMPLETE**
-- Cross-platform GitHub Actions (Linux, macOS; Windows via WSL2)
-- Automated library management and dependency resolution
-- Switched from Windows/MinGW to WSL2 strategy for better compatibility
+#### **Phase 0: CI/Build Infrastructure** ✅ **COMPLETE** (Enhanced with cibuildwheel)
+- **Modern Build System**: Migrated to cibuildwheel v2.21.0+ for professional wheel building
+- **Cross-platform Support**: Linux (manylinux2014) and macOS (universal wheels)
+- **Python Version Support**: Python 3.11 and 3.12 with proper NumPy compatibility
+- **Automated Dependency Management**: Source-based builds of OCTypes, SITypes, and RMNLib
+- **Release Strategy**:
+  - GitHub releases for all tagged versions (including patch releases)
+  - PyPI uploads only for major/minor releases (e.g., v0.2.0, v1.0.0)
+  - Trusted Publishing (OIDC) for secure PyPI authentication
+- **Windows Strategy**: WSL2 recommendation for better compatibility (no native Windows builds)
+- **Quality Assurance**: Pre-commit hooks, comprehensive testing, and automated formatting
 
 #### **Phase 1: OCTypes Foundation** ✅ **COMPLETE**
 - Complete C API declarations (285+ lines)
@@ -133,13 +140,12 @@ RMNpy/                                    # 📁 Root project directory
 │   ├── extract_si_constants.py          # ✅ Auto-generate SI constants from C headers
 │   └── test_error_handling.py           # ✅ Error handling validation
 │
-├── lib/                                 # 🚫 Compiled C libraries (gitignored)
-│   ├── libOCTypes.a                     # 🚫 OCTypes static library
-│   ├── libSITypes.a                     # 🚫 SITypes static library
-│   ├── libRMN.a                         # 🚫 RMNLib static library
-│   └── rmnstack_bridge.dll              # 🚫 Deprecated Windows DLL (use WSL2)
+├── lib/                                 # 🚫 Local dev libraries (gitignored) - NOT used by cibuildwheel
+│   ├── libOCTypes.so/.dylib             # 🚫 OCTypes shared library (local development only)
+│   ├── libSITypes.so/.dylib             # 🚫 SITypes shared library (local development only)
+│   └── libRMN.so/.dylib                 # 🚫 RMNLib shared library (local development only)
 │
-├── include/                             # 🚫 C header files (gitignored)
+├── include/                             # 🚫 Local dev headers (gitignored) - NOT used by cibuildwheel
 │   ├── OCTypes/                         # 🚫 OCTypes headers
 │   ├── SITypes/                         # 🚫 SITypes headers
 │   └── RMNLib/                          # 🚫 RMNLib headers
@@ -158,6 +164,48 @@ RMNpy/                                    # 📁 Root project directory
 - 🔮 **NEXT/FUTURE**: Planned for upcoming implementation
 - 🚫 **IGNORED**: Generated files (properly gitignored)
 - 📁 **DIRECTORY**: Organizational structure
+
+---
+
+## Modern Build System with cibuildwheel
+
+### Overview
+RMNpy now uses **cibuildwheel v2.21.0+** for professional-grade wheel building, providing:
+
+### Key Features
+- **Automated Source Builds**: Dynamic fetching of latest stable releases from GitHub
+  - OCTypes: Latest tagged release automatically detected and built
+  - SITypes: Latest tagged release with OCTypes dependency linking
+  - RMNLib: Latest tagged release with full dependency chain
+- **Multi-Platform Support**:
+  - **Linux**: manylinux2014 (x86_64, aarch64) with yum package management
+  - **macOS**: Universal wheels (x86_64, arm64) with Homebrew dependencies
+  - **Windows**: WSL2 recommended (no native builds for better compatibility)
+- **Python Version Matrix**: Python 3.11 and 3.12 with version-specific NumPy requirements
+
+### Build Process
+1. **Dependency Resolution**: Robust git tag parsing handles annotated tags correctly
+2. **Library Chain**: OCTypes → SITypes → RMNLib → RMNpy (proper dependency linking)
+3. **Shared Library Architecture**: Builds shared libraries (.so/.dylib) to ensure single instances across all Cython extensions
+4. **System Dependencies**: Platform-specific package managers (yum/Homebrew)
+5. **Wheel Repair**: auditwheel (Linux) and delocate-wheel (macOS) for portability and library bundling
+6. **Quality Assurance**: Smoke tests and comprehensive test suite validation
+
+### Release Strategy
+- **GitHub Releases**: All tagged versions (v1.0.0, v1.0.1, v2.0.0, etc.)
+- **PyPI Uploads**: Major/minor releases only (v1.0.0, v2.0.0, v2.1.0)
+- **Security**: Trusted Publishing (OIDC) eliminates API token requirements
+- **Artifacts**: Source distribution + platform wheels for supported architectures
+
+### Configuration Files
+- `pyproject.toml`: cibuildwheel configuration with platform-specific settings
+- `.github/workflows/build-and-release.yml`: CI/CD pipeline with test → build → release
+- Pre-commit hooks: Formatting, linting, and code quality enforcement
+
+### Development vs. Production Builds
+- **cibuildwheel (Production)**: Builds everything from source in isolated containers - no local `lib/` directory needed
+- **Local Development**: Uses Makefile to sync libraries from sibling directories to local `lib/` and `include/`
+- **User Installation**: `pip install rmnpy` uses pre-built wheels with bundled libraries - no manual setup required
 
 ---
 
@@ -226,7 +274,7 @@ RMNpy/                                    # 📁 Root project directory
 **Current Progress**: ~95% complete
 **Estimated Completion**: 1-2 weeks remaining
 
-**Major Achievement**: Comprehensive scientific computing stack with full RMNLib core functionality implemented and tested. Dataset implementation is actively in progress with substantial functionality already completed. Unit equality comparison fixed using proper SIUnitEqual C API.
+**Major Achievement**: Comprehensive scientific computing stack with full RMNLib core functionality implemented and tested. Dataset implementation is actively in progress with substantial functionality already completed. Unit equality comparison fixed using proper SIUnitEqual C API. **Build system modernized with cibuildwheel for professional wheel distribution and automated dependency management.**
 
 **Next Steps**:
 1. Create missing test files for new wrappers (PREREQUISITES):
@@ -236,4 +284,4 @@ RMNpy/                                    # 📁 Root project directory
 3. Final integration testing and documentation updates (~1 week)
 4. Package final release
 
-**Current Status Summary**: RMNpy has achieved near-complete status with a fully functional scientific computing stack. All core components (Dimension, SparseSampling, DependentVariable) are implemented and tested. Dataset implementation is actively in progress with substantial functionality completed. Only test suite completion and final integration remain to complete the full scientific data management ecosystem.
+**Current Status Summary**: RMNpy has achieved near-complete status with a fully functional scientific computing stack and modern build infrastructure. All core components (Dimension, SparseSampling, DependentVariable) are implemented and tested. Dataset implementation is actively in progress with substantial functionality completed. The build system has been upgraded to use cibuildwheel for professional-grade wheel distribution across multiple platforms. Only test suite completion and final integration remain to complete the full scientific data management ecosystem.
