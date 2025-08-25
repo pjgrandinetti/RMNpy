@@ -35,8 +35,7 @@ from rmnpy.helpers.octypes import (
 from rmnpy.wrappers.rmnlib.datum cimport Datum
 from rmnpy.wrappers.rmnlib.dependent_variable cimport DependentVariable
 from rmnpy.wrappers.rmnlib.dimension cimport BaseDimension
-
-# from rmnpy.wrappers.rmnlib.geographic_coordinate cimport GeographicCoordinate  # TODO: Add when geographic_coordinate module is compiled
+from rmnpy.wrappers.rmnlib.geographic_coordinate cimport GeographicCoordinate
 
 
 cdef class Dataset:
@@ -99,7 +98,7 @@ cdef class Dataset:
                 Longer description of the dataset
             dimensions : list of BaseDimension, optional
                 List of dimension objects defining the coordinate systems
-            dependent_variables : list of DependentVariable, optional
+            dependent_variables : list of DependentVariable
                 List of dependent variable objects containing the data
             application_metadata : dict, optional
                 Dictionary of application-specific metadata
@@ -448,9 +447,7 @@ cdef class Dataset:
         if geo_ref == NULL:
             return None  # Return None if no geographic coordinate set
 
-        # TODO: Uncomment when geographic_coordinate module is compiled
-        # return GeographicCoordinate._from_c_ref(geo_ref)
-        return None  # Temporary placeholder
+        return GeographicCoordinate._from_c_ref(geo_ref)
 
     @geographic_coordinate.setter
     def geographic_coordinate(self, value):
@@ -463,13 +460,11 @@ cdef class Dataset:
         if value is None:
             # Setting to None clears the coordinate
             geo_ref = NULL
-        # TODO: Uncomment when geographic_coordinate module is compiled
-        # elif isinstance(value, GeographicCoordinate):
-        #     # Extract C reference from GeographicCoordinate object
-        #     geo_ref = (<GeographicCoordinate>value)._c_ref
+        elif isinstance(value, GeographicCoordinate):
+            # Extract C reference from GeographicCoordinate object
+            geo_ref = (<GeographicCoordinate>value)._c_ref
         else:
-            # raise TypeError("geographic_coordinate must be a GeographicCoordinate object or None")
-            raise TypeError("geographic_coordinate setter temporarily disabled - module not compiled")
+            raise TypeError("geographic_coordinate must be a GeographicCoordinate object or None")
 
         if not DatasetSetGeographicCoordinate(self._c_ref, geo_ref):
             raise RMNError("Failed to set dataset geographic coordinate")
@@ -547,42 +542,17 @@ cdef class Dataset:
         if dims_ref == NULL:
             return []  # Return empty list if no dimensions
 
-        # Convert OCArray to Python list of Dimension objects
-        cdef OCIndex count = OCArrayGetCount(dims_ref)
-        cdef list result = []
-        cdef DimensionRef dim_ref
-
-        for i in range(count):
-            dim_ref = <DimensionRef>OCArrayGetValueAtIndex(dims_ref, i)
-            if dim_ref != NULL:
-                # Use BaseDimension._from_c_ref to create appropriate wrapper type
-                dimension_wrapper = BaseDimension._from_c_ref(dim_ref)
-                result.append(dimension_wrapper)
-
-        return result
+        # Use helper function to convert OCArray to Python list of Dimension objects
+        return ocarray_to_pylist(<uint64_t>dims_ref)
 
     @dimensions.setter
     def dimensions(self, value):
         """Set the dimensions of the dataset."""
-        if not isinstance(value, (list, tuple)):
-            raise TypeError("dimensions must be a list or tuple")
-
-        # Validate that all items are dimension objects
-        for i, dim in enumerate(value):
-            if not isinstance(dim, BaseDimension):
-                raise TypeError(f"dimensions[{i}] must be a BaseDimension instance")
-
         cdef OCArrayRef dims_ref = NULL
-        cdef OCStringRef err_ocstr = NULL
-        cdef list c_refs = []
 
         try:
-            # Extract C references from dimension objects
-            for dim in value:
-                c_refs.append(<uint64_t>(<BaseDimension>dim)._c_ref)
-
-            # Create OCArray from C references
-            dims_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(c_refs)
+            # Convert Python list to OCArray using helper function
+            dims_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(value)
             if dims_ref == NULL:
                 raise RMNError("Failed to create dimensions array")
 
@@ -636,48 +606,27 @@ cdef class Dataset:
         if vars_ref == NULL:
             return []  # Return empty list if no dependent variables
 
-        # Convert OCArray to Python list of DependentVariable objects
-        cdef OCIndex count = OCArrayGetCount(<OCArrayRef>vars_ref)
-        cdef list result = []
-        cdef DependentVariableRef var_ref
-
-        for i in range(count):
-            var_ref = <DependentVariableRef>OCArrayGetValueAtIndex(<OCArrayRef>vars_ref, i)
-            if var_ref != NULL:
-                # Use DependentVariable._from_c_ref to create wrapper
-                var_wrapper = DependentVariable._from_c_ref(var_ref)
-                result.append(var_wrapper)
-
-        return result
+        # Use helper function to convert OCArray to Python list of DependentVariable objects
+        return ocarray_to_pylist(<uint64_t>vars_ref)
 
     @dependent_variables.setter
     def dependent_variables(self, value):
         """Set the dependent variables of the dataset."""
-        if not isinstance(value, (list, tuple)):
-            raise TypeError("dependent_variables must be a list or tuple")
-
-        # Validate that all items are DependentVariable objects
-        for i, var in enumerate(value):
-            if not isinstance(var, DependentVariable):
-                raise TypeError(f"dependent_variables[{i}] must be a DependentVariable instance")
-
         cdef OCArrayRef vars_ref = NULL
-        cdef OCStringRef err_ocstr = NULL
-        cdef list c_refs = []
 
         try:
-            # Extract C references from DependentVariable objects
-            for var in value:
-                c_refs.append(<uint64_t>(<DependentVariable>var)._c_ref)
-
-            # Create OCArray from C references
-            vars_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(c_refs)
+            # Convert Python list to OCArray using helper function
+            vars_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(value)
             if vars_ref == NULL:
                 raise RMNError("Failed to create dependent variables array")
 
             # Set dependent variables in dataset
             if not DatasetSetDependentVariables(<DatasetRef>self._c_ref, <OCMutableArrayRef>vars_ref):
                 raise RMNError("Failed to set dataset dependent variables")
+
+        finally:
+            if vars_ref != NULL:
+                OCRelease(<OCTypeRef>vars_ref)
 
         finally:
             if vars_ref != NULL:
@@ -930,45 +879,3 @@ cdef class Dataset:
     def __str__(self):
         """Return string representation of the dataset."""
         return self.__repr__()
-
-    @property
-    def summary(self):
-        """
-        Get a summary of the dataset contents.
-
-        Returns:
-            dict: Summary information about the dataset
-        """
-        try:
-            dimensions = self.dimensions
-            dependent_variables = self.dependent_variables
-
-            dim_summary = []
-            for i, dim in enumerate(dimensions):
-                dim_info = {
-                    'index': i,
-                    'type': dim.type,
-                    'label': getattr(dim, 'label', ''),
-                    'count': getattr(dim, 'count', 0)
-                }
-                dim_summary.append(dim_info)
-
-            var_summary = []
-            for i, var in enumerate(dependent_variables):
-                var_info = {
-                    'index': i,
-                    'name': getattr(var, 'name', ''),
-                    'quantity_type': getattr(var, 'quantity_type', ''),
-                    'size': getattr(var, 'size', 0)
-                }
-                var_summary.append(var_info)
-
-            return {
-                'name': self.name,
-                'description': self.description,
-                'dimensions': dim_summary,
-                'dependent_variables': var_summary,
-                'metadata_keys': list(self.application_metadata.keys()) if self.application_metadata else []
-            }
-        except Exception as e:
-            return {'error': f"Failed to generate summary: {str(e)}"}
