@@ -442,5 +442,112 @@ class TestGeographicCoordinateIntegration:
         assert hasattr(coord.altitude, "dimensionality")
 
 
+class TestGeographicCoordinateEquality:
+    """Test equality comparisons for GeographicCoordinate objects."""
+
+    def test_exact_equality(self):
+        """Test that identical coordinates are equal."""
+        coord1 = GeographicCoordinate(45.0, -75.0, 100.0)
+        coord2 = GeographicCoordinate(45.0, -75.0, 100.0)
+
+        assert coord1 == coord2
+        assert coord2 == coord1
+
+    def test_inequality_latitude(self):
+        """Test that coordinates with different latitudes are not equal."""
+        coord1 = GeographicCoordinate(45.0, -75.0, 100.0)
+        coord2 = GeographicCoordinate(46.0, -75.0, 100.0)
+
+        assert coord1 != coord2
+        assert coord2 != coord1
+
+    def test_inequality_longitude(self):
+        """Test that coordinates with different longitudes are not equal."""
+        coord1 = GeographicCoordinate(45.0, -75.0, 100.0)
+        coord2 = GeographicCoordinate(45.0, -76.0, 100.0)
+
+        assert coord1 != coord2
+        assert coord2 != coord1
+
+    def test_inequality_altitude(self):
+        """Test that coordinates with different altitudes are not equal."""
+        coord1 = GeographicCoordinate(45.0, -75.0, 100.0)
+        coord2 = GeographicCoordinate(45.0, -75.0, 101.0)
+
+        assert coord1 != coord2
+        assert coord2 != coord1
+
+    def test_equality_with_metadata(self):
+        """Test that coordinates with different metadata are not equal (per C API behavior)."""
+        coord1 = GeographicCoordinate(
+            45.0, -75.0, 100.0, metadata={"name": "location1"}
+        )
+        coord2 = GeographicCoordinate(
+            45.0, -75.0, 100.0, metadata={"name": "location2"}
+        )
+
+        # C API considers metadata in equality, so different metadata means not equal
+        assert coord1 != coord2
+
+    def test_equality_missing_altitude(self):
+        """Test equality when one coordinate has altitude and the other doesn't."""
+        coord1 = GeographicCoordinate(45.0, -75.0)
+        coord2 = GeographicCoordinate(45.0, -75.0, 0.0)
+
+        # Different altitude representations (None vs 0.0) are not equal
+        assert coord1 != coord2
+
+    def test_precision_tolerance(self):
+        """Test that very small differences are not considered equal (per C API behavior)."""
+        coord1 = GeographicCoordinate(45.000000001, -75.000000001, 100.000000001)
+        coord2 = GeographicCoordinate(45.000000002, -75.000000002, 100.000000002)
+
+        # C API may not consider tiny differences as equal
+        assert coord1 != coord2
+
+    def test_equality_same_parameters(self):
+        """Test that coordinates created with identical parameters are equal."""
+        # Create coordinates with identical parameters (no metadata differences)
+        coord1 = GeographicCoordinate(45.0, -75.0, 100.0)
+        coord2 = GeographicCoordinate(45.0, -75.0, 100.0)
+
+        # Should be equal if created with exactly the same parameters
+        assert coord1 == coord2
+
+    def test_inequality_with_none(self):
+        """Test that coordinates are not equal to None or other types."""
+        coord = GeographicCoordinate(45.0, -75.0, 100.0)
+
+        assert coord is not None
+        assert coord != "not a coordinate"
+        assert coord != 42
+        assert coord != [45.0, -75.0, 100.0]
+
+    def test_symmetric_equality(self):
+        """Test that equality is symmetric."""
+        coord1 = GeographicCoordinate(39.9797, -83.0515, 238.97)
+        coord2 = GeographicCoordinate(39.9797, -83.0515, 238.97)
+
+        assert coord1 == coord2
+        assert coord2 == coord1
+        assert (coord1 == coord2) == (coord2 == coord1)
+
+    def test_transitive_equality(self):
+        """Test that equality is transitive."""
+        coord1 = GeographicCoordinate(51.5074, -0.1278, 11.0)
+        coord2 = GeographicCoordinate(51.5074, -0.1278, 11.0)
+        coord3 = GeographicCoordinate(51.5074, -0.1278, 11.0)
+
+        assert coord1 == coord2
+        assert coord2 == coord3
+        assert coord1 == coord3
+
+    def test_reflexive_equality(self):
+        """Test that a coordinate is equal to itself."""
+        coord = GeographicCoordinate(48.8566, 2.3522, 35.0)
+
+        assert coord == coord
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

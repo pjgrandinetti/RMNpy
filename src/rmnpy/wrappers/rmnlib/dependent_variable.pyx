@@ -339,6 +339,11 @@ cdef class DependentVariable:
             raise RMNError("Failed to set DependentVariable size")
 
     @property
+    def _c_ref(self):
+        """Get the C reference pointer as an integer for interoperability."""
+        return <uint64_t>self._c_ref
+
+    @property
     def components(self):
         """Get the components (data arrays) of this DependentVariable."""
         if self._c_ref == NULL:

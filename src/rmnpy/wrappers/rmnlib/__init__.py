@@ -46,3 +46,11 @@ try:
 except ImportError:
     # Datum wrapper not yet built/available
     pass
+
+try:
+    from .dependent_variable import DependentVariable
+
+    __all__.append("DependentVariable")
+except ImportError:
+    # DependentVariable wrapper not yet built/available
+    pass

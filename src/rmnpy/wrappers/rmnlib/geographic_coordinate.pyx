@@ -333,8 +333,6 @@ cdef class GeographicCoordinate:
         new_gc._c_ref = copy_ref
         return new_gc
 
-    @staticmethod
-
     # Serialization methods
 
     def to_dict(self):
@@ -346,10 +344,10 @@ cdef class GeographicCoordinate:
         Raises:
             RMNError: If conversion to dictionary fails
         """
-        if self._c_ref == NULL:
+        if <void*>self._c_ref == NULL:
             raise ValueError("GeographicCoordinate not initialized")
 
-        cdef OCDictionaryRef dict_ref = GeographicCoordinateCopyAsDictionary(self._c_ref)
+        cdef OCDictionaryRef dict_ref = GeographicCoordinateCopyAsDictionary(<GeographicCoordinateRef>self._c_ref)
         if dict_ref == NULL:
             raise RMNError("Failed to convert geographic coordinate to dictionary")
 

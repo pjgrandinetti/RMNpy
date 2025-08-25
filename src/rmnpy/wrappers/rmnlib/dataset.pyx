@@ -85,8 +85,8 @@ cdef class Dataset:
         """Create Dataset wrapper from C reference pointer (Python-accessible)."""
         return Dataset._from_c_ref(<DatasetRef>dataset_ref_ptr)
 
-    def __init__(self, title=None, description=None, dimensions=None,
-                 dependent_variables, application_metadata=None,
+    def __init__(self, dependent_variables, title=None, description=None, dimensions=None,
+                 application_metadata=None,
                  dimension_precedence=None, tags=None, focus=None, previous_focus=None):
         """
         Create a new Dataset.
@@ -623,10 +623,6 @@ cdef class Dataset:
             # Set dependent variables in dataset
             if not DatasetSetDependentVariables(<DatasetRef>self._c_ref, <OCMutableArrayRef>vars_ref):
                 raise RMNError("Failed to set dataset dependent variables")
-
-        finally:
-            if vars_ref != NULL:
-                OCRelease(<OCTypeRef>vars_ref)
 
         finally:
             if vars_ref != NULL:
