@@ -29,79 +29,15 @@ from rmnpy._c_api.rmnlib cimport *
 from rmnpy._c_api.sitypes cimport *
 
 import cython
-import numpy as np  # Import moved inside functions to avoid circular import
-
-# from rmnpy.wrappers.sitypes.dimensionality import sidimensionality_to_dimensionality
-
-# Comment out imports that create circular dependencies
-# from rmnpy.wrappers.sitypes.scalar import (
-#     siscalar_create_from_pyscalar,
-#     siscalar_to_scalar,
-# )
-# from rmnpy.wrappers.sitypes.unit import siunit_to_pyunit
-
-# Comment out to avoid circular imports - use lazy imports instead
-# try:
-#     from rmnpy.wrappers.sitypes.scalar import Scalar
-#     SCALAR_AVAILABLE = True
-#     SCALAR_CLASS = Scalar  # Keep reference for _from_c_ref calls
-# except ImportError:
-#     SCALAR_AVAILABLE = False
-#     SCALAR_CLASS = None
-
-# Import Unit class for proper SIUnit conversion
-# try:
-#     from rmnpy.wrappers.sitypes.unit import Unit
-#     UNIT_AVAILABLE = True
-#     UNIT_CLASS = Unit  # Keep reference for _from_c_ref calls
-# except ImportError:
-#     UNIT_AVAILABLE = False
-#     UNIT_CLASS = None
-
-# Import Dimensionality class for proper SIDimensionality conversion
-# try:
-#     from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
-#     DIMENSIONALITY_AVAILABLE = True
-#     DIMENSIONALITY_CLASS = Dimensionality  # Keep reference for _from_c_ref calls
-# except ImportError:
-#     DIMENSIONALITY_AVAILABLE = False
-#     DIMENSIONALITY_CLASS = None
-
-# Set constants for availability flags
-DIMENSION_AVAILABLE = False
-DIMENSION_CLASSES = {}
-SCALAR_AVAILABLE = False
-UNIT_AVAILABLE = False
-DIMENSIONALITY_AVAILABLE = False
-
-# Import Dimension classes for proper RMNLib Dimension conversion
-# try:
-#     from rmnpy.wrappers.rmnlib.dimension import (
-#         BaseDimension,
-#         LabeledDimension,
-#         SIDimension,
-#         SILinearDimension,
-#         SIMonotonicDimension,
-#     )
-#     DIMENSION_AVAILABLE = True
-#     DIMENSION_CLASSES = {
-#         'BaseDimension': BaseDimension,
-#         'LabeledDimension': LabeledDimension,
-#         'SIDimension': SIDimension,
-#         'SILinearDimension': SILinearDimension,
-#         'SIMonotonicDimension': SIMonotonicDimension,
-#     }
-# except ImportError:
-#     DIMENSION_AVAILABLE = False
-#     DIMENSION_CLASSES = {}
+import numpy as np
 
 # ====================================================================================
 # Internal Helper Functions
 # ====================================================================================
 
-cdef uint64_t convert_python_to_octype(object item) except 0:
+cdef uint64_t octype_create_from_pytype(object item) except 0:
     """
-    Convert a Python object to an OCType pointer.
+    Create an OCType from a pyType.
 
     This function handles:
     1. Existing OCType pointers (from SITypes or other extensions)
@@ -120,6 +56,8 @@ cdef uint64_t convert_python_to_octype(object item) except 0:
         TypeError: If the item type cannot be converted
     """
     cdef uint64_t oc_ptr = 0
+    cdef OCTypeRef original_ref
+    cdef void* copied_ref
 
     if isinstance(item, str):
         return ocstring_create_from_pystring(item)
@@ -129,11 +67,13 @@ cdef uint64_t convert_python_to_octype(object item) except 0:
         return ocnumber_create_from_pynumber(item)
     elif isinstance(item, np.ndarray):
         return ocdata_create_from_numpy_array(item)
-    # Handle all wrapped OCTypes that have _c_ref property
+        # Handle all wrapped OCTypes that have _c_ref property
     elif hasattr(item, '_c_ref'):
         # All wrapped OCTypes (Scalar, Unit, Dimensionality, Dimension, DependentVariable, Dataset, SparseSampling)
         # store their C reference in _c_ref property
-        return <uint64_t>(<object>item)._c_ref
+        original_ref = <OCTypeRef>(<uint64_t>(<object>item)._c_ref)
+        copied_ref = OCTypeDeepCopy(original_ref)
+        return <uint64_t>copied_ref
     else:
         raise TypeError(f"Unsupported item type: {type(item)}. For collections, use specific conversion functions. For OCTypes from other libraries, pass as integer pointer.")
 
@@ -584,7 +524,7 @@ def ocarray_create_from_pylist(py_list):
                 oc_item_ptr = ocset_create_from_pyset(item)
             else:
                 # Use the generic converter for basic types and all wrapped OCTypes (including Scalar)
-                oc_item_ptr = convert_python_to_octype(item)
+                oc_item_ptr = octype_create_from_pytype(item)
 
             # Add to array
             OCArrayAppendValue(mutable_array, <const void*>oc_item_ptr)
@@ -673,7 +613,7 @@ def ocmutablearray_create_from_pylist(list py_list):
                 oc_item_ptr = ocset_create_from_pyset(item)
             else:
                 # Use the generic converter for basic types and OCTypes (including SITypes, RMNLib)
-                oc_item_ptr = convert_python_to_octype(item)
+                oc_item_ptr = octype_create_from_pytype(item)
 
             # Add to array
             OCArrayAppendValue(mutable_array, <const void*>oc_item_ptr)
@@ -745,7 +685,7 @@ def ocdict_create_from_pydict(py_dict):
                 oc_value_ptr = ocset_create_from_pyset(value)
             else:
                 # Use the generic converter for basic types and OCTypes (including SITypes, RMNLib)
-                oc_value_ptr = convert_python_to_octype(value)
+                oc_value_ptr = octype_create_from_pytype(value)
 
             # Add to dictionary
             OCDictionarySetValue(mutable_dict, <OCStringRef>oc_key_ptr, <const void*>oc_value_ptr)
@@ -884,7 +824,7 @@ def ocmutabledict_create_from_pydict(dict py_dict):
                 oc_value_ptr = ocset_create_from_pyset(value)
             else:
                 # Use the generic converter for basic types and OCTypes (including SITypes, RMNLib)
-                oc_value_ptr = convert_python_to_octype(value)
+                oc_value_ptr = octype_create_from_pytype(value)
 
             # Add to dictionary
             OCDictionarySetValue(mutable_dict, <OCStringRef>oc_key_ptr, <const void*>oc_value_ptr)
@@ -933,7 +873,7 @@ def ocset_create_from_pyset(set py_set):
         try:
             # Use the generic converter for basic types and OCTypes (including SITypes, RMNLib)
             # Note: Collections (list, dict, set) are not hashable so not allowed in sets
-            oc_item_ptr = convert_python_to_octype(item)
+            oc_item_ptr = octype_create_from_pytype(item)
 
             # Add to set
             OCSetAddValue(mutable_set, <OCTypeRef>oc_item_ptr)
@@ -1027,7 +967,7 @@ def ocmutableset_create_from_pyset(set py_set):
         try:
             # Use the generic converter for basic types and OCTypes (including SITypes, RMNLib)
             # Note: Collections (list, dict, set) are not hashable so not allowed in sets
-            oc_item_ptr = convert_python_to_octype(item)
+            oc_item_ptr = octype_create_from_pytype(item)
 
             # Add to set
             OCSetAddValue(mutable_set, <OCTypeRef>oc_item_ptr)

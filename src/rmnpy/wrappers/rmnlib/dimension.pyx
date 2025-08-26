@@ -23,7 +23,7 @@ from rmnpy._c_api.sitypes cimport *
 
 from rmnpy.exceptions import RMNError
 
-from rmnpy.wrappers.sitypes.scalar cimport Scalar, convert_to_siscalar_ref
+from rmnpy.wrappers.sitypes.scalar cimport Scalar, create_siscalar_from_pytype
 
 from rmnpy.helpers.octypes import (  # py_list_to_siscalar_ocarray,  # Function doesn't exist; ocdict_create_from_pydict,  # Use ocdict_create_from_pydict instead; ocarray_create_from_pylist,  # Use ocarray_create_from_pylist instead; ocnumber_create_from_pynumber,  # Use ocnumber_create_from_pynumber instead; pynumber_to_siscalar_expression,  # Function doesn't exist; ocstring_to_pystring,  # Use ocstring_to_pystring instead
     ocarray_create_from_pylist,
@@ -127,6 +127,48 @@ cdef class BaseDimension:
     def from_c_ref(uint64_t dim_ref_ptr):
         """Create appropriate dimension wrapper from C reference pointer (Python-accessible)."""
         return BaseDimension._from_c_ref(<DimensionRef>dim_ref_ptr)
+
+    @staticmethod
+    def from_dict(dict data):
+        """Create dimension from dictionary representation.
+
+        Args:
+            data: Dictionary containing dimension data
+
+        Returns:
+            BaseDimension: Appropriate dimension wrapper instance
+
+        Raises:
+            RMNError: If dimension creation fails
+        """
+        # Convert Python dict to OCDictionary using existing helper
+        cdef uint64_t dict_ptr = ocdict_create_from_pydict(data)
+        cdef OCDictionaryRef dict_ref = <OCDictionaryRef>dict_ptr
+
+        cdef OCStringRef err_ocstr = NULL
+        cdef DimensionRef dim_ref = NULL
+
+        try:
+            # Call C API to create dimension from dictionary
+            dim_ref = DimensionCreateFromDictionary(dict_ref, &err_ocstr)
+            if dim_ref == NULL:
+                if err_ocstr != NULL:
+                    error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
+                    raise RMNError(f"Failed to create dimension from dictionary: {error_msg}")
+                else:
+                    raise RMNError("Failed to create dimension from dictionary: Unknown error")
+
+            # Create appropriate wrapper using existing _from_c_ref logic
+            return BaseDimension._from_c_ref(dim_ref)
+
+        finally:
+            # Clean up resources using the same pattern as elsewhere in the file
+            if dim_ref != NULL:
+                OCRelease(<OCTypeRef>dim_ref)
+            if err_ocstr != NULL:
+                OCRelease(<OCTypeRef>err_ocstr)
+            if dict_ref != NULL:
+                OCRelease(<OCTypeRef>dict_ref)
 
     @property
     def type(self):
@@ -655,15 +697,15 @@ cdef class SIDimension(BaseDimension):
 
         # Convert coordinates_offset parameter to SIScalar if provided
         if coordinates_offset is not None:
-            coordinates_offset_sisclr = convert_to_siscalar_ref(coordinates_offset)
+            coordinates_offset_sisclr = create_siscalar_from_pytype(coordinates_offset)
 
         # Convert origin_offset parameter to SIScalar if provided
         if origin_offset is not None:
-            origin_offset_sisclr = convert_to_siscalar_ref(origin_offset)
+            origin_offset_sisclr = create_siscalar_from_pytype(origin_offset)
 
         # Convert period parameter to SIScalar if provided
         if period is not None:
-            period_sisclr = convert_to_siscalar_ref(period)
+            period_sisclr = create_siscalar_from_pytype(period)
 
         try:
             si_dimension = SIDimensionCreate(
@@ -719,7 +761,7 @@ cdef class SIDimension(BaseDimension):
             raise RMNError("Cannot set coordinates offset: dimension not properly initialized")
 
         # Handle both Scalar objects and strings like in __init__
-        coordinates_offset_sisclr = convert_to_siscalar_ref(value)
+        coordinates_offset_sisclr = create_siscalar_from_pytype(value)
 
         if not SIDimensionSetCoordinatesOffset(<SIDimensionRef>self._c_ref, coordinates_offset_sisclr, &err_ocstr):
             if err_ocstr != NULL:
@@ -752,7 +794,7 @@ cdef class SIDimension(BaseDimension):
             raise RMNError("Cannot set origin offset: dimension not properly initialized")
 
         # Handle both Scalar objects and strings like in __init__
-        origin_offset_sisclr = convert_to_siscalar_ref(value)
+        origin_offset_sisclr = create_siscalar_from_pytype(value)
 
         if not SIDimensionSetOriginOffset(<SIDimensionRef>self._c_ref, origin_offset_sisclr, &err_ocstr):
             if err_ocstr != NULL:
@@ -816,7 +858,7 @@ cdef class SIDimension(BaseDimension):
             return
 
         # Handle both Scalar objects and strings like in __init__
-        period_sisclr = convert_to_siscalar_ref(value)
+        period_sisclr = create_siscalar_from_pytype(value)
 
         if not SIDimensionSetPeriod(<SIDimensionRef>self._c_ref, period_sisclr, &err_ocstr):
             if err_ocstr != NULL:
@@ -989,19 +1031,19 @@ cdef class LinearDimension(SIDimension):
 
         # Convert increment parameter to SIScalar (required parameter)
         if increment is not None:
-            increment_sisclr = convert_to_siscalar_ref(increment)
+            increment_sisclr = create_siscalar_from_pytype(increment)
 
         # Convert coordinates_offset parameter to SIScalar if provided
         if coordinates_offset is not None:
-            coordinates_offset_sisclr = convert_to_siscalar_ref(coordinates_offset)
+            coordinates_offset_sisclr = create_siscalar_from_pytype(coordinates_offset)
 
         # Convert origin_offset parameter to SIScalar if provided
         if origin_offset is not None:
-            origin_offset_sisclr = convert_to_siscalar_ref(origin_offset)
+            origin_offset_sisclr = create_siscalar_from_pytype(origin_offset)
 
         # Convert period parameter to SIScalar if provided
         if period is not None:
-            period_sisclr = convert_to_siscalar_ref(period)
+            period_sisclr = create_siscalar_from_pytype(period)
 
         cdef SIDimensionRef reciprocal_ref = NULL
 
@@ -1080,7 +1122,7 @@ cdef class LinearDimension(SIDimension):
         if self._c_ref == NULL:
             raise RMNError("Cannot set increment: dimension not properly initialized")
 
-        increment_sisclr = convert_to_siscalar_ref(value)
+        increment_sisclr = create_siscalar_from_pytype(value)
 
         if increment_sisclr == NULL:
             raise RMNError("Failed to convert increment value to SIScalar")
@@ -1231,7 +1273,7 @@ cdef class MonotonicDimension(SIDimension):
 
         # Convert each coordinate to an SIScalar object using the helper function
         for coord_value in coordinates:
-            coord_scalar = convert_to_siscalar_ref(coord_value)
+            coord_scalar = create_siscalar_from_pytype(coord_value)
             if coord_scalar == NULL:
                 OCRelease(<OCTypeRef>coords_array)
                 raise RMNError(f"Failed to create SIScalar for coordinate value {coord_value}")
@@ -1251,15 +1293,15 @@ cdef class MonotonicDimension(SIDimension):
 
         # Convert coordinates_offset parameter to SIScalar if provided
         if coordinates_offset is not None:
-            coordinates_offset_sisclr = convert_to_siscalar_ref(coordinates_offset)
+            coordinates_offset_sisclr = create_siscalar_from_pytype(coordinates_offset)
 
         # Convert origin_offset parameter to SIScalar if provided
         if origin_offset is not None:
-            origin_offset_sisclr = convert_to_siscalar_ref(origin_offset)
+            origin_offset_sisclr = create_siscalar_from_pytype(origin_offset)
 
         # Convert period parameter to SIScalar if provided
         if period is not None:
-            period_sisclr = convert_to_siscalar_ref(period)
+            period_sisclr = create_siscalar_from_pytype(period)
 
         # Convert reciprocal parameter to SIDimensionRef if provided
         if reciprocal is not None:

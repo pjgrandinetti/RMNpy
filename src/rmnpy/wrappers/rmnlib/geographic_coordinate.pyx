@@ -23,7 +23,7 @@ from rmnpy.helpers.octypes import (
 )
 
 # Import SITypes wrappers
-from rmnpy.wrappers.sitypes.scalar cimport Scalar, convert_to_siscalar_ref
+from rmnpy.wrappers.sitypes.scalar cimport Scalar, create_siscalar_from_pytype
 from rmnpy.wrappers.sitypes.scalar import Scalar
 
 
@@ -98,18 +98,18 @@ cdef class GeographicCoordinate:
 
         try:
             # Convert latitude
-            lat_ref = convert_to_siscalar_ref(latitude)
+            lat_ref = create_siscalar_from_pytype(latitude)
             if lat_ref == NULL:
                 raise RMNError("Failed to convert latitude to SIScalar")
 
             # Convert longitude
-            lon_ref = convert_to_siscalar_ref(longitude)
+            lon_ref = create_siscalar_from_pytype(longitude)
             if lon_ref == NULL:
                 raise RMNError("Failed to convert longitude to SIScalar")
 
             # Convert altitude if provided
             if altitude is not None:
-                alt_ref = convert_to_siscalar_ref(altitude)
+                alt_ref = create_siscalar_from_pytype(altitude)
                 if alt_ref == NULL:
                     raise RMNError("Failed to convert altitude to SIScalar")
 
@@ -168,7 +168,7 @@ cdef class GeographicCoordinate:
                 raise RMNError(f"GeographicCoordinate creation from dictionary failed: {error_msg}")
 
             # Create wrapper from C reference
-            return cls._from_c_ref(<uint64_t>coord_ref)
+            return GeographicCoordinate._from_c_ref(coord_ref)
 
         finally:
             # Clean up temporary references
@@ -208,7 +208,7 @@ cdef class GeographicCoordinate:
         cdef SIScalarRef lat_ref = NULL
 
         try:
-            lat_ref = convert_to_siscalar_ref(value)
+            lat_ref = create_siscalar_from_pytype(value)
             if lat_ref == NULL:
                 raise RMNError("Failed to convert latitude to SIScalar")
 
@@ -239,7 +239,7 @@ cdef class GeographicCoordinate:
         cdef SIScalarRef lon_ref = NULL
 
         try:
-            lon_ref = convert_to_siscalar_ref(value)
+            lon_ref = create_siscalar_from_pytype(value)
             if lon_ref == NULL:
                 raise RMNError("Failed to convert longitude to SIScalar")
 
@@ -274,7 +274,7 @@ cdef class GeographicCoordinate:
                 # Setting altitude to None/NULL
                 alt_ref = NULL
             else:
-                alt_ref = convert_to_siscalar_ref(value)
+                alt_ref = create_siscalar_from_pytype(value)
                 if alt_ref == NULL:
                     raise RMNError("Failed to convert altitude to SIScalar")
 

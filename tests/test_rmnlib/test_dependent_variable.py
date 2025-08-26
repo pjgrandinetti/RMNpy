@@ -5,8 +5,7 @@ Test suite for DependentVariable wrapper based on the C test suite
 import numpy as np
 
 from rmnpy import DependentVariable
-from rmnpy.sitypes import quantity as q
-from rmnpy.sitypes import Unit
+from rmnpy.sitypes import Unit, quantity as q
 
 
 class TestDependentVariableBasics:
@@ -329,3 +328,141 @@ class TestDependentVariableImportStyles:
         # Test accessing quantities through new namespace
         assert hasattr(rmn.sitypes.quantity, "Dimensionless")
         assert rmn.sitypes.quantity.Dimensionless == "dimensionless"
+
+
+class TestDependentVariableRoundTrip:
+    """Test round trip functionality for DependentVariable serialization/deserialization."""
+
+    def test_basic_round_trip(self):
+        """Test basic DependentVariable to_dict() and from_dict() round trip."""
+        # Create a DependentVariable with various properties
+        data = np.array([1.0, 2.0, 3.0, 4.0, 5.0], dtype=np.float64)
+        original = DependentVariable(
+            components=[data],
+            name="test_variable",
+            description="Test dependent variable for round trip",
+            unit=Unit("Hz"),
+            quantity_name="frequency",
+            quantity_type="scalar",
+            element_type="float64",
+        )
+
+        # Convert to dictionary
+        dv_dict = original.to_dict()
+        assert isinstance(dv_dict, dict)
+        assert dv_dict["type"] == "internal"  # Internal DependentVariable type
+        assert dv_dict["name"] == "test_variable"
+        assert dv_dict["description"] == "Test dependent variable for round trip"
+        assert dv_dict["quantity_name"] == "frequency"
+        assert dv_dict["quantity_type"] == "scalar"
+
+        # Round trip: create new DependentVariable from dictionary
+        restored = DependentVariable.from_dict(dv_dict)
+
+        # Verify the restored DependentVariable
+        assert restored.name == original.name
+        assert restored.description == original.description
+        assert restored.quantity_name == original.quantity_name
+        assert restored.quantity_type == original.quantity_type
+        assert restored.size == original.size
+        assert restored.component_count == original.component_count
+
+        # Check that data is preserved
+        original_data = original.components[0]
+        restored_data = restored.components[0]
+        np.testing.assert_array_equal(original_data, restored_data)
+
+    def test_minimal_round_trip(self):
+        """Test round trip with minimal DependentVariable."""
+        # Create minimal DependentVariable
+        data = np.array([10.0, 20.0], dtype=np.float64)
+        original = DependentVariable(
+            components=[data],
+            unit=Unit("m"),  # Just specify unit
+            quantity_name="length",
+        )
+
+        # Round trip
+        dv_dict = original.to_dict()
+        restored = DependentVariable.from_dict(dv_dict)
+
+        # Verify essential properties
+        assert restored.quantity_name == original.quantity_name
+        assert restored.size == original.size
+        np.testing.assert_array_equal(original.components[0], restored.components[0])
+
+    def test_multi_component_round_trip(self):
+        """Test round trip with DependentVariable that could support multiple components."""
+        # For now, just test with one component since multi-component creation seems constrained
+        data = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+        original = DependentVariable(
+            components=[data],
+            name="multi_component_signal",
+            description="Signal with multiple components",
+            unit=Unit("V"),
+            quantity_name="voltage",
+            quantity_type="scalar",
+        )
+
+        # Round trip
+        dv_dict = original.to_dict()
+        restored = DependentVariable.from_dict(dv_dict)
+
+        # Verify properties
+        assert restored.name == original.name
+        assert restored.description == original.description
+        assert restored.quantity_type == original.quantity_type
+        assert restored.component_count == 1
+        assert len(restored.components) == 1
+
+        # Check component data
+        np.testing.assert_array_equal(original.components[0], restored.components[0])
+
+    def test_from_dict_error_handling(self):
+        """Test error handling in from_dict method."""
+        import pytest
+
+        from rmnpy.exceptions import RMNError
+
+        # Test with invalid dictionary
+        invalid_dict = {"type": "invalid_type"}
+
+        with pytest.raises(RMNError):
+            DependentVariable.from_dict(invalid_dict)
+
+        # Test with empty dictionary - should also fail for DependentVariable
+        with pytest.raises(RMNError):
+            DependentVariable.from_dict({})
+
+    def test_to_dict_structure(self):
+        """Test that to_dict returns expected dictionary structure."""
+        data = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+        dv = DependentVariable(
+            components=[data],
+            name="test",
+            description="test description",
+            unit=Unit("s"),
+            quantity_name="time",
+        )
+
+        dv_dict = dv.to_dict()
+
+        # Check required keys are present
+        required_keys = [
+            "type",
+            "name",
+            "description",
+            "quantity_name",
+            "quantity_type",
+            "unit",
+            "numeric_type",
+            "components",
+        ]
+        for key in required_keys:
+            assert key in dv_dict, f"Missing required key: {key}"
+
+        # Check specific values
+        assert dv_dict["type"] == "internal"
+        assert dv_dict["name"] == "test"
+        assert dv_dict["description"] == "test description"
+        assert dv_dict["quantity_name"] == "time"

@@ -210,48 +210,43 @@ class TestGeographicCoordinateSerialization:
         # Check that metadata is preserved
         assert "application" in data_dict or "metadata" in data_dict
 
-    # TODO: Re-enable when from_dict method is implemented
-    # def test_from_dict_round_trip(self):
-    #     """Test creating coordinate from dictionary (round-trip)."""
-    #     original = GeographicCoordinate(39.9797, -83.0515, 238.97, {"source": "test"})
-    #
-    #     # Convert to dict and back
-    #     coord_dict = original.to_dict()
-    #     restored = GeographicCoordinate.from_dict(coord_dict)
-    #
-    #     # Verify values match
-    #     assert restored.latitude.value == pytest.approx(original.latitude.value)
-    #     assert restored.longitude.value == pytest.approx(original.longitude.value)
-    #     assert restored.altitude.value == pytest.approx(original.altitude.value)
-    #     assert restored.metadata["source"] == original.metadata["source"]
+    def test_from_dict_round_trip(self):
+        """Test creating coordinate from dictionary (round-trip)."""
+        original = GeographicCoordinate(39.9797, -83.0515, 238.97, {"source": "test"})
 
-    # NOTE: from_dict tests are temporarily disabled due to compilation issues
-    # TODO: Re-enable once from_dict method is fixed
+        # Convert to dict and back
+        coord_dict = original.to_dict()
+        restored = GeographicCoordinate.from_dict(coord_dict)
 
-    # def test_from_dict_roundtrip(self):
-    #     """Test round-trip conversion: coordinate -> dict -> coordinate."""
-    #     original = GeographicCoordinate(39.9797, -83.0515, 238.97)
-    #     data_dict = original.to_dict()
-    #     restored = GeographicCoordinate.from_dict(data_dict)
-    #
-    #     assert restored.latitude.value == pytest.approx(original.latitude.value)
-    #     assert restored.longitude.value == pytest.approx(original.longitude.value)
-    #     assert restored.altitude.value == pytest.approx(original.altitude.value)
+        # Verify values match
+        assert restored.latitude.value == pytest.approx(original.latitude.value)
+        assert restored.longitude.value == pytest.approx(original.longitude.value)
+        assert restored.altitude.value == pytest.approx(original.altitude.value)
 
-    # def test_from_dict_csdm_format(self):
-    #     """Test creating coordinate from CSDM-style dictionary."""
-    #     # Based on CSDM test files format
-    #     csdm_dict = {
-    #         "latitude": "39.97968794964322 °",
-    #         "longitude": "-83.05154573892345 °",
-    #         "altitude": "238.9719543457031 m"
-    #     }
-    #
-    #     coord = GeographicCoordinate.from_dict(csdm_dict)
-    #
-    #     assert coord.latitude.value == pytest.approx(39.9797, abs=1e-4)
-    #     assert coord.longitude.value == pytest.approx(-83.0515, abs=1e-4)
-    #     assert coord.altitude.value == pytest.approx(238.97, abs=1e-2)
+    def test_from_dict_roundtrip(self):
+        """Test round-trip conversion: coordinate -> dict -> coordinate."""
+        original = GeographicCoordinate(39.9797, -83.0515, 238.97)
+        data_dict = original.to_dict()
+        restored = GeographicCoordinate.from_dict(data_dict)
+
+        assert restored.latitude.value == pytest.approx(original.latitude.value)
+        assert restored.longitude.value == pytest.approx(original.longitude.value)
+        assert restored.altitude.value == pytest.approx(original.altitude.value)
+
+    def test_from_dict_csdm_format(self):
+        """Test creating coordinate from CSDM-style dictionary."""
+        # Based on CSDM test files format
+        csdm_dict = {
+            "latitude": "39.97968794964322 °",
+            "longitude": "-83.05154573892345 °",
+            "altitude": "238.9719543457031 m",
+        }
+
+        coord = GeographicCoordinate.from_dict(csdm_dict)
+
+        assert coord.latitude.value == pytest.approx(39.9797, abs=1e-4)
+        assert coord.longitude.value == pytest.approx(-83.0515, abs=1e-4)
+        assert coord.altitude.value == pytest.approx(238.97, abs=1e-2)
 
     # def test_from_dict_without_altitude(self):
     #     """Test creating coordinate from dictionary without altitude."""

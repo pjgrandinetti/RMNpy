@@ -27,7 +27,7 @@ from rmnpy.helpers.octypes import (
 )
 
 # Import SITypes wrappers
-from rmnpy.wrappers.sitypes.scalar cimport Scalar, convert_to_siscalar_ref
+from rmnpy.wrappers.sitypes.scalar cimport Scalar, create_siscalar_from_pytype
 from rmnpy.wrappers.sitypes.scalar import Scalar
 
 
@@ -103,10 +103,11 @@ cdef class Datum:
 
         cdef SIScalarRef response_ref = NULL
         cdef OCArrayRef coords_ref = NULL
+        cdef OCStringRef error = NULL
 
         try:
             # Convert response scalar
-            response_ref = convert_to_siscalar_ref(response)
+            response_ref = create_siscalar_from_pytype(response)
             if response_ref == NULL:
                 raise RMNError("Failed to convert response to SIScalar")
 
@@ -128,16 +129,21 @@ cdef class Datum:
             if not isinstance(mem_offset, int) or mem_offset < 0:
                 raise TypeError("mem_offset must be a non-negative integer")
 
-            # Create the datum
+            # Create the datum with error handling
             self._c_ref = DatumCreate(
                 response_ref,
                 coords_ref,
                 <OCIndex>dependent_variable_index,
                 <OCIndex>component_index,
-                <OCIndex>mem_offset
+                <OCIndex>mem_offset,
+                &error
             )
             if self._c_ref == NULL:
-                raise RMNError("Datum creation failed")
+                error_msg = "Datum creation failed"
+                if error != NULL:
+                    error_msg = f"Datum creation failed: {OCStringGetCString(error)}"
+                    OCRelease(error)
+                raise RMNError(error_msg)
 
         finally:
             # Note: response_ref and coord_refs are references to converted scalars
@@ -338,6 +344,56 @@ cdef class Datum:
             return ocdict_to_pydict(<uint64_t>dict_ref)
         finally:
             OCRelease(<OCTypeRef>dict_ref)
+
+    @classmethod
+    def from_dict(cls, data_dict):
+        """
+        Create a Datum from dictionary representation.
+
+        Args:
+            data_dict (dict): Dictionary representation of the datum
+
+        Returns:
+            Datum: New Datum instance created from dictionary
+
+        Raises:
+            RMNError: If creation from dictionary fails
+        """
+        if not isinstance(data_dict, dict):
+            raise TypeError("Expected dictionary input")
+
+        # Convert Python dict to OCDictionary
+        cdef uint64_t oc_dict_addr = ocdict_create_from_pydict(data_dict)
+        if oc_dict_addr == 0:
+            raise RMNError("Failed to convert dictionary to OCDictionary")
+
+        cdef OCDictionaryRef oc_dict = <OCDictionaryRef>oc_dict_addr
+        cdef OCStringRef error = NULL
+        cdef DatumRef datum_ref = NULL
+        cdef const char* error_str
+
+        try:
+            datum_ref = DatumCreateFromDictionary(oc_dict, &error)
+            if datum_ref == NULL:
+                if error != NULL:
+                    # Extract error message from OCString
+                    error_str = OCStringGetCString(error)
+                    error_msg = error_str.decode('utf-8') if error_str else "Unknown error"
+                    OCRelease(<OCTypeRef>error)
+                    raise RMNError(f"Failed to create Datum from dictionary: {error_msg}")
+                else:
+                    raise RMNError("Failed to create Datum from dictionary")
+
+            # Create Python wrapper using existing _from_c_ref method
+            return Datum._from_c_ref(datum_ref)
+
+        finally:
+            if datum_ref != NULL:
+                OCRelease(<OCTypeRef>datum_ref)
+            if oc_dict != NULL:
+                OCRelease(<OCTypeRef>oc_dict)
+            if error != NULL:
+                OCRelease(<OCTypeRef>error)
 
     def dict(self):
         """

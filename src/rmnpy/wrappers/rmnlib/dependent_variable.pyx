@@ -33,7 +33,7 @@ from rmnpy.helpers.octypes import (
 # Import the helper function and Unit class from unit.pyx
 
 from rmnpy.wrappers.rmnlib.sparse_sampling cimport SparseSampling
-from rmnpy.wrappers.sitypes.unit cimport Unit, convert_to_siunit_ref
+from rmnpy.wrappers.sitypes.unit cimport Unit, siunit_from_pytype
 
 
 cdef class DependentVariable:
@@ -73,6 +73,48 @@ cdef class DependentVariable:
     def from_c_ref(uint64_t dep_var_ref_ptr):
         """Create DependentVariable wrapper from C reference pointer (Python-accessible)."""
         return DependentVariable._from_c_ref(<DependentVariableRef>dep_var_ref_ptr)
+
+    @staticmethod
+    def from_dict(dict data):
+        """Create DependentVariable from dictionary representation.
+
+        Args:
+            data: Dictionary containing dependent variable data
+
+        Returns:
+            DependentVariable: New DependentVariable instance
+
+        Raises:
+            RMNError: If dependent variable creation fails
+        """
+        # Convert Python dict to OCDictionary using existing helper
+        cdef uint64_t dict_ptr = ocdict_create_from_pydict(data)
+        cdef OCDictionaryRef dict_ref = <OCDictionaryRef>dict_ptr
+
+        cdef OCStringRef err_ocstr = NULL
+        cdef DependentVariableRef dv_ref = NULL
+
+        try:
+            # Call C API to create dependent variable from dictionary
+            dv_ref = DependentVariableCreateFromDictionary(dict_ref, &err_ocstr)
+            if dv_ref == NULL:
+                if err_ocstr != NULL:
+                    error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
+                    raise RMNError(f"Failed to create dependent variable from dictionary: {error_msg}")
+                else:
+                    raise RMNError("Failed to create dependent variable from dictionary: Unknown error")
+
+            # Create wrapper using existing _from_c_ref logic (_from_c_ref makes a copy)
+            return DependentVariable._from_c_ref(dv_ref)
+
+        finally:
+            # Clean up resources
+            if dv_ref != NULL:
+                OCRelease(<OCTypeRef>dv_ref)
+            if err_ocstr != NULL:
+                OCRelease(<OCTypeRef>err_ocstr)
+            if dict_ref != NULL:
+                OCRelease(<OCTypeRef>dict_ref)
 
     def __init__(self,
                  components,
@@ -125,8 +167,8 @@ cdef class DependentVariable:
             if description is not None:
                 desc_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(description)
 
-            # Convert unit using the helper function
-            unit_ref = convert_to_siunit_ref(unit)
+            # Convert unit or string using the helper function
+            unit_ref = siunit_from_pytype(unit)
 
             if quantity_name is not None:
                 quantity_name_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(quantity_name)
@@ -196,6 +238,11 @@ cdef class DependentVariable:
             raise ValueError(f"Invalid element_type: {element_type}. Use a valid OCNumberType name.")
 
         return result
+
+    @property
+    def _c_ref(self):
+        """Get the C reference as uint64_t for use by octypes helpers."""
+        return <uint64_t><void*>self._c_ref
 
     @property
     def name(self):
@@ -337,11 +384,6 @@ cdef class DependentVariable:
         cdef bint success = DependentVariableSetSize(self._c_ref, new_size)
         if not success:
             raise RMNError("Failed to set DependentVariable size")
-
-    @property
-    def _c_ref(self):
-        """Get the C reference pointer as an integer for interoperability."""
-        return <uint64_t>self._c_ref
 
     @property
     def components(self):
@@ -521,6 +563,27 @@ cdef class DependentVariable:
         finally:
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
+
+    def to_dict(self):
+        """Convert DependentVariable to dictionary representation.
+
+        Returns:
+            dict: Dictionary containing dependent variable data
+
+        Raises:
+            RMNError: If conversion fails
+        """
+        if self._c_ref == NULL:
+            raise ValueError("DependentVariable not initialized")
+
+        cdef OCDictionaryRef dict_ref = DependentVariableCopyAsDictionary(self._c_ref)
+        if dict_ref == NULL:
+            raise RMNError("Failed to convert DependentVariable to dictionary")
+
+        try:
+            return ocdict_to_pydict(<uint64_t>dict_ref)
+        finally:
+            OCRelease(<OCTypeRef>dict_ref)
 
     def __str__(self):
         """String representation showing key properties."""

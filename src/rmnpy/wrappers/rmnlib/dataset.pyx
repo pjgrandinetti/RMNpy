@@ -74,7 +74,6 @@ cdef class Dataset:
         if dataset_ref == NULL:
             raise RMNError("Cannot create wrapper from NULL dataset reference")
         cdef DatasetRef copied_ref = DatasetCreateCopy(dataset_ref)
-
         if copied_ref == NULL:
             raise RMNError("Failed to create copy of Dataset")
         result._c_ref = copied_ref
@@ -244,8 +243,7 @@ cdef class Dataset:
                 error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
                 raise RMNError(f"Dataset creation from dictionary failed: {error_msg}")
 
-            # Create wrapper from C reference
-            return cls._from_c_ref(<uint64_t>dataset_ref)
+            return Dataset._from_c_ref(dataset_ref)
 
         finally:
             # Clean up temporary references
@@ -851,7 +849,7 @@ cdef class Dataset:
                 error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
                 raise RMNError(f"Dataset import failed: {error_msg}")
 
-            return cls._from_c_ref(<uint64_t>dataset_ref)
+            return Dataset._from_c_ref(dataset_ref)
 
         finally:
             if err_ocstr != NULL:

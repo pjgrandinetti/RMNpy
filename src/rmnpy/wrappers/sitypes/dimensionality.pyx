@@ -14,7 +14,7 @@ from rmnpy._c_api.octypes cimport (
 from rmnpy._c_api.sitypes cimport *
 
 from rmnpy.exceptions import RMNError
-from rmnpy.helpers.octypes import ocstring_to_pystring
+from rmnpy.helpers.octypes import ocstring_create_from_pystring, ocstring_to_pystring
 
 from libc.stdint cimport uint64_t
 
@@ -430,3 +430,52 @@ cdef class Dimensionality:
             raise RMNError("Dimensionality power operation failed")
 
         return Dimensionality._from_c_ref(result)
+
+
+# Helper function for converting various input types to SIDimensionalityRef
+cdef SIDimensionalityRef sidimensionality_from_pytype(value) except NULL:
+    """
+    Convert various input types to SIDimensionalityRef.
+
+    Accepts:
+    - Dimensionality objects: Returns their C reference
+    - str: Creates Dimensionality from string expression
+    - None: Returns dimensionless dimensionality
+
+    Returns:
+        SIDimensionalityRef: C reference to dimensionality (caller owns reference and must release)
+
+    Raises:
+        TypeError: If input type is not supported
+        RMNError: If dimensionality creation fails
+    """
+    cdef Dimensionality temp_dim
+    cdef OCStringRef expr_ocstr = NULL
+    cdef OCStringRef error_ocstr = NULL
+    cdef SIDimensionalityRef result = NULL
+
+    if value is None:
+        return SIDimensionalityDimensionless()
+    elif isinstance(value, Dimensionality):
+        # Return the C reference directly
+        return (<Dimensionality>value)._c_ref
+    elif isinstance(value, str):
+        # Create Dimensionality from string and return its C reference
+        try:
+            expr_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
+            result = SIDimensionalityFromExpression(expr_ocstr, &error_ocstr)
+
+            if error_ocstr != NULL:
+                error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
+                OCRelease(<OCTypeRef>error_ocstr)
+                raise RMNError(f"Failed to create dimensionality from expression '{value}': {error_msg}")
+
+            if result == NULL:
+                raise RMNError(f"Failed to create dimensionality from expression '{value}'")
+
+            return result
+        finally:
+            if expr_ocstr != NULL:
+                OCRelease(<OCTypeRef>expr_ocstr)
+    else:
+        raise TypeError(f"Cannot convert {type(value)} to SIDimensionalityRef")

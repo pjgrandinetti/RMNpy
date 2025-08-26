@@ -320,3 +320,9 @@ cdef extern from "SITypes/SIQuantity.h":
     bint SIQuantityHasSameReducedDimensionality(SIQuantityRef input1, SIQuantityRef input2)
     SINumberType SIQuantityLargerNumericType(SIQuantityRef input1, SIQuantityRef input2)
     SINumberType SIQuantitySmallerNumericType(SIQuantityRef input1, SIQuantityRef input2)
+
+    # Duck typing validation (SITypes v0.1.12)
+    bint SIQuantityValidateMixedArrayForDimensionality(OCArrayRef array, SIDimensionalityRef expectedDim, OCStringRef *outError)
+
+    # Helper functions for coordinate conversion
+    OCArrayRef SIScalarCreateArrayFromMixedTypeArray(OCArrayRef numbers, OCStringRef *outError)

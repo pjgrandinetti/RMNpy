@@ -921,5 +921,167 @@ class TestCAPIValidation:
             MonotonicDimension(coordinates=[1.0])  # Only 1 coordinate
 
 
+class TestDimensionRoundTrip:
+    """Test round trip functionality for dimension serialization/deserialization."""
+
+    def test_linear_dimension_round_trip(self):
+        """Test LinearDimension to_dict() and from_dict() round trip."""
+        from rmnpy.wrappers.rmnlib.dimension import BaseDimension
+
+        # Create a LinearDimension with various properties
+        original = LinearDimension(
+            count=10,
+            increment="5.0 Hz",
+            label="frequency",
+            description="Linear frequency dimension",
+            quantity_name="frequency",
+            coordinates_offset="100.0 Hz",
+            origin_offset="50.0 Hz",
+            application={"test_key": "test_value"},
+        )
+
+        # Convert to dictionary
+        dim_dict = original.to_dict()
+        assert isinstance(dim_dict, dict)
+        assert dim_dict["type"] == "linear"
+        assert dim_dict["count"] == 10
+        assert dim_dict["label"] == "frequency"
+        assert dim_dict["description"] == "Linear frequency dimension"
+        assert dim_dict["quantity_name"] == "frequency"
+
+        # Round trip: create new dimension from dictionary
+        restored = BaseDimension.from_dict(dim_dict)
+
+        # Verify the restored dimension
+        assert isinstance(restored, LinearDimension)
+        assert restored.type == "linear"
+        assert restored.count == 10
+        assert restored.label == "frequency"
+        assert restored.description == "Linear frequency dimension"
+        assert restored.quantity_name == "frequency"
+        assert restored.increment.value == 5.0  # Check numeric value
+        assert restored.coordinates_offset.value == 100.0
+        assert restored.origin_offset.value == 50.0
+        assert restored.application == {"test_key": "test_value"}
+
+    def test_labeled_dimension_round_trip(self):
+        """Test LabeledDimension to_dict() and from_dict() round trip."""
+        from rmnpy.wrappers.rmnlib.dimension import BaseDimension
+
+        # Create a LabeledDimension
+        labels = ["red", "green", "blue", "alpha"]
+        original = LabeledDimension(
+            labels=labels,
+            label="color_channel",
+            description="RGBA color channels",
+            application={"encoding": "sRGB"},
+        )
+
+        # Convert to dictionary
+        dim_dict = original.to_dict()
+        assert isinstance(dim_dict, dict)
+        assert dim_dict["type"] == "labeled"
+        assert original.count == 4  # Check count on original object
+        assert dim_dict["label"] == "color_channel"
+        assert dim_dict["description"] == "RGBA color channels"
+        assert "labels" in dim_dict  # LabeledDimension uses "labels" key
+
+        # Round trip: create new dimension from dictionary
+        restored = BaseDimension.from_dict(dim_dict)
+
+        # Verify the restored dimension
+        assert isinstance(restored, LabeledDimension)
+        assert restored.type == "labeled"
+        assert restored.count == 4
+        assert restored.label == "color_channel"
+        assert restored.description == "RGBA color channels"
+        assert restored.application == {"encoding": "sRGB"}
+
+        # Check that coordinate labels are preserved
+        restored_labels = restored.coordinate_labels
+        assert len(restored_labels) == 4
+        assert list(restored_labels) == labels
+
+    def test_monotonic_dimension_round_trip(self):
+        """Test MonotonicDimension to_dict() and from_dict() round trip."""
+        from rmnpy.wrappers.rmnlib.dimension import BaseDimension
+
+        # Create a MonotonicDimension with irregular spacing
+        coordinates = ["1.0 s", "2.5 s", "5.0 s", "10.0 s", "20.0 s"]
+        original = MonotonicDimension(
+            coordinates=coordinates,
+            label="time_points",
+            description="Irregular time sampling",
+            quantity_name="time",
+        )
+
+        # Convert to dictionary
+        dim_dict = original.to_dict()
+        assert isinstance(dim_dict, dict)
+        assert dim_dict["type"] == "monotonic"
+        assert original.count == 5  # Check count on original object
+        assert dim_dict["label"] == "time_points"
+        assert dim_dict["description"] == "Irregular time sampling"
+        assert dim_dict["quantity_name"] == "time"
+        assert "coordinates" in dim_dict  # MonotonicDimension uses "coordinates" key
+
+        # Round trip: create new dimension from dictionary
+        restored = BaseDimension.from_dict(dim_dict)
+
+        # Verify the restored dimension
+        assert isinstance(restored, MonotonicDimension)
+        assert restored.type == "monotonic"
+        assert restored.count == 5
+        assert restored.label == "time_points"
+        assert restored.description == "Irregular time sampling"
+        assert restored.quantity_name == "time"
+
+        # Check that coordinates are preserved (values should match)
+        original_coords = original.coordinates
+        restored_coords = restored.coordinates
+        assert len(restored_coords) == len(original_coords)
+        for orig, rest in zip(original_coords, restored_coords):
+            assert orig.value == rest.value  # Compare numeric values
+
+    def test_round_trip_preserves_equality(self):
+        """Test that round trip preserves dimension equality."""
+        from rmnpy.wrappers.rmnlib.dimension import BaseDimension
+
+        # Test with LinearDimension
+        original = LinearDimension(
+            count=5, increment="2.0 Hz", label="test", description="equality test"
+        )
+
+        dim_dict = original.to_dict()
+        restored = BaseDimension.from_dict(dim_dict)
+
+        # The dimensions should be equal (same content)
+        assert original == restored
+
+        # Test with LabeledDimension
+        original_labeled = LabeledDimension(labels=["A", "B", "C"], label="letters")
+
+        labeled_dict = original_labeled.to_dict()
+        restored_labeled = BaseDimension.from_dict(labeled_dict)
+
+        assert original_labeled == restored_labeled
+
+    def test_from_dict_error_handling(self):
+        """Test error handling in from_dict method."""
+        from rmnpy.exceptions import RMNError
+        from rmnpy.wrappers.rmnlib.dimension import BaseDimension
+
+        # Test with invalid dictionary (invalid type)
+        invalid_dict = {"type": "invalid_type"}
+
+        with pytest.raises(RMNError):
+            BaseDimension.from_dict(invalid_dict)
+
+        # Test with empty dictionary - this actually succeeds and creates a default dimension
+        result = BaseDimension.from_dict({})
+        assert result is not None
+        assert result.type == "dimension"  # Default base dimension type
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

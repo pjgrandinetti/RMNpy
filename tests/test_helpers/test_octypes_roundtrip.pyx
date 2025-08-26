@@ -790,7 +790,7 @@ def test_extensible_collections():
             True,
             np.array([4, 5, 6], dtype=np.int32),
             # Note: We can't directly test OCType pointers here since the
-            # convert_python_to_octype function expects specific input formats
+            # octype_create_from_pytype function expects specific input formats
         ]
 
         # Test array with mixed types

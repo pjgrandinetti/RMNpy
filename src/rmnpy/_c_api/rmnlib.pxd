@@ -39,6 +39,7 @@ cdef extern from "RMNLibrary.h":
     # ====================================================================================
 
     # Dimension (Abstract Base) - Core coordinate system functionality
+    DimensionRef DimensionCreateFromDictionary(OCDictionaryRef dict, OCStringRef *outError)
     OCStringRef DimensionGetType(DimensionRef dim)
     OCStringRef DimensionCopyLabel(DimensionRef dim)
     bint DimensionSetLabel(DimensionRef dim, OCStringRef label, OCStringRef *outError)
@@ -102,7 +103,7 @@ cdef extern from "RMNLibrary.h":
                                                        dimensionScaling scaling, OCArrayRef coordinates,
                                                        SIDimensionRef reciprocal, OCStringRef *outError)
     OCArrayRef SIMonotonicDimensionCopyCoordinates(SIMonotonicDimensionRef dim)
-    bint SIMonotonicDimensionSetCoordinates(SIMonotonicDimensionRef dim, OCArrayRef coords)
+    bint SIMonotonicDimensionSetCoordinates(SIMonotonicDimensionRef dim, OCArrayRef coords, OCStringRef *outError)
     OCArrayRef SIMonotonicDimensionCreateAbsoluteCoordinates(SIMonotonicDimensionRef dim)
     SIDimensionRef SIMonotonicDimensionCopyReciprocal(SIMonotonicDimensionRef dim)
     bint SIMonotonicDimensionSetReciprocal(SIMonotonicDimensionRef dim, SIDimensionRef rec, OCStringRef *outError)
@@ -427,7 +428,7 @@ cdef extern from "RMNLibrary.h":
     # Datum API
     OCTypeID DatumGetTypeID()
     DatumRef DatumCreate(SIScalarRef response, OCArrayRef coordinates,
-                        OCIndex dependentVariableIndex, OCIndex componentIndex, OCIndex memOffset)
+                        OCIndex dependentVariableIndex, OCIndex componentIndex, OCIndex memOffset, OCStringRef *outError)
     DatumRef DatumCopy(DatumRef theDatum)
     bint DatumHasSameReducedDimensionalities(DatumRef input1, DatumRef input2)
     OCDictionaryRef DatumCopyAsDictionary(DatumRef theDatum)

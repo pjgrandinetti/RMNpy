@@ -8,6 +8,7 @@ our Python wrappers provide equivalent functionality and behavior.
 import numpy as np
 import pytest
 
+from rmnpy.exceptions import RMNError
 from rmnpy.wrappers.rmnlib.datum import Datum
 
 
@@ -385,6 +386,114 @@ class TestDatumStringRepresentation:
         repr_str = repr(datum)
         assert isinstance(repr_str, str)
         assert "Datum" in repr_str
+
+
+class TestDatumRoundTrip:
+    """Test Datum serialization round trip functionality."""
+
+    def test_basic_round_trip(self):
+        """Test basic round trip with Datum serialization."""
+        # Use simple numeric values like existing tests
+        response = 10.5
+        coordinates = [1.0, 2.0]  # Simple float values
+
+        original = Datum(
+            response=response,
+            coordinates=coordinates,
+            dependent_variable_index=0,
+            component_index=1,
+            mem_offset=42,
+        )
+
+        # Round trip
+        datum_dict = original.to_dict()
+        restored = Datum.from_dict(datum_dict)
+
+        # Verify basic properties
+        assert restored.dependent_variable_index == original.dependent_variable_index
+        assert restored.component_index == original.component_index
+        assert restored.mem_offset == original.mem_offset
+        assert restored.coordinates_count == original.coordinates_count
+
+    def test_minimal_round_trip(self):
+        """Test round trip with minimal Datum (no coordinates)."""
+        response = 5.0  # Simple numeric value
+
+        original = Datum(
+            response=response,
+            coordinates=[],  # No coordinates
+            dependent_variable_index=0,
+            component_index=0,
+            mem_offset=0,
+        )
+
+        # Round trip
+        datum_dict = original.to_dict()
+        restored = Datum.from_dict(datum_dict)
+
+        # Verify properties
+        assert restored.dependent_variable_index == original.dependent_variable_index
+        assert restored.component_index == original.component_index
+        assert restored.mem_offset == original.mem_offset
+        assert restored.coordinates_count == 0
+
+    def test_multi_coordinate_round_trip(self):
+        """Test round trip with multiple coordinates."""
+        response = 42.0  # Simple numeric value
+        coordinates = [1.0, 2.0, 3.0, 4.0]  # Multiple float coordinates
+
+        original = Datum(
+            response=response,
+            coordinates=coordinates,
+            dependent_variable_index=2,
+            component_index=1,
+            mem_offset=100,
+        )
+
+        # Round trip
+        datum_dict = original.to_dict()
+        restored = Datum.from_dict(datum_dict)
+
+        # Verify properties
+        assert restored.dependent_variable_index == original.dependent_variable_index
+        assert restored.component_index == original.component_index
+        assert restored.mem_offset == original.mem_offset
+        assert restored.coordinates_count == 4
+
+    def test_from_dict_error_handling(self):
+        """Test from_dict error handling with invalid input."""
+        # Test with non-dictionary
+        with pytest.raises(TypeError):
+            Datum.from_dict("not a dict")
+
+        # Test with empty dictionary
+        with pytest.raises(RMNError):
+            Datum.from_dict({})
+
+    def test_to_dict_structure(self):
+        """Test that to_dict returns expected dictionary structure."""
+        from rmnpy.wrappers.sitypes.scalar import Scalar
+        from rmnpy.wrappers.sitypes.unit import Unit
+
+        response = Scalar("7.5", Unit("V"))
+        coordinates = [Scalar("1.0", Unit("s"))]
+
+        datum = Datum(
+            response=response,
+            coordinates=coordinates,
+            dependent_variable_index=1,
+            component_index=0,
+            mem_offset=50,
+        )
+
+        datum_dict = datum.to_dict()
+
+        # Verify dictionary structure
+        assert isinstance(datum_dict, dict)
+        # Check for expected keys (exact structure depends on C implementation)
+        # We just verify it's a valid dictionary that can be used for from_dict
+        restored = Datum.from_dict(datum_dict)
+        assert isinstance(restored, Datum)
 
 
 if __name__ == "__main__":

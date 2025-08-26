@@ -10,7 +10,7 @@ from rmnpy._c_api.sitypes cimport SIScalarRef
 
 
 # Helper function declaration
-cdef SIScalarRef convert_to_siscalar_ref(value) except NULL
+cdef SIScalarRef create_siscalar_from_pytype(value) except NULL
 
 
 cdef class Scalar:

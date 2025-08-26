@@ -39,7 +39,7 @@ import cmath
 
 
 # Helper function for converting various input types to SIScalarRef
-cdef SIScalarRef convert_to_siscalar_ref(value) except NULL:
+cdef SIScalarRef create_siscalar_from_pytype(value) except NULL:
     """
     Convert various input types to SIScalarRef.
 

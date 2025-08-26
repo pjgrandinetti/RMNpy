@@ -26,14 +26,13 @@ from libc.stdint cimport uint64_t, uintptr_t
 
 
 # Helper function for converting various input types to SIUnitRef
-cdef SIUnitRef convert_to_siunit_ref(value) except NULL:
+cdef SIUnitRef siunit_from_pytype(value) except NULL:
     """
     Convert various input types to SIUnitRef.
 
     Accepts:
-    - Unit objects: Returns their C reference (borrowed, caller should copy if needed)
+    - Unit objects: Returns their C reference
     - str: Creates Unit from string expression
-    - None: Returns NULL (for dimensionless/no unit)
 
     Returns:
         SIUnitRef: C reference to unit (caller owns reference and must release)
@@ -45,7 +44,7 @@ cdef SIUnitRef convert_to_siunit_ref(value) except NULL:
     cdef Unit temp_unit
 
     if value is None:
-        return NULL  # Allow NULL for dimensionless quantities
+        return SIUnitDimensionlessAndUnderived()
     elif isinstance(value, Unit):
         # Return the C reference directly
         return (<Unit>value)._c_ref
