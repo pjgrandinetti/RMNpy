@@ -7,11 +7,13 @@ the Datum class from datum.pyx.
 """
 
 from rmnpy._c_api.rmnlib cimport DatumRef
+from rmnpy.wrappers.base_wrapper cimport RMNLibWrapper
 
 
-cdef class Datum:
+cdef class Datum(RMNLibWrapper):
     """Cython interface for Datum wrapper."""
-    cdef DatumRef _c_ref
 
     @staticmethod
     cdef Datum _from_c_ref(DatumRef datum_ref)
+    cdef void* copy_c_ref(self) except NULL
+    cdef int _compare_c_api(self, other) except? -999

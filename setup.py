@@ -88,6 +88,16 @@ elif sys.platform.startswith("linux"):
 EXTRA_COMPILE = ["-std=c99"]
 
 exts = [
+    # Base wrapper classes
+    Extension(
+        "rmnpy.wrappers.base_wrapper",
+        ["src/rmnpy/wrappers/base_wrapper.pyx"],
+        include_dirs=INC,
+        libraries=LIBS,
+        library_dirs=LIBDIRS,
+        extra_compile_args=EXTRA_COMPILE,
+        extra_link_args=EXTRA_LINK,
+    ),
     # SITypes wrappers
     Extension(
         "rmnpy.wrappers.sitypes.dimensionality",
