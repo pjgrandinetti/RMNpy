@@ -427,8 +427,9 @@ cdef extern from "RMNLibrary.h":
 
     # Datum API
     OCTypeID DatumGetTypeID()
-    DatumRef DatumCreate(SIScalarRef response, OCArrayRef coordinates,
-                        OCIndex dependentVariableIndex, OCIndex componentIndex, OCIndex memOffset, OCStringRef *outError)
+    DatumRef DatumCreate(SIScalarRef response,
+                        OCIndex dependentVariableIndex, OCIndex componentIndex, OCIndex memOffset,
+                        OCTypeRef owner, OCStringRef *outError)
     DatumRef DatumCopy(DatumRef theDatum)
     bint DatumHasSameReducedDimensionalities(DatumRef input1, DatumRef input2)
     OCDictionaryRef DatumCopyAsDictionary(DatumRef theDatum)
@@ -438,7 +439,7 @@ cdef extern from "RMNLibrary.h":
     OCIndex DatumGetComponentIndex(DatumRef theDatum)
     OCIndex DatumGetDependentVariableIndex(DatumRef theDatum)
     OCIndex DatumGetMemOffset(DatumRef theDatum)
-    SIScalarRef DatumGetCoordinateAtIndex(DatumRef theDatum, OCIndex index)
+    OCTypeRef DatumGetCoordinateAtIndex(DatumRef theDatum, OCIndex index)
     SIScalarRef DatumCreateResponse(DatumRef theDatum)
     OCIndex DatumCoordinatesCount(DatumRef theDatum)
 

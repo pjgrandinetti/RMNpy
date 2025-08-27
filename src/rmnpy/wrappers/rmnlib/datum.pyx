@@ -77,7 +77,7 @@ cdef class Datum:
         """Create Datum wrapper from C reference pointer (Python-accessible)."""
         return Datum._from_c_ref(<DatumRef>datum_ref_ptr)
 
-    def __init__(self, response, coordinates=None, dependent_variable_index=0,
+    def __init__(self, response, dependent_variable_index=0,
                  component_index=0, mem_offset=0):
         """
         Create a new Datum.
@@ -85,8 +85,6 @@ cdef class Datum:
         Parameters:
             response : Scalar or numeric
                 The primary scalar measurement value
-            coordinates : list of Scalar or numeric, optional
-                Array of coordinate scalars representing position in N-D space
             dependent_variable_index : int, optional
                 Index of parent DependentVariable (default: 0)
             component_index : int, optional
@@ -102,7 +100,6 @@ cdef class Datum:
             return  # Already initialized by _from_c_ref
 
         cdef SIScalarRef response_ref = NULL
-        cdef OCArrayRef coords_ref = NULL
         cdef OCStringRef error = NULL
 
         try:
@@ -110,16 +107,6 @@ cdef class Datum:
             response_ref = create_siscalar_from_pytype(response)
             if response_ref == NULL:
                 raise RMNError("Failed to convert response to SIScalar")
-
-            # Convert coordinates if provided
-            if coordinates is not None:
-                if not isinstance(coordinates, (list, tuple)):
-                    raise TypeError("coordinates must be a list or tuple")
-
-                # Convert coordinates list directly to OCArray
-                coords_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(coordinates)
-                if coords_ref == NULL:
-                    raise RMNError("Failed to create coordinates array")
 
             # Validate indices
             if not isinstance(dependent_variable_index, int) or dependent_variable_index < 0:
@@ -132,10 +119,10 @@ cdef class Datum:
             # Create the datum with error handling
             self._c_ref = DatumCreate(
                 response_ref,
-                coords_ref,
                 <OCIndex>dependent_variable_index,
                 <OCIndex>component_index,
                 <OCIndex>mem_offset,
+                <OCTypeRef>NULL,  # owner - NULL for standalone datums
                 &error
             )
             if self._c_ref == NULL:
@@ -146,10 +133,9 @@ cdef class Datum:
                 raise RMNError(error_msg)
 
         finally:
-            # Note: response_ref and coord_refs are references to converted scalars
-            # We don't release them here as they may be borrowed from input objects
-            if coords_ref != NULL:
-                OCRelease(<OCTypeRef>coords_ref)
+            # Note: response_ref is a reference to converted scalar
+            # We don't release it here as it may be borrowed from input object
+            pass
 
 
     # Property accessors
@@ -169,26 +155,6 @@ cdef class Datum:
         finally:
             # DatumCreateResponse creates a copy, so we need to release it
             OCRelease(<OCTypeRef>response_ref)
-
-    @property
-    def coordinates(self):
-        """Get the list of coordinate scalars."""
-        if self._c_ref == NULL:
-            raise ValueError("Datum not initialized")
-
-        cdef OCIndex count = DatumCoordinatesCount(self._c_ref)
-        cdef list result = []
-        cdef SIScalarRef coord_ref
-
-        for i in range(count):
-            coord_ref = DatumGetCoordinateAtIndex(self._c_ref, i)
-            if coord_ref != NULL:
-                # DatumGetCoordinateAtIndex returns a borrowed reference
-                # We need to create a wrapper from it
-                coord_wrapper = Scalar._from_c_ref(coord_ref)
-                result.append(coord_wrapper)
-
-        return result
 
     @property
     def dependent_variable_index(self):
