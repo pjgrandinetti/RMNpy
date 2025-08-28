@@ -1513,44 +1513,6 @@ def pydict_to_cjson_ptr(py_dict):
     return <uint64_t>json_obj
 
 
-def universal_to_dict(uint64_t octype_ptr):
-    """
-    Universal dictionary serialization for any OCType using OCTypeCopyJSON.
-
-    This function provides automatic dictionary serialization for ALL OCType
-    subclasses without requiring custom implementation in each wrapper.
-
-    Args:
-        octype_ptr (uint64_t): Pointer to any OCType object
-
-    Returns:
-        dict: Python dictionary representation of the OCType
-
-    Raises:
-        ValueError: If OCType pointer is NULL
-        RuntimeError: If JSON serialization fails
-
-    Note:
-        This leverages the universal OCTypeCopyJSON function that every OCType
-        implements, providing consistent serialization across all wrapper classes.
-    """
-    if octype_ptr == 0:
-        raise ValueError("OCType pointer is NULL")
-
-    cdef OCTypeRef oc_obj = <OCTypeRef>octype_ptr
-    cdef cJSON* json_obj = OCTypeCopyJSON(oc_obj)
-
-    if json_obj == NULL:
-        raise RuntimeError("Failed to serialize OCType to JSON")
-
-    try:
-        # Convert cJSON to Python dict
-        return cjson_to_pydict(json_obj)
-    finally:
-        # Clean up cJSON object
-        cJSON_Delete(json_obj)
-
-
 # ====================================================================================
 # End of File
 # ===================================================================================

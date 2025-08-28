@@ -12,25 +12,16 @@ from typing import Any, Dict, Optional, Union
 from libc.stdint cimport uint64_t
 
 from rmnpy._c_api.octypes cimport (
-    OCDictionaryRef,
-    OCGetTypeID,
     OCRelease,
-    OCStringGetCString,
-    OCStringRef,
-    OCTypeCopyFormattingDesc,
     OCTypeCopyJSON,
-    OCTypeDeepCopy,
     OCTypeEqual,
-    OCTypeGetRetainCount,
-    OCTypeID,
-    OCTypeNameFromTypeID,
     OCTypeRef,
     cJSON,
     cJSON_Delete,
 )
 
 from rmnpy.exceptions import RMNError
-from rmnpy.helpers.octypes import universal_to_dict
+from rmnpy.helpers.octypes import cjson_to_pydict
 
 
 cdef class BaseWrapper:
@@ -68,115 +59,48 @@ cdef class BaseWrapper:
         """Get the C reference (internal use only)."""
         return <void*>self._c_ref
 
-    @property
-    def _c_ref(self):
-        """Get the C reference pointer as integer (for helper functions)."""
-        return <uint64_t>self._c_ref
-
-    def is_valid(self):
+    cdef bint _is_initialized(self):
         """Check if the wrapper has a valid C reference."""
         return self._c_ref != NULL
 
+    def is_valid(self):
+        """Check if the wrapper has a valid C reference (Python-accessible)."""
+        return self._is_initialized()
+
     cdef void _validate_initialized(self) except *:
         """Validate that the wrapper is initialized, raise if not."""
-        if not self.is_valid():
+        if not self._is_initialized():
             raise ValueError(f"{self.__class__.__name__} not initialized")
 
-    # Universal OCType methods - available to ALL OCTypes
+    # Subclasses must implement these methods
     cdef void* copy_c_ref(self) except NULL:
-        """Create a copy using universal OCTypeDeepCopy."""
-        self._validate_initialized()
-        cdef void* copied = OCTypeDeepCopy(self._c_ref)
-        if copied == NULL:
-            raise MemoryError("Failed to copy OCType reference")
-        return copied
-
-    def get_type_id(self):
-        """Get the OCTypeID of this object."""
-        self._validate_initialized()
-        return OCGetTypeID(self._c_ref)
-
-    def get_type_name(self):
-        """Get the type name string of this object."""
-        self._validate_initialized()
-        cdef OCTypeID type_id = OCGetTypeID(self._c_ref)
-        cdef const char* name = OCTypeNameFromTypeID(type_id)
-        if name == NULL:
-            return None
-        return name.decode('utf-8')
-
-    def get_retain_count(self):
-        """Get the current retain count (for debugging)."""
-        self._validate_initialized()
-        return OCTypeGetRetainCount(self._c_ref)
-
-    def copy_formatting_description(self):
-        """Get a formatted description string."""
-        self._validate_initialized()
-        cdef OCStringRef desc = OCTypeCopyFormattingDesc(self._c_ref)
-        if desc == NULL:
-            return None
-
-        cdef const char* desc_str = OCStringGetCString(desc)
-        try:
-            if desc_str == NULL:
-                return None
-            return desc_str.decode('utf-8')
-        finally:
-            OCRelease(<OCTypeRef>desc)
-
-    def __eq__(self, other):
-        """Universal equality comparison using OCTypeEqual."""
-        if not isinstance(other, BaseWrapper):
-            return False
-        self._validate_initialized()
-        if hasattr(other, '_validate_initialized'):
-            other._validate_initialized()
-        elif not getattr(other, 'is_valid', lambda: True)():
-            return False
-
-        # Use universal OCTypeEqual function
-        return OCTypeEqual(self._c_ref, (<BaseWrapper>other)._c_ref)
-
-    def __ne__(self, other):
-        """Universal inequality comparison."""
-        return not self.__eq__(other)
-
-    @staticmethod
-    cdef BaseWrapper _from_c_ref(object cls, void* c_ref):
-        """
-        Universal factory method for creating wrappers from C references.
-
-        This implements the common pattern:
-        1. Create new instance with __new__
-        2. Check for NULL
-        3. Use OCTypeDeepCopy to copy the reference
-        4. Check for copy failure
-        5. Set the C reference
-        6. Return the instance
-
-        Parameters:
-            cls: The wrapper class to instantiate
-            c_ref: The C reference to wrap
-
-        Returns:
-            BaseWrapper: New instance of cls wrapping the copied C reference
-        """
-        if c_ref == NULL:
-            raise ValueError("Cannot create wrapper from NULL reference")
-
-        cdef BaseWrapper result = cls.__new__(cls)
-        cdef void* copied_ref = OCTypeDeepCopy(<OCTypeRef>c_ref)
-        if copied_ref == NULL:
-            raise MemoryError(f"Failed to create copy of {cls.__name__}")
-
-        result._set_c_ref(copied_ref)
-        return result
+        """Create a copy of the C reference. Must be implemented by subclasses."""
+        raise NotImplementedError(f"{self.__class__.__name__} must implement copy_c_ref()")
 
     @staticmethod
     def from_c_ref(uint64_t c_ref_ptr):
         """Create wrapper from C reference pointer (Python-accessible)."""
         raise NotImplementedError("Subclasses must implement from_c_ref()")
+
+    # Universal comparison functionality using OCTypeEqual
+    def __eq__(self, other):
+        """Check equality using universal OCTypeEqual."""
+        if not isinstance(other, BaseWrapper):
+            return False
+        self._validate_initialized()
+        if hasattr(other, '_validate_initialized'):
+            other._validate_initialized()
+        else:
+            # Fallback for objects that don't have validation
+            if not getattr(other, '_is_initialized', lambda: True)():
+                return False
+
+        # Use universal OCTypeEqual function
+        return OCTypeEqual(self._c_ref, (<BaseWrapper>other)._c_ref)
+
+    def __ne__(self, other):
+        """Check inequality."""
+        return not self.__eq__(other)
 
 
 # Specific base classes for different API families with integrated functionality
@@ -186,70 +110,60 @@ cdef class SITypesWrapper(BaseWrapper):
     Base class for SITypes wrappers (Scalar, Unit, Dimensionality, etc.).
 
     Inherits universal functionality from BaseWrapper including:
-    - Memory management and copying (OCTypeDeepCopy)
-    - Equality comparison (OCTypeEqual)
-    - Type introspection (OCGetTypeID, OCTypeIDName)
+    - Memory management and copying
+    - Universal equality comparison (OCTypeEqual)
 
     Provides arithmetic operations that delegate to subclass implementations.
-    This dramatically reduces code duplication across arithmetic types.
     """
 
-    # Arithmetic operations that delegate to subclass implementations
+    # Arithmetic functionality (integrated from ArithmeticWrapper)
     def __add__(self, other):
-        """Addition operator (+)."""
+        """Addition operation."""
         self._validate_initialized()
         return self._binary_arithmetic(other, "add")
 
-    def __radd__(self, other):
-        """Reverse addition operator (+)."""
-        return self.__add__(other)  # Addition is commutative
-
     def __sub__(self, other):
-        """Subtraction operator (-)."""
+        """Subtraction operation."""
         self._validate_initialized()
         return self._binary_arithmetic(other, "sub")
 
-    def __rsub__(self, other):
-        """Reverse subtraction operator (-)."""
-        if isinstance(other, (int, float, complex)):
-            other_obj = self.__class__(other, "1")
-            return other_obj.__sub__(self)
-        else:
-            return NotImplemented
-
     def __mul__(self, other):
-        """Multiplication operator (*)."""
+        """Multiplication operation."""
         self._validate_initialized()
         return self._binary_arithmetic(other, "mul")
 
-    def __rmul__(self, other):
-        """Reverse multiplication operator (*)."""
-        return self.__mul__(other)  # Multiplication is commutative
-
     def __truediv__(self, other):
-        """Division operator (/)."""
+        """Division operation."""
         self._validate_initialized()
         return self._binary_arithmetic(other, "div")
 
-    def __rtruediv__(self, other):
-        """Reverse division operator (/)."""
-        if isinstance(other, (int, float, complex)):
-            other_obj = self.__class__(other, "1")
-            return other_obj.__truediv__(self)
-        else:
-            return NotImplemented
-
     def __pow__(self, exponent):
-        """Power operator (**)."""
+        """Power operation."""
         self._validate_initialized()
         return self._power_arithmetic(exponent)
 
-    def __abs__(self):
-        """Absolute value."""
-        self._validate_initialized()
-        return self._unary_arithmetic("abs")
+    def nth_root(self, root):
+        """Take the nth root of this object.
 
-    # Abstract methods that subclasses must implement (much simpler!)
+        Args:
+            root (int): Root to take (e.g., 2 for square root)
+
+        Returns:
+            Same type as self: nth root of the object
+
+        Raises:
+            TypeError: If root is not an integer
+            ValueError: If root is not positive
+        """
+        if not isinstance(root, int):
+            raise TypeError("Root must be an integer")
+        if root <= 0:
+            raise ValueError("Root must be a positive integer")
+
+        self._validate_initialized()
+        return self._nth_root_arithmetic(root)
+
+    # Subclasses must implement these unified methods
     def _binary_arithmetic(self, other, operation):
         """Perform binary arithmetic operation. Override in subclasses."""
         raise NotImplementedError(f"{self.__class__.__name__} does not implement {operation}")
@@ -258,9 +172,9 @@ cdef class SITypesWrapper(BaseWrapper):
         """Perform power operation. Override in subclasses."""
         raise NotImplementedError(f"{self.__class__.__name__} does not implement power")
 
-    def _unary_arithmetic(self, operation):
-        """Perform unary arithmetic operation. Override in subclasses."""
-        raise NotImplementedError(f"{self.__class__.__name__} does not implement {operation}")
+    def _nth_root_arithmetic(self, root):
+        """Perform nth root operation. Override in subclasses."""
+        raise NotImplementedError(f"{self.__class__.__name__} does not implement nth_root")
 
 
 cdef class RMNLibWrapper(BaseWrapper):
@@ -268,35 +182,36 @@ cdef class RMNLibWrapper(BaseWrapper):
     Base class for RMNLib wrappers (Dataset, Datum, DependentVariable, etc.).
 
     Inherits universal functionality from BaseWrapper including:
-    - Memory management and copying (OCTypeDeepCopy)
-    - Equality comparison (OCTypeEqual)
-    - Dictionary serialization (OCTypeCopyJSON → universal_to_dict)
-    - Type introspection (OCGetTypeID, OCTypeIDName)
+    - Memory management and copying
+    - Universal equality comparison (OCTypeEqual)
 
-    RMNLib wrappers now get universal serialization automatically!
-    Custom serialization methods are optional and can override the universal behavior.
+    Provides serialization functionality for data container types.
     """
 
-    def copy_as_dictionary(self):
-        """Serialize object to dictionary representation using universal OCTypeCopyJSON."""
-        self._validate_initialized()
-        return universal_to_dict(<uint64_t>self._c_ref)
-
-    def to_dict(self):
-        """Universal dictionary serialization for all OCTypes."""
-        return self.copy_as_dictionary()
-
+    # Serialization functionality (integrated from SerializableWrapper)
     def dict(self):
-        """Alias for to_dict() for compatibility."""
-        return self.to_dict()
+        """Convert to dictionary representation (canonical API).
+
+        This is the single, stable serialization entrypoint for RMNLib wrappers.
+        Uses the universal OCTypeCopyJSON C API for consistent serialization.
+        """
+        self._validate_initialized()
+
+        # Call OCTypeCopyJSON directly
+        cdef cJSON* json_obj = OCTypeCopyJSON(self._c_ref)
+        if json_obj == NULL:
+            raise RuntimeError("Failed to serialize OCType to JSON")
+
+        try:
+            # Convert cJSON to Python dict
+            return cjson_to_pydict(json_obj)
+        finally:
+            # Clean up cJSON object
+            cJSON_Delete(json_obj)
 
     @classmethod
-    def from_dict(cls, data_dict):
-        """
-        Create instance from dictionary representation.
-
-        Subclasses should implement this if they support deserialization.
-        """
-        if not isinstance(data_dict, dict):
+    def from_dict(cls, json_dict):
+        """Create instance from dictionary representation."""
+        if not isinstance(json_dict, dict):
             raise TypeError("Expected dictionary input")
-        raise NotImplementedError(f"{cls.__name__} does not support deserialization from dictionary")
+        raise NotImplementedError(f"{cls.__name__} must implement from_dict()")

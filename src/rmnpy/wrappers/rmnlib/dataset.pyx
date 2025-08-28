@@ -196,12 +196,11 @@ cdef class Dataset(RMNLibWrapper):
         cdef cJSON* json_obj = NULL
 
         try:
-            # Handle CSDM envelope format from JSON serialization
+            # Pass the Python dictionary directly to the C API.
+            # The C API (DatasetCreateFromJSON / OCTypeCopyJSON) handles the
+            # CSDM envelope (e.g. {'csdm': {...}}) and performs any necessary
+            # validation. Avoid duplicating checks here; forward the dict as-is.
             actual_dict = data_dict
-            if isinstance(data_dict, dict) and 'csdm' in data_dict and len(data_dict) == 1:
-                # JSON serialization wraps the data in a 'csdm' envelope
-                # Extract the inner content for DatasetCreateFromJSON
-                actual_dict = data_dict['csdm']
 
             # Convert Python dict → cJSON → DatasetRef (same as Datum)
             json_ptr = pydict_to_cjson_ptr(actual_dict)
