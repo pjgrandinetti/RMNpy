@@ -12,6 +12,13 @@ from libc.stdint cimport int64_t
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.sitypes cimport *
 
+
+# cJSON declarations for JSON-based serialization
+cdef extern from "cJSON.h":
+    ctypedef struct cJSON:
+        pass
+    void cJSON_Delete(cJSON *c)
+
 # ====================================================================================
 # RMNLib Core Types and Forward Declarations (from RMNLibrary.h)
 # ====================================================================================
@@ -39,7 +46,7 @@ cdef extern from "RMNLibrary.h":
     # ====================================================================================
 
     # Dimension (Abstract Base) - Core coordinate system functionality
-    DimensionRef DimensionCreateFromDictionary(OCDictionaryRef dict, OCStringRef *outError)
+    DimensionRef DimensionCreateFromJSON(cJSON *json, OCStringRef *outError)
     OCStringRef DimensionGetType(DimensionRef dim)
     OCStringRef DimensionCopyLabel(DimensionRef dim)
     bint DimensionSetLabel(DimensionRef dim, OCStringRef label, OCStringRef *outError)
@@ -121,7 +128,7 @@ cdef extern from "RMNLibrary.h":
                                            OCStringRef description,
                                            OCDictionaryRef metadata,
                                            OCStringRef *outError)
-    SparseSamplingRef SparseSamplingCreateFromDictionary(OCDictionaryRef dict, OCStringRef *outError)
+    SparseSamplingRef SparseSamplingCreateFromJSON(cJSON *json, OCStringRef *outError)
     OCDictionaryRef SparseSamplingCopyAsDictionary(SparseSamplingRef ss)
 
     # SparseSampling accessors
@@ -143,153 +150,6 @@ cdef extern from "RMNLibrary.h":
     OCIndexPairSetRef SparseSamplingGetVertexAtIndex(SparseSamplingRef ss, OCIndex index)
     bint SparseSamplingContainsVertex(SparseSamplingRef ss, OCIndexPairSetRef vertex)
 
-    # ====================================================================================
-    # Phase 3C: DependentVariable API (Depends on Dimension + SparseSampling)
-    # ====================================================================================
-    # ====================================================================================
-    # Phase 3C: DependentVariable API (Depends on Dimension + SparseSampling)
-    # ====================================================================================
-
-    # DependentVariable type and copying
-    OCTypeID DependentVariableGetTypeID()
-    DependentVariableRef DependentVariableCopy(DependentVariableRef orig)
-    DependentVariableRef DependentVariableCreateComplexCopy(DependentVariableRef src, OCTypeRef owner)
-
-    # DependentVariable creation functions
-    DependentVariableRef DependentVariableCreate(
-        OCStringRef name,
-        OCStringRef description,
-        SIUnitRef unit,
-        OCStringRef quantityName,
-        OCStringRef quantityType,
-        OCNumberType elementType,
-        OCArrayRef componentLabels,
-        OCArrayRef components,
-        OCStringRef *outError)
-
-    DependentVariableRef DependentVariableCreateWithComponentsNoCopy(
-        OCStringRef name,
-        OCStringRef description,
-        SIUnitRef unit,
-        OCStringRef quantityName,
-        OCStringRef quantityType,
-        OCNumberType elementType,
-        OCArrayRef componentLabels,
-        OCArrayRef components,
-        OCStringRef *outError)
-
-    DependentVariableRef DependentVariableCreateWithSize(
-        OCStringRef name,
-        OCStringRef description,
-        SIUnitRef unit,
-        OCStringRef quantityName,
-        OCStringRef quantityType,
-        OCNumberType elementType,
-        OCArrayRef componentLabels,
-        OCIndex size,
-        OCStringRef *outError)
-
-    DependentVariableRef DependentVariableCreateDefault(
-        OCStringRef quantityType,
-        OCNumberType elementType,
-        OCIndex size,
-        OCStringRef *outError)
-
-    DependentVariableRef DependentVariableCreateWithComponent(
-        OCStringRef name,
-        OCStringRef description,
-        SIUnitRef unit,
-        OCStringRef quantityName,
-        OCNumberType elementType,
-        OCArrayRef componentLabels,
-        OCDataRef component,
-        OCStringRef *outError)
-
-    DependentVariableRef DependentVariableCreateExternal(
-        OCStringRef name,
-        OCStringRef description,
-        SIUnitRef unit,
-        OCStringRef quantityName,
-        OCStringRef quantityType,
-        OCNumberType elementType,
-        OCStringRef componentsURL,
-        OCStringRef *outError)
-
-    DependentVariableRef DependentVariableCreateMinimal(
-        SIUnitRef unit,
-        OCStringRef quantityName,
-        OCStringRef quantityType,
-        OCNumberType numericType,
-        OCArrayRef components,
-        OCStringRef *outError)
-
-    # DependentVariable mutation
-    bint DependentVariableAppend(
-        DependentVariableRef dv,
-        DependentVariableRef appendedDV,
-        OCStringRef *outError)
-
-    # DependentVariable serialization
-    OCDictionaryRef DependentVariableCopyAsDictionary(DependentVariableRef dv)
-    DependentVariableRef DependentVariableCreateFromDictionary(
-        OCDictionaryRef dict,
-        OCStringRef *outError)
-    OCDataRef DependentVariableCreateCSDMComponentsData(DependentVariableRef dv, OCArrayRef dimensions)
-
-    # DependentVariable type checking
-    bint DependentVariableIsScalarType(DependentVariableRef dv)
-    bint DependentVariableIsVectorType(DependentVariableRef dv, OCIndex *outCount)
-    bint DependentVariableIsPixelType(DependentVariableRef dv, OCIndex *outCount)
-    bint DependentVariableIsMatrixType(DependentVariableRef dv, OCIndex *outRows, OCIndex *outCols)
-    bint DependentVariableIsSymmetricMatrixType(DependentVariableRef dv, OCIndex *outN)
-    OCIndex DependentVariableComponentsCountFromQuantityType(OCStringRef quantityType)
-
-    # DependentVariable basic accessors (using copy functions for memory safety)
-    OCStringRef DependentVariableCopyType(DependentVariableRef dv)
-    OCStringRef DependentVariableCopyEncoding(DependentVariableRef dv)
-    OCStringRef DependentVariableGetComponentsURL(DependentVariableRef dv)
-    bint DependentVariableSetComponentsURL(DependentVariableRef dv, OCStringRef url)
-    OCStringRef DependentVariableCopyName(DependentVariableRef dv)
-    bint DependentVariableSetName(DependentVariableRef dv, OCStringRef name)
-    OCStringRef DependentVariableCopyDescription(DependentVariableRef dv)
-    bint DependentVariableSetDescription(DependentVariableRef dv, OCStringRef description)
-    OCStringRef DependentVariableCopyQuantityName(DependentVariableRef dv)
-    OCStringRef DependentVariableCopyQuantityType(DependentVariableRef dv)
-    OCNumberType DependentVariableGetNumericType(DependentVariableRef dv)
-    bint DependentVariableSetNumericType(DependentVariableRef dv, OCNumberType newType)
-
-    # DependentVariable sparse sampling
-    SparseSamplingRef DependentVariableCopySparseSampling(DependentVariableRef dv)
-    bint DependentVariableSetSparseSampling(DependentVariableRef dv, SparseSamplingRef ss)
-
-    # DependentVariable metadata and ownership
-    OCDictionaryRef DependentVariableGetApplicationMetaData(DependentVariableRef dv)
-    bint DependentVariableSetApplicationMetaData(DependentVariableRef dv, OCDictionaryRef dict)
-    OCTypeRef DependentVariableGetOwner(DependentVariableRef dv)
-    bint DependentVariableSetOwner(DependentVariableRef dv, OCTypeRef owner)
-
-    # DependentVariable component array accessors
-    OCIndex DependentVariableGetComponentCount(DependentVariableRef dv)
-    OCMutableArrayRef DependentVariableGetComponents(DependentVariableRef dv)
-    bint DependentVariableSetComponents(DependentVariableRef dv, OCArrayRef newComponents)
-    OCMutableArrayRef DependentVariableCopyComponents(DependentVariableRef dv)
-
-    # DependentVariable size and element type
-    OCIndex DependentVariableGetSize(DependentVariableRef dv)
-    bint DependentVariableSetSize(DependentVariableRef dv, OCIndex newSize)
-
-    # DependentVariable component labels
-    OCArrayRef DependentVariableGetComponentLabels(DependentVariableRef dv)
-    bint DependentVariableSetComponentLabels(DependentVariableRef dv, OCArrayRef labels)
-
-    # DependentVariable low-level value accessors
-    float DependentVariableGetFloatValueAtMemOffset(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset)
-    double DependentVariableGetDoubleValueAtMemOffset(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset)
-    float complex DependentVariableGetFloatComplexValueAtMemOffset(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset)
-    double complex DependentVariableGetDoubleComplexValueAtMemOffset(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset)
-    double DependentVariableGetDoubleValueAtMemOffsetForPart(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset, complexPart part)
-    float DependentVariableGetFloatValueAtMemOffsetForPart(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset, complexPart part)
-    SIScalarRef DependentVariableCreateValueFromMemOffset(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset)
     bint DependentVariableSetValueAtMemOffset(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset, SIScalarRef value, OCStringRef *error)
 
     # DependentVariable unit conversion and data manipulation
@@ -322,12 +182,9 @@ cdef extern from "RMNLibrary.h":
                            OCStringRef description, OCStringRef title,
                            DatumRef focus, DatumRef previousFocus,
                            OCDictionaryRef metaData, OCStringRef *outError)
-    DatasetRef DatasetCreateMinimal(OCArrayRef dimensions, OCArrayRef dependentVariables, OCStringRef *outError)
-    DatasetRef DatasetCreateEmpty(OCStringRef *outError)
-    DatasetRef DatasetCreateFromDictionary(OCDictionaryRef dict, OCStringRef *outError)
+    DatasetRef DatasetCreateFromJSON(cJSON *json, OCStringRef *outError)
     DatasetRef DatasetCreateCopy(DatasetRef ds)
     DatasetRef DatasetCreateWithImport(const char *json_path, const char *binary_dir, OCStringRef *outError)
-    OCDictionaryRef DatasetCopyAsDictionary(DatasetRef dataset)
     bint DatasetExport(DatasetRef ds, const char *json_path, const char *binary_dir, OCStringRef *outError)
 
     # Dataset accessors and mutators
@@ -409,7 +266,7 @@ cdef extern from "RMNLibrary.h":
     OCTypeID GeographicCoordinateGetTypeID()
     GeographicCoordinateRef GeographicCoordinateCreate(SIScalarRef latitude, SIScalarRef longitude,
                                                        SIScalarRef altitude, OCDictionaryRef metadata)
-    GeographicCoordinateRef GeographicCoordinateCreateFromDictionary(OCDictionaryRef dict, OCStringRef *outError)
+    GeographicCoordinateRef GeographicCoordinateCreateFromJSON(cJSON *json, OCStringRef *outError)
     OCDictionaryRef GeographicCoordinateCopyAsDictionary(GeographicCoordinateRef gc)
     GeographicCoordinateRef GeographicCoordinateCreateCopy(GeographicCoordinateRef gc)
 
@@ -433,7 +290,6 @@ cdef extern from "RMNLibrary.h":
     DatumRef DatumCopy(DatumRef theDatum)
     bint DatumHasSameReducedDimensionalities(DatumRef input1, DatumRef input2)
     OCDictionaryRef DatumCopyAsDictionary(DatumRef theDatum)
-    DatumRef DatumCreateFromDictionary(OCDictionaryRef dictionary, OCStringRef *error)
     DatumRef DatumCreateFromJSON(cJSON *json, OCStringRef *outError)
 
     # Datum getters
