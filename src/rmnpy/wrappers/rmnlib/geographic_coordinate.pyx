@@ -1,16 +1,19 @@
 # cython: language_level=3
 """
-RMNLib GeographicCoordinate wrapper
+RMNLib GeographicCoordinate wrapper.
 
-This module provides a Python wrapper around the RMNLib GeographicCoordinate C API.
-GeographicCoordinate represents a geographic location with latitude, longitude,
-optional altitude, and application-specific metadata.
-
-Geographic coordinates use SI Scalars for precise representation of physical
-measurements with proper units and dimensional analysis.
+Provides Python access to RMNLib GeographicCoordinate C API for managing
+geographic locations with latitude, longitude, altitude, and metadata.
 """
 
-from typing import Dict, Optional, Union
+from typi    @property
+    def altitude(self):
+        """Get the altitude as a Scalar object, or None if not set."""
+        cdef SIScalarRef alt_ref = GeographicCoordinateGetAltitude(<GeographicCoordinateRef>self._c_ref)
+        if alt_ref == NULL:
+            return None
+
+        return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>alt_ref)Dict, Optional, Union
 
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.rmnlib cimport *
@@ -30,42 +33,44 @@ from rmnpy.wrappers.sitypes.scalar import Scalar
 
 
 cdef class GeographicCoordinate(RMNLibWrapper):
+    """Python wrapper for RMNLib GeographicCoordinate objects.
+
+    Represents a geographic location with latitude, longitude, optional altitude,
+    and application-specific metadata. Coordinate values are stored as SIScalar
+    objects with proper units.
+
+    Examples:
+        Create a basic coordinate:
+
+        >>> coord = GeographicCoordinate(40.7128, -74.0060)  # NYC
+        >>> coord.latitude.value  # degrees
+        40.7128
+
+        Include altitude:
+
+        >>> coord = GeographicCoordinate(40.7128, -74.0060, altitude=10.0)
+        >>> coord.altitude.value  # meters
+        10.0
+
+        Load from dictionary:
+
+        >>> data = {"latitude": 40.7128, "longitude": -74.0060}
+        >>> coord = GeographicCoordinate.from_dict(data)
     """
-    Python wrapper for RMNLib GeographicCoordinate.
-
-    A GeographicCoordinate represents a position on Earth with:
-    - Latitude: degrees north (positive) or south (negative)
-    - Longitude: degrees east (positive) or west (negative)
-    - Altitude: optional elevation in meters above sea level
-    - Application metadata: optional custom metadata dictionary
-
-    All coordinate values are stored as SIScalar objects with proper units.
-    """
-
-    # No _from_c_ref method needed - use BaseWrapper._from_c_ref directly!
 
     @staticmethod
     def from_c_ref(uint64_t geo_ref_ptr):
-        """Create GeographicCoordinate wrapper from C reference pointer (Python-accessible)."""
+        """Create GeographicCoordinate wrapper from C reference pointer."""
         return <GeographicCoordinate>BaseWrapper._from_c_ref(GeographicCoordinate, <void*><GeographicCoordinateRef>geo_ref_ptr)
 
     def __init__(self, latitude, longitude, altitude=None, metadata=None):
-        """
-        Create a new GeographicCoordinate.
+        """Initialize GeographicCoordinate with latitude, longitude, and optional altitude.
 
-        Parameters:
-            latitude : Scalar, String, or numeric
-                Latitude in degrees (positive = north, negative = south)
-            longitude : Scalar, String, or numeric
-                Longitude in degrees (positive = east, negative = west)
-            altitude : Scalar, String, or numeric, optional
-                Altitude in meters above sea level (default: None)
-            metadata : dict, optional
-                Application-specific metadata dictionary (default: None)
-
-        Raises:
-            RMNError: If coordinate creation fails
-            TypeError: If input parameters have incorrect types
+        Args:
+            latitude: Latitude in degrees (Scalar, string, or numeric)
+            longitude: Longitude in degrees (Scalar, string, or numeric)
+            altitude: Optional altitude in meters (Scalar, string, or numeric)
+            metadata: Optional metadata dictionary
         """
         if self.is_valid():
             return  # Already initialized by BaseWrapper._from_c_ref
@@ -115,18 +120,13 @@ cdef class GeographicCoordinate(RMNLibWrapper):
 
     @classmethod
     def from_dict(cls, data_dict):
-        """Create GeographicCoordinate from dictionary representation.
+        """Create GeographicCoordinate from dictionary.
 
-        Parameters:
-            data_dict : dict
-                Dictionary containing coordinate data
+        Args:
+            data_dict: Dictionary containing coordinate data
 
         Returns:
             GeographicCoordinate: New coordinate instance
-
-        Raises:
-            RMNError: If coordinate creation from dictionary fails
-            TypeError: If data_dict is not a dictionary
         """
         if not isinstance(data_dict, dict):
             raise TypeError("data_dict must be a dictionary")
@@ -137,22 +137,19 @@ cdef class GeographicCoordinate(RMNLibWrapper):
         cdef cJSON* json_obj = NULL
 
         try:
-            # Convert Python dict → cJSON → GeographicCoordinateRef (same as Datum)
+            # Convert Python dict → cJSON → GeographicCoordinateRef
             json_ptr = pydict_to_cjson_ptr(data_dict)
             json_obj = <cJSON*>json_ptr
 
-            # Create coordinate from JSON
             coord_ref = GeographicCoordinateCreateFromJSON(json_obj, &err_ocstr)
             if coord_ref == NULL:
                 from rmnpy.helpers.octypes import ocstring_to_pystring
                 error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
                 raise RMNError(f"GeographicCoordinate creation from dictionary failed: {error_msg}")
 
-            # Create wrapper from C reference using universal BaseWrapper method
             return <GeographicCoordinate>BaseWrapper._from_c_ref(GeographicCoordinate, <void*>coord_ref)
 
         finally:
-            # Clean up temporary references
             if json_obj != NULL:
                 cJSON_Delete(json_obj)
             if err_ocstr != NULL:
@@ -166,13 +163,9 @@ cdef class GeographicCoordinate(RMNLibWrapper):
         import json
         return json.dumps(self.to_dict(), ensure_ascii=False, sort_keys=False, indent=2)
 
-    # Property accessors
-
     @property
     def latitude(self):
         """Get the latitude as a Scalar object."""
-        self._validate_initialized()
-
         cdef SIScalarRef lat_ref = GeographicCoordinateGetLatitude(<GeographicCoordinateRef>self._c_ref)
         if lat_ref == NULL:
             raise RMNError("Failed to get latitude")
@@ -182,8 +175,6 @@ cdef class GeographicCoordinate(RMNLibWrapper):
     @latitude.setter
     def latitude(self, value):
         """Set the latitude."""
-        self._validate_initialized()
-
         cdef SIScalarRef lat_ref = NULL
 
         try:
@@ -200,8 +191,6 @@ cdef class GeographicCoordinate(RMNLibWrapper):
     @property
     def longitude(self):
         """Get the longitude as a Scalar object."""
-        self._validate_initialized()
-
         cdef SIScalarRef lon_ref = GeographicCoordinateGetLongitude(<GeographicCoordinateRef>self._c_ref)
         if lon_ref == NULL:
             raise RMNError("Failed to get longitude")
@@ -211,8 +200,6 @@ cdef class GeographicCoordinate(RMNLibWrapper):
     @longitude.setter
     def longitude(self, value):
         """Set the longitude."""
-        self._validate_initialized()
-
         cdef SIScalarRef lon_ref = NULL
 
         try:
@@ -229,19 +216,15 @@ cdef class GeographicCoordinate(RMNLibWrapper):
     @property
     def altitude(self):
         """Get the altitude as a Scalar object, or None if not set."""
-        self._validate_initialized()
-
         cdef SIScalarRef alt_ref = GeographicCoordinateGetAltitude(<GeographicCoordinateRef>self._c_ref)
         if alt_ref == NULL:
-            return None  # No altitude set
+            return None
 
         return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>alt_ref)
 
     @altitude.setter
     def altitude(self, value):
         """Set the altitude, or None to clear it."""
-        self._validate_initialized()
-
         cdef SIScalarRef alt_ref = NULL
 
         try:
@@ -262,19 +245,15 @@ cdef class GeographicCoordinate(RMNLibWrapper):
     @property
     def metadata(self):
         """Get the application metadata dictionary."""
-        self._validate_initialized()
-
         cdef OCDictionaryRef metadata_ref = GeographicCoordinateGetApplicationMetaData(<GeographicCoordinateRef>self._c_ref)
         if metadata_ref == NULL:
-            return {}  # Return empty dict if no metadata
+            return {}
 
         return ocdict_to_pydict(<uint64_t>metadata_ref)
 
     @metadata.setter
     def metadata(self, value):
         """Set the application metadata dictionary."""
-        self._validate_initialized()
-
         if not isinstance(value, dict):
             raise TypeError("metadata must be a dictionary")
 
@@ -310,10 +289,6 @@ cdef class GeographicCoordinate(RMNLibWrapper):
             dict: Dictionary representation of the coordinate
         """
         return self.to_dict()
-
-    # Comparison is handled by universal OCTypeEqual in BaseWrapper
-
-    # Utility methods
 
     def __repr__(self):
         """Return string representation of the geographic coordinate."""

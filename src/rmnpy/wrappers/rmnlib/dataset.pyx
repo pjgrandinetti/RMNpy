@@ -187,7 +187,7 @@ cdef class Dataset(RMNLibWrapper):
                 OCRelease(<OCTypeRef>err_ocstr)
 
     @classmethod
-    def from_dict(cls, data_dict):
+    def from_dict(cls, json_dict):
         """Create Dataset from dictionary."""
         cdef Dataset result = cls.__new__(cls)
         cdef DatasetRef dataset_ref = NULL
@@ -200,7 +200,7 @@ cdef class Dataset(RMNLibWrapper):
             # The C API (DatasetCreateFromJSON / OCTypeCopyJSON) handles the
             # CSDM envelope (e.g. {'csdm': {...}}) and performs any necessary
             # validation. Avoid duplicating checks here; forward the dict as-is.
-            actual_dict = data_dict
+            actual_dict = json_dict
 
             # Convert Python dict → cJSON → DatasetRef (same as Datum)
             json_ptr = pydict_to_cjson_ptr(actual_dict)
@@ -225,36 +225,6 @@ cdef class Dataset(RMNLibWrapper):
                 OCRelease(<OCTypeRef>error)
 
     # Basic property accessors
-
-    @property
-    def description(self):
-        """Get the description of the dataset."""
-        self._validate_initialized()
-        cdef OCStringRef desc_ref = DatasetGetDescription(<DatasetRef>self._c_ref)
-        if desc_ref == NULL:
-            return ""  # Return empty string for datasets without descriptions
-        return ocstring_to_pystring(<uint64_t>desc_ref)
-
-    @description.setter
-    def description(self, value):
-        """Set the description of the dataset."""
-        self._validate_initialized()
-        if not isinstance(value, str):
-            raise TypeError("description must be a string")
-
-        cdef OCStringRef desc_ref = NULL
-
-        try:
-            desc_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
-            if desc_ref == NULL:
-                raise RMNError("Failed to create description string")
-
-            if not DatasetSetDescription(<DatasetRef>self._c_ref, desc_ref):
-                raise RMNError("Failed to set dataset description")
-
-        finally:
-            if desc_ref != NULL:
-                OCRelease(<OCTypeRef>desc_ref)
 
     @property
     def title(self):
@@ -646,61 +616,6 @@ cdef class Dataset(RMNLibWrapper):
         finally:
             if qty_type_ref != NULL:
                 OCRelease(<OCTypeRef>qty_type_ref)
-
-    # Application metadata management
-
-    @property
-    def application_metadata(self):
-        """Get the application metadata dictionary."""
-        cdef OCDictionaryRef metadata_ref = DatasetGetApplicationMetaData(self._c_ref)
-        if metadata_ref == NULL:
-            return {}  # Return empty dict if no metadata
-
-        return ocdict_to_pydict(<uint64_t>metadata_ref)
-
-    @application_metadata.setter
-    def application_metadata(self, value):
-        """Set the application metadata dictionary."""
-        if not isinstance(value, dict):
-            raise TypeError("application_metadata must be a dictionary")
-
-        cdef OCDictionaryRef metadata_ref = NULL
-
-        try:
-            # Convert Python dictionary to OCDictionary
-            metadata_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(value)
-            if metadata_ref == NULL:
-                raise RMNError("Failed to create metadata dictionary")
-
-            # Set metadata in dataset
-            if not DatasetSetApplicationMetaData(<DatasetRef>self._c_ref, metadata_ref):
-                raise RMNError("Failed to set dataset metadata")
-
-        finally:
-            if metadata_ref != NULL:
-                OCRelease(<OCTypeRef>metadata_ref)
-
-    # Universal dictionary serialization is inherited from BaseWrapper via OCTypeCopyJSON
-    # Custom serialization methods are no longer needed!
-
-    def copy(self):
-        """
-        Create a deep copy of the dataset.
-
-        Returns:
-            Dataset: New dataset instance (deep copy)
-
-        Raises:
-            RMNError: If copying fails
-        """
-        cdef DatasetRef copied_ref = DatasetCreateCopy(self._c_ref)
-        if copied_ref == NULL:
-            raise RMNError("Failed to create copy of Dataset")
-
-        # Create new Python object directly with copied reference (no additional copying)
-        cdef Dataset new_dataset = Dataset.__new__(Dataset)
-        new_dataset._set_c_ref(<OCTypeRef>copied_ref)
-        return new_dataset
 
     # File I/O methods
 

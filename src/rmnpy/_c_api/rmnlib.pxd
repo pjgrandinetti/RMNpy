@@ -55,6 +55,7 @@ cdef extern from "RMNLibrary.h":
     OCMutableDictionaryRef DimensionGetApplicationMetaData(DimensionRef dim)
     bint DimensionSetApplicationMetaData(DimensionRef dim, OCDictionaryRef dict, OCStringRef *outError)
     OCIndex DimensionGetCount(DimensionRef dim)
+    OCDictionaryRef DimensionCopyAsDictionary(DimensionRef dim)
     bint DimensionIsQuantitative(DimensionRef dim)
     OCStringRef DimensionCreateAxisLabel(DimensionRef dim, OCIndex index)
 
@@ -266,6 +267,7 @@ cdef extern from "RMNLibrary.h":
     GeographicCoordinateRef GeographicCoordinateCreate(SIScalarRef latitude, SIScalarRef longitude,
                                                        SIScalarRef altitude, OCDictionaryRef metadata)
     GeographicCoordinateRef GeographicCoordinateCreateFromJSON(cJSON *json, OCStringRef *outError)
+    OCDictionaryRef GeographicCoordinateCopyAsDictionary(GeographicCoordinateRef gc)
     GeographicCoordinateRef GeographicCoordinateCreateCopy(GeographicCoordinateRef gc)
 
     # GeographicCoordinate getters
@@ -287,6 +289,7 @@ cdef extern from "RMNLibrary.h":
                         OCTypeRef owner, OCStringRef *outError)
     DatumRef DatumCopy(DatumRef theDatum)
     bint DatumHasSameReducedDimensionalities(DatumRef input1, DatumRef input2)
+    OCDictionaryRef DatumCopyAsDictionary(DatumRef theDatum)
     DatumRef DatumCreateFromJSON(cJSON *json, OCStringRef *outError)
 
     # Datum getters
@@ -305,6 +308,12 @@ cdef extern from "RMNLibrary.h":
     # ====================================================================================
     # Utility Functions and Metadata Handling
     # ====================================================================================
+
+    # Universal accessors for RMNLib object properties
+    OCStringRef RMNLibGetDescription(OCTypeRef theType, OCStringRef *outError)
+    bint RMNLibSetDescription(OCTypeRef theType, OCStringRef description, OCStringRef *outError)
+    OCDictionaryRef RMNLibGetApplicationMetaData(OCTypeRef theType, OCStringRef *outError)
+    bint RMNLibSetApplicationMetaData(OCTypeRef theType, OCDictionaryRef metadata, OCStringRef *outError)
 
     # Internal library management (not exposed to Python users)
     void RMNLibTypesShutdown()

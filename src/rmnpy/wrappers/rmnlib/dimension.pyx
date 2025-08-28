@@ -167,44 +167,6 @@ cdef class BaseDimension(RMNLibWrapper):
         raise RMNError("Invalid dimension: C API returned NULL type (dimension may be corrupted or uninitialized)")
 
     @property
-    def description(self):
-        """Get the description of the dimension."""
-        desc_ocstr = DimensionCopyDescription(<DimensionRef>self._c_ref)
-        if desc_ocstr == NULL:
-            # Return empty string for dimensions created without descriptions
-            return ""
-        try:
-            result = ocstring_to_pystring(<uint64_t>desc_ocstr)
-            if result is None:
-                raise RMNError("Failed to convert description to Python string")
-            return result
-        finally:
-            OCRelease(<OCTypeRef>desc_ocstr)
-
-    @description.setter
-    def description(self, value):
-        """Set the description of the dimension."""
-        cdef OCStringRef err_ocstr = NULL
-        cdef OCStringRef desc_ocstr
-
-        if value is not None and not isinstance(value, str):
-            raise TypeError("Description must be a string or None")
-
-        desc_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
-        try:
-            if not DimensionSetDescription(<DimensionRef>self._c_ref, desc_ocstr, &err_ocstr):
-                if err_ocstr != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
-                    raise RMNError(f"Failed to set description: {error_msg}")
-                else:
-                    raise RMNError("Failed to set description")
-        finally:
-            if desc_ocstr != NULL:
-                OCRelease(<OCTypeRef>desc_ocstr)
-            if err_ocstr != NULL:
-                OCRelease(<OCTypeRef>err_ocstr)
-
-    @property
     def label(self):
         """Get the label of the dimension."""
         label_ocstr = DimensionCopyLabel(<DimensionRef>self._c_ref)
@@ -247,49 +209,6 @@ cdef class BaseDimension(RMNLibWrapper):
     def size(self):
         """Alias for count property (csdmpy compatibility)."""
         return self.count
-
-    @property
-    def application(self):
-        """Get application metadata."""
-        cdef OCDictionaryRef application_ocdict
-
-        application_ocdict = DimensionGetApplicationMetaData(<DimensionRef>self._c_ref)
-        if application_ocdict != NULL:
-            return ocdict_to_pydict(<uint64_t>application_ocdict)
-        raise RMNError("C API returned NULL application metadata (dimension may be corrupted or uninitialized)")
-
-    @application.setter
-    def application(self, value):
-        """Set application metadata."""
-        cdef OCStringRef err_ocstr = NULL
-        cdef OCDictionaryRef application_ocdict = NULL
-
-        if value is not None and not isinstance(value, dict):
-            raise TypeError("Application metadata must be a dictionary or None")
-
-        try:
-            if value is None or (isinstance(value, dict) and len(value) == 0):
-                if not DimensionSetApplicationMetaData(<DimensionRef>self._c_ref, NULL, &err_ocstr):
-                    if err_ocstr != NULL:
-                        error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
-                        raise RMNError(f"Failed to clear metadata: {error_msg}")
-                    else:
-                        raise RMNError("Failed to clear metadata")
-            else:
-                application_ocdict = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(value)
-                try:
-                    if not DimensionSetApplicationMetaData(<DimensionRef>self._c_ref, application_ocdict, &err_ocstr):
-                        if err_ocstr != NULL:
-                            error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
-                            raise RMNError(f"Failed to set metadata: {error_msg}")
-                        else:
-                            raise RMNError("Failed to set metadata")
-                finally:
-                    if application_ocdict != NULL:
-                        OCRelease(<OCTypeRef>application_ocdict)
-        finally:
-            if err_ocstr != NULL:
-                OCRelease(<OCTypeRef>err_ocstr)
 
     def is_quantitative(self):
         """Check if dimension is quantitative (not labeled)."""
@@ -410,53 +329,6 @@ cdef class BaseDimension(RMNLibWrapper):
     def coords(self) -> list:
         """Alias for coordinates."""
         return self.coordinates
-
-    def copy(self):
-        """Create a copy of the dimension using OCTypeDeepCopy."""
-        if self._c_ref == NULL:
-            raise RMNError("Cannot copy null dimension")
-
-        cdef DimensionRef copied_dimension = <DimensionRef>OCTypeDeepCopy(<OCTypeRef><DimensionRef>self._c_ref)
-        if copied_dimension == NULL:
-            raise RMNError("Failed to create dimension copy")
-
-        # Determine the appropriate wrapper type and create it directly
-        # without going through _from_c_ref to avoid double-copying
-        cdef OCStringRef type_ref = DimensionGetType(copied_dimension)
-        if type_ref == NULL:
-            OCRelease(<OCTypeRef>copied_dimension)
-            raise RMNError("C API returned NULL type for dimension reference")
-
-        try:
-            type_str = ocstring_to_pystring(<uint64_t>type_ref)
-        finally:
-            OCRelease(<OCTypeRef>type_ref)
-
-        if type_str == "labeled":
-            wrapper = LabeledDimension.__new__(LabeledDimension)
-            (<LabeledDimension>wrapper)._set_c_ref(<OCTypeRef>copied_dimension)
-            return wrapper
-        elif type_str == "linear":
-            wrapper = LinearDimension.__new__(LinearDimension)
-            (<LinearDimension>wrapper)._set_c_ref(<OCTypeRef>copied_dimension)
-            return wrapper
-        elif type_str == "monotonic":
-            wrapper = MonotonicDimension.__new__(MonotonicDimension)
-            (<MonotonicDimension>wrapper)._set_c_ref(<OCTypeRef>copied_dimension)
-            return wrapper
-        elif type_str == "si_dimension":
-            wrapper = SIDimension.__new__(SIDimension)
-            (<SIDimension>wrapper)._set_c_ref(<OCTypeRef>copied_dimension)
-            return wrapper
-        elif type_str == "dimension":
-            wrapper = BaseDimension.__new__(BaseDimension)
-            (<BaseDimension>wrapper)._set_c_ref(<OCTypeRef>copied_dimension)
-            return wrapper
-        else:
-            # Fallback for unknown types
-            wrapper = BaseDimension.__new__(BaseDimension)
-            (<BaseDimension>wrapper)._set_c_ref(<OCTypeRef>copied_dimension)
-            return wrapper
 
 cdef class LabeledDimension(BaseDimension):
     """
