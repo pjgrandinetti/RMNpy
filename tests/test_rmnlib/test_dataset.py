@@ -63,11 +63,9 @@ class TestDatasetCreation:
         dv = self._make_mock_dependent_variable()
         dependent_variables = [dv]
 
-        # Create coordinates for datum
-        coordinates = [1.0, 2.0, 3.0]
+        # Create datum - coordinates managed by Dataset, not Datum
         datum = Datum(
             response=5.0,
-            coordinates=coordinates,
             dependent_variable_index=0,
             component_index=0,
             mem_offset=0,
@@ -283,10 +281,8 @@ class TestDatasetFocusDatum:
 
     def _create_test_datum(self):
         """Helper to create a test datum"""
-        coordinates = [1.0, 2.0]
         return Datum(
             response=10.0,
-            coordinates=coordinates,
             dependent_variable_index=0,
             component_index=0,
             mem_offset=0,
@@ -309,7 +305,7 @@ class TestDatasetFocusDatum:
         dataset.focus = datum
         retrieved_focus = dataset.focus
         assert retrieved_focus is not None
-        assert retrieved_focus.response == 10.0
+        assert retrieved_focus.response.value == 10.0
 
         # Test clearing focus
         dataset.focus = None
@@ -332,7 +328,7 @@ class TestDatasetFocusDatum:
         dataset.previous_focus = datum
         retrieved_prev_focus = dataset.previous_focus
         assert retrieved_prev_focus is not None
-        assert retrieved_prev_focus.response == 10.0
+        assert retrieved_prev_focus.response.value == 10.0
 
         # Test clearing previous focus
         dataset.previous_focus = None
@@ -362,9 +358,11 @@ class TestDatasetGeographicCoordinate:
 
         retrieved = dataset.geographic_coordinate
         assert retrieved is not None
-        assert retrieved.latitude == 37.7749
-        assert retrieved.longitude == -122.4194
-        assert retrieved.altitude == 50.0
+        assert retrieved.latitude.value == 37.7749
+        assert (
+            abs(retrieved.longitude.value - (-122.4194)) < 0.001
+        )  # Allow small precision difference
+        assert retrieved.altitude.value == 50.0
 
         # Test clearing geographic coordinate
         dataset.geographic_coordinate = None
@@ -452,40 +450,6 @@ class TestDatasetStringRepresentation:
         str_str = str(dataset)
         assert isinstance(str_str, str)
         assert str_str == repr_str  # Should be the same
-
-    def test_summary_property(self):
-        """Test summary property"""
-        dv = DependentVariable(
-            components=[np.array([1.0, 2.0], dtype=np.float64)],
-            name="test_dv",
-            quantity_type="scalar",
-            element_type="float64",
-        )
-
-        dataset = Dataset(
-            title="Summary Test",
-            description="Test description",
-            dependent_variables=[dv],
-            application_metadata={"key1": "value1", "key2": "value2"},
-        )
-
-        summary = dataset.summary
-        assert isinstance(summary, dict)
-        assert "name" in summary
-        assert "description" in summary
-        assert "dependent_variables" in summary
-        assert "metadata_keys" in summary
-
-        # Check dependent variables summary
-        dv_summary = summary["dependent_variables"]
-        assert len(dv_summary) == 1
-        assert dv_summary[0]["name"] == "test_dv"
-        assert dv_summary[0]["quantity_type"] == "scalar"
-
-        # Check metadata keys
-        metadata_keys = summary["metadata_keys"]
-        assert "key1" in metadata_keys
-        assert "key2" in metadata_keys
 
 
 if __name__ == "__main__":

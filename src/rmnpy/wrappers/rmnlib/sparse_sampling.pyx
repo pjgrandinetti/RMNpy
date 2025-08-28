@@ -28,6 +28,7 @@ from rmnpy.helpers.octypes import (
     ocnumber_to_pynumber,
     ocstring_create_from_pystring,
     ocstring_to_pystring,
+    pydict_to_cjson_ptr,
 )
 
 
@@ -158,12 +159,16 @@ cdef class SparseSampling(RMNLibWrapper):
         """Create SparseSampling from dictionary."""
         cdef SparseSampling result = cls.__new__(cls)
         cdef SparseSamplingRef sparse_ref = NULL
-        cdef OCDictionaryRef dict_ref = NULL
         cdef OCStringRef err_ocstr = NULL
+        cdef uint64_t json_ptr
+        cdef cJSON* json_obj = NULL
 
         try:
-            dict_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(data_dict)
-            sparse_ref = SparseSamplingCreateFromDictionary(dict_ref, &err_ocstr)
+            # Convert Python dict → cJSON → SparseSamplingRef (same as Datum)
+            json_ptr = pydict_to_cjson_ptr(data_dict)
+            json_obj = <cJSON*>json_ptr
+
+            sparse_ref = SparseSamplingCreateFromJSON(json_obj, &err_ocstr)
 
             if sparse_ref == NULL:
                 if err_ocstr != NULL:
@@ -176,8 +181,8 @@ cdef class SparseSampling(RMNLibWrapper):
             return result
 
         finally:
-            if dict_ref != NULL:
-                OCRelease(<OCTypeRef>dict_ref)
+            if json_obj != NULL:
+                cJSON_Delete(json_obj)
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
 

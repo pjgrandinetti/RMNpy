@@ -28,6 +28,7 @@ from rmnpy.helpers.octypes import (
     ocdict_to_pydict,
     ocstring_create_from_pystring,
     ocstring_to_pystring,
+    pydict_to_cjson_ptr,
 )
 
 # Import wrapper classes for cross-component integration
@@ -190,12 +191,23 @@ cdef class Dataset(RMNLibWrapper):
         """Create Dataset from dictionary."""
         cdef Dataset result = cls.__new__(cls)
         cdef DatasetRef dataset_ref = NULL
-        cdef OCDictionaryRef dict_ref = NULL
         cdef OCStringRef error = NULL
+        cdef uint64_t json_ptr
+        cdef cJSON* json_obj = NULL
 
         try:
-            dict_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(data_dict)
-            dataset_ref = DatasetCreateFromDictionary(dict_ref, &error)
+            # Handle CSDM envelope format from JSON serialization
+            actual_dict = data_dict
+            if isinstance(data_dict, dict) and 'csdm' in data_dict and len(data_dict) == 1:
+                # JSON serialization wraps the data in a 'csdm' envelope
+                # Extract the inner content for DatasetCreateFromJSON
+                actual_dict = data_dict['csdm']
+
+            # Convert Python dict → cJSON → DatasetRef (same as Datum)
+            json_ptr = pydict_to_cjson_ptr(actual_dict)
+            json_obj = <cJSON*>json_ptr
+
+            dataset_ref = DatasetCreateFromJSON(json_obj, &error)
 
             if dataset_ref == NULL:
                 if error != NULL:
@@ -208,8 +220,8 @@ cdef class Dataset(RMNLibWrapper):
             return result
 
         finally:
-            if dict_ref != NULL:
-                OCRelease(<OCTypeRef>dict_ref)
+            if json_obj != NULL:
+                cJSON_Delete(json_obj)
             if error != NULL:
                 OCRelease(<OCTypeRef>error)
 

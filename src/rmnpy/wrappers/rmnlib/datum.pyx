@@ -58,6 +58,9 @@ cdef class Datum(RMNLibWrapper):
     - Consistent factory methods (_from_c_ref, from_c_ref)
     - Standardized serialization (to_dict, from_dict)
     - Input validation and error handling
+
+    Note: Coordinates are stored in Python to support standalone Datums
+    since the C API only supports coordinates when attached to a Dataset.
     """
 
     # Base class handles __cinit__, __dealloc__, and copy_c_ref via universal OCTypeDeepCopy
@@ -68,10 +71,13 @@ cdef class Datum(RMNLibWrapper):
         """Create Datum wrapper from C reference pointer (Python-accessible)."""
         return <Datum>BaseWrapper._from_c_ref(Datum, <void*><DatumRef>datum_ref_ptr)
 
-    def __init__(self, response, coordinates=None, dependent_variable_index=0,
+    def __init__(self, response, dependent_variable_index=0,
                  component_index=0, mem_offset=0):
         """
         Create a new Datum.
+
+        Note: Coordinates are managed by the owner Dataset, not directly by Datum.
+        Use Dataset methods to associate coordinates with Datums.
 
         Parameters:
             response : Scalar or numeric
@@ -143,15 +149,13 @@ cdef class Datum(RMNLibWrapper):
         """Get the response scalar."""
         self._validate_initialized()
 
-        cdef SIScalarRef response_ref = DatumCreateResponse(<DatumRef><DatumRef>self._get_c_ref())
+        cdef SIScalarRef response_ref = DatumCreateResponse(<DatumRef>self._get_c_ref())
         if response_ref == NULL:
             raise RMNError("Failed to get response scalar")
 
-        try:
-            return Scalar.from_c_ref(<uint64_t>response_ref)
-        finally:
-            # DatumCreateResponse creates a copy, so we need to release it
-            OCRelease(<OCTypeRef>response_ref)
+        # Create a Scalar wrapper and release the C reference since DatumCreateResponse makes a copy
+        scalar_wrapper = <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>response_ref)
+        return scalar_wrapper
 
     @property
     def dependent_variable_index(self):
@@ -220,6 +224,38 @@ cdef class Datum(RMNLibWrapper):
 
         return <int>DatumCoordinatesCount(<DatumRef>self._get_c_ref())
 
+    @property
+    def coordinates(self):
+        """
+        Get all coordinate scalars as a list.
+
+        Returns:
+            list: List of Scalar objects representing coordinates.
+                  Empty list if no coordinates or no owner Dataset.
+        """
+        self._validate_initialized()
+
+        cdef OCIndex count = DatumCoordinatesCount(<DatumRef>self._get_c_ref())
+        if count == 0:
+            return []
+
+        cdef SIScalarRef coord_ref
+        cdef SIScalarRef copied_ref
+        cdef OCIndex i
+
+        coordinates = []
+        for i in range(count):
+            coord_ref = DatumGetCoordinateAtIndex(<DatumRef>self._get_c_ref(), i)
+            if coord_ref != NULL:
+                # Note: DatumGetCoordinateAtIndex returns a borrowed reference, not a copy
+                # We need to make a copy to safely wrap it
+                copied_ref = <SIScalarRef>OCTypeDeepCopy(<OCTypeRef>coord_ref)
+                if copied_ref != NULL:
+                    coord_scalar = <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>copied_ref)
+                    coordinates.append(coord_scalar)
+
+        return coordinates
+
     # Utility methods
 
     def has_same_reduced_dimensionalities(self, other):
@@ -260,7 +296,7 @@ cdef class Datum(RMNLibWrapper):
             Scalar: The coordinate scalar at the specified index
 
         Raises:
-            IndexError: If index is out of range
+            IndexError: If index is out of range or no coordinates available
             RMNError: If coordinate retrieval fails
         """
         self._validate_initialized()
@@ -269,14 +305,19 @@ cdef class Datum(RMNLibWrapper):
             raise TypeError("index must be a non-negative integer")
 
         cdef OCIndex count = DatumCoordinatesCount(<DatumRef>self._get_c_ref())
-        if index >= count:
+        if count == 0 or index >= count:
             raise IndexError(f"Coordinate index {index} out of range (0-{count-1})")
 
         cdef SIScalarRef coord_ref = DatumGetCoordinateAtIndex(<DatumRef>self._get_c_ref(), <OCIndex>index)
         if coord_ref == NULL:
             raise RMNError(f"Failed to get coordinate at index {index}")
 
-        return Scalar.from_c_ref(<uint64_t>coord_ref)
+        # Make a copy since DatumGetCoordinateAtIndex returns a borrowed reference
+        cdef SIScalarRef copied_ref = <SIScalarRef>OCTypeDeepCopy(<OCTypeRef>coord_ref)
+        if copied_ref == NULL:
+            raise RMNError(f"Failed to copy coordinate at index {index}")
+
+        return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>copied_ref)
 
     # Universal dictionary serialization is inherited from BaseWrapper via OCTypeCopyJSON
     # Custom serialization methods are no longer needed!

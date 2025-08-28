@@ -35,6 +35,7 @@ from rmnpy.helpers.octypes import (  # py_list_to_siscalar_ocarray,  # Function 
     ocnumber_to_pynumber,
     ocstring_create_from_pystring,
     ocstring_to_pystring,
+    pydict_to_cjson_ptr,
 )
 
 
@@ -129,16 +130,15 @@ cdef class BaseDimension(RMNLibWrapper):
         Raises:
             RMNError: If dimension creation fails
         """
-        # Convert Python dict to OCDictionary using existing helper
-        cdef uint64_t dict_ptr = ocdict_create_from_pydict(data)
-        cdef OCDictionaryRef dict_ref = <OCDictionaryRef>dict_ptr
-
+        # Convert Python dict → cJSON → DimensionRef (same as Datum)
+        cdef uint64_t json_ptr = pydict_to_cjson_ptr(data)
+        cdef cJSON* json_obj = <cJSON*>json_ptr
         cdef OCStringRef err_ocstr = NULL
         cdef DimensionRef dim_ref = NULL
 
         try:
-            # Call C API to create dimension from dictionary
-            dim_ref = DimensionCreateFromDictionary(dict_ref, &err_ocstr)
+            # Call C API to create dimension from JSON
+            dim_ref = DimensionCreateFromJSON(json_obj, &err_ocstr)
             if dim_ref == NULL:
                 if err_ocstr != NULL:
                     error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
@@ -153,10 +153,10 @@ cdef class BaseDimension(RMNLibWrapper):
             # Clean up resources using the same pattern as elsewhere in the file
             if dim_ref != NULL:
                 OCRelease(<OCTypeRef>dim_ref)
+            if json_obj != NULL:
+                cJSON_Delete(json_obj)
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
-            if dict_ref != NULL:
-                OCRelease(<OCTypeRef>dict_ref)
 
     @property
     def type(self):

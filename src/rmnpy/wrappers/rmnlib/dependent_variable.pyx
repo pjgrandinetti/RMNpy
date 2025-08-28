@@ -28,6 +28,7 @@ from rmnpy.helpers.octypes import (
     ocdict_to_pydict,
     ocstring_create_from_pystring,
     ocstring_to_pystring,
+    pydict_to_cjson_ptr,
 )
 
 # Import the helper function and Unit class from unit.pyx
@@ -65,16 +66,15 @@ cdef class DependentVariable(RMNLibWrapper):
         Raises:
             RMNError: If dependent variable creation fails
         """
-        # Convert Python dict to OCDictionary using existing helper
-        cdef uint64_t dict_ptr = ocdict_create_from_pydict(data)
-        cdef OCDictionaryRef dict_ref = <OCDictionaryRef>dict_ptr
-
+        # Convert Python dict → cJSON → DependentVariableRef (same as Datum)
+        cdef uint64_t json_ptr = pydict_to_cjson_ptr(data)
+        cdef cJSON* json_obj = <cJSON*>json_ptr
         cdef OCStringRef err_ocstr = NULL
         cdef DependentVariableRef dv_ref = NULL
 
         try:
-            # Call C API to create dependent variable from dictionary
-            dv_ref = DependentVariableCreateFromDictionary(dict_ref, &err_ocstr)
+            # Call C API to create dependent variable from JSON
+            dv_ref = DependentVariableCreateFromJSON(json_obj, &err_ocstr)
             if dv_ref == NULL:
                 if err_ocstr != NULL:
                     error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
@@ -91,8 +91,8 @@ cdef class DependentVariable(RMNLibWrapper):
                 OCRelease(<OCTypeRef>dv_ref)
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
-            if dict_ref != NULL:
-                OCRelease(<OCTypeRef>dict_ref)
+            if json_obj != NULL:
+                cJSON_Delete(json_obj)
 
     def __init__(self,
                  components,

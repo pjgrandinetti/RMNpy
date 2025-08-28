@@ -21,6 +21,7 @@ from rmnpy.wrappers.base_wrapper cimport BaseWrapper, RMNLibWrapper
 from rmnpy.helpers.octypes import (
     ocdict_create_from_pydict,
     ocdict_to_pydict,
+    pydict_to_cjson_ptr,
 )
 
 # Import SITypes wrappers
@@ -130,18 +131,18 @@ cdef class GeographicCoordinate(RMNLibWrapper):
         if not isinstance(data_dict, dict):
             raise TypeError("data_dict must be a dictionary")
 
-        cdef OCDictionaryRef dict_ref = NULL
         cdef OCStringRef err_ocstr = NULL
         cdef GeographicCoordinateRef coord_ref = NULL
+        cdef uint64_t json_ptr
+        cdef cJSON* json_obj = NULL
 
         try:
-            # Convert Python dictionary to OCDictionary
-            dict_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(data_dict)
-            if dict_ref == NULL:
-                raise RMNError("Failed to convert dictionary to OCDictionary")
+            # Convert Python dict → cJSON → GeographicCoordinateRef (same as Datum)
+            json_ptr = pydict_to_cjson_ptr(data_dict)
+            json_obj = <cJSON*>json_ptr
 
-            # Create coordinate from dictionary
-            coord_ref = GeographicCoordinateCreateFromDictionary(dict_ref, &err_ocstr)
+            # Create coordinate from JSON
+            coord_ref = GeographicCoordinateCreateFromJSON(json_obj, &err_ocstr)
             if coord_ref == NULL:
                 from rmnpy.helpers.octypes import ocstring_to_pystring
                 error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
@@ -152,8 +153,8 @@ cdef class GeographicCoordinate(RMNLibWrapper):
 
         finally:
             # Clean up temporary references
-            if dict_ref != NULL:
-                OCRelease(<OCTypeRef>dict_ref)
+            if json_obj != NULL:
+                cJSON_Delete(json_obj)
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
             if coord_ref != NULL:
