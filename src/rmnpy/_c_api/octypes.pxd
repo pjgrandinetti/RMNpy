@@ -21,6 +21,50 @@ from libc.stdint cimport (
 from libc.stdio cimport FILE
 
 
+# cJSON types and functions for universal JSON serialization
+cdef extern from "cJSON.h":
+    ctypedef struct cJSON:
+        int type
+        char *valuestring
+        double valuedouble
+        int valueint
+        cJSON *child
+        cJSON *next
+        cJSON *prev
+        char *string
+
+    # cJSON type constants
+    int cJSON_Invalid
+    int cJSON_False
+    int cJSON_True
+    int cJSON_NULL
+    int cJSON_Number
+    int cJSON_String
+    int cJSON_Array
+    int cJSON_Object
+    int cJSON_Raw
+
+    # cJSON functions
+    char *cJSON_Print(const cJSON *item)
+    void cJSON_Delete(cJSON *c)
+    cJSON *cJSON_Parse(const char *value)
+    void cJSON_free(void *ptr)
+
+    # cJSON creation functions
+    cJSON *cJSON_CreateNull()
+    cJSON *cJSON_CreateTrue()
+    cJSON *cJSON_CreateFalse()
+    cJSON *cJSON_CreateBool(bint boolean)
+    cJSON *cJSON_CreateNumber(double num)
+    cJSON *cJSON_CreateString(const char *string)
+    cJSON *cJSON_CreateArray()
+    cJSON *cJSON_CreateObject()
+
+    # cJSON manipulation functions
+    bint cJSON_AddItemToObject(cJSON *object, const char *string, cJSON *item)
+    bint cJSON_AddItemToArray(cJSON *array, cJSON *item)
+
+
 # Complex number types (C99 complex)
 cdef extern from "complex.h":
     ctypedef struct float_complex "float complex":
@@ -112,6 +156,7 @@ cdef extern from "OCTypes/OCType.h":
     void *OCTypeDeepCopy(const void *obj)
     void *OCTypeDeepCopyMutable(const void *obj)
     OCStringRef OCTypeCopyFormattingDesc(const void *ptr)
+    cJSON *OCTypeCopyJSON(OCTypeRef obj)
 
 # OCString functions
 cdef extern from "OCTypes/OCString.h":

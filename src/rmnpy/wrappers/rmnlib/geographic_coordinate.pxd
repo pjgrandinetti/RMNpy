@@ -7,11 +7,9 @@ the GeographicCoordinate class from geographic_coordinate.pyx.
 """
 
 from rmnpy._c_api.rmnlib cimport GeographicCoordinateRef
+from rmnpy.wrappers.base_wrapper cimport RMNLibWrapper
 
 
-cdef class GeographicCoordinate:
+cdef class GeographicCoordinate(RMNLibWrapper):
     """Cython interface for GeographicCoordinate wrapper."""
-    cdef GeographicCoordinateRef _c_ref
-
-    @staticmethod
-    cdef GeographicCoordinate _from_c_ref(GeographicCoordinateRef geo_ref)
+    # _c_ref is inherited from BaseWrapper

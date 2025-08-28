@@ -11,9 +11,26 @@ from typing import Any, Dict, Optional, Union
 
 from libc.stdint cimport uint64_t
 
-from rmnpy._c_api.octypes cimport OCRelease, OCTypeRef
+from rmnpy._c_api.octypes cimport (
+    OCDictionaryRef,
+    OCGetTypeID,
+    OCRelease,
+    OCStringGetCString,
+    OCStringRef,
+    OCTypeCopyFormattingDesc,
+    OCTypeCopyJSON,
+    OCTypeDeepCopy,
+    OCTypeEqual,
+    OCTypeGetRetainCount,
+    OCTypeID,
+    OCTypeNameFromTypeID,
+    OCTypeRef,
+    cJSON,
+    cJSON_Delete,
+)
 
 from rmnpy.exceptions import RMNError
+from rmnpy.helpers.octypes import universal_to_dict
 
 
 cdef class BaseWrapper:
@@ -51,23 +68,110 @@ cdef class BaseWrapper:
         """Get the C reference (internal use only)."""
         return <void*>self._c_ref
 
-    cdef bint _is_initialized(self):
+    @property
+    def _c_ref(self):
+        """Get the C reference pointer as integer (for helper functions)."""
+        return <uint64_t>self._c_ref
+
+    def is_valid(self):
         """Check if the wrapper has a valid C reference."""
         return self._c_ref != NULL
 
-    def is_valid(self):
-        """Check if the wrapper has a valid C reference (Python-accessible)."""
-        return self._is_initialized()
-
     cdef void _validate_initialized(self) except *:
         """Validate that the wrapper is initialized, raise if not."""
-        if not self._is_initialized():
+        if not self.is_valid():
             raise ValueError(f"{self.__class__.__name__} not initialized")
 
-    # Subclasses must implement these methods
+    # Universal OCType methods - available to ALL OCTypes
     cdef void* copy_c_ref(self) except NULL:
-        """Create a copy of the C reference. Must be implemented by subclasses."""
-        raise NotImplementedError(f"{self.__class__.__name__} must implement copy_c_ref()")
+        """Create a copy using universal OCTypeDeepCopy."""
+        self._validate_initialized()
+        cdef void* copied = OCTypeDeepCopy(self._c_ref)
+        if copied == NULL:
+            raise MemoryError("Failed to copy OCType reference")
+        return copied
+
+    def get_type_id(self):
+        """Get the OCTypeID of this object."""
+        self._validate_initialized()
+        return OCGetTypeID(self._c_ref)
+
+    def get_type_name(self):
+        """Get the type name string of this object."""
+        self._validate_initialized()
+        cdef OCTypeID type_id = OCGetTypeID(self._c_ref)
+        cdef const char* name = OCTypeNameFromTypeID(type_id)
+        if name == NULL:
+            return None
+        return name.decode('utf-8')
+
+    def get_retain_count(self):
+        """Get the current retain count (for debugging)."""
+        self._validate_initialized()
+        return OCTypeGetRetainCount(self._c_ref)
+
+    def copy_formatting_description(self):
+        """Get a formatted description string."""
+        self._validate_initialized()
+        cdef OCStringRef desc = OCTypeCopyFormattingDesc(self._c_ref)
+        if desc == NULL:
+            return None
+
+        cdef const char* desc_str = OCStringGetCString(desc)
+        try:
+            if desc_str == NULL:
+                return None
+            return desc_str.decode('utf-8')
+        finally:
+            OCRelease(<OCTypeRef>desc)
+
+    def __eq__(self, other):
+        """Universal equality comparison using OCTypeEqual."""
+        if not isinstance(other, BaseWrapper):
+            return False
+        self._validate_initialized()
+        if hasattr(other, '_validate_initialized'):
+            other._validate_initialized()
+        elif not getattr(other, 'is_valid', lambda: True)():
+            return False
+
+        # Use universal OCTypeEqual function
+        return OCTypeEqual(self._c_ref, (<BaseWrapper>other)._c_ref)
+
+    def __ne__(self, other):
+        """Universal inequality comparison."""
+        return not self.__eq__(other)
+
+    @staticmethod
+    cdef BaseWrapper _from_c_ref(object cls, void* c_ref):
+        """
+        Universal factory method for creating wrappers from C references.
+
+        This implements the common pattern:
+        1. Create new instance with __new__
+        2. Check for NULL
+        3. Use OCTypeDeepCopy to copy the reference
+        4. Check for copy failure
+        5. Set the C reference
+        6. Return the instance
+
+        Parameters:
+            cls: The wrapper class to instantiate
+            c_ref: The C reference to wrap
+
+        Returns:
+            BaseWrapper: New instance of cls wrapping the copied C reference
+        """
+        if c_ref == NULL:
+            raise ValueError("Cannot create wrapper from NULL reference")
+
+        cdef BaseWrapper result = cls.__new__(cls)
+        cdef void* copied_ref = OCTypeDeepCopy(<OCTypeRef>c_ref)
+        if copied_ref == NULL:
+            raise MemoryError(f"Failed to create copy of {cls.__name__}")
+
+        result._set_c_ref(copied_ref)
+        return result
 
     @staticmethod
     def from_c_ref(uint64_t c_ref_ptr):
@@ -81,129 +185,106 @@ cdef class SITypesWrapper(BaseWrapper):
     """
     Base class for SITypes wrappers (Scalar, Unit, Dimensionality, etc.).
 
-    Provides integrated functionality that would have been in mixins,
-    since Cython doesn't support multiple inheritance.
+    Inherits universal functionality from BaseWrapper including:
+    - Memory management and copying (OCTypeDeepCopy)
+    - Equality comparison (OCTypeEqual)
+    - Type introspection (OCGetTypeID, OCTypeIDName)
+
+    Provides arithmetic operations that delegate to subclass implementations.
+    This dramatically reduces code duplication across arithmetic types.
     """
 
-    # Comparison functionality (integrated from ComparableWrapper)
-    def __eq__(self, other):
-        """Check equality."""
-        if not isinstance(other, self.__class__):
-            return False
-        self._validate_initialized()
-        if hasattr(other, '_validate_initialized'):
-            other._validate_initialized()
-        else:
-            # Fallback for objects that don't have validation
-            if not getattr(other, '_is_initialized', lambda: True)():
-                return False
-        return self._compare_c_api(other) == 0
-
-    def __ne__(self, other):
-        """Check inequality."""
-        return not self.__eq__(other)
-
-    def __lt__(self, other):
-        """Check less than."""
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-        self._validate_initialized()
-        if hasattr(other, '_validate_initialized'):
-            other._validate_initialized()
-        return self._compare_c_api(other) < 0
-
-    def __le__(self, other):
-        """Check less than or equal."""
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-        self._validate_initialized()
-        if hasattr(other, '_validate_initialized'):
-            other._validate_initialized()
-        return self._compare_c_api(other) <= 0
-
-    def __gt__(self, other):
-        """Check greater than."""
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-        self._validate_initialized()
-        if hasattr(other, '_validate_initialized'):
-            other._validate_initialized()
-        return self._compare_c_api(other) > 0
-
-    def __ge__(self, other):
-        """Check greater than or equal."""
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-        self._validate_initialized()
-        if hasattr(other, '_validate_initialized'):
-            other._validate_initialized()
-        return self._compare_c_api(other) >= 0
-
-    # Arithmetic functionality (integrated from ArithmeticWrapper)
+    # Arithmetic operations that delegate to subclass implementations
     def __add__(self, other):
-        """Addition operation."""
+        """Addition operator (+)."""
         self._validate_initialized()
-        return self._add_c_api(other)
+        return self._binary_arithmetic(other, "add")
+
+    def __radd__(self, other):
+        """Reverse addition operator (+)."""
+        return self.__add__(other)  # Addition is commutative
 
     def __sub__(self, other):
-        """Subtraction operation."""
+        """Subtraction operator (-)."""
         self._validate_initialized()
-        return self._sub_c_api(other)
+        return self._binary_arithmetic(other, "sub")
+
+    def __rsub__(self, other):
+        """Reverse subtraction operator (-)."""
+        if isinstance(other, (int, float, complex)):
+            other_obj = self.__class__(other, "1")
+            return other_obj.__sub__(self)
+        else:
+            return NotImplemented
 
     def __mul__(self, other):
-        """Multiplication operation."""
+        """Multiplication operator (*)."""
         self._validate_initialized()
-        return self._mul_c_api(other)
+        return self._binary_arithmetic(other, "mul")
+
+    def __rmul__(self, other):
+        """Reverse multiplication operator (*)."""
+        return self.__mul__(other)  # Multiplication is commutative
 
     def __truediv__(self, other):
-        """Division operation."""
+        """Division operator (/)."""
         self._validate_initialized()
-        return self._div_c_api(other)
+        return self._binary_arithmetic(other, "div")
 
-    def __pow__(self, other):
-        """Power operation."""
+    def __rtruediv__(self, other):
+        """Reverse division operator (/)."""
+        if isinstance(other, (int, float, complex)):
+            other_obj = self.__class__(other, "1")
+            return other_obj.__truediv__(self)
+        else:
+            return NotImplemented
+
+    def __pow__(self, exponent):
+        """Power operator (**)."""
         self._validate_initialized()
-        return self._pow_c_api(other)
+        return self._power_arithmetic(exponent)
 
-    # Subclasses can override specific operations as needed
-    cdef int _compare_c_api(self, other) except? -999:
-        """Compare with another instance using C API. Override in subclasses."""
-        raise NotImplementedError(f"{self.__class__.__name__} must implement _compare_c_api()")
+    def __abs__(self):
+        """Absolute value."""
+        self._validate_initialized()
+        return self._unary_arithmetic("abs")
 
-    def _add_c_api(self, other):
-        """Addition using C API. Override in subclasses."""
-        raise NotImplementedError(f"{self.__class__.__name__} does not support addition")
+    # Abstract methods that subclasses must implement (much simpler!)
+    def _binary_arithmetic(self, other, operation):
+        """Perform binary arithmetic operation. Override in subclasses."""
+        raise NotImplementedError(f"{self.__class__.__name__} does not implement {operation}")
 
-    def _sub_c_api(self, other):
-        """Subtraction using C API. Override in subclasses."""
-        raise NotImplementedError(f"{self.__class__.__name__} does not support subtraction")
+    def _power_arithmetic(self, exponent):
+        """Perform power operation. Override in subclasses."""
+        raise NotImplementedError(f"{self.__class__.__name__} does not implement power")
 
-    def _mul_c_api(self, other):
-        """Multiplication using C API. Override in subclasses."""
-        raise NotImplementedError(f"{self.__class__.__name__} does not support multiplication")
-
-    def _div_c_api(self, other):
-        """Division using C API. Override in subclasses."""
-        raise NotImplementedError(f"{self.__class__.__name__} does not support division")
-
-    def _pow_c_api(self, other):
-        """Power using C API. Override in subclasses."""
-        raise NotImplementedError(f"{self.__class__.__name__} does not support exponentiation")
+    def _unary_arithmetic(self, operation):
+        """Perform unary arithmetic operation. Override in subclasses."""
+        raise NotImplementedError(f"{self.__class__.__name__} does not implement {operation}")
 
 
 cdef class RMNLibWrapper(BaseWrapper):
     """
     Base class for RMNLib wrappers (Dataset, Datum, DependentVariable, etc.).
 
-    Provides integrated functionality that would have been in mixins,
-    since Cython doesn't support multiple inheritance.
+    Inherits universal functionality from BaseWrapper including:
+    - Memory management and copying (OCTypeDeepCopy)
+    - Equality comparison (OCTypeEqual)
+    - Dictionary serialization (OCTypeCopyJSON → universal_to_dict)
+    - Type introspection (OCGetTypeID, OCTypeIDName)
+
+    RMNLib wrappers now get universal serialization automatically!
+    Custom serialization methods are optional and can override the universal behavior.
     """
 
-    # Serialization functionality (integrated from SerializableWrapper)
-    def to_dict(self):
-        """Convert to dictionary representation."""
+    def copy_as_dictionary(self):
+        """Serialize object to dictionary representation using universal OCTypeCopyJSON."""
         self._validate_initialized()
-        return self._to_dict_c_api()
+        return universal_to_dict(<uint64_t>self._c_ref)
+
+    def to_dict(self):
+        """Universal dictionary serialization for all OCTypes."""
+        return self.copy_as_dictionary()
 
     def dict(self):
         """Alias for to_dict() for compatibility."""
@@ -211,40 +292,11 @@ cdef class RMNLibWrapper(BaseWrapper):
 
     @classmethod
     def from_dict(cls, data_dict):
-        """Create instance from dictionary representation."""
+        """
+        Create instance from dictionary representation.
+
+        Subclasses should implement this if they support deserialization.
+        """
         if not isinstance(data_dict, dict):
             raise TypeError("Expected dictionary input")
-        return cls._from_dict_c_api(data_dict)
-
-    # Comparison functionality (integrated from ComparableWrapper)
-    def __eq__(self, other):
-        """Check equality."""
-        if not isinstance(other, self.__class__):
-            return False
-        self._validate_initialized()
-        if hasattr(other, '_validate_initialized'):
-            other._validate_initialized()
-        else:
-            # Fallback for objects that don't have validation
-            if not getattr(other, '_is_initialized', lambda: True)():
-                return False
-        return self._compare_c_api(other) == 0
-
-    def __ne__(self, other):
-        """Check inequality."""
-        return not self.__eq__(other)
-
-    # Subclasses must implement these methods
-    def _to_dict_c_api(self):
-        """Convert to dictionary using C API. Must be implemented by subclasses."""
-        raise NotImplementedError(f"{self.__class__.__name__} must implement _to_dict_c_api()")
-
-    @classmethod
-    def _from_dict_c_api(cls, data_dict):
-        """Create from dictionary using C API. Must be implemented by subclasses."""
-        raise NotImplementedError(f"{cls.__name__} must implement _from_dict_c_api()")
-
-    cdef int _compare_c_api(self, other) except? -999:
-        """Compare with another instance using C API. Override in subclasses if needed."""
-        # Default implementation for RMNLib objects - can be overridden
-        raise NotImplementedError(f"{self.__class__.__name__} must implement _compare_c_api()")
+        raise NotImplementedError(f"{cls.__name__} does not support deserialization from dictionary")

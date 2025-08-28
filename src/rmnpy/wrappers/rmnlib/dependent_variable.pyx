@@ -32,11 +32,12 @@ from rmnpy.helpers.octypes import (
 
 # Import the helper function and Unit class from unit.pyx
 
+from rmnpy.wrappers.base_wrapper cimport BaseWrapper, RMNLibWrapper
 from rmnpy.wrappers.rmnlib.sparse_sampling cimport SparseSampling
 from rmnpy.wrappers.sitypes.unit cimport Unit, siunit_from_pytype
 
 
-cdef class DependentVariable:
+cdef class DependentVariable(RMNLibWrapper):
     """
     Python wrapper for RMNLib DependentVariable.
 
@@ -44,35 +45,12 @@ cdef class DependentVariable:
     associated metadata including units, quantity type, and components.
     """
 
-    def __cinit__(self):
-        """Initialize C-level attributes."""
-        self._c_ref = NULL
-
-    def __dealloc__(self):
-        """Clean up C resources."""
-        if self._c_ref != NULL:
-            OCRelease(self._c_ref)
-
-    @staticmethod
-    cdef DependentVariable _from_c_ref(DependentVariableRef dep_var_ref):
-        """Create DependentVariable wrapper from C reference (internal use).
-
-        Creates a copy of the dependent variable reference, so caller retains ownership
-        of their original reference and can safely release it.
-        """
-        cdef DependentVariable result = DependentVariable.__new__(DependentVariable)
-        if dep_var_ref == NULL:
-            raise RMNError("Cannot create wrapper from NULL dependent variable reference")
-        cdef DependentVariableRef copied_ref = DependentVariableCopy(dep_var_ref)
-        if copied_ref == NULL:
-            raise RMNError("Failed to create copy of DependentVariable")
-        result._c_ref = copied_ref
-        return result
+    # No custom __cinit__, __dealloc__, or _from_c_ref needed - inherited from RMNLibWrapper
 
     @staticmethod
     def from_c_ref(uint64_t dep_var_ref_ptr):
         """Create DependentVariable wrapper from C reference pointer (Python-accessible)."""
-        return DependentVariable._from_c_ref(<DependentVariableRef>dep_var_ref_ptr)
+        return <DependentVariable>BaseWrapper._from_c_ref(DependentVariable, <void*><DependentVariableRef>dep_var_ref_ptr)
 
     @staticmethod
     def from_dict(dict data):
@@ -104,8 +82,8 @@ cdef class DependentVariable:
                 else:
                     raise RMNError("Failed to create dependent variable from dictionary: Unknown error")
 
-            # Create wrapper using existing _from_c_ref logic (_from_c_ref makes a copy)
-            return DependentVariable._from_c_ref(dv_ref)
+            # Create wrapper using BaseWrapper._from_c_ref
+            return <DependentVariable>BaseWrapper._from_c_ref(DependentVariable, <void*>dv_ref)
 
         finally:
             # Clean up resources
@@ -147,7 +125,7 @@ cdef class DependentVariable:
                 Labels for components
         """
         if self._c_ref != NULL:
-            return  # Already initialized by _from_c_ref
+            return  # Already initialized by base wrapper
 
         cdef OCStringRef name_ocstr = NULL
         cdef OCStringRef desc_ocstr = NULL
@@ -187,7 +165,7 @@ cdef class DependentVariable:
                 components_array = <OCArrayRef><uint64_t>ocarray_create_from_pylist(components)
 
             # Call the core C API creator
-            self._c_ref = DependentVariableCreate(
+            result = DependentVariableCreate(
                 name_ocstr,
                 desc_ocstr,
                 unit_ref,
@@ -199,12 +177,14 @@ cdef class DependentVariable:
                 &err_ocstr
             )
 
-            if self._c_ref == NULL:
+            if result == NULL:
                 if err_ocstr != NULL:
                     error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
                     raise RMNError(f"Failed to create DependentVariable: {error_msg}")
                 else:
                     raise RMNError("Failed to create DependentVariable")
+
+            self._set_c_ref(<void*>result)
 
         finally:
             # Clean up temporary OCTypes
@@ -223,10 +203,7 @@ cdef class DependentVariable:
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
 
-    def __dealloc__(self):
-        """Clean up C resources."""
-        if self._c_ref != NULL:
-            OCRelease(<OCTypeRef>self._c_ref)
+    # No custom __dealloc__ needed - inherited from RMNLibWrapper
 
     cdef OCNumberType _element_type_to_enum(self, element_type):
         """Convert string element type to OCNumberType enum using OCTypes helper."""
@@ -239,16 +216,12 @@ cdef class DependentVariable:
 
         return result
 
-    @property
-    def _c_ref(self):
-        """Get the C reference as uint64_t for use by octypes helpers."""
-        return <uint64_t><void*>self._c_ref
+    # No custom _c_ref property needed - inherited from BaseWrapper
 
     @property
     def name(self):
         """Get the name of the DependentVariable."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
         cdef OCStringRef name_ref = DependentVariableCopyName(self._c_ref)
         if name_ref == NULL:
             raise RMNError("Failed to get name - C reference may be corrupt")
@@ -260,8 +233,7 @@ cdef class DependentVariable:
     @name.setter
     def name(self, value):
         """Set the name of the DependentVariable."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
 
         cdef OCStringRef name_ocstr = NULL
 
@@ -278,8 +250,7 @@ cdef class DependentVariable:
     @property
     def description(self):
         """Get the description of the DependentVariable."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
         cdef OCStringRef desc_ref = DependentVariableCopyDescription(self._c_ref)
         if desc_ref == NULL:
             raise RMNError("Failed to get description - C reference may be corrupt")
@@ -291,8 +262,7 @@ cdef class DependentVariable:
     @description.setter
     def description(self, value):
         """Set the description of the DependentVariable."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
 
         cdef OCStringRef desc_ocstr = NULL
 
@@ -309,8 +279,7 @@ cdef class DependentVariable:
     @property
     def quantity_name(self):
         """Get the quantity name."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
         cdef OCStringRef qname_ref = DependentVariableCopyQuantityName(self._c_ref)
         if qname_ref == NULL:
             raise RMNError("Failed to get quantity_name - C reference may be corrupt")
@@ -322,8 +291,7 @@ cdef class DependentVariable:
     @quantity_name.setter
     def quantity_name(self, value):
         """Set the quantity name of the DependentVariable."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
 
         cdef OCStringRef qname_ocstr = NULL
 
@@ -340,8 +308,7 @@ cdef class DependentVariable:
     @property
     def quantity_type(self):
         """Get the quantity type."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
         cdef OCStringRef qtype_ref = DependentVariableCopyQuantityType(self._c_ref)
         if qtype_ref == NULL:
             raise RMNError("Failed to get quantity_type - C reference may be corrupt")
@@ -353,30 +320,26 @@ cdef class DependentVariable:
     @property
     def element_type(self):
         """Get the numeric element type."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
         cdef OCNumberType elem_type = DependentVariableGetNumericType(self._c_ref)
         return enum_to_element_type(elem_type)
 
     @property
     def component_count(self):
         """Get the number of components."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
         return DependentVariableGetComponentCount(self._c_ref)
 
     @property
     def size(self):
         """Get the size (number of elements per component)."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
         return DependentVariableGetSize(self._c_ref)
 
     @size.setter
     def size(self, OCIndex new_size):
         """Set the size (number of elements per component)."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
 
         if new_size < 0:
             raise ValueError("Size must be non-negative")
@@ -388,8 +351,7 @@ cdef class DependentVariable:
     @property
     def components(self):
         """Get the components (data arrays) of this DependentVariable."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
 
         cdef OCMutableArrayRef components_ref = DependentVariableCopyComponents(self._c_ref)
         if components_ref == NULL:
@@ -438,8 +400,7 @@ cdef class DependentVariable:
     @components.setter
     def components(self, value):
         """Set the components (data arrays) of this DependentVariable."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
 
         cdef OCArrayRef components_array = NULL
 
@@ -457,8 +418,7 @@ cdef class DependentVariable:
     @property
     def unit(self):
         """Get the unit of this DependentVariable."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
 
         # Cast DependentVariableRef to SIQuantityRef and call SIQuantityGetUnit
         cdef SIQuantityRef quantity_ref = <SIQuantityRef>self._c_ref
@@ -468,26 +428,24 @@ cdef class DependentVariable:
             return None
 
         # Use Unit._from_c_ref to create Python Unit object
-        return Unit._from_c_ref(unit_ref)
+        return Unit._from_c_ref(Unit, <void*>unit_ref)
 
     @property
     def sparse_sampling(self):
         """Get the sparse sampling of this DependentVariable."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
 
         cdef SparseSamplingRef sparse_ref = DependentVariableCopySparseSampling(self._c_ref)
         if sparse_ref == NULL:
             return None
 
-        # Use SparseSampling._from_c_ref to create Python SparseSampling object
-        return SparseSampling._from_c_ref(sparse_ref)
+        # Use BaseWrapper._from_c_ref to create Python SparseSampling object
+        return <SparseSampling>BaseWrapper._from_c_ref(SparseSampling, <void*>sparse_ref)
 
     @sparse_sampling.setter
     def sparse_sampling(self, value):
         """Set the sparse sampling of this DependentVariable."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
 
         cdef SparseSamplingRef sparse_ref = NULL
         cdef bint success
@@ -497,11 +455,10 @@ cdef class DependentVariable:
             if not isinstance(value, SparseSampling):
                 raise TypeError("sparse_sampling must be a SparseSampling object or None")
 
-            # Cast to SparseSampling to access _c_ref
+            # Cast to SparseSampling to access _c_ref via base wrapper
             sparse_obj = <SparseSampling>value
-            if sparse_obj._c_ref == NULL:
-                raise ValueError("SparseSampling object not initialized")
-            sparse_ref = sparse_obj._c_ref
+            sparse_obj._validate_initialized()
+            sparse_ref = <SparseSamplingRef>sparse_obj._c_ref
 
         success = DependentVariableSetSparseSampling(self._c_ref, sparse_ref)
         if not success:
@@ -509,16 +466,13 @@ cdef class DependentVariable:
 
     def copy(self):
         """Create a copy of this DependentVariable."""
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
         cdef DependentVariableRef copy_ref = DependentVariableCopy(self._c_ref)
         if copy_ref == NULL:
             raise RMNError("Failed to copy DependentVariable")
 
-        # Create new Python object with copied reference
-        cdef DependentVariable new_dv = DependentVariable.__new__(DependentVariable)
-        new_dv._c_ref = copy_ref
-        return new_dv
+        # Use BaseWrapper._from_c_ref to create new Python object
+        return <DependentVariable>BaseWrapper._from_c_ref(DependentVariable, <void*>copy_ref)
 
     def append(self, other):
         """
@@ -538,22 +492,20 @@ cdef class DependentVariable:
         RMNError
             If the append operation fails
         """
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
+        self._validate_initialized()
 
         if not isinstance(other, DependentVariable):
             raise TypeError("other must be a DependentVariable")
 
         # Cast other to our Cython class to access _c_ref
         cdef DependentVariable other_dv = <DependentVariable>other
-        if other_dv._c_ref == NULL:
-            raise ValueError("other DependentVariable not initialized")
+        other_dv._validate_initialized()
 
         cdef OCStringRef err_ocstr = NULL
         cdef bint success
 
         try:
-            success = DependentVariableAppend(self._c_ref, other_dv._c_ref, &err_ocstr)
+            success = DependentVariableAppend(self._c_ref, <DependentVariableRef>other_dv._c_ref, &err_ocstr)
             if not success:
                 if err_ocstr != NULL:
                     error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
@@ -564,30 +516,12 @@ cdef class DependentVariable:
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
 
-    def to_dict(self):
-        """Convert DependentVariable to dictionary representation.
-
-        Returns:
-            dict: Dictionary containing dependent variable data
-
-        Raises:
-            RMNError: If conversion fails
-        """
-        if self._c_ref == NULL:
-            raise ValueError("DependentVariable not initialized")
-
-        cdef OCDictionaryRef dict_ref = DependentVariableCopyAsDictionary(self._c_ref)
-        if dict_ref == NULL:
-            raise RMNError("Failed to convert DependentVariable to dictionary")
-
-        try:
-            return ocdict_to_pydict(<uint64_t>dict_ref)
-        finally:
-            OCRelease(<OCTypeRef>dict_ref)
+    # Universal dictionary serialization is inherited from BaseWrapper via OCTypeCopyJSON
+    # Custom serialization methods are no longer needed!
 
     def __str__(self):
         """String representation showing key properties."""
-        if self._c_ref == NULL:
+        if not self._is_initialized():
             return "DependentVariable(uninitialized)"
 
         parts = []

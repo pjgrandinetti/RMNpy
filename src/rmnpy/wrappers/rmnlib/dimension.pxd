@@ -7,14 +7,12 @@ the dimension classes from dimension.pyx.
 """
 
 from rmnpy._c_api.rmnlib cimport DimensionRef
+from rmnpy.wrappers.base_wrapper cimport RMNLibWrapper
 
 
-cdef class BaseDimension:
+cdef class BaseDimension(RMNLibWrapper):
     """Cython interface for BaseDimension wrapper."""
-    cdef DimensionRef _c_ref
-
-    @staticmethod
-    cdef BaseDimension _from_c_ref(DimensionRef dim_ref)
+    pass
 
 
 cdef class LabeledDimension(BaseDimension):

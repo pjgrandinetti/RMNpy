@@ -177,7 +177,7 @@ class TestDependentVariableAppend:
 
         # Test appending uninitialized DependentVariable
         other_uninitialized = DependentVariable.__new__(DependentVariable)
-        with pytest.raises(ValueError, match="other DependentVariable not initialized"):
+        with pytest.raises(ValueError, match="DependentVariable not initialized"):
             dv.append(other_uninitialized)
 
 

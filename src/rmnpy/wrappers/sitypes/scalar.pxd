@@ -7,15 +7,13 @@ the Scalar class from scalar.pyx.
 """
 
 from rmnpy._c_api.sitypes cimport SIScalarRef
+from rmnpy.wrappers.base_wrapper cimport SITypesWrapper
 
 
-# Helper function declaration
-cdef SIScalarRef create_siscalar_from_pytype(value) except NULL
-
-
-cdef class Scalar:
+cdef class Scalar(SITypesWrapper):
     """Cython interface for SIScalar wrapper."""
-    cdef SIScalarRef _c_ref
+    # No _from_c_ref needed - use BaseWrapper._from_c_ref directly!
+    pass
 
-    @staticmethod
-    cdef Scalar _from_c_ref(SIScalarRef scalar_ref)
+# Helper function for converting various input types to SIScalarRef
+cdef SIScalarRef create_siscalar_from_pytype(value) except NULL

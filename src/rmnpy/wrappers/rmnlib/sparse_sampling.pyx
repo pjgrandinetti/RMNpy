@@ -18,6 +18,7 @@ from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.rmnlib cimport *
 
 from rmnpy.exceptions import RMNError
+from rmnpy.wrappers.base_wrapper cimport BaseWrapper, RMNLibWrapper
 from rmnpy.helpers.octypes import (
     ocarray_create_from_pylist,
     ocarray_to_pylist,
@@ -30,7 +31,7 @@ from rmnpy.helpers.octypes import (
 )
 
 
-cdef class SparseSampling:
+cdef class SparseSampling(RMNLibWrapper):
     """
     Thin wrapper around RMNLib SparseSamplingRef.
 
@@ -38,33 +39,12 @@ cdef class SparseSampling:
     All properties are retrieved directly from the C API (single source of truth).
     """
 
-    def __cinit__(self):
-        """Initialize C-level attributes."""
-        self._c_ref = NULL
-
-    def __dealloc__(self):
-        """Clean up C resources."""
-        if self._c_ref != NULL:
-            OCRelease(self._c_ref)
-
-    @staticmethod
-    cdef SparseSampling _from_c_ref(SparseSamplingRef sparse_ref):
-        """Create SparseSampling wrapper from C reference (internal use).
-
-        Creates a copy of the sparse sampling reference, so caller retains ownership
-        of their original reference and can safely release it.
-        """
-        cdef SparseSampling result = SparseSampling.__new__(SparseSampling)
-        cdef SparseSamplingRef copied_ref = <SparseSamplingRef>OCTypeDeepCopy(<OCTypeRef>sparse_ref)
-        if copied_ref == NULL:
-            raise RMNError("Failed to create copy of SparseSampling")
-        result._c_ref = copied_ref
-        return result
+    # No _from_c_ref method needed - use BaseWrapper._from_c_ref directly!
 
     @staticmethod
     def from_c_ref(uint64_t sparse_ref_ptr):
         """Create SparseSampling wrapper from C reference pointer (Python-accessible)."""
-        return SparseSampling._from_c_ref(<SparseSamplingRef>sparse_ref_ptr)
+        return <SparseSampling>BaseWrapper._from_c_ref(SparseSampling, <void*><SparseSamplingRef>sparse_ref_ptr)
 
     def __init__(self, dimension_indexes, sparse_grid_vertices,
                  unsigned_integer_type="uint32", encoding="none",
@@ -84,8 +64,8 @@ cdef class SparseSampling:
               If both contain data, each vertex in sparse_grid_vertices must have the same number of
               (index,value) pairs as there are dimensions in dimension_indexes.
         """
-        if self._c_ref != NULL:
-            return  # Already initialized by _from_c_ref
+        if self.is_valid():
+            return  # Already initialized by BaseWrapper._from_c_ref
 
         cdef OCStringRef err_ocstr = NULL
         cdef OCIndexSetRef dim_indexes_ref = NULL
@@ -94,6 +74,7 @@ cdef class SparseSampling:
         cdef OCStringRef encoding_ref = NULL
         cdef OCStringRef desc_ref = NULL
         cdef OCDictionaryRef metadata_ref = NULL
+        cdef SparseSamplingRef sparse_ref = NULL
 
         try:
             # Validate and convert dimension indexes (required)
@@ -141,8 +122,8 @@ cdef class SparseSampling:
             if metadata is not None:
                 metadata_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(metadata)
 
-            # Create SparseSampling
-            self._c_ref = SparseSamplingCreate(
+            # Create SparseSampling and set via base wrapper
+            sparse_ref = SparseSamplingCreate(
                 dim_indexes_ref,
                 vertices_ref,
                 num_type,
@@ -152,12 +133,14 @@ cdef class SparseSampling:
                 &err_ocstr
             )
 
-            if self._c_ref == NULL:
+            if sparse_ref == NULL:
                 if err_ocstr != NULL:
                     error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
                     raise RMNError(f"Failed to create SparseSampling: {error_msg}")
                 else:
                     raise RMNError("Failed to create SparseSampling")
+
+            self._set_c_ref(sparse_ref)
 
         finally:
             # Clean up temporary references
@@ -174,20 +157,22 @@ cdef class SparseSampling:
     def from_dict(cls, data_dict):
         """Create SparseSampling from dictionary."""
         cdef SparseSampling result = cls.__new__(cls)
+        cdef SparseSamplingRef sparse_ref = NULL
         cdef OCDictionaryRef dict_ref = NULL
         cdef OCStringRef err_ocstr = NULL
 
         try:
             dict_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(data_dict)
-            result._c_ref = SparseSamplingCreateFromDictionary(dict_ref, &err_ocstr)
+            sparse_ref = SparseSamplingCreateFromDictionary(dict_ref, &err_ocstr)
 
-            if result._c_ref == NULL:
+            if sparse_ref == NULL:
                 if err_ocstr != NULL:
                     error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
                     raise RMNError(f"Failed to create SparseSampling from dictionary: {error_msg}")
                 else:
                     raise RMNError("Failed to create SparseSampling from dictionary")
 
+            result._set_c_ref(<OCTypeRef>sparse_ref)
             return result
 
         finally:
@@ -199,6 +184,7 @@ cdef class SparseSampling:
     @property
     def dimension_indexes(self):
         """Get the set of dimension indexes that are sparsely sampled."""
+        self._validate_initialized()
         cdef OCIndexSetRef indexes_ref = SparseSamplingGetDimensionIndexes(self._c_ref)
         if indexes_ref == NULL:
             return None
@@ -209,6 +195,7 @@ cdef class SparseSampling:
     @dimension_indexes.setter
     def dimension_indexes(self, value):
         """Set the dimension indexes."""
+        self._validate_initialized()
         cdef OCIndexSetRef indexes_ref = NULL
 
         try:
@@ -222,6 +209,7 @@ cdef class SparseSampling:
     @property
     def sparse_grid_vertices(self):
         """Get the array of sparse grid vertices."""
+        self._validate_initialized()
         cdef OCArrayRef vertices_ref = SparseSamplingGetSparseGridVertexes(self._c_ref)
         if vertices_ref == NULL:
             return None
@@ -232,6 +220,7 @@ cdef class SparseSampling:
     @sparse_grid_vertices.setter
     def sparse_grid_vertices(self, value):
         """Set the sparse grid vertices."""
+        self._validate_initialized()
         cdef OCArrayRef vertices_ref = NULL
 
         try:
@@ -245,6 +234,7 @@ cdef class SparseSampling:
     @property
     def unsigned_integer_type(self):
         """Get the unsigned integer type used for indexing."""
+        self._validate_initialized()
         cdef OCNumberType num_type = SparseSamplingGetUnsignedIntegerType(self._c_ref)
         if num_type == kOCNumberUInt8Type:
             return "uint8"
@@ -260,6 +250,7 @@ cdef class SparseSampling:
     @unsigned_integer_type.setter
     def unsigned_integer_type(self, value):
         """Set the unsigned integer type."""
+        self._validate_initialized()
         cdef OCNumberType num_type
 
         if value == "uint8":
@@ -279,6 +270,7 @@ cdef class SparseSampling:
     @property
     def encoding(self):
         """Get the encoding for sparse_grid_vertices."""
+        self._validate_initialized()
         cdef OCStringRef encoding_ref = SparseSamplingGetEncoding(self._c_ref)
         if encoding_ref == NULL:
             return None
@@ -287,6 +279,7 @@ cdef class SparseSampling:
     @encoding.setter
     def encoding(self, value):
         """Set the encoding."""
+        self._validate_initialized()
         cdef OCStringRef encoding_ref = NULL
 
         if not isinstance(value, str):
@@ -305,6 +298,7 @@ cdef class SparseSampling:
     @property
     def description(self):
         """Get the human-readable description."""
+        self._validate_initialized()
         cdef OCStringRef desc_ref = SparseSamplingGetDescription(self._c_ref)
         if desc_ref == NULL:
             return ""
@@ -313,6 +307,7 @@ cdef class SparseSampling:
     @description.setter
     def description(self, value):
         """Set the description."""
+        self._validate_initialized()
         cdef OCStringRef desc_ref = NULL
 
         if value is not None and not isinstance(value, str):
@@ -330,6 +325,7 @@ cdef class SparseSampling:
     @property
     def metadata(self):
         """Get the metadata dictionary."""
+        self._validate_initialized()
         cdef OCDictionaryRef metadata_ref = SparseSamplingGetApplicationMetaData(self._c_ref)
         if metadata_ref == NULL:
             return {}
@@ -338,6 +334,7 @@ cdef class SparseSampling:
     @metadata.setter
     def metadata(self, value):
         """Set the metadata."""
+        self._validate_initialized()
         cdef OCDictionaryRef metadata_ref = NULL
 
         if value is not None and not isinstance(value, dict):
@@ -352,20 +349,8 @@ cdef class SparseSampling:
             if metadata_ref != NULL:
                 OCRelease(<OCTypeRef>metadata_ref)
 
-    def to_dict(self):
-        """Convert SparseSampling to dictionary."""
-        cdef OCDictionaryRef dict_ref = SparseSamplingCopyAsDictionary(self._c_ref)
-        if dict_ref == NULL:
-            raise RMNError("Failed to convert SparseSampling to dictionary")
-
-        try:
-            return ocdict_to_pydict(<uint64_t>dict_ref)
-        finally:
-            OCRelease(<OCTypeRef>dict_ref)
-
-    def dict(self):
-        """Alias for to_dict() for consistency with other wrappers."""
-        return self.to_dict()
+    # Universal dictionary serialization is inherited from BaseWrapper via OCTypeCopyJSON
+    # Custom serialization methods are no longer needed!
 
     def __repr__(self):
         """Return string representation."""

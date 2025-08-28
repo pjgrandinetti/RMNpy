@@ -239,6 +239,7 @@ cdef extern from "SITypes/SIScalar.h":
     SIScalarRef SIScalarCreateWithDoubleComplex(double complex input_value, SIUnitRef unit)
     SIMutableScalarRef SIScalarCreateMutableWithDoubleComplex(double complex input_value, SIUnitRef unit)
     SIScalarRef SIScalarCreateFromExpression(OCStringRef expression, OCStringRef *error)
+    SIScalarRef SIScalarCreateFromJSON(cJSON *json)
 
     # Accessors
     impl_SINumber SIScalarGetValue(SIScalarRef theScalar)

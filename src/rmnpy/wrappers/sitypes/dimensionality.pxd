@@ -6,12 +6,13 @@ This .pxd file allows other Cython modules to cimport and use
 the Dimensionality class from dimensionality.pyx.
 """
 
+from rmnpy._c_api.octypes cimport OCTypeRef
 from rmnpy._c_api.sitypes cimport SIDimensionalityRef
+from rmnpy.wrappers.base_wrapper cimport SITypesWrapper
 
 
-cdef class Dimensionality:
+cdef class Dimensionality(SITypesWrapper):
     """Cython interface for SIDimensionality wrapper."""
-    cdef SIDimensionalityRef _c_ref
 
     @staticmethod
-    cdef Dimensionality _from_c_ref(SIDimensionalityRef dim_ref)
+    cdef Dimensionality _from_c_ref(object cls, void* c_ref)

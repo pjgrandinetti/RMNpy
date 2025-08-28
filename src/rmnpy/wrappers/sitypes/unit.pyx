@@ -12,9 +12,11 @@ from rmnpy._c_api.octypes cimport (
     OCArrayRef,
     OCRelease,
     OCStringRef,
+    OCTypeDeepCopy,
     OCTypeRef,
 )
 from rmnpy._c_api.sitypes cimport *
+from rmnpy.wrappers.base_wrapper cimport SITypesWrapper
 
 from rmnpy.exceptions import RMNError
 
@@ -56,7 +58,7 @@ cdef SIUnitRef siunit_from_pytype(value) except NULL:
         raise TypeError(f"Cannot convert {type(value)} to SIUnitRef")
 
 
-cdef class Unit:
+cdef class Unit(SITypesWrapper):
     """
     Python wrapper for SIUnit - represents a physical unit.
 
@@ -130,8 +132,8 @@ cdef class Unit:
                 OCRelease(<OCTypeRef>c_ref)
                 raise RMNError(f"Unit expression '{expression}' returned unexpected multiplier {unit_multiplier}, expected 1.0")
 
-            # Store the C reference
-            self._c_ref = c_ref
+            # Store the C reference (cast to OCTypeRef)
+            self._c_ref = <OCTypeRef>c_ref
 
         finally:
             OCRelease(<OCTypeRef>expr_ocstr)
@@ -144,20 +146,17 @@ cdef class Unit:
         pass
 
     @staticmethod
-    cdef Unit _from_c_ref(SIUnitRef unit_ref):
+    cdef Unit _from_c_ref(object cls, void* c_ref):
         """Create Unit wrapper from C reference (internal use)."""
-        cdef Unit result = Unit()
-        # Make a copy to avoid shared ownership issues
-        cdef SIUnitRef copied_ref = <SIUnitRef>OCTypeDeepCopy(<OCTypeRef>unit_ref)
-        if copied_ref == NULL:
-            raise MemoryError("Failed to copy unit reference")
-        result._c_ref = copied_ref
+        cdef Unit result = <Unit>cls()
+        # Use OCTypeDeepCopy for consistency (returns same reference for singletons)
+        result._c_ref = <OCTypeRef>OCTypeDeepCopy(<OCTypeRef>c_ref)
         return result
 
     @staticmethod
     def from_c_ref(uint64_t unit_ref_ptr):
         """Create Unit wrapper from C reference pointer (Python-accessible)."""
-        return Unit._from_c_ref(<SIUnitRef>unit_ref_ptr)
+        return Unit._from_c_ref(Unit, <void*>unit_ref_ptr)
 
     @classmethod
     def from_name(cls, name):
@@ -185,7 +184,7 @@ cdef class Unit:
                 return None
 
             # Create Python wrapper using _from_c_ref
-            return Unit._from_c_ref(c_ref)
+            return Unit._from_c_ref(Unit, <void*>c_ref)
 
         finally:
             OCRelease(<OCTypeRef>name_ocstr)
@@ -200,7 +199,7 @@ cdef class Unit:
         """
         cdef SIUnitRef c_ref = SIUnitDimensionlessAndUnderived()
 
-        return Unit._from_c_ref(c_ref)
+        return Unit._from_c_ref(Unit, <void*>c_ref)
 
     @classmethod
     def for_dimensionality(cls, dimensionality):
@@ -224,7 +223,7 @@ cdef class Unit:
         if c_ref == NULL:
             return None
 
-        return Unit._from_c_ref(c_ref)
+        return Unit._from_c_ref(Unit, <void*>c_ref)
 
     # Properties
     @property
@@ -326,7 +325,7 @@ cdef class Unit:
 
         # Create Dimensionality wrapper using the proper _from_c_ref pattern
         # Note: SIUnitGetDimensionality does not transfer ownership, so we don't need to manage memory
-        return Dimensionality._from_c_ref(c_dim)
+        return Dimensionality._from_c_ref(Dimensionality, <void*>c_dim)
 
     @property
     def scale_to_coherent_si(self):
@@ -415,7 +414,7 @@ cdef class Unit:
                 OCRelease(<OCTypeRef>error_ocstr)
             raise RMNError(f"Unit root operation failed: {error_msg}")
 
-        return Unit._from_c_ref(result)
+        return Unit._from_c_ref(Unit, <void*>result)
 
     # Unit reduction and conversion methods
     def reduced(self):
@@ -432,7 +431,7 @@ cdef class Unit:
         if result == NULL:
             raise RMNError("Unit reduction failed")
 
-        return Unit._from_c_ref(result)
+        return Unit._from_c_ref(Unit, <void*>result)
 
     def to_coherent_si(self):
         """
@@ -453,7 +452,7 @@ cdef class Unit:
         if result == NULL:
             raise RMNError("Conversion to coherent SI unit failed")
 
-        return Unit._from_c_ref(result)
+        return Unit._from_c_ref(Unit, <void*>result)
 
     # Additional comparison method
     def is_equivalent(self, other):
@@ -483,121 +482,87 @@ cdef class Unit:
 
         return SIUnitAreEquivalentUnits(self._c_ref, (<Unit>other)._c_ref)
 
-    # Python operator overloading
-    def __mul__(self, other):
-        """Multiplication operator (*) - multiplies without reducing to lowest terms."""
+    # Abstract method implementations for SITypesWrapper
+    def _binary_arithmetic(self, other, operation):
+        """Handle binary arithmetic operations."""
         if not isinstance(other, Unit):
-            raise TypeError("Can only multiply with another Unit")
+            raise TypeError(f"Can only {operation} with another Unit")
 
         cdef double unit_multiplier = 1.0
         cdef OCStringRef error_ocstr = NULL
+        cdef SIUnitRef result = NULL
 
-        cdef SIUnitRef result = SIUnitByMultiplyingWithoutReducing(self._c_ref, (<Unit>other)._c_ref,
-                                                                  &unit_multiplier, &error_ocstr)
+        if operation == "mul":
+            result = SIUnitByMultiplyingWithoutReducing(<SIUnitRef>self._c_ref, <SIUnitRef>(<Unit>other)._c_ref,
+                                                      &unit_multiplier, &error_ocstr)
+        elif operation == "div":
+            result = SIUnitByDividingWithoutReducing(<SIUnitRef>self._c_ref, <SIUnitRef>(<Unit>other)._c_ref,
+                                                   &unit_multiplier, &error_ocstr)
+        else:
+            raise ValueError(f"Unsupported binary operation: {operation}")
 
         if result == NULL:
             error_msg = "Unknown error"
             if error_ocstr != NULL:
                 error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
                 OCRelease(<OCTypeRef>error_ocstr)
-            raise RMNError(f"Unit multiplication failed: {error_msg}")
+            raise RMNError(f"Unit {operation} failed: {error_msg}")
 
-        return Unit._from_c_ref(result)
+        return Unit._from_c_ref(Unit, <void*>result)
 
-    def __truediv__(self, other):
-        """Division operator (/) - divides without reducing to lowest terms."""
-        if not isinstance(other, Unit):
-            raise TypeError("Can only divide by another Unit")
-
-        cdef double unit_multiplier = 1.0
-        cdef OCStringRef error_ocstr = NULL
-
-        cdef SIUnitRef result = SIUnitByDividingWithoutReducing(self._c_ref, (<Unit>other)._c_ref,
-                                                               &unit_multiplier, &error_ocstr)
-
-        if error_ocstr != NULL:
-            try:
-                error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-            finally:
-                OCRelease(<OCTypeRef>error_ocstr)
-            raise RMNError(f"Unit division failed: {error_msg}")
-
-        if result == NULL:
-            raise RMNError("Unit division failed")
-
-        return Unit._from_c_ref(result)
-
-    def __pow__(self, exponent):
-        """Power operator (**) - raises to power without reducing to lowest terms."""
+    def _power_arithmetic(self, exponent):
+        """Handle power operations."""
         if not isinstance(exponent, (int, float)):
             raise TypeError("Exponent must be a number")
 
         cdef double power = float(exponent)
         cdef double unit_multiplier = 1.0
         cdef OCStringRef error_ocstr = NULL
-        cdef SIUnitRef result
-        cdef uint8_t c_root
-        cdef double root_candidate
+        cdef SIUnitRef result = NULL
 
-        # Check if this is an integer power
-        if power == int(power):
-            # Use integer power function
-            unit_multiplier = 1.0
-            error_ocstr = NULL
+        # Handle fractional powers specially using nth root
+        if isinstance(exponent, float) and not exponent.is_integer():
+            # Check if it's a simple fraction like 1/n (common for nth roots)
+            if abs(exponent) < 1.0 and exponent != 0.0:
+                # Convert 1/n to n (e.g., 0.5 -> 2, 0.25 -> 4)
+                root_candidate = 1.0 / exponent
+                if abs(root_candidate - round(root_candidate)) < 1e-10:  # Very close to integer
+                    root = int(round(root_candidate))
+                    if root > 0 and root <= 255:  # uint8_t range
+                        result = SIUnitByTakingNthRoot(<SIUnitRef>self._c_ref, <uint8_t>root,
+                                                     &unit_multiplier, &error_ocstr)
 
-            result = SIUnitByRaisingToPowerWithoutReducing(self._c_ref, power,
-                                                          &unit_multiplier, &error_ocstr)
+        # If nth root didn't work or wasn't applicable, use regular power
+        if result == NULL:
+            result = SIUnitByRaisingToPowerWithoutReducing(<SIUnitRef>self._c_ref, power,
+                                                         &unit_multiplier, &error_ocstr)
 
-            if result == NULL:
-                error_msg = "Unknown error"
-                if error_ocstr != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-                    OCRelease(<OCTypeRef>error_ocstr)
-                raise RMNError(f"Unit power operation failed: {error_msg}")
+        if result == NULL:
+            error_msg = "Unknown error"
+            if error_ocstr != NULL:
+                error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
+                OCRelease(<OCTypeRef>error_ocstr)
+            raise RMNError(f"Unit power operation failed: {error_msg}")
 
-            return Unit._from_c_ref(result)
+        return Unit._from_c_ref(Unit, <void*>result)
 
-        else:
-            # Check if this is a valid integer root (1/n)
-            # Only allow simple fractions that represent integer roots
-            if power > 0:
-                root_candidate = 1.0 / power
-                if abs(root_candidate - round(root_candidate)) < 1e-10 and root_candidate >= 1:
-                    # This is 1/n where n is a positive integer - use nth root
-                    c_root = <uint8_t>round(root_candidate)
-                    unit_multiplier = 1.0
-                    error_ocstr = NULL
-
-                    result = SIUnitByTakingNthRoot(self._c_ref, c_root,
-                                                  &unit_multiplier, &error_ocstr)
-
-                    if result == NULL:
-                        error_msg = "Unknown error"
-                        if error_ocstr != NULL:
-                            error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-                            OCRelease(<OCTypeRef>error_ocstr)
-                        raise RMNError(f"Unit root operation failed: {error_msg}")
-
-                    return Unit._from_c_ref(result)
-
-            # Invalid fractional power
-            raise RMNError(f"Cannot raise unit to fractional power {power}. Only integer powers and integer roots (like 0.5 for square root) are allowed.")
+    def _unary_arithmetic(self, operation):
+        """Handle unary arithmetic operations."""
+        # Unit doesn't support unary operations like negation or absolute value
+        raise TypeError(f"Unit does not support unary arithmetic operation: {operation}")
 
     def __eq__(self, other):
-        """Equality operator (==)."""
-        if isinstance(other, Unit):
-            # Use proper C API function for unit equality comparison
-            return SIUnitEqual(self._c_ref, (<Unit>other)._c_ref)
-        elif isinstance(other, str):
-            # Try to parse string as a unit and compare using C API
+        """Equality comparison with string support."""
+        # Handle string comparison (unique to Unit)
+        if isinstance(other, str):
             try:
                 other_unit = Unit(other)
-                return SIUnitEqual(self._c_ref, other_unit._c_ref)
+                return super().__eq__(other_unit)  # Use base wrapper's robust __eq__
             except (RMNError, TypeError, ValueError):
-                # If parsing fails, units are not equal
                 return False
-        else:
-            return False
+
+        # For all other types, use base wrapper's universal equality
+        return super().__eq__(other)
 
     def __ne__(self, other):
         """Inequality operator (!=)."""
@@ -774,7 +739,7 @@ def siunit_to_pyunit(uint64_t si_unit_ptr):
 
     # Use the Unit class's _from_c_ref method to create a proper Unit object
     # No retention needed since SIUnitRef are singletons managed by SILibrary
-    return Unit._from_c_ref(si_unit)
+    return Unit._from_c_ref(Unit, <void*>si_unit)
 
 
 def get_unit_symbol_tokens_lib():

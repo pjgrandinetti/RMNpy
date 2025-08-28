@@ -14,16 +14,18 @@ cdef class BaseWrapper:
 
     cdef void _set_c_ref(self, void* c_ref)
     cdef void* _get_c_ref(self)
-    cdef bint _is_initialized(self)
     cdef void _validate_initialized(self) except *
     cdef void* copy_c_ref(self) except NULL
+
+    @staticmethod
+    cdef BaseWrapper _from_c_ref(object cls, void* c_ref)
 
 
 cdef class SITypesWrapper(BaseWrapper):
     """Base class for SITypes wrappers."""
-    cdef int _compare_c_api(self, other) except? -999
+    pass
 
 
 cdef class RMNLibWrapper(BaseWrapper):
     """Base class for RMNLib wrappers."""
-    cdef int _compare_c_api(self, other) except? -999
+    pass

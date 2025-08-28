@@ -22,8 +22,8 @@ from rmnpy._c_api.rmnlib cimport *
 from rmnpy._c_api.sitypes cimport *
 
 from rmnpy.exceptions import RMNError
-
 from rmnpy.wrappers.base_wrapper cimport BaseWrapper, RMNLibWrapper
+
 from rmnpy.wrappers.sitypes.scalar cimport Scalar, create_siscalar_from_pytype
 
 from rmnpy.helpers.octypes import (  # py_list_to_siscalar_ocarray,  # Function doesn't exist; ocdict_create_from_pydict,  # Use ocdict_create_from_pydict instead; ocarray_create_from_pylist,  # Use ocarray_create_from_pylist instead; ocnumber_create_from_pynumber,  # Use ocnumber_create_from_pynumber instead; pynumber_to_siscalar_expression,  # Function doesn't exist; ocstring_to_pystring,  # Use ocstring_to_pystring instead
@@ -65,13 +65,12 @@ cdef class BaseDimension(RMNLibWrapper):
     # No __cinit__ or __dealloc__ needed - inherited from BaseWrapper
 
     @staticmethod
-    def _create_dimension_wrapper(uint64_t dim_ref_ptr):
-        """Create appropriate dimension wrapper from C reference pointer (internal use).
+    cdef BaseDimension _from_c_ref(DimensionRef dim_ref):
+        """Create appropriate dimension wrapper from C reference (internal use).
 
         Creates a copy of the dimension reference and returns the appropriate
         wrapper type based on the dimension's actual type.
         """
-        cdef DimensionRef dim_ref = <DimensionRef>dim_ref_ptr
         if dim_ref == NULL:
             raise RMNError("Cannot create wrapper from NULL dimension reference")
 
@@ -90,31 +89,37 @@ cdef class BaseDimension(RMNLibWrapper):
             OCRelease(<OCTypeRef>type_ref)
 
         if type_str == "labeled":
-            wrapper = <LabeledDimension>BaseWrapper._from_c_ref(LabeledDimension, <void*>copied_ref)
+            wrapper = LabeledDimension.__new__(LabeledDimension)
+            wrapper._set_c_ref(<OCTypeRef>copied_ref)
             return wrapper
         elif type_str == "linear":
-            wrapper = <LinearDimension>BaseWrapper._from_c_ref(LinearDimension, <void*>copied_ref)
+            wrapper = LinearDimension.__new__(LinearDimension)
+            wrapper._set_c_ref(<OCTypeRef>copied_ref)
             return wrapper
         elif type_str == "monotonic":
-            wrapper = <MonotonicDimension>BaseWrapper._from_c_ref(MonotonicDimension, <void*>copied_ref)
+            wrapper = MonotonicDimension.__new__(MonotonicDimension)
+            wrapper._set_c_ref(<OCTypeRef>copied_ref)
             return wrapper
         elif type_str == "si_dimension":
             # Base SIDimension type
-            wrapper = <SIDimension>BaseWrapper._from_c_ref(SIDimension, <void*>copied_ref)
+            wrapper = SIDimension.__new__(SIDimension)
+            wrapper._set_c_ref(<OCTypeRef>copied_ref)
             return wrapper
         elif type_str == "dimension":
             # Generic base dimension type
-            wrapper = <BaseDimension>BaseWrapper._from_c_ref(BaseDimension, <void*>copied_ref)
+            wrapper = BaseDimension.__new__(BaseDimension)
+            wrapper._set_c_ref(<OCTypeRef>copied_ref)
             return wrapper
         else:
             # Fallback for unknown types - use base dimension
-            wrapper = <BaseDimension>BaseWrapper._from_c_ref(BaseDimension, <void*>copied_ref)
+            wrapper = BaseDimension.__new__(BaseDimension)
+            wrapper._set_c_ref(<OCTypeRef>copied_ref)
             return wrapper
 
     @staticmethod
     def from_c_ref(uint64_t dim_ref_ptr):
         """Create appropriate dimension wrapper from C reference pointer (Python-accessible)."""
-        return BaseDimension._create_dimension_wrapper(dim_ref_ptr)
+        return BaseDimension._from_c_ref(<DimensionRef>dim_ref_ptr)
 
     @staticmethod
     def from_dict(dict data):
@@ -146,8 +151,8 @@ cdef class BaseDimension(RMNLibWrapper):
                 else:
                     raise RMNError("Failed to create dimension from dictionary: Unknown error")
 
-            # Create appropriate wrapper using existing _create_dimension_wrapper logic
-            return BaseDimension._create_dimension_wrapper(<uint64_t>dim_ref)
+            # Create appropriate wrapper using existing _from_c_ref logic
+            return BaseDimension._from_c_ref(dim_ref)
 
         finally:
             # Clean up resources using the same pattern as elsewhere in the file
@@ -161,7 +166,7 @@ cdef class BaseDimension(RMNLibWrapper):
     @property
     def type(self):
         """Get the type of the dimension."""
-        type_ocstr = DimensionGetType(<DimensionRef>self._c_ref)
+        type_ocstr = DimensionGetType(<DimensionRef><DimensionRef>self._c_ref)
         if type_ocstr != NULL:
             return ocstring_to_pystring(<uint64_t>type_ocstr)
         raise RMNError("Invalid dimension: C API returned NULL type (dimension may be corrupted or uninitialized)")
@@ -169,7 +174,7 @@ cdef class BaseDimension(RMNLibWrapper):
     @property
     def description(self):
         """Get the description of the dimension."""
-        desc_ocstr = DimensionCopyDescription(<DimensionRef>self._c_ref)
+        desc_ocstr = DimensionCopyDescription(<DimensionRef><DimensionRef>self._c_ref)
         if desc_ocstr == NULL:
             # Return empty string for dimensions created without descriptions
             return ""
@@ -434,28 +439,28 @@ cdef class BaseDimension(RMNLibWrapper):
 
         if type_str == "labeled":
             wrapper = LabeledDimension.__new__(LabeledDimension)
-            (<LabeledDimension>wrapper)._set_c_ref(<OCTypeRef>copied_dimension)
+            (<LabeledDimension>wrapper)._c_ref = copied_dimension
             return wrapper
         elif type_str == "linear":
             wrapper = LinearDimension.__new__(LinearDimension)
-            (<LinearDimension>wrapper)._set_c_ref(<OCTypeRef>copied_dimension)
+            (<LinearDimension>wrapper)._c_ref = copied_dimension
             return wrapper
         elif type_str == "monotonic":
             wrapper = MonotonicDimension.__new__(MonotonicDimension)
-            (<MonotonicDimension>wrapper)._set_c_ref(<OCTypeRef>copied_dimension)
+            (<MonotonicDimension>wrapper)._c_ref = copied_dimension
             return wrapper
         elif type_str == "si_dimension":
             wrapper = SIDimension.__new__(SIDimension)
-            (<SIDimension>wrapper)._set_c_ref(<OCTypeRef>copied_dimension)
+            (<SIDimension>wrapper)._c_ref = copied_dimension
             return wrapper
         elif type_str == "dimension":
             wrapper = BaseDimension.__new__(BaseDimension)
-            (<BaseDimension>wrapper)._set_c_ref(<OCTypeRef>copied_dimension)
+            (<BaseDimension>wrapper)._c_ref = copied_dimension
             return wrapper
         else:
             # Fallback for unknown types
             wrapper = BaseDimension.__new__(BaseDimension)
-            (<BaseDimension>wrapper)._set_c_ref(<OCTypeRef>copied_dimension)
+            (<BaseDimension>wrapper)._c_ref = copied_dimension
             return wrapper
 
 cdef class LabeledDimension(BaseDimension):
@@ -520,19 +525,16 @@ cdef class LabeledDimension(BaseDimension):
         cdef OCStringRef desc_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(description)
         cdef OCDictionaryRef application_ocdict = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(application)
         cdef OCStringRef err_ocstr = NULL
-        cdef DimensionRef labeled_dimension
 
         try:
-            labeled_dimension = LabeledDimensionCreate(
+            self._c_ref = <DimensionRef>LabeledDimensionCreate(
                 label_ocstr, desc_ocstr, application_ocdict, labels_ocarray, &err_ocstr)
-            if labeled_dimension == NULL:
+            if self._c_ref == NULL:
                 if err_ocstr != NULL:
                     error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
                     raise RMNError(f"Failed to create labeled dimension: {error_msg}")
                 else:
                     raise RMNError("Failed to create labeled dimension")
-
-            self._set_c_ref(<OCTypeRef>labeled_dimension)
         finally:
             if label_ocstr != NULL:
                 OCRelease(<OCTypeRef>label_ocstr)
@@ -662,7 +664,6 @@ cdef class SIDimension(BaseDimension):
         cdef SIScalarRef origin_offset_sisclr = NULL
         cdef SIScalarRef period_sisclr = NULL
         cdef OCStringRef err_ocstr = NULL
-        cdef SIDimensionRef si_dimension
 
         # Validate scaling parameter
         if scaling is not None:
@@ -706,7 +707,7 @@ cdef class SIDimension(BaseDimension):
                 else:
                     raise RMNError("Failed to create SI dimension")
 
-            self._set_c_ref(<OCTypeRef>si_dimension)
+            self._c_ref = <DimensionRef>si_dimension
 
         finally:
             if label_ocstr != NULL:
@@ -997,7 +998,6 @@ cdef class LinearDimension(SIDimension):
         cdef SIScalarRef origin_offset_sisclr = NULL
         cdef SIScalarRef period_sisclr = NULL
         cdef OCStringRef err_ocstr = NULL
-        cdef SILinearDimensionRef linear_dimension
 
         # Validate scaling parameter
         if scaling is not None:
@@ -1058,8 +1058,8 @@ cdef class LinearDimension(SIDimension):
                 else:
                     raise RMNError("Failed to create linear dimension")
 
-            # Set C reference using inherited method
-            self._set_c_ref(<OCTypeRef>linear_dimension)
+            # Cast to base dimension reference
+            self._c_ref = <DimensionRef>linear_dimension
 
         finally:
             if label_ocstr != NULL:
@@ -1148,7 +1148,7 @@ cdef class LinearDimension(SIDimension):
         """Get reciprocal dimension."""
         reciprocal_ref = SILinearDimensionCopyReciprocal(<SILinearDimensionRef><DimensionRef>self._c_ref)
         if reciprocal_ref != NULL:
-            return BaseDimension._create_dimension_wrapper(<uint64_t>reciprocal_ref)
+            return BaseDimension._from_c_ref(<DimensionRef>reciprocal_ref)
         raise RMNError("C API returned NULL reciprocal dimension (dimension may be corrupted or uninitialized)")
 
     @reciprocal.setter
@@ -1250,7 +1250,6 @@ cdef class MonotonicDimension(SIDimension):
         cdef SIScalarRef period_sisclr = NULL
         cdef SIDimensionRef reciprocal_ref = NULL
         cdef SIScalarRef coord_scalar = NULL
-        cdef SIMonotonicDimensionRef monotonic_dimension
 
         # Convert each coordinate to an SIScalar object using the helper function
         for coord_value in coordinates:
@@ -1313,8 +1312,8 @@ cdef class MonotonicDimension(SIDimension):
                 else:
                     raise RMNError("Failed to create monotonic dimension")
 
-            # Set C reference using inherited method
-            self._set_c_ref(<OCTypeRef>monotonic_dimension)
+            # Cast to base dimension reference
+            self._c_ref = <DimensionRef>monotonic_dimension
 
         finally:
             if label_ocstr != NULL:
@@ -1335,7 +1334,7 @@ cdef class MonotonicDimension(SIDimension):
         """Get reciprocal dimension."""
         reciprocal_ref = SIMonotonicDimensionCopyReciprocal(<SIMonotonicDimensionRef><DimensionRef>self._c_ref)
         if reciprocal_ref != NULL:
-            return BaseDimension._create_dimension_wrapper(<uint64_t>reciprocal_ref)
+            return BaseDimension._from_c_ref(<DimensionRef>reciprocal_ref)
         raise RMNError("C API returned NULL reciprocal dimension (dimension may be corrupted or uninitialized)")
 
     @reciprocal.setter

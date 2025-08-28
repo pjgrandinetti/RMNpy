@@ -7,11 +7,9 @@ enabling other Cython modules to import and use Dataset objects efficiently.
 """
 
 from rmnpy._c_api.rmnlib cimport DatasetRef
+from rmnpy.wrappers.base_wrapper cimport RMNLibWrapper
 
 
-cdef class Dataset:
+cdef class Dataset(RMNLibWrapper):
     """Cython declaration for Dataset wrapper class."""
-    cdef DatasetRef _c_ref
-
-    @staticmethod
-    cdef Dataset _from_c_ref(DatasetRef dataset_ref)
+    pass

@@ -17,6 +17,7 @@ from rmnpy._c_api.rmnlib cimport *
 from rmnpy._c_api.sitypes cimport SIScalarRef
 
 from rmnpy.exceptions import RMNError
+from rmnpy.wrappers.base_wrapper cimport BaseWrapper, RMNLibWrapper
 from rmnpy.helpers.octypes import (
     ocdict_create_from_pydict,
     ocdict_to_pydict,
@@ -27,7 +28,7 @@ from rmnpy.wrappers.sitypes.scalar cimport Scalar, create_siscalar_from_pytype
 from rmnpy.wrappers.sitypes.scalar import Scalar
 
 
-cdef class GeographicCoordinate:
+cdef class GeographicCoordinate(RMNLibWrapper):
     """
     Python wrapper for RMNLib GeographicCoordinate.
 
@@ -40,35 +41,12 @@ cdef class GeographicCoordinate:
     All coordinate values are stored as SIScalar objects with proper units.
     """
 
-    def __cinit__(self):
-        """Initialize C-level attributes."""
-        self._c_ref = NULL
-
-    def __dealloc__(self):
-        """Clean up C resources."""
-        if self._c_ref != NULL:
-            OCRelease(self._c_ref)
-
-    @staticmethod
-    cdef GeographicCoordinate _from_c_ref(GeographicCoordinateRef geo_ref):
-        """Create GeographicCoordinate wrapper from C reference (internal use).
-
-        Creates a copy of the coordinate reference, so caller retains ownership
-        of their original reference and can safely release it.
-        """
-        cdef GeographicCoordinate result = GeographicCoordinate.__new__(GeographicCoordinate)
-        if geo_ref == NULL:
-            raise RMNError("Cannot create wrapper from NULL geographic coordinate reference")
-        cdef GeographicCoordinateRef copied_ref = GeographicCoordinateCreateCopy(geo_ref)
-        if copied_ref == NULL:
-            raise RMNError("Failed to create copy of GeographicCoordinate")
-        result._c_ref = copied_ref
-        return result
+    # No _from_c_ref method needed - use BaseWrapper._from_c_ref directly!
 
     @staticmethod
     def from_c_ref(uint64_t geo_ref_ptr):
         """Create GeographicCoordinate wrapper from C reference pointer (Python-accessible)."""
-        return GeographicCoordinate._from_c_ref(<GeographicCoordinateRef>geo_ref_ptr)
+        return <GeographicCoordinate>BaseWrapper._from_c_ref(GeographicCoordinate, <void*><GeographicCoordinateRef>geo_ref_ptr)
 
     def __init__(self, latitude, longitude, altitude=None, metadata=None):
         """
@@ -88,13 +66,14 @@ cdef class GeographicCoordinate:
             RMNError: If coordinate creation fails
             TypeError: If input parameters have incorrect types
         """
-        if self._c_ref != NULL:
-            return  # Already initialized by _from_c_ref
+        if self.is_valid():
+            return  # Already initialized by BaseWrapper._from_c_ref
 
         cdef SIScalarRef lat_ref = NULL
         cdef SIScalarRef lon_ref = NULL
         cdef SIScalarRef alt_ref = NULL
         cdef OCDictionaryRef metadata_ref = NULL
+        cdef GeographicCoordinateRef coord_ref = NULL
 
         try:
             # Convert latitude
@@ -121,10 +100,11 @@ cdef class GeographicCoordinate:
                 if metadata_ref == NULL:
                     raise RMNError("Failed to create metadata dictionary")
 
-            # Create the geographic coordinate
-            self._c_ref = GeographicCoordinateCreate(lat_ref, lon_ref, alt_ref, metadata_ref)
-            if self._c_ref == NULL:
+            # Create the geographic coordinate and set via base wrapper
+            coord_ref = GeographicCoordinateCreate(lat_ref, lon_ref, alt_ref, metadata_ref)
+            if coord_ref == NULL:
                 raise RMNError("GeographicCoordinate creation failed")
+            self._set_c_ref(coord_ref)
 
         finally:
             # Note: lat_ref and lon_ref are references to converted scalars
@@ -167,8 +147,8 @@ cdef class GeographicCoordinate:
                 error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
                 raise RMNError(f"GeographicCoordinate creation from dictionary failed: {error_msg}")
 
-            # Create wrapper from C reference
-            return GeographicCoordinate._from_c_ref(coord_ref)
+            # Create wrapper from C reference using universal BaseWrapper method
+            return <GeographicCoordinate>BaseWrapper._from_c_ref(GeographicCoordinate, <void*>coord_ref)
 
         finally:
             # Clean up temporary references
@@ -190,20 +170,18 @@ cdef class GeographicCoordinate:
     @property
     def latitude(self):
         """Get the latitude as a Scalar object."""
-        if self._c_ref == NULL:
-            raise ValueError("GeographicCoordinate not initialized")
+        self._validate_initialized()
 
-        cdef SIScalarRef lat_ref = GeographicCoordinateGetLatitude(self._c_ref)
+        cdef SIScalarRef lat_ref = GeographicCoordinateGetLatitude(<GeographicCoordinateRef>self._c_ref)
         if lat_ref == NULL:
             raise RMNError("Failed to get latitude")
 
-        return Scalar._from_c_ref(lat_ref)
+        return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>lat_ref)
 
     @latitude.setter
     def latitude(self, value):
         """Set the latitude."""
-        if self._c_ref == NULL:
-            raise ValueError("GeographicCoordinate not initialized")
+        self._validate_initialized()
 
         cdef SIScalarRef lat_ref = NULL
 
@@ -212,7 +190,7 @@ cdef class GeographicCoordinate:
             if lat_ref == NULL:
                 raise RMNError("Failed to convert latitude to SIScalar")
 
-            if not GeographicCoordinateSetLatitude(self._c_ref, lat_ref):
+            if not GeographicCoordinateSetLatitude(<GeographicCoordinateRef>self._c_ref, lat_ref):
                 raise RMNError("Failed to set latitude")
 
         except Exception:
@@ -221,20 +199,18 @@ cdef class GeographicCoordinate:
     @property
     def longitude(self):
         """Get the longitude as a Scalar object."""
-        if self._c_ref == NULL:
-            raise ValueError("GeographicCoordinate not initialized")
+        self._validate_initialized()
 
-        cdef SIScalarRef lon_ref = GeographicCoordinateGetLongitude(self._c_ref)
+        cdef SIScalarRef lon_ref = GeographicCoordinateGetLongitude(<GeographicCoordinateRef>self._c_ref)
         if lon_ref == NULL:
             raise RMNError("Failed to get longitude")
 
-        return Scalar._from_c_ref(lon_ref)
+        return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>lon_ref)
 
     @longitude.setter
     def longitude(self, value):
         """Set the longitude."""
-        if self._c_ref == NULL:
-            raise ValueError("GeographicCoordinate not initialized")
+        self._validate_initialized()
 
         cdef SIScalarRef lon_ref = NULL
 
@@ -243,7 +219,7 @@ cdef class GeographicCoordinate:
             if lon_ref == NULL:
                 raise RMNError("Failed to convert longitude to SIScalar")
 
-            if not GeographicCoordinateSetLongitude(self._c_ref, lon_ref):
+            if not GeographicCoordinateSetLongitude(<GeographicCoordinateRef>self._c_ref, lon_ref):
                 raise RMNError("Failed to set longitude")
 
         except Exception:
@@ -252,20 +228,18 @@ cdef class GeographicCoordinate:
     @property
     def altitude(self):
         """Get the altitude as a Scalar object, or None if not set."""
-        if self._c_ref == NULL:
-            raise ValueError("GeographicCoordinate not initialized")
+        self._validate_initialized()
 
-        cdef SIScalarRef alt_ref = GeographicCoordinateGetAltitude(self._c_ref)
+        cdef SIScalarRef alt_ref = GeographicCoordinateGetAltitude(<GeographicCoordinateRef>self._c_ref)
         if alt_ref == NULL:
             return None  # No altitude set
 
-        return Scalar._from_c_ref(alt_ref)
+        return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>alt_ref)
 
     @altitude.setter
     def altitude(self, value):
         """Set the altitude, or None to clear it."""
-        if self._c_ref == NULL:
-            raise ValueError("GeographicCoordinate not initialized")
+        self._validate_initialized()
 
         cdef SIScalarRef alt_ref = NULL
 
@@ -278,7 +252,7 @@ cdef class GeographicCoordinate:
                 if alt_ref == NULL:
                     raise RMNError("Failed to convert altitude to SIScalar")
 
-            if not GeographicCoordinateSetAltitude(self._c_ref, alt_ref):
+            if not GeographicCoordinateSetAltitude(<GeographicCoordinateRef>self._c_ref, alt_ref):
                 raise RMNError("Failed to set altitude")
 
         except Exception:
@@ -287,10 +261,9 @@ cdef class GeographicCoordinate:
     @property
     def metadata(self):
         """Get the application metadata dictionary."""
-        if self._c_ref == NULL:
-            raise ValueError("GeographicCoordinate not initialized")
+        self._validate_initialized()
 
-        cdef OCDictionaryRef metadata_ref = GeographicCoordinateGetApplicationMetaData(self._c_ref)
+        cdef OCDictionaryRef metadata_ref = GeographicCoordinateGetApplicationMetaData(<GeographicCoordinateRef>self._c_ref)
         if metadata_ref == NULL:
             return {}  # Return empty dict if no metadata
 
@@ -299,8 +272,7 @@ cdef class GeographicCoordinate:
     @metadata.setter
     def metadata(self, value):
         """Set the application metadata dictionary."""
-        if self._c_ref == NULL:
-            raise ValueError("GeographicCoordinate not initialized")
+        self._validate_initialized()
 
         if not isinstance(value, dict):
             raise TypeError("metadata must be a dictionary")
@@ -313,7 +285,7 @@ cdef class GeographicCoordinate:
             if metadata_ref == NULL:
                 raise RMNError("Failed to create metadata dictionary")
 
-            if not GeographicCoordinateSetApplicationMetaData(self._c_ref, metadata_ref):
+            if not GeographicCoordinateSetApplicationMetaData(<GeographicCoordinateRef>self._c_ref, metadata_ref):
                 raise RMNError("Failed to set metadata")
 
         finally:
@@ -321,40 +293,13 @@ cdef class GeographicCoordinate:
                 OCRelease(<OCTypeRef>metadata_ref)
 
     def copy(self):
-        """Create a copy of this GeographicCoordinate."""
-        if self._c_ref == NULL:
-            raise ValueError("GeographicCoordinate not initialized")
-        cdef GeographicCoordinateRef copy_ref = GeographicCoordinateCreateCopy(self._c_ref)
-        if copy_ref == NULL:
-            raise RMNError("Failed to copy GeographicCoordinate")
+        """Create a copy of this GeographicCoordinate using universal copying."""
+        # BaseWrapper.copy_c_ref() already handles validation and copying via OCTypeDeepCopy
+        cdef void* copied_ref = self.copy_c_ref()
+        return <GeographicCoordinate>BaseWrapper._from_c_ref(GeographicCoordinate, copied_ref)
 
-        # Create new Python object with copied reference
-        cdef GeographicCoordinate new_gc = GeographicCoordinate.__new__(GeographicCoordinate)
-        new_gc._c_ref = copy_ref
-        return new_gc
-
-    # Serialization methods
-
-    def to_dict(self):
-        """Convert to dictionary representation.
-
-        Returns:
-            dict: Dictionary representation of the coordinate
-
-        Raises:
-            RMNError: If conversion to dictionary fails
-        """
-        if <void*>self._c_ref == NULL:
-            raise ValueError("GeographicCoordinate not initialized")
-
-        cdef OCDictionaryRef dict_ref = GeographicCoordinateCopyAsDictionary(<GeographicCoordinateRef>self._c_ref)
-        if dict_ref == NULL:
-            raise RMNError("Failed to convert geographic coordinate to dictionary")
-
-        try:
-            return ocdict_to_pydict(<uint64_t>dict_ref)
-        finally:
-            OCRelease(<OCTypeRef>dict_ref)
+    # Universal dictionary serialization is inherited from BaseWrapper via OCTypeCopyJSON
+    # Custom serialization methods are no longer needed!
 
     def dict(self):
         """
@@ -365,14 +310,7 @@ cdef class GeographicCoordinate:
         """
         return self.to_dict()
 
-    def __eq__(self, other):
-        """Compare geographic coordinates for equality using OCTypes C API."""
-        if not isinstance(other, GeographicCoordinate):
-            return False
-
-        cdef GeographicCoordinate other_coord = <GeographicCoordinate>other
-
-        return OCTypeEqual(<OCTypeRef>self._c_ref, <OCTypeRef>other_coord._c_ref)
+    # Comparison is handled by universal OCTypeEqual in BaseWrapper
 
     # Utility methods
 

@@ -17,6 +17,7 @@ from typing import Dict, List, Optional, Union
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.rmnlib cimport *
 from rmnpy._c_api.sitypes cimport SIScalarRef
+from rmnpy.wrappers.sitypes.scalar cimport Scalar
 
 from rmnpy.exceptions import RMNError
 from rmnpy.helpers.octypes import (
@@ -24,13 +25,17 @@ from rmnpy.helpers.octypes import (
     ocarray_to_pylist,
     ocdict_create_from_pydict,
     ocdict_to_pydict,
+    pydict_to_cjson_ptr,
 )
+from rmnpy.wrappers.sitypes.scalar import Scalar
 
 # Import base wrapper classes
-from rmnpy.wrappers.base_wrapper cimport RMNLibWrapper
+
+from rmnpy.wrappers.base_wrapper cimport BaseWrapper, RMNLibWrapper
 
 # Import SITypes wrappers
-from rmnpy.wrappers.sitypes.scalar cimport Scalar, create_siscalar_from_pytype
+from rmnpy.wrappers.sitypes.scalar cimport Scalar
+
 from rmnpy.wrappers.sitypes.scalar import Scalar
 
 
@@ -55,38 +60,15 @@ cdef class Datum(RMNLibWrapper):
     - Input validation and error handling
     """
 
-    # Base class handles __cinit__ and __dealloc__
-
-    # Implement required base class methods
-
-    cdef void* copy_c_ref(self) except NULL:
-        """Create a copy of the C reference."""
-        self._validate_initialized()
-        cdef DatumRef copied = DatumCopy(<DatumRef>self._c_ref)
-        if copied == NULL:
-            raise RMNError("Failed to copy datum reference")
-        return <void*>copied
-
-    @staticmethod
-    cdef Datum _from_c_ref(DatumRef datum_ref):
-        """Create Datum wrapper from C reference (internal use)."""
-        cdef Datum result = Datum.__new__(Datum)
-        if datum_ref == NULL:
-            raise RMNError("Cannot create wrapper from NULL datum reference")
-
-        cdef DatumRef copied_ref = DatumCopy(datum_ref)
-        if copied_ref == NULL:
-            raise RMNError("Failed to create copy of Datum")
-
-        result._set_c_ref(<void*>copied_ref)
-        return result
+    # Base class handles __cinit__, __dealloc__, and copy_c_ref via universal OCTypeDeepCopy
+    # No _from_c_ref method needed - use BaseWrapper._from_c_ref directly!
 
     @staticmethod
     def from_c_ref(uint64_t datum_ref_ptr):
         """Create Datum wrapper from C reference pointer (Python-accessible)."""
-        return Datum._from_c_ref(<DatumRef>datum_ref_ptr)
+        return <Datum>BaseWrapper._from_c_ref(Datum, <void*><DatumRef>datum_ref_ptr)
 
-    def __init__(self, response, dependent_variable_index=0,
+    def __init__(self, response, coordinates=None, dependent_variable_index=0,
                  component_index=0, mem_offset=0):
         """
         Create a new Datum.
@@ -105,7 +87,7 @@ cdef class Datum(RMNLibWrapper):
             RMNError: If datum creation fails
             TypeError: If input parameters have incorrect types
         """
-        if self._is_initialized():
+        if self.is_valid():
             return  # Already initialized by _from_c_ref
 
         cdef SIScalarRef response_ref = NULL
@@ -114,9 +96,15 @@ cdef class Datum(RMNLibWrapper):
 
         try:
             # Convert response scalar
-            response_ref = create_siscalar_from_pytype(response)
+            if isinstance(response, Scalar):
+                response_scalar = response
+            else:
+                # Create Scalar from numeric or string
+                response_scalar = Scalar(response)
+
+            response_ref = <SIScalarRef>OCTypeDeepCopy(<OCTypeRef>(<Scalar>response_scalar)._c_ref)
             if response_ref == NULL:
-                raise RMNError("Failed to convert response to SIScalar")
+                raise RMNError("Failed to copy response scalar")
 
             # Validate indices
             if not isinstance(dependent_variable_index, int) or dependent_variable_index < 0:
@@ -126,20 +114,18 @@ cdef class Datum(RMNLibWrapper):
             if not isinstance(mem_offset, int) or mem_offset < 0:
                 raise TypeError("mem_offset must be a non-negative integer")
 
-            # Create the datum with error handling
+            # Create the datum
             datum_ref = DatumCreate(
                 response_ref,
                 <OCIndex>dependent_variable_index,
                 <OCIndex>component_index,
                 <OCIndex>mem_offset,
-                <OCTypeRef>NULL,  # owner - NULL for standalone datums
+                <OCTypeRef>NULL,
                 &error
             )
             if datum_ref == NULL:
-                error_msg = "Datum creation failed"
-                if error != NULL:
-                    error_msg = f"Datum creation failed: {OCStringGetCString(error)}"
-                    OCRelease(error)
+                error_msg = f"Datum creation failed: {OCStringGetCString(error)}"
+                OCRelease(error)
                 raise RMNError(error_msg)
 
             self._set_c_ref(<void*>datum_ref)
@@ -157,12 +143,12 @@ cdef class Datum(RMNLibWrapper):
         """Get the response scalar."""
         self._validate_initialized()
 
-        cdef SIScalarRef response_ref = DatumCreateResponse(<DatumRef><DatumRef>self._c_ref)
+        cdef SIScalarRef response_ref = DatumCreateResponse(<DatumRef><DatumRef>self._get_c_ref())
         if response_ref == NULL:
             raise RMNError("Failed to get response scalar")
 
         try:
-            return Scalar._from_c_ref(response_ref)
+            return Scalar.from_c_ref(<uint64_t>response_ref)
         finally:
             # DatumCreateResponse creates a copy, so we need to release it
             OCRelease(<OCTypeRef>response_ref)
@@ -172,7 +158,7 @@ cdef class Datum(RMNLibWrapper):
         """Get the dependent variable index."""
         self._validate_initialized()
 
-        cdef OCIndex index = DatumGetDependentVariableIndex(<DatumRef>self._c_ref)
+        cdef OCIndex index = DatumGetDependentVariableIndex(<DatumRef>self._get_c_ref())
         if index == kOCNotFound:
             raise RMNError("Failed to get dependent variable index")
         return <int>index
@@ -185,14 +171,14 @@ cdef class Datum(RMNLibWrapper):
         if not isinstance(value, int) or value < 0:
             raise TypeError("dependent_variable_index must be a non-negative integer")
 
-        DatumSetDependentVariableIndex(<DatumRef>self._c_ref, <OCIndex>value)
+        DatumSetDependentVariableIndex(<DatumRef>self._get_c_ref(), <OCIndex>value)
 
     @property
     def component_index(self):
         """Get the component index."""
         self._validate_initialized()
 
-        cdef OCIndex index = DatumGetComponentIndex(<DatumRef>self._c_ref)
+        cdef OCIndex index = DatumGetComponentIndex(<DatumRef>self._get_c_ref())
         if index == kOCNotFound:
             raise RMNError("Failed to get component index")
         return <int>index
@@ -205,14 +191,14 @@ cdef class Datum(RMNLibWrapper):
         if not isinstance(value, int) or value < 0:
             raise TypeError("component_index must be a non-negative integer")
 
-        DatumSetComponentIndex(<DatumRef>self._c_ref, <OCIndex>value)
+        DatumSetComponentIndex(<DatumRef>self._get_c_ref(), <OCIndex>value)
 
     @property
     def mem_offset(self):
         """Get the memory offset."""
         self._validate_initialized()
 
-        cdef OCIndex offset = DatumGetMemOffset(<DatumRef>self._c_ref)
+        cdef OCIndex offset = DatumGetMemOffset(<DatumRef>self._get_c_ref())
         if offset == kOCNotFound:
             raise RMNError("Failed to get memory offset")
         return <int>offset
@@ -225,14 +211,14 @@ cdef class Datum(RMNLibWrapper):
         if not isinstance(value, int) or value < 0:
             raise TypeError("mem_offset must be a non-negative integer")
 
-        DatumSetMemOffset(<DatumRef>self._c_ref, <OCIndex>value)
+        DatumSetMemOffset(<DatumRef>self._get_c_ref(), <OCIndex>value)
 
     @property
     def coordinates_count(self):
         """Get the number of coordinate scalars."""
         self._validate_initialized()
 
-        return <int>DatumCoordinatesCount(<DatumRef>self._c_ref)
+        return <int>DatumCoordinatesCount(<DatumRef>self._get_c_ref())
 
     # Utility methods
 
@@ -258,32 +244,9 @@ cdef class Datum(RMNLibWrapper):
         self._validate_initialized()
         (<Datum>other)._validate_initialized()
 
-        return DatumHasSameReducedDimensionalities(<DatumRef>self._c_ref, (<Datum>other)._c_ref)
+        return DatumHasSameReducedDimensionalities(<DatumRef>self._get_c_ref(), (<Datum>other)._get_c_ref())
 
-    # Implement comparison for RMNLibWrapper
-    cdef int _compare_c_api(self, other) except? -999:
-        """Compare with another Datum instance using C API."""
-        if not isinstance(other, Datum):
-            raise TypeError("Can only compare with another Datum")
-
-        # For now, implement basic equality comparison
-        # Could be extended for ordering if needed
-        cdef Datum other_datum = <Datum>other
-
-        # Compare basic properties
-        if (self.dependent_variable_index != other_datum.dependent_variable_index or
-            self.component_index != other_datum.component_index or
-            self.mem_offset != other_datum.mem_offset):
-            return -1 if self.dependent_variable_index < other_datum.dependent_variable_index else 1
-
-        # Compare responses (this will need proper scalar comparison)
-        try:
-            if self.response == other_datum.response:
-                return 0
-            else:
-                return -1  # Could implement proper ordering later
-        except:
-            return -1
+    # Comparison is handled by universal OCTypeEqual in BaseWrapper
 
     def get_coordinate(self, index):
         """
@@ -305,75 +268,55 @@ cdef class Datum(RMNLibWrapper):
         if not isinstance(index, int) or index < 0:
             raise TypeError("index must be a non-negative integer")
 
-        cdef OCIndex count = DatumCoordinatesCount(<DatumRef>self._c_ref)
+        cdef OCIndex count = DatumCoordinatesCount(<DatumRef>self._get_c_ref())
         if index >= count:
             raise IndexError(f"Coordinate index {index} out of range (0-{count-1})")
 
-        cdef SIScalarRef coord_ref = DatumGetCoordinateAtIndex(<DatumRef>self._c_ref, <OCIndex>index)
+        cdef SIScalarRef coord_ref = DatumGetCoordinateAtIndex(<DatumRef>self._get_c_ref(), <OCIndex>index)
         if coord_ref == NULL:
             raise RMNError(f"Failed to get coordinate at index {index}")
 
-        return Scalar._from_c_ref(coord_ref)
+        return Scalar.from_c_ref(<uint64_t>coord_ref)
 
-    # Implement serialization methods (SerializableWrapper)
-
-    def _to_dict_c_api(self):
-        """Convert to dictionary using C API."""
-        cdef OCDictionaryRef dict_ref = DatumCopyAsDictionary(<DatumRef>self._c_ref)
-        if dict_ref == NULL:
-            raise RMNError("Failed to convert datum to dictionary")
-
-        try:
-            return ocdict_to_pydict(<uint64_t>dict_ref)
-        finally:
-            OCRelease(<OCTypeRef>dict_ref)
+    # Universal dictionary serialization is inherited from BaseWrapper via OCTypeCopyJSON
+    # Custom serialization methods are no longer needed!
 
     @classmethod
-    def _from_dict_c_api(cls, data_dict):
-        """Create from dictionary using C API."""
-        # Convert Python dict to OCDictionary
-        cdef uint64_t oc_dict_addr = ocdict_create_from_pydict(data_dict)
-        if oc_dict_addr == 0:
-            raise RMNError("Failed to convert dictionary to OCDictionary")
+    def from_dict(cls, data_dict):
+        """
+        Create Datum from dictionary using JSON-based deserialization.
 
-        cdef OCDictionaryRef oc_dict = <OCDictionaryRef>oc_dict_addr
+        This uses the more efficient DatumCreateFromJSON approach instead of
+        the old DatumCreateFromDictionary method.
+        """
+        if not isinstance(data_dict, dict):
+            raise TypeError("Expected dictionary input")
+
+        # Convert Python dict → cJSON → DatumRef
+        cdef uint64_t json_ptr = pydict_to_cjson_ptr(data_dict)
+        cdef cJSON* json_obj = <cJSON*>json_ptr
         cdef OCStringRef error = NULL
         cdef DatumRef datum_ref = NULL
-        cdef const char* error_str
 
         try:
-            datum_ref = DatumCreateFromDictionary(oc_dict, &error)
+            datum_ref = DatumCreateFromJSON(json_obj, &error)
             if datum_ref == NULL:
                 if error != NULL:
-                    # Extract error message from OCString
                     error_str = OCStringGetCString(error)
                     error_msg = error_str.decode('utf-8') if error_str else "Unknown error"
-                    OCRelease(<OCTypeRef>error)
                     raise RMNError(f"Failed to create Datum from dictionary: {error_msg}")
                 else:
                     raise RMNError("Failed to create Datum from dictionary")
 
-            # Create Python wrapper using existing _from_c_ref method
-            return Datum._from_c_ref(datum_ref)
+            # Create Python wrapper
+            return <Datum>BaseWrapper._from_c_ref(Datum, <void*>datum_ref)
 
         finally:
-            if datum_ref != NULL:
-                OCRelease(<OCTypeRef>datum_ref)
-            if oc_dict != NULL:
-                OCRelease(<OCTypeRef>oc_dict)
             if error != NULL:
                 OCRelease(<OCTypeRef>error)
-
-    # Serialization methods are inherited from RMNLibWrapper
-
-    def dict(self):
-        """
-        Alias for to_dict() for compatibility.
-
-        Returns:
-            dict: Dictionary representation of the datum
-        """
-        return self.to_dict()
+            if json_obj != NULL:
+                cJSON_Delete(json_obj)
+            # Note: datum_ref is managed by the _from_c_ref method
 
     # String representation
 

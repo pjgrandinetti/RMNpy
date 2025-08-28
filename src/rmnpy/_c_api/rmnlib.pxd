@@ -434,6 +434,7 @@ cdef extern from "RMNLibrary.h":
     bint DatumHasSameReducedDimensionalities(DatumRef input1, DatumRef input2)
     OCDictionaryRef DatumCopyAsDictionary(DatumRef theDatum)
     DatumRef DatumCreateFromDictionary(OCDictionaryRef dictionary, OCStringRef *error)
+    DatumRef DatumCreateFromJSON(cJSON *json, OCStringRef *outError)
 
     # Datum getters
     OCIndex DatumGetComponentIndex(DatumRef theDatum)

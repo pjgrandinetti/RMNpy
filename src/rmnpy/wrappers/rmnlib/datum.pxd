@@ -12,8 +12,5 @@ from rmnpy.wrappers.base_wrapper cimport RMNLibWrapper
 
 cdef class Datum(RMNLibWrapper):
     """Cython interface for Datum wrapper."""
-
-    @staticmethod
-    cdef Datum _from_c_ref(DatumRef datum_ref)
-    cdef void* copy_c_ref(self) except NULL
-    cdef int _compare_c_api(self, other) except? -999
+    # No _from_c_ref needed - use BaseWrapper._from_c_ref directly!
+    pass

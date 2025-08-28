@@ -1319,5 +1319,238 @@ def enum_to_element_type(OCNumberType elem_type):
 
 
 # ====================================================================================
+# Universal JSON/Dictionary Serialization Functions
+# ====================================================================================
+
+cdef object cjson_to_pydict(cJSON* json_obj):
+    """
+    Convert a cJSON object to a Python dictionary.
+
+    Args:
+        json_obj (cJSON*): Pointer to cJSON object
+
+    Returns:
+        dict/list/str/int/float/bool/None: Python object corresponding to JSON type
+
+    Note:
+        This provides universal dictionary serialization for all OCTypes
+        via the OCTypeCopyJSON function.
+    """
+    if json_obj == NULL:
+        return None
+
+    cdef int json_type = json_obj.type
+    cdef cJSON* item
+
+    if json_type == cJSON_NULL:
+        return None
+    elif json_type == cJSON_False:
+        return False
+    elif json_type == cJSON_True:
+        return True
+    elif json_type == cJSON_Number:
+        # Check if it's an integer or float
+        if json_obj.valuedouble == <double>json_obj.valueint:
+            return json_obj.valueint
+        else:
+            return json_obj.valuedouble
+    elif json_type == cJSON_String:
+        if json_obj.valuestring == NULL:
+            return ""
+        return json_obj.valuestring.decode('utf-8')
+    elif json_type == cJSON_Array:
+        result = []
+        item = json_obj.child
+        while item != NULL:
+            result.append(cjson_to_pydict(item))
+            item = item.next
+        return result
+    elif json_type == cJSON_Object:
+        result = {}
+        item = json_obj.child
+        while item != NULL:
+            if item.string != NULL:
+                key = item.string.decode('utf-8')
+                result[key] = cjson_to_pydict(item)
+            item = item.next
+        return result
+    else:
+        # Unknown type - return as string representation
+        return f"<cJSON type {json_type}>"
+
+
+cdef cJSON* pydict_to_cjson(py_dict) except NULL:
+    """
+    Convert a Python dictionary to a cJSON object.
+
+    Args:
+        py_dict (dict): Python dictionary to convert
+
+    Returns:
+        cJSON*: Pointer to cJSON object (needs to be freed with cJSON_Delete)
+
+    Raises:
+        TypeError: If input is not a dictionary
+        RuntimeError: If JSON creation fails
+    """
+    if not isinstance(py_dict, dict):
+        raise TypeError(f"Expected dict, got {type(py_dict)}")
+
+    cdef cJSON* json_obj = cJSON_CreateObject()
+    if json_obj == NULL:
+        raise RuntimeError("Failed to create cJSON object")
+
+    cdef cJSON* item
+    cdef bytes key_bytes
+    cdef const char* c_key
+
+    try:
+        for key, value in py_dict.items():
+            # Convert key to C string
+            if not isinstance(key, str):
+                key = str(key)
+            key_bytes = key.encode('utf-8')
+            c_key = key_bytes
+
+            # Convert value based on type
+            if value is None:
+                item = cJSON_CreateNull()
+            elif isinstance(value, bool):
+                item = cJSON_CreateBool(value)
+            elif isinstance(value, int):
+                item = cJSON_CreateNumber(value)
+            elif isinstance(value, float):
+                item = cJSON_CreateNumber(value)
+            elif isinstance(value, str):
+                value_bytes = value.encode('utf-8')
+                item = cJSON_CreateString(value_bytes)
+            elif isinstance(value, list):
+                item = pylist_to_cjson(value)
+            elif isinstance(value, dict):
+                item = pydict_to_cjson(value)
+            else:
+                # Convert unknown types to string
+                str_value = str(value)
+                value_bytes = str_value.encode('utf-8')
+                item = cJSON_CreateString(value_bytes)
+
+            if item == NULL:
+                raise RuntimeError(f"Failed to create cJSON item for key: {key}")
+
+            # Add to object (cJSON takes ownership of item)
+            cJSON_AddItemToObject(json_obj, c_key, item)
+
+        return json_obj
+
+    except Exception:
+        cJSON_Delete(json_obj)
+        raise
+
+
+cdef cJSON* pylist_to_cjson(py_list) except NULL:
+    """
+    Convert a Python list to a cJSON array.
+
+    Args:
+        py_list (list): Python list to convert
+
+    Returns:
+        cJSON*: Pointer to cJSON array (needs to be freed with cJSON_Delete)
+    """
+    cdef cJSON* json_array = cJSON_CreateArray()
+    if json_array == NULL:
+        raise RuntimeError("Failed to create cJSON array")
+
+    cdef cJSON* item
+
+    try:
+        for value in py_list:
+            if value is None:
+                item = cJSON_CreateNull()
+            elif isinstance(value, bool):
+                item = cJSON_CreateBool(value)
+            elif isinstance(value, int):
+                item = cJSON_CreateNumber(value)
+            elif isinstance(value, float):
+                item = cJSON_CreateNumber(value)
+            elif isinstance(value, str):
+                value_bytes = value.encode('utf-8')
+                item = cJSON_CreateString(value_bytes)
+            elif isinstance(value, list):
+                item = pylist_to_cjson(value)
+            elif isinstance(value, dict):
+                item = pydict_to_cjson(value)
+            else:
+                # Convert unknown types to string
+                str_value = str(value)
+                value_bytes = str_value.encode('utf-8')
+                item = cJSON_CreateString(value_bytes)
+
+            if item == NULL:
+                raise RuntimeError(f"Failed to create cJSON item for value: {value}")
+
+            # Add to array (cJSON takes ownership of item)
+            cJSON_AddItemToArray(json_array, item)
+
+        return json_array
+
+    except Exception:
+        cJSON_Delete(json_array)
+        raise
+
+
+def pydict_to_cjson_ptr(py_dict):
+    """
+    Python-accessible wrapper for pydict_to_cjson that returns a pointer as uint64_t.
+
+    Args:
+        py_dict (dict): Python dictionary to convert
+
+    Returns:
+        uint64_t: Pointer to cJSON object (needs to be freed with cJSON_Delete)
+    """
+    cdef cJSON* json_obj = pydict_to_cjson(py_dict)
+    return <uint64_t>json_obj
+
+
+def universal_to_dict(uint64_t octype_ptr):
+    """
+    Universal dictionary serialization for any OCType using OCTypeCopyJSON.
+
+    This function provides automatic dictionary serialization for ALL OCType
+    subclasses without requiring custom implementation in each wrapper.
+
+    Args:
+        octype_ptr (uint64_t): Pointer to any OCType object
+
+    Returns:
+        dict: Python dictionary representation of the OCType
+
+    Raises:
+        ValueError: If OCType pointer is NULL
+        RuntimeError: If JSON serialization fails
+
+    Note:
+        This leverages the universal OCTypeCopyJSON function that every OCType
+        implements, providing consistent serialization across all wrapper classes.
+    """
+    if octype_ptr == 0:
+        raise ValueError("OCType pointer is NULL")
+
+    cdef OCTypeRef oc_obj = <OCTypeRef>octype_ptr
+    cdef cJSON* json_obj = OCTypeCopyJSON(oc_obj)
+
+    if json_obj == NULL:
+        raise RuntimeError("Failed to serialize OCType to JSON")
+
+    try:
+        # Convert cJSON to Python dict
+        return cjson_to_pydict(json_obj)
+    finally:
+        # Clean up cJSON object
+        cJSON_Delete(json_obj)
+
+
+# ====================================================================================
 # End of File
 # ===================================================================================

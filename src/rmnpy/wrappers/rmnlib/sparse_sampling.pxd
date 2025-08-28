@@ -7,11 +7,9 @@ the SparseSampling class from sparse_sampling.pyx.
 """
 
 from rmnpy._c_api.rmnlib cimport SparseSamplingRef
+from rmnpy.wrappers.base_wrapper cimport RMNLibWrapper
 
 
-cdef class SparseSampling:
+cdef class SparseSampling(RMNLibWrapper):
     """Cython interface for SparseSampling wrapper."""
-    cdef SparseSamplingRef _c_ref
-
-    @staticmethod
-    cdef SparseSampling _from_c_ref(SparseSamplingRef sparse_ref)
+    pass
