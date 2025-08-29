@@ -291,7 +291,11 @@ cdef class Dimensionality(SITypesWrapper):
             >>> length_squared_per_length = Dimensionality("L^2/L")
             >>> length.is_compatible_with(length_squared_per_length)  # True - both reduce to L
         """
-        cdef SIDimensionalityRef other_ref = (<SIDimensionalityRef>Dimensionality.from_value(other)._get_c_ref())
+        cdef SIDimensionalityRef other_ref
+        cdef Dimensionality other_obj
+
+        other_obj = Dimensionality.from_value(other)
+        other_ref = (<SIDimensionalityRef>other_obj._get_c_ref())
 
         return SIDimensionalityHasSameReducedDimensionality(<SIDimensionalityRef>self._c_ref, other_ref)
 
@@ -299,19 +303,3 @@ cdef class Dimensionality(SITypesWrapper):
     def has_same_reduced_dimensionality(self, other):
         """Alias for is_compatible_with() - checks if dimensionalities have the same reduced form."""
         return self.is_compatible_with(other)
-
-    def __eq__(self, other):
-        """Equality comparison with string and None support."""
-        if not isinstance(other, BaseWrapper):
-            other_ref = (<SIDimensionalityRef>Dimensionality.from_value(other)._get_c_ref())
-            return OCTypeEqual(self._c_ref, <OCTypeRef>other_ref)
-
-        return super().__eq__(other)
-
-    def __ne__(self, other):
-        """Inequality comparison with string and None support."""
-        if not isinstance(other, BaseWrapper):
-            other_ref = (<SIDimensionalityRef>Dimensionality.from_value(other)._get_c_ref())
-            return not OCTypeEqual(self._c_ref, <OCTypeRef>other_ref)
-
-        return super().__ne__(other)

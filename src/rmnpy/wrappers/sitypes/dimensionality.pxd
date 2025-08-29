@@ -13,6 +13,3 @@ from rmnpy.wrappers.base_wrapper cimport SITypesWrapper
 
 cdef class Dimensionality(SITypesWrapper):
     """Cython interface for SIDimensionality wrapper."""
-
-    @staticmethod
-    cdef Dimensionality _from_c_ref(object cls, void* c_ref)

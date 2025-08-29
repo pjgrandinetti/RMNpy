@@ -9,6 +9,4 @@ from rmnpy.wrappers.base_wrapper cimport SITypesWrapper
 
 
 cdef class Unit(SITypesWrapper):
-
-    @staticmethod
-    cdef Unit _from_c_ref(object cls, void* c_ref)
+    pass

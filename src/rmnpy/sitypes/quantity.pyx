@@ -13,6 +13,8 @@ Usage:
 All quantity names follow PascalCase convention (e.g., 'electric charge' -> 'ElectricCharge').
 """
 
+from libc.stdint cimport uintptr_t
+
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.sitypes cimport *
 

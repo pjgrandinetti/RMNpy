@@ -16,7 +16,7 @@ from rmnpy._c_api.octypes cimport (
     OCTypeRef,
 )
 from rmnpy._c_api.sitypes cimport *
-from rmnpy.wrappers.base_wrapper cimport SITypesWrapper
+from rmnpy.wrappers.base_wrapper cimport BaseWrapper, SITypesWrapper
 
 from rmnpy.exceptions import RMNError
 
@@ -364,8 +364,12 @@ cdef class Unit(SITypesWrapper):
             >>> factor2 = meter.scale_to("km")
             >>> # factor2 should be 0.001 (1 m = 0.001 km)
         """
-        cdef SIUnitRef other_ref = (<SIUnitRef>Unit.from_value(other)._get_c_ref())
+        cdef SIUnitRef other_ref
         cdef double conversion_factor
+        cdef Unit other_obj
+
+        other_obj = Unit.from_value(other)
+        other_ref = (<SIUnitRef>other_obj._get_c_ref())
 
         try:
             conversion_factor = SIUnitConversion(self._c_ref, other_ref)
@@ -425,33 +429,17 @@ cdef class Unit(SITypesWrapper):
             >>> ml.is_equivalent("cm^3") # True - string support
         """
         cdef SIUnitRef other_ref
+        cdef Unit other_obj
 
         try:
-            other_ref = (<SIUnitRef>Unit.from_value(other)._get_c_ref())
+            other_obj = Unit.from_value(other)
+            other_ref = (<SIUnitRef>other_obj._get_c_ref())
             return SIUnitAreEquivalentUnits(self._c_ref, other_ref)
         except (TypeError, RMNError):
             return False
         finally:
             if 'other_ref' in locals() and other_ref != NULL:
                 OCRelease(<OCTypeRef>other_ref)
-
-    def __eq__(self, other):
-        """Equality comparison with string and None support."""
-        if not isinstance(other, BaseWrapper):
-            cdef SIUnitRef other_ref = (<SIUnitRef>Unit.from_value(other)._get_c_ref())
-            from rmnpy._c_api.octypes cimport OCTypeEqual
-            return OCTypeEqual(self._c_ref, <OCTypeRef>other_ref)
-
-        return super().__eq__(other)
-
-    def __ne__(self, other):
-        """Inequality comparison with string and None support."""
-        if not isinstance(other, BaseWrapper):
-            cdef SIUnitRef other_ref = (<SIUnitRef>Unit.from_value(other)._get_c_ref())
-            from rmnpy._c_api.octypes cimport OCTypeEqual
-            return not OCTypeEqual(self._c_ref, <OCTypeRef>other_ref)
-
-        return super().__ne__(other)
 
     # ================================================================================
     # Unit Analysis and Discovery Methods

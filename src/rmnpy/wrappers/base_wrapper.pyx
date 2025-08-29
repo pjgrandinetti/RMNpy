@@ -30,7 +30,7 @@ from rmnpy._c_api.sitypes cimport (
 )
 
 from rmnpy.exceptions import RMNError
-from rmnpy.helpers.octypes import cjson_to_pydict
+from rmnpy.helpers.octypes cimport cjson_to_pydict
 
 
 cdef class BaseWrapper:
@@ -112,7 +112,7 @@ cdef class BaseWrapper:
             ValueError: If c_ref_ptr is NULL
             MemoryError: If copying fails
         """
-        return cls._from_c_ref(<void*>c_ref_ptr)
+        return BaseWrapper._from_c_ref(cls, <void*><uintptr_t>c_ref_ptr)
 
     @staticmethod
     cdef BaseWrapper _from_c_ref(object cls, void* c_ref):

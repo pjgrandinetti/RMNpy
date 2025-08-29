@@ -533,6 +533,9 @@ cdef class SIDimension(BaseDimension):
         cdef SIScalarRef period_sisclr = NULL
         cdef OCStringRef err_ocstr = NULL
         cdef SIDimensionRef si_dimension
+        cdef Scalar coordinates_offset_obj
+        cdef Scalar origin_offset_obj
+        cdef Scalar period_obj
 
         # Validate scaling parameter
         if scaling is not None:
@@ -546,15 +549,18 @@ cdef class SIDimension(BaseDimension):
 
         # Convert coordinates_offset parameter to SIScalar if provided
         if coordinates_offset is not None:
-            coordinates_offset_sisclr = (<SIScalarRef>Scalar.from_value(coordinates_offset)._get_c_ref())
+            coordinates_offset_obj = Scalar.from_value(coordinates_offset)
+            coordinates_offset_sisclr = (<SIScalarRef>coordinates_offset_obj._get_c_ref())
 
         # Convert origin_offset parameter to SIScalar if provided
         if origin_offset is not None:
-            origin_offset_sisclr = (<SIScalarRef>Scalar.from_value(origin_offset)._get_c_ref())
+            origin_offset_obj = Scalar.from_value(origin_offset)
+            origin_offset_sisclr = (<SIScalarRef>origin_offset_obj._get_c_ref())
 
         # Convert period parameter to SIScalar if provided
         if period is not None:
-            period_sisclr = (<SIScalarRef>Scalar.from_value(period)._get_c_ref())
+            period_obj = Scalar.from_value(period)
+            period_sisclr = (<SIScalarRef>period_obj._get_c_ref())
 
         try:
             si_dimension = SIDimensionCreate(
@@ -605,9 +611,11 @@ cdef class SIDimension(BaseDimension):
         """Set coordinates offset."""
         cdef OCStringRef err_ocstr = NULL
         cdef SIScalarRef coordinates_offset_sisclr = NULL
+        cdef Scalar coordinates_offset_obj
 
         # Handle both Scalar objects and strings like in __init__
-        coordinates_offset_sisclr = (<SIScalarRef>Scalar.from_value(value)._get_c_ref())
+        coordinates_offset_obj = Scalar.from_value(value)
+        coordinates_offset_sisclr = (<SIScalarRef>coordinates_offset_obj._get_c_ref())
 
         if not SIDimensionSetCoordinatesOffset(<SIDimensionRef><DimensionRef>self._c_ref, coordinates_offset_sisclr, &err_ocstr):
             if err_ocstr != NULL:
@@ -635,9 +643,11 @@ cdef class SIDimension(BaseDimension):
         """Set origin offset."""
         cdef OCStringRef err_ocstr = NULL
         cdef SIScalarRef origin_offset_sisclr = NULL
+        cdef Scalar origin_offset_obj
 
         # Handle both Scalar objects and strings like in __init__
-        origin_offset_sisclr = (<SIScalarRef>Scalar.from_value(value)._get_c_ref())
+        origin_offset_obj = Scalar.from_value(value)
+        origin_offset_sisclr = (<SIScalarRef>origin_offset_obj._get_c_ref())
 
         if not SIDimensionSetOriginOffset(<SIDimensionRef><DimensionRef>self._c_ref, origin_offset_sisclr, &err_ocstr):
             if err_ocstr != NULL:
@@ -672,6 +682,7 @@ cdef class SIDimension(BaseDimension):
         """Set the period."""
         cdef OCStringRef err_ocstr = NULL
         cdef SIScalarRef period_sisclr = NULL
+        cdef Scalar period_obj
 
         # Handle None and infinity string values
         if value is None:
@@ -698,7 +709,8 @@ cdef class SIDimension(BaseDimension):
             return
 
         # Handle both Scalar objects and strings like in __init__
-        period_sisclr = (<SIScalarRef>Scalar.from_value(value)._get_c_ref())
+        period_obj = Scalar.from_value(value)
+        period_sisclr = (<SIScalarRef>period_obj._get_c_ref())
 
         if not SIDimensionSetPeriod(<SIDimensionRef><DimensionRef>self._c_ref, period_sisclr, &err_ocstr):
             if err_ocstr != NULL:
@@ -852,6 +864,10 @@ cdef class LinearDimension(SIDimension):
         cdef SIScalarRef period_sisclr = NULL
         cdef OCStringRef err_ocstr = NULL
         cdef SILinearDimensionRef linear_dimension
+        cdef Scalar increment_obj
+        cdef Scalar coordinates_offset_obj
+        cdef Scalar origin_offset_obj
+        cdef Scalar period_obj
 
         # Validate scaling parameter
         if scaling is not None:
@@ -865,19 +881,23 @@ cdef class LinearDimension(SIDimension):
 
         # Convert increment parameter to SIScalar (required parameter)
         if increment is not None:
-            increment_sisclr = (<SIScalarRef>Scalar.from_value(increment)._get_c_ref())
+            increment_obj = Scalar.from_value(increment)
+            increment_sisclr = (<SIScalarRef>increment_obj._get_c_ref())
 
         # Convert coordinates_offset parameter to SIScalar if provided
         if coordinates_offset is not None:
-            coordinates_offset_sisclr = (<SIScalarRef>Scalar.from_value(coordinates_offset)._get_c_ref())
+            coordinates_offset_obj = Scalar.from_value(coordinates_offset)
+            coordinates_offset_sisclr = (<SIScalarRef>coordinates_offset_obj._get_c_ref())
 
         # Convert origin_offset parameter to SIScalar if provided
         if origin_offset is not None:
-            origin_offset_sisclr = (<SIScalarRef>Scalar.from_value(origin_offset)._get_c_ref())
+            origin_offset_obj = Scalar.from_value(origin_offset)
+            origin_offset_sisclr = (<SIScalarRef>origin_offset_obj._get_c_ref())
 
         # Convert period parameter to SIScalar if provided
         if period is not None:
-            period_sisclr = (<SIScalarRef>Scalar.from_value(period)._get_c_ref())
+            period_obj = Scalar.from_value(period)
+            period_sisclr = (<SIScalarRef>period_obj._get_c_ref())
 
         cdef SIDimensionRef reciprocal_ref = NULL
 
@@ -952,8 +972,10 @@ cdef class LinearDimension(SIDimension):
     def increment(self, value):
         """Set the increment of the dimension."""
         cdef SIScalarRef increment_sisclr = NULL
+        cdef Scalar increment_obj
 
-        increment_sisclr = (<SIScalarRef>Scalar.from_value(value)._get_c_ref())
+        increment_obj = Scalar.from_value(value)
+        increment_sisclr = (<SIScalarRef>increment_obj._get_c_ref())
 
         if increment_sisclr == NULL:
             raise RMNError("Failed to convert increment value to SIScalar")
@@ -1096,10 +1118,12 @@ cdef class MonotonicDimension(SIDimension):
         cdef SIDimensionRef reciprocal_ref = NULL
         cdef SIScalarRef coord_scalar = NULL
         cdef SIMonotonicDimensionRef monotonic_dimension
+        cdef Scalar coord_obj
 
         # Convert each coordinate to an SIScalar object using the helper function
         for coord_value in coordinates:
-            coord_scalar = (<SIScalarRef>Scalar.from_value(coord_value)._get_c_ref())
+            coord_obj = Scalar.from_value(coord_value)
+            coord_scalar = (<SIScalarRef>coord_obj._get_c_ref())
             if coord_scalar == NULL:
                 OCRelease(<OCTypeRef>coords_array)
                 raise RMNError(f"Failed to create SIScalar for coordinate value {coord_value}")
@@ -1119,15 +1143,18 @@ cdef class MonotonicDimension(SIDimension):
 
         # Convert coordinates_offset parameter to SIScalar if provided
         if coordinates_offset is not None:
-            coordinates_offset_sisclr = (<SIScalarRef>Scalar.from_value(coordinates_offset)._get_c_ref())
+            coord_obj = Scalar.from_value(coordinates_offset)
+            coordinates_offset_sisclr = (<SIScalarRef>coord_obj._get_c_ref())
 
         # Convert origin_offset parameter to SIScalar if provided
         if origin_offset is not None:
-            origin_offset_sisclr = (<SIScalarRef>Scalar.from_value(origin_offset)._get_c_ref())
+            coord_obj = Scalar.from_value(origin_offset)
+            origin_offset_sisclr = (<SIScalarRef>coord_obj._get_c_ref())
 
         # Convert period parameter to SIScalar if provided
         if period is not None:
-            period_sisclr = (<SIScalarRef>Scalar.from_value(period)._get_c_ref())
+            coord_obj = Scalar.from_value(period)
+            period_sisclr = (<SIScalarRef>coord_obj._get_c_ref())
 
         # Convert reciprocal parameter to SIDimensionRef if provided
         if reciprocal is not None:

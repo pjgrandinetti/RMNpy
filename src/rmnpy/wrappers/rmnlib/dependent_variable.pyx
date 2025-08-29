@@ -178,6 +178,7 @@ cdef class DependentVariable(RMNLibWrapper):
         cdef OCArrayRef components_array = NULL
         cdef OCStringRef err_ocstr = NULL
         cdef DependentVariableRef result = NULL
+        cdef Unit unit_obj
 
         try:
             if name is not None:
@@ -185,7 +186,8 @@ cdef class DependentVariable(RMNLibWrapper):
             if description is not None:
                 desc_ocstr = <OCStringRef><uintptr_t>ocstring_create_from_pystring(description)
 
-            unit_ref = <SIUnitRef>Unit.from_value(unit)._get_c_ref()
+            unit_obj = Unit.from_value(unit)
+            unit_ref = <SIUnitRef>unit_obj._get_c_ref()
 
             if quantity_name is not None:
                 quantity_name_ocstr = <OCStringRef><uintptr_t>ocstring_create_from_pystring(quantity_name)
@@ -200,7 +202,7 @@ cdef class DependentVariable(RMNLibWrapper):
             if components is not None:
                 components_array = <OCArrayRef><uintptr_t>ocarray_create_from_pylist(components)
 
-            self._c_ref = DependentVariableCreate(
+            self._c_ref = <OCTypeRef>DependentVariableCreate(
                 name_ocstr,
                 desc_ocstr,
                 unit_ref,
@@ -450,7 +452,7 @@ cdef class DependentVariable(RMNLibWrapper):
 
         if unit_ref == NULL:
             return None
-        return Unit._from_c_ref(unit_ref)
+        return BaseWrapper._from_c_ref(Unit, unit_ref)
 
     @property
     def sparse_sampling(self):
@@ -458,7 +460,7 @@ cdef class DependentVariable(RMNLibWrapper):
         cdef SparseSamplingRef sparse_ref = DependentVariableCopySparseSampling(self._c_ref)
         if sparse_ref == NULL:
             return None
-        return SparseSampling._from_c_ref(sparse_ref)
+        return BaseWrapper._from_c_ref(SparseSampling, sparse_ref)
 
     @sparse_sampling.setter
     def sparse_sampling(self, value):
@@ -487,7 +489,7 @@ cdef class DependentVariable(RMNLibWrapper):
             raise RMNError("Failed to copy DependentVariable")
 
         cdef DependentVariable new_dv = DependentVariable.__new__(DependentVariable)
-        new_dv._c_ref = copy_ref
+        new_dv._c_ref = <OCTypeRef>copy_ref
         return new_dv
 
     def append(self, other):

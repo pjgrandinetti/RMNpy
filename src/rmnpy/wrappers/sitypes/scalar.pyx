@@ -458,11 +458,14 @@ cdef class Scalar(SITypesWrapper):
     def __eq__(self, other):
         """Scalar-specific equality comparison with unit compatibility."""
         cdef SIScalarRef other_ref
+        cdef OCComparisonResult result
+        cdef Scalar other_obj
 
         try:
-            other_ref = (<SIScalarRef>Scalar.from_value(other)._get_c_ref())
+            other_obj = Scalar.from_value(other)
+            other_ref = (<SIScalarRef>other_obj._get_c_ref())
             # Use strict comparison for equality to handle precision correctly
-            cdef OCComparisonResult result = SIScalarCompare(self._get_c_ref(), other_ref)
+            result = SIScalarCompare(self._get_c_ref(), other_ref)
             if result == kOCCompareUnequalDimensionalities:
                 # For equality, incompatible units return False (don't raise exception)
                 return False
@@ -476,11 +479,14 @@ cdef class Scalar(SITypesWrapper):
     def __ne__(self, other):
         """Not equal comparison - raises exception for incompatible units."""
         cdef SIScalarRef other_ref
+        cdef OCComparisonResult result
+        cdef Scalar other_obj
 
         try:
-            other_ref = (<SIScalarRef>Scalar.from_value(other)._get_c_ref())
+            other_obj = Scalar.from_value(other)
+            other_ref = (<SIScalarRef>other_obj._get_c_ref())
             # Use strict comparison for inequality
-            cdef OCComparisonResult result = SIScalarCompare(self._get_c_ref(), other_ref)
+            result = SIScalarCompare(self._get_c_ref(), other_ref)
             if result == kOCCompareUnequalDimensionalities:
                 raise RMNError("Cannot compare scalars with incompatible units")
             return result != kOCCompareEqualTo
@@ -495,10 +501,13 @@ cdef class Scalar(SITypesWrapper):
     def __lt__(self, other):
         """Less than comparison."""
         cdef SIScalarRef other_ref
+        cdef OCComparisonResult result
+        cdef Scalar other_obj
 
         try:
-            other_ref = (<SIScalarRef>Scalar.from_value(other)._get_c_ref())
-            cdef OCComparisonResult result = SIScalarCompare(self._get_c_ref(), other_ref)
+            other_obj = Scalar.from_value(other)
+            other_ref = (<SIScalarRef>other_obj._get_c_ref())
+            result = SIScalarCompare(self._get_c_ref(), other_ref)
             if result == kOCCompareUnequalDimensionalities:
                 raise RMNError("Cannot compare scalars with incompatible units")
             return result == kOCCompareLessThan
@@ -518,10 +527,13 @@ cdef class Scalar(SITypesWrapper):
     def __gt__(self, other):
         """Greater than comparison."""
         cdef SIScalarRef other_ref
+        cdef OCComparisonResult result
+        cdef Scalar other_obj
 
         try:
-            other_ref = (<SIScalarRef>Scalar.from_value(other)._get_c_ref())
-            cdef OCComparisonResult result = SIScalarCompare(self._get_c_ref(), other_ref)
+            other_obj = Scalar.from_value(other)
+            other_ref = (<SIScalarRef>other_obj._get_c_ref())
+            result = SIScalarCompare(self._get_c_ref(), other_ref)
             if result == kOCCompareUnequalDimensionalities:
                 raise RMNError("Cannot compare scalars with incompatible units")
             return result == kOCCompareGreaterThan

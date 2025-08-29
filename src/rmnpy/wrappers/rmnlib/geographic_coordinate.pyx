@@ -6,14 +6,7 @@ Provides Python access to RMNLib GeographicCoordinate C API for managing
 geographic locations with latitude, longitude, altitude, and metadata.
 """
 
-from typi    @property
-    def altitude(self):
-        """Get the altitude as a Scalar object, or None if not set."""
-        cdef SIScalarRef alt_ref = GeographicCoordinateGetAltitude(<GeographicCoordinateRef>self._c_ref)
-        if alt_ref == NULL:
-            return None
-
-        return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>alt_ref)Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from libc.stdint cimport uint64_t, uintptr_t
 
@@ -98,21 +91,27 @@ cdef class GeographicCoordinate(RMNLibWrapper):
         cdef SIScalarRef alt_ref = NULL
         cdef OCDictionaryRef metadata_ref = NULL
         cdef GeographicCoordinateRef coord_ref = NULL
+        cdef Scalar latitude_obj
+        cdef Scalar longitude_obj
+        cdef Scalar altitude_obj
 
         try:
             # Convert latitude
-            lat_ref = (<SIScalarRef>Scalar.from_value(latitude)._get_c_ref())
+            latitude_obj = Scalar.from_value(latitude)
+            lat_ref = (<SIScalarRef>latitude_obj._get_c_ref())
             if lat_ref == NULL:
                 raise RMNError("Failed to convert latitude to SIScalar")
 
             # Convert longitude
-            lon_ref = (<SIScalarRef>Scalar.from_value(longitude)._get_c_ref())
+            longitude_obj = Scalar.from_value(longitude)
+            lon_ref = (<SIScalarRef>longitude_obj._get_c_ref())
             if lon_ref == NULL:
                 raise RMNError("Failed to convert longitude to SIScalar")
 
             # Convert altitude if provided
             if altitude is not None:
-                alt_ref = (<SIScalarRef>Scalar.from_value(altitude)._get_c_ref())
+                altitude_obj = Scalar.from_value(altitude)
+                alt_ref = (<SIScalarRef>altitude_obj._get_c_ref())
                 if alt_ref == NULL:
                     raise RMNError("Failed to convert altitude to SIScalar")
 
@@ -194,9 +193,11 @@ cdef class GeographicCoordinate(RMNLibWrapper):
     def latitude(self, value):
         """Set the latitude."""
         cdef SIScalarRef lat_ref = NULL
+        cdef Scalar latitude_obj
 
         try:
-            lat_ref = (<SIScalarRef>Scalar.from_value(value)._get_c_ref())
+            latitude_obj = Scalar.from_value(value)
+            lat_ref = (<SIScalarRef>latitude_obj._get_c_ref())
             if lat_ref == NULL:
                 raise RMNError("Failed to convert latitude to SIScalar")
 
@@ -219,9 +220,11 @@ cdef class GeographicCoordinate(RMNLibWrapper):
     def longitude(self, value):
         """Set the longitude."""
         cdef SIScalarRef lon_ref = NULL
+        cdef Scalar longitude_obj
 
         try:
-            lon_ref = (<SIScalarRef>Scalar.from_value(value)._get_c_ref())
+            longitude_obj = Scalar.from_value(value)
+            lon_ref = (<SIScalarRef>longitude_obj._get_c_ref())
             if lon_ref == NULL:
                 raise RMNError("Failed to convert longitude to SIScalar")
 
@@ -244,13 +247,15 @@ cdef class GeographicCoordinate(RMNLibWrapper):
     def altitude(self, value):
         """Set the altitude, or None to clear it."""
         cdef SIScalarRef alt_ref = NULL
+        cdef Scalar altitude_obj
 
         try:
             if value is None:
                 # Setting altitude to None/NULL
                 alt_ref = NULL
             else:
-                alt_ref = (<SIScalarRef>Scalar.from_value(value)._get_c_ref())
+                altitude_obj = Scalar.from_value(value)
+                alt_ref = (<SIScalarRef>altitude_obj._get_c_ref())
                 if alt_ref == NULL:
                     raise RMNError("Failed to convert altitude to SIScalar")
 
@@ -290,14 +295,6 @@ cdef class GeographicCoordinate(RMNLibWrapper):
             if metadata_ref != NULL:
                 OCRelease(<OCTypeRef>metadata_ref)
 
-    def copy(self):
-        """Create a copy of this GeographicCoordinate using universal copying."""
-        # BaseWrapper.copy_c_ref() already handles validation and copying via OCTypeDeepCopy
-        cdef void* copied_ref = self.copy_c_ref()
-        return <GeographicCoordinate>BaseWrapper._from_c_ref(GeographicCoordinate, copied_ref)
-
-    # Universal dictionary serialization is inherited from BaseWrapper via OCTypeCopyJSON
-    # Custom serialization methods are no longer needed!
 
     def dict(self):
         """

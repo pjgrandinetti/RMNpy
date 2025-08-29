@@ -344,25 +344,22 @@ cdef extern from "SITypes.h":
 
     OCTypeRef SITypesCreateByRaisingToPower(
         OCTypeRef base,
-        OCTypeRef exponent,
+        int power,
         OCStringRef *outError
     )
 
     OCTypeRef SITypesCreateByTakingNthRoot(
         OCTypeRef operand,
-        OCTypeRef n,
+        int n,
         OCStringRef *outError
     )
 
     # Universal reduction operations
     OCTypeRef SITypesCreateByReducing(
-        OCTypeRef operand,
-        char operation,
-        OCStringRef *outError
+        OCTypeRef operand
     )
 
     # Universal string representation
     OCStringRef SITypesCreateStringRepresentation(
-        OCTypeRef operand,
-        OCStringRef *outError
+        OCTypeRef operand
     )
