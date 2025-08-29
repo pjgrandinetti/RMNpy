@@ -378,6 +378,40 @@ cdef class SITypesWrapper(BaseWrapper):
         """
         return f"{self.__class__.__name__}('{str(self)}')"
 
+    # Enhanced comparison functionality using from_value for flexible comparisons
+    def __eq__(self, other):
+        """Enhanced equality comparison with automatic type conversion via from_value.
+
+        Supports comparison with:
+        - Other BaseWrapper instances (delegates to base class)
+        - Strings, numbers, and other types convertible via from_value()
+
+        Examples:
+            >>> scalar = Scalar("5.0 m")
+            >>> scalar == "5.0 m"  # True
+            >>> unit = Unit("kg")
+            >>> unit == "kg"       # True
+        """
+        if isinstance(other, BaseWrapper):
+            # Delegate to base class for BaseWrapper instances
+            return super().__eq__(other)
+
+        # Try to convert other using from_value for flexible comparison
+        if hasattr(self.__class__, 'from_value'):
+            try:
+                other_converted = self.__class__.from_value(other)
+                return super().__eq__(other_converted)
+            except (TypeError, RMNError, ValueError):
+                # If conversion fails, objects are not equal
+                return False
+
+        # No from_value method available, not equal
+        return False
+
+    def __ne__(self, other):
+        """Enhanced inequality comparison with automatic type conversion via from_value."""
+        return not self.__eq__(other)
+
 
 cdef class RMNLibWrapper(BaseWrapper):
     """
