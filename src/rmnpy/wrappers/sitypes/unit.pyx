@@ -567,30 +567,6 @@ cdef class Unit(SITypesWrapper):
 # SIUnit Helper Functions
 # ====================================================================================
 
-def siunit_to_pyunit(uintptr_t si_unit_ptr):
-    """
-    Convert an SIUnitRef to a Python Unit object.
-
-    Args:
-        si_unit_ptr (uintptr_t): Pointer to SIUnitRef
-
-    Returns:
-        Unit: Python Unit object
-
-    Raises:
-        ValueError: If the SIUnitRef is NULL
-        RuntimeError: If Unit class is not available or conversion fails
-    """
-    cdef SIUnitRef si_unit = <SIUnitRef>si_unit_ptr
-
-    if si_unit == NULL:
-        raise ValueError("SIUnitRef is NULL")
-
-    # Use the Unit class's _from_c_ref method to create a proper Unit object
-    # No retention needed since SIUnitRef are singletons managed by SILibrary
-    return <Unit>BaseWrapper._from_c_ref(Unit, <void*>si_unit)
-
-
 def get_unit_symbol_tokens_lib():
     """
     Get all possible unit symbol tokens for derived units from the SITypes library.
