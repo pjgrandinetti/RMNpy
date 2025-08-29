@@ -35,7 +35,7 @@ import numpy as np
 # Internal Helper Functions
 # ====================================================================================
 
-cdef uint64_t octype_create_from_pytype(object item) except 0:
+cdef uintptr_t octype_create_from_pytype(object item) except 0:
     """
     Create an OCType from a pyType.
 
@@ -50,12 +50,12 @@ cdef uint64_t octype_create_from_pytype(object item) except 0:
         item: Python object to convert
 
     Returns:
-        uint64_t: OCType pointer (caller must release)
+        uintptr_t: OCType pointer (caller must release)
 
     Raises:
         TypeError: If the item type cannot be converted
     """
-    cdef uint64_t oc_ptr = 0
+    cdef uintptr_t oc_ptr = 0
     cdef OCTypeRef original_ref
     cdef void* copied_ref
 
@@ -71,9 +71,9 @@ cdef uint64_t octype_create_from_pytype(object item) except 0:
     elif hasattr(item, '_c_ref'):
         # All wrapped OCTypes (Scalar, Unit, Dimensionality, Dimension, DependentVariable, Dataset, SparseSampling)
         # store their C reference in _c_ref property
-        original_ref = <OCTypeRef>(<uint64_t>(<object>item)._c_ref)
+        original_ref = <OCTypeRef>(<uintptr_t>(<object>item)._c_ref)
         copied_ref = OCTypeDeepCopy(original_ref)
-        return <uint64_t>copied_ref
+        return <uintptr_t>copied_ref
     else:
         raise TypeError(f"Unsupported item type: {type(item)}. For collections, use specific conversion functions. For OCTypes from other libraries, pass as integer pointer.")
 
@@ -99,64 +99,64 @@ cdef object convert_octype_to_python(const void* oc_ptr):
 
     # Handle basic OCTypes with direct conversion functions
     if type_id == OCStringGetTypeID():
-        return ocstring_to_pystring(<uint64_t>oc_ptr)
+        return ocstring_to_pystring(<uintptr_t>oc_ptr)
     elif type_id == OCNumberGetTypeID():
-        return ocnumber_to_pynumber(<uint64_t>oc_ptr)
+        return ocnumber_to_pynumber(<uintptr_t>oc_ptr)
     elif type_id == OCBooleanGetTypeID():
-        return ocboolean_to_pybool(<uint64_t>oc_ptr)
+        return ocboolean_to_pybool(<uintptr_t>oc_ptr)
     elif type_id == OCDataGetTypeID():
-        return ocdata_to_numpy_array(<uint64_t>oc_ptr, np.uint8)
+        return ocdata_to_numpy_array(<uintptr_t>oc_ptr, np.uint8)
     elif type_id == OCArrayGetTypeID():
-        return ocarray_to_pylist(<uint64_t>oc_ptr)
+        return ocarray_to_pylist(<uintptr_t>oc_ptr)
     elif type_id == OCDictionaryGetTypeID():
-        return ocdict_to_pydict(<uint64_t>oc_ptr)
+        return ocdict_to_pydict(<uintptr_t>oc_ptr)
     elif type_id == OCSetGetTypeID():
-        return ocset_to_pyset(<uint64_t>oc_ptr)
+        return ocset_to_pyset(<uintptr_t>oc_ptr)
     elif type_id == OCIndexArrayGetTypeID():
-        return ocindexarray_to_pylist(<uint64_t>oc_ptr)
+        return ocindexarray_to_pylist(<uintptr_t>oc_ptr)
     elif type_id == OCIndexSetGetTypeID():
-        return ocindexset_to_pyset(<uint64_t>oc_ptr)
+        return ocindexset_to_pyset(<uintptr_t>oc_ptr)
     elif type_id == OCIndexPairSetGetTypeID():
-        return ocindexpairset_to_pydict(<uint64_t>oc_ptr)
+        return ocindexpairset_to_pydict(<uintptr_t>oc_ptr)
 
     # Handle wrapped OCTypes using lazy imports (accessing Python-accessible methods)
     # SITypes wrappers
     elif type_id == SIScalarGetTypeID():
         from rmnpy.wrappers.sitypes.scalar import Scalar
-        return Scalar.from_c_ref(<uint64_t>oc_ptr)
+        return Scalar.from_c_ref(<uintptr_t>oc_ptr)
     elif type_id == SIUnitGetTypeID():
         from rmnpy.wrappers.sitypes.unit import Unit
-        return Unit.from_c_ref(<uint64_t>oc_ptr)
+        return Unit.from_c_ref(<uintptr_t>oc_ptr)
     elif type_id == SIDimensionalityGetTypeID():
         from rmnpy.wrappers.sitypes.dimensionality import Dimensionality
-        return Dimensionality.from_c_ref(<uint64_t>oc_ptr)
+        return Dimensionality.from_c_ref(<uintptr_t>oc_ptr)
 
     # RMNLib wrappers
     elif (type_id == DimensionGetTypeID() or type_id == LabeledDimensionGetTypeID() or
           type_id == SIDimensionGetTypeID() or type_id == SILinearDimensionGetTypeID() or
           type_id == SIMonotonicDimensionGetTypeID()):
         from rmnpy.wrappers.rmnlib.dimension import BaseDimension
-        return BaseDimension.from_c_ref(<uint64_t>oc_ptr)
+        return BaseDimension.from_c_ref(<uintptr_t>oc_ptr)
     elif type_id == DependentVariableGetTypeID():
         from rmnpy.wrappers.rmnlib.dependent_variable import DependentVariable
-        return DependentVariable.from_c_ref(<uint64_t>oc_ptr)
+        return DependentVariable.from_c_ref(<uintptr_t>oc_ptr)
     elif type_id == DatasetGetTypeID():
         from rmnpy.wrappers.rmnlib.dataset import Dataset
-        return Dataset.from_c_ref(<uint64_t>oc_ptr)
+        return Dataset.from_c_ref(<uintptr_t>oc_ptr)
     elif type_id == DatumGetTypeID():
         from rmnpy.wrappers.rmnlib.datum import Datum
-        return Datum.from_c_ref(<uint64_t>oc_ptr)
+        return Datum.from_c_ref(<uintptr_t>oc_ptr)
     elif type_id == GeographicCoordinateGetTypeID():
         from rmnpy.wrappers.rmnlib.geographic_coordinate import GeographicCoordinate
-        return GeographicCoordinate.from_c_ref(<uint64_t>oc_ptr)
+        return GeographicCoordinate.from_c_ref(<uintptr_t>oc_ptr)
     elif type_id == SparseSamplingGetTypeID():
         from rmnpy.wrappers.rmnlib.sparse_sampling import SparseSampling
-        return SparseSampling.from_c_ref(<uint64_t>oc_ptr)
+        return SparseSampling.from_c_ref(<uintptr_t>oc_ptr)
 
     else:
         # Unknown OCType (could be from other extensions)
         # Return as integer pointer for use by other libraries
-        return <uint64_t>oc_ptr
+        return <uintptr_t>oc_ptr
 
 # ====================================================================================
 # String Helper Functions
@@ -170,14 +170,14 @@ def ocstring_create_from_pystring(py_string):
         py_string (str or None): Python string to convert, or None
 
     Returns:
-        uint64_t: OCTypes string reference (needs to be released), or 0 if py_string is None
+        uintptr_t: OCTypes string reference (needs to be released), or 0 if py_string is None
 
     Raises:
         RuntimeError: If string creation fails
         TypeError: If input is not str or None
     """
     if py_string is None:
-        return 0  # Return NULL pointer as uint64_t for None
+        return 0  # Return NULL pointer as uintptr_t for None
 
     if not isinstance(py_string, str):
         raise TypeError(f"Expected str or None, got {type(py_string)}")
@@ -189,14 +189,14 @@ def ocstring_create_from_pystring(py_string):
     if oc_string == NULL:
         raise RuntimeError(f"Failed to create OCString from: {py_string}")
 
-    return <uint64_t>oc_string
+    return <uintptr_t>oc_string
 
-def ocstring_to_pystring(uint64_t oc_string_ptr):
+def ocstring_to_pystring(uintptr_t oc_string_ptr):
     """
     Convert an OCStringRef to a Python string.
 
     Args:
-        oc_string_ptr (uint64_t): Pointer to OCStringRef
+        oc_string_ptr (uintptr_t): Pointer to OCStringRef
 
     Returns:
         str: Python string
@@ -222,9 +222,9 @@ def ocmutablestring_create_from_pystring(str py_string):
         py_string (str): Python string to convert
 
     Returns:
-        OCMutableStringRef: OCTypes mutable string reference (needs to be released)
+        uintptr_t: OCTypes mutable string reference (needs to be released)
     """
-    cdef uint64_t immutable_string_ptr = ocstring_create_from_pystring(py_string)
+    cdef uintptr_t immutable_string_ptr = ocstring_create_from_pystring(py_string)
     cdef OCStringRef immutable_string = <OCStringRef>immutable_string_ptr
     cdef OCMutableStringRef mutable_string = OCStringCreateMutableCopy(immutable_string)
 
@@ -234,7 +234,7 @@ def ocmutablestring_create_from_pystring(str py_string):
     if mutable_string == NULL:
         raise RuntimeError(f"Failed to create OCMutableString from: {py_string}")
 
-    return <uint64_t>mutable_string
+    return <uintptr_t>mutable_string
 
 # ====================================================================================
 # Number Helper Functions
@@ -249,7 +249,7 @@ def ocnumber_create_from_pycomplex(double real_part, double imag_part):
         imag_part (float): Imaginary component
 
     Returns:
-        OCNumberRef: OCTypes complex number reference (needs to be released)
+        uintptr_t: OCTypes complex number reference (needs to be released)
     """
     # Create complex number using array approach (C99 complex is array[2] of double)
     cdef double complex_array[2]
@@ -261,7 +261,7 @@ def ocnumber_create_from_pycomplex(double real_part, double imag_part):
     cdef OCNumberRef oc_number = OCNumberCreateWithDoubleComplex(c_complex_ptr[0])
     if oc_number == NULL:
         raise RuntimeError(f"Failed to create complex OCNumber from {real_part}+{imag_part}j")
-    return <uint64_t>oc_number
+    return <uintptr_t>oc_number
 
 def ocnumber_create_from_pynumber(py_number):
     """
@@ -271,7 +271,7 @@ def ocnumber_create_from_pynumber(py_number):
         py_number: Python number (int, float, complex)
 
     Returns:
-        OCNumberRef: OCTypes number reference (needs to be released)
+        uintptr_t: OCTypes number reference (needs to be released)
     """
     cdef OCNumberRef oc_number = NULL
     cdef double_complex c_val
@@ -300,14 +300,14 @@ def ocnumber_create_from_pynumber(py_number):
     if oc_number == NULL:
         raise RuntimeError(f"Failed to create OCNumber from: {py_number}")
 
-    return <uint64_t>oc_number
+    return <uintptr_t>oc_number
 
-def ocnumber_to_pynumber(uint64_t oc_number_ptr):
+def ocnumber_to_pynumber(uintptr_t oc_number_ptr):
     """
     Convert an OCNumberRef to a Python number.
 
     Args:
-        oc_number_ptr (uint64_t): Pointer to OCNumberRef
+        oc_number_ptr (uintptr_t): Pointer to OCNumberRef
 
     Returns:
         int/float/complex: Python number
@@ -370,19 +370,19 @@ def pybool_to_ocboolean(bint py_bool):
         py_bool (bool): Python boolean value
 
     Returns:
-        OCBooleanRef: OCTypes boolean reference (singleton, no need to release)
+        uintptr_t: OCTypes boolean reference (singleton, no need to release)
     """
     if py_bool:
-        return <uint64_t>kOCBooleanTrue
+        return <uintptr_t>kOCBooleanTrue
     else:
-        return <uint64_t>kOCBooleanFalse
+        return <uintptr_t>kOCBooleanFalse
 
-def ocboolean_to_pybool(uint64_t oc_boolean_ptr):
+def ocboolean_to_pybool(uintptr_t oc_boolean_ptr):
     """
     Convert an OCBooleanRef to a Python bool.
 
     Args:
-        oc_boolean_ptr (uint64_t): Pointer to OCBooleanRef
+        oc_boolean_ptr (uintptr_t): Pointer to OCBooleanRef
 
     Returns:
         bool: Python boolean value
@@ -409,7 +409,7 @@ def ocdata_create_from_numpy_array(object numpy_array):
         numpy_array: NumPy array
 
     Returns:
-        OCDataRef: OCTypes data reference (needs to be released)
+        uintptr_t: OCTypes data reference (needs to be released)
 
     Raises:
         RuntimeError: If data creation fails
@@ -429,14 +429,14 @@ def ocdata_create_from_numpy_array(object numpy_array):
     if oc_data == NULL:
         raise RuntimeError("Failed to create OCData from NumPy array")
 
-    return <uint64_t>oc_data
+    return <uintptr_t>oc_data
 
-def ocdata_to_numpy_array(uint64_t oc_data_ptr, object dtype, object shape=None):
+def ocdata_to_numpy_array(uintptr_t oc_data_ptr, object dtype, object shape=None):
     """
     Convert an OCDataRef to a NumPy array.
 
     Args:
-        oc_data_ptr (uint64_t): Pointer to OCDataRef
+        oc_data_ptr (uintptr_t): Pointer to OCDataRef
         dtype: NumPy dtype for the output array
         shape: Shape tuple for the output array (if None, returns 1D array)
 
@@ -496,16 +496,16 @@ def ocarray_create_from_pylist(py_list):
         py_list (list): Python list to convert
 
     Returns:
-        OCArrayRef: OCTypes array reference (needs to be released)
+        uintptr_t: OCTypes array reference (needs to be released)
 
     Raises:
         RuntimeError: If array creation fails
     """
     if py_list is None:
-        return <uint64_t>0
+        return <uintptr_t>0
 
     cdef OCMutableArrayRef mutable_array = OCArrayCreateMutable(0, &kOCTypeArrayCallBacks)
-    cdef uint64_t oc_item_ptr = 0
+    cdef uintptr_t oc_item_ptr = 0
 
     if mutable_array == NULL:
         raise RuntimeError("Failed to create OCMutableArray")
@@ -545,14 +545,14 @@ def ocarray_create_from_pylist(py_list):
     if immutable_array == NULL:
         raise RuntimeError("Failed to create immutable OCArray copy")
 
-    return <uint64_t>immutable_array
+    return <uintptr_t>immutable_array
 
-def ocarray_to_pylist(uint64_t oc_array_ptr):
+def ocarray_to_pylist(uintptr_t oc_array_ptr):
     """
     Convert an OCArrayRef to a Python list.
 
     Args:
-        oc_array_ptr (uint64_t): Pointer to OCArrayRef
+        oc_array_ptr (uintptr_t): Pointer to OCArrayRef
 
     Returns:
         list: Python list
@@ -591,10 +591,10 @@ def ocmutablearray_create_from_pylist(list py_list):
         py_list (list): Python list to convert
 
     Returns:
-        OCMutableArrayRef: OCTypes mutable array reference (needs to be released)
+        uintptr_t: OCTypes mutable array reference (needs to be released)
     """
     cdef OCMutableArrayRef mutable_array = OCArrayCreateMutable(0, &kOCTypeArrayCallBacks)
-    cdef uint64_t oc_item_ptr = 0
+    cdef uintptr_t oc_item_ptr = 0
 
     if mutable_array == NULL:
         raise RuntimeError("Failed to create OCMutableArray")
@@ -627,7 +627,7 @@ def ocmutablearray_create_from_pylist(list py_list):
             OCRelease(<const void*>mutable_array)
             raise
 
-    return <uint64_t>mutable_array
+    return <uintptr_t>mutable_array
 
 # ====================================================================================
 # Dictionary Helper Functions
@@ -643,20 +643,20 @@ def ocdict_create_from_pydict(py_dict):
         py_dict (dict): Python dictionary to convert
 
     Returns:
-        OCDictionaryRef: OCTypes dictionary reference (needs to be released)
+        uintptr_t: OCTypes dictionary reference (needs to be released)
 
     Raises:
         RuntimeError: If dictionary creation fails
     """
     # Return NULL pointer if no dictionary provided
     if py_dict is None:
-        return <uint64_t>0
+        return <uintptr_t>0
     # Ensure correct type
     if not isinstance(py_dict, dict):
         raise TypeError(f"Expected dict or None, got {type(py_dict)}")
     cdef OCMutableDictionaryRef mutable_dict = OCDictionaryCreateMutable(0)
-    cdef uint64_t oc_key_ptr = 0
-    cdef uint64_t oc_value_ptr = 0
+    cdef uintptr_t oc_key_ptr = 0
+    cdef uintptr_t oc_value_ptr = 0
     cdef str str_key
 
     if mutable_dict == NULL:
@@ -709,14 +709,14 @@ def ocdict_create_from_pydict(py_dict):
     if immutable_dict == NULL:
         raise RuntimeError("Failed to create immutable OCDictionary copy")
 
-    return <uint64_t>immutable_dict
+    return <uintptr_t>immutable_dict
 
-def ocdict_to_pydict(uint64_t oc_dict_ptr):
+def ocdict_to_pydict(uintptr_t oc_dict_ptr):
     """
     Convert an OCDictionaryRef to a Python dict.
 
     Args:
-        oc_dict_ptr (uint64_t): Pointer to OCDictionaryRef
+        oc_dict_ptr (uintptr_t): Pointer to OCDictionaryRef
 
     Returns:
         dict: Python dictionary
@@ -766,7 +766,7 @@ def ocdict_to_pydict(uint64_t oc_dict_ptr):
             if key_type_id != OCStringGetTypeID():
                 continue  # Skip non-string keys
 
-            py_key = ocstring_to_pystring(<uint64_t>keys[i])
+            py_key = ocstring_to_pystring(<uintptr_t>keys[i])
 
             # Convert value using extensible converter that handles all OCTypes
             py_value = convert_octype_to_python(values[i])
@@ -791,11 +791,11 @@ def ocmutabledict_create_from_pydict(dict py_dict):
         py_dict (dict): Python dictionary to convert
 
     Returns:
-        OCMutableDictionaryRef: OCTypes mutable dictionary reference (needs to be released)
+        uintptr_t: OCTypes mutable dictionary reference (needs to be released)
     """
     cdef OCMutableDictionaryRef mutable_dict = OCDictionaryCreateMutable(0)
-    cdef uint64_t oc_key_ptr = 0
-    cdef uint64_t oc_value_ptr = 0
+    cdef uintptr_t oc_key_ptr = 0
+    cdef uintptr_t oc_value_ptr = 0
     cdef str str_key
 
     if mutable_dict == NULL:
@@ -841,7 +841,7 @@ def ocmutabledict_create_from_pydict(dict py_dict):
             OCRelease(<const void*>mutable_dict)
             raise
 
-    return <uint64_t>mutable_dict
+    return <uintptr_t>mutable_dict
 
 # ====================================================================================
 # Set Helper Functions
@@ -855,13 +855,13 @@ def ocset_create_from_pyset(set py_set):
         py_set (set): Python set to convert
 
     Returns:
-        OCSetRef: OCTypes set reference (needs to be released)
+        uintptr_t: OCTypes set reference (needs to be released)
 
     Raises:
         RuntimeError: If set creation fails
     """
     cdef OCMutableSetRef mutable_set = OCSetCreateMutable(0)
-    cdef uint64_t oc_item_ptr = 0
+    cdef uintptr_t oc_item_ptr = 0
 
     if mutable_set == NULL:
         raise RuntimeError("Failed to create OCMutableSet")
@@ -894,14 +894,14 @@ def ocset_create_from_pyset(set py_set):
     if immutable_set == NULL:
         raise RuntimeError("Failed to create immutable OCSet copy")
 
-    return <uint64_t>immutable_set
+    return <uintptr_t>immutable_set
 
-def ocset_to_pyset(uint64_t oc_set_ptr):
+def ocset_to_pyset(uintptr_t oc_set_ptr):
     """
     Convert an OCSetRef to a Python set.
 
     Args:
-        oc_set_ptr (uint64_t): Pointer to OCSetRef
+        oc_set_ptr (uintptr_t): Pointer to OCSetRef
 
     Returns:
         set: Python set
@@ -939,7 +939,7 @@ def ocset_to_pyset(uint64_t oc_set_ptr):
         except TypeError:
             # If the object isn't hashable, convert to string representation
             # This handles wrapped OCTypes that may not be hashable
-            result.add(f"OCType({<uint64_t>item_ptr})")
+            result.add(f"OCType({<uintptr_t>item_ptr})")
 
     OCRelease(<const void*>values_array)
     return result
@@ -952,10 +952,10 @@ def ocmutableset_create_from_pyset(set py_set):
         py_set (set): Python set to convert
 
     Returns:
-        OCMutableSetRef: OCTypes mutable set reference (needs to be released)
+        uintptr_t: OCTypes mutable set reference (needs to be released)
     """
     cdef OCMutableSetRef mutable_set = OCSetCreateMutable(0)
-    cdef uint64_t oc_item_ptr = 0
+    cdef uintptr_t oc_item_ptr = 0
 
     if mutable_set == NULL:
         raise RuntimeError("Failed to create OCMutableSet")
@@ -981,7 +981,7 @@ def ocmutableset_create_from_pyset(set py_set):
             OCRelease(<const void*>mutable_set)
             raise
 
-    return <uint64_t>mutable_set
+    return <uintptr_t>mutable_set
 
 # ====================================================================================
 # Index Collection Helper Functions
@@ -995,7 +995,7 @@ def ocindexarray_create_from_pylist(list py_list):
         py_list (list[int]): Python list of integers
 
     Returns:
-        OCIndexArrayRef: OCTypes index array reference (needs to be released)
+        uintptr_t: OCTypes index array reference (needs to be released)
 
     Raises:
         RuntimeError: If index array creation fails
@@ -1024,18 +1024,18 @@ def ocindexarray_create_from_pylist(list py_list):
         if index_array == NULL:
             raise RuntimeError("Failed to create OCIndexArray")
 
-        return <uint64_t>index_array
+        return <uintptr_t>index_array
 
     finally:
         if indices != NULL:
             free(indices)
 
-def ocindexarray_to_pylist(uint64_t oc_indexarray_ptr):
+def ocindexarray_to_pylist(uintptr_t oc_indexarray_ptr):
     """
     Convert an OCIndexArrayRef to a Python list of integers.
 
     Args:
-        oc_indexarray_ptr (uint64_t): Pointer to OCIndexArrayRef
+        oc_indexarray_ptr (uintptr_t): Pointer to OCIndexArrayRef
 
     Returns:
         list[int]: Python list of integers
@@ -1064,7 +1064,7 @@ def ocindexset_create_from_pyset(set py_set):
         py_set (set[int]): Python set of integers
 
     Returns:
-        OCIndexSetRef: OCTypes index set reference (needs to be released)
+        uintptr_t: OCTypes index set reference (needs to be released)
 
     Raises:
         RuntimeError: If index set creation fails
@@ -1097,9 +1097,9 @@ def ocindexset_create_from_pyset(set py_set):
     if immutable_indexset == NULL:
         raise RuntimeError("Failed to create immutable OCIndexSet copy")
 
-    return <uint64_t>immutable_indexset
+    return <uintptr_t>immutable_indexset
 
-def ocindexset_to_pyset(uint64_t oc_indexset_ptr):
+def ocindexset_to_pyset(uintptr_t oc_indexset_ptr):
     """
     Convert an OCIndexSetRef to a Python set of integers.
 
@@ -1108,7 +1108,7 @@ def ocindexset_to_pyset(uint64_t oc_indexset_ptr):
     and last indices if the set is contiguous.
 
     Args:
-        oc_indexset_ptr (uint64_t): Pointer to OCIndexSetRef
+        oc_indexset_ptr (uintptr_t): Pointer to OCIndexSetRef
 
     Returns:
         set[int]: Python set of integers (may be incomplete)
@@ -1156,7 +1156,7 @@ def ocindexpairset_create_from_pydict(dict py_dict):
         py_dict (dict[int, int]): Python dictionary mapping integers to integers
 
     Returns:
-        OCIndexPairSetRef: OCTypes index pair set reference (needs to be released)
+        uintptr_t: OCTypes index pair set reference (needs to be released)
 
     Raises:
         RuntimeError: If index pair set creation fails
@@ -1185,14 +1185,14 @@ def ocindexpairset_create_from_pydict(dict py_dict):
 
     # Release the mutable version and return immutable
     OCRelease(<OCTypeRef>mutable_pairset)
-    return <uint64_t>immutable_pairset
+    return <uintptr_t>immutable_pairset
 
-def ocindexpairset_to_pydict(uint64_t oc_indexpairset_ptr):
+def ocindexpairset_to_pydict(uintptr_t oc_indexpairset_ptr):
     """
     Convert an OCIndexPairSetRef to a Python dict[int, int].
 
     Args:
-        oc_indexpairset_ptr (uint64_t): Pointer to OCIndexPairSetRef
+        oc_indexpairset_ptr (uintptr_t): Pointer to OCIndexPairSetRef
 
     Returns:
         dict[int, int]: Python dictionary mapping indices to values
@@ -1238,7 +1238,7 @@ def ocmutabledata_create_from_numpy_array(object numpy_array):
         numpy_array: NumPy array
 
     Returns:
-        OCMutableDataRef: OCTypes mutable data reference (needs to be released)
+        uintptr_t: OCTypes mutable data reference (needs to be released)
 
     Raises:
         RuntimeError: If data creation fails
@@ -1262,7 +1262,7 @@ def ocmutabledata_create_from_numpy_array(object numpy_array):
     # Note: This assumes OCMutableData provides a way to set the data
     # The exact API for this might need verification
 
-    return <uint64_t>oc_mutable_data
+    return <uintptr_t>oc_mutable_data
 
 # ====================================================================================
 # Utility Functions
@@ -1501,16 +1501,16 @@ cdef cJSON* pylist_to_cjson(py_list) except NULL:
 
 def pydict_to_cjson_ptr(py_dict):
     """
-    Python-accessible wrapper for pydict_to_cjson that returns a pointer as uint64_t.
+    Python-accessible wrapper for pydict_to_cjson that returns a pointer as uintptr_t.
 
     Args:
         py_dict (dict): Python dictionary to convert
 
     Returns:
-        uint64_t: Pointer to cJSON object (needs to be freed with cJSON_Delete)
+        uintptr_t: Pointer to cJSON object (needs to be freed with cJSON_Delete)
     """
     cdef cJSON* json_obj = pydict_to_cjson(py_dict)
-    return <uint64_t>json_obj
+    return <uintptr_t>json_obj
 
 
 # ====================================================================================

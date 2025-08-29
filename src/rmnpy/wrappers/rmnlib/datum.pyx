@@ -17,6 +17,8 @@ management, consistent factory methods, and standardized serialization.
 
 from typing import Dict, List, Optional, Union
 
+from libc.stdint cimport uint64_t, uintptr_t
+
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.rmnlib cimport *
 from rmnpy._c_api.sitypes cimport SIScalarRef
@@ -79,7 +81,7 @@ cdef class Datum(RMNLibWrapper):
     """
 
     @staticmethod
-    def from_c_ref(uint64_t datum_ref_ptr):
+    def from_c_ref(uintptr_t datum_ref_ptr):
         """Create Datum wrapper from C reference pointer."""
         return <Datum>BaseWrapper._from_c_ref(Datum, <void*><DatumRef>datum_ref_ptr)
 
@@ -364,7 +366,7 @@ cdef class Datum(RMNLibWrapper):
         if not isinstance(data_dict, dict):
             raise TypeError("Expected dictionary input")
 
-        cdef uint64_t json_ptr = pydict_to_cjson_ptr(data_dict)
+        cdef uintptr_t json_ptr = pydict_to_cjson_ptr(data_dict)
         cdef cJSON* json_obj = <cJSON*>json_ptr
         cdef OCStringRef error = NULL
         cdef DatumRef datum_ref = NULL

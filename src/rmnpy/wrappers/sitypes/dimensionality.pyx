@@ -19,38 +19,7 @@ from rmnpy.wrappers.base_wrapper cimport BaseWrapper, SITypesWrapper
 from rmnpy.exceptions import RMNError
 from rmnpy.helpers.octypes import ocstring_create_from_pystring, ocstring_to_pystring
 
-from libc.stdint cimport uint64_t
-
-
-# Helper function for converting various input types to SIDimensionalityRef
-cdef SIDimensionalityRef sidimensionality_from_pytype(value) except NULL:
-    """
-    Convert various input types to SIDimensionalityRef.
-
-    Accepts:
-    - Dimensionality objects: Returns copy of their C reference
-    - str: Creates Dimensionality from string expression
-    - None: Returns dimensionless dimensionality
-
-    Returns:
-        SIDimensionalityRef: C reference to dimensionality (caller owns reference and must release)
-
-    Raises:
-        TypeError: If input type is not supported
-        RMNError: If dimensionality creation fails
-    """
-    cdef Dimensionality temp_dim
-
-    if value is None:
-        return SIDimensionalityDimensionless()
-    elif isinstance(value, Dimensionality):
-        return <SIDimensionalityRef>OCTypeDeepCopy((<Dimensionality>value)._c_ref)
-    elif isinstance(value, str):
-        # Create Dimensionality from string, then return copy of its reference
-        temp_dim = Dimensionality(value)
-        return <SIDimensionalityRef>OCTypeDeepCopy(temp_dim._c_ref)
-    else:
-        raise TypeError(f"Cannot convert {type(value)} to SIDimensionalityRef")
+from libc.stdint cimport uint64_t, uintptr_t
 
 
 cdef class Dimensionality(SITypesWrapper):
@@ -106,7 +75,7 @@ cdef class Dimensionality(SITypesWrapper):
 
         from rmnpy.helpers.octypes import ocstring_create_from_pystring
 
-        cdef OCStringRef expr_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(expression)
+        cdef OCStringRef expr_ocstr = <OCStringRef><uintptr_t>ocstring_create_from_pystring(expression)
         cdef OCStringRef error_ocstr = NULL
         cdef SIDimensionalityRef c_ref
 
@@ -114,7 +83,7 @@ cdef class Dimensionality(SITypesWrapper):
             c_ref = SIDimensionalityFromExpression(expr_ocstr, &error_ocstr)
 
             if error_ocstr != NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
+                error_msg = ocstring_to_pystring(<uintptr_t>error_ocstr)
                 OCRelease(<OCTypeRef>error_ocstr)
                 raise RMNError(f"Failed to parse dimensionality expression '{expression}': {error_msg}")
 
@@ -125,6 +94,50 @@ cdef class Dimensionality(SITypesWrapper):
 
         finally:
             OCRelease(<OCTypeRef>expr_ocstr)
+
+    # ========================================================================
+    # Class methods for creating Dimensionalities from various input types
+    # ========================================================================
+
+    @classmethod
+    def from_value(cls, value):
+        """
+        Create a Dimensionality from various input types.
+
+        This class method provides a unified interface for creating Dimensionality objects
+        from different Python types, following the same conversion logic as the
+        internal helper function but returning Dimensionality objects directly.
+
+        Args:
+            value: Input value to convert
+                - Dimensionality objects: Returns the object directly
+                - str: Creates Dimensionality from string expression
+                - None: Returns dimensionless dimensionality
+
+        Returns:
+            Dimensionality: Dimensionality object created from the input value
+
+        Raises:
+            TypeError: If input type is not supported
+            RMNError: If dimensionality creation fails
+
+        Examples:
+            >>> d1 = Dimensionality.from_value("L/T")           # Velocity dimensionality
+            >>> d2 = Dimensionality.from_value("M*L^2/T^2")     # Energy dimensionality
+            >>> d3 = Dimensionality.from_value(None)            # Dimensionless
+            >>> d4 = Dimensionality.from_value(existing_dim)    # Returns existing directly
+        """
+        if value is None:
+            # Return dimensionless dimensionality
+            return cls.dimensionless()
+        elif isinstance(value, Dimensionality):
+            # If it's already a Dimensionality, return it directly
+            return value
+        elif isinstance(value, str):
+            # Create Dimensionality from string expression using constructor
+            return cls(value)
+        else:
+            raise TypeError(f"Cannot convert {type(value)} to Dimensionality")
 
     @staticmethod
     def for_quantity(quantity_constant):
@@ -156,7 +169,7 @@ cdef class Dimensionality(SITypesWrapper):
         # Handle both string constants and OCStringRef objects
         if isinstance(quantity_constant, str):
             from rmnpy.helpers.octypes import ocstring_create_from_pystring
-            quantity_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(quantity_constant)
+            quantity_ocstr = <OCStringRef><uintptr_t>ocstring_create_from_pystring(quantity_constant)
         else:
             raise TypeError(
                 "quantity_constant must be a string from the quantity module. "
@@ -169,7 +182,7 @@ cdef class Dimensionality(SITypesWrapper):
             c_ref = SIDimensionalityForQuantity(quantity_ocstr, &error_ocstr)
 
             if error_ocstr != NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
+                error_msg = ocstring_to_pystring(<uintptr_t>error_ocstr)
                 OCRelease(<OCTypeRef>error_ocstr)
                 raise RMNError(f"Unknown quantity constant: {error_msg}")
 
@@ -278,7 +291,7 @@ cdef class Dimensionality(SITypesWrapper):
             >>> length_squared_per_length = Dimensionality("L^2/L")
             >>> length.is_compatible_with(length_squared_per_length)  # True - both reduce to L
         """
-        cdef SIDimensionalityRef other_ref = sidimensionality_from_pytype(other)
+        cdef SIDimensionalityRef other_ref = (<SIDimensionalityRef>Dimensionality.from_value(other)._get_c_ref())
 
         return SIDimensionalityHasSameReducedDimensionality(<SIDimensionalityRef>self._c_ref, other_ref)
 
@@ -290,7 +303,7 @@ cdef class Dimensionality(SITypesWrapper):
     def __eq__(self, other):
         """Equality comparison with string and None support."""
         if not isinstance(other, BaseWrapper):
-            other_ref = sidimensionality_from_pytype(other)
+            other_ref = (<SIDimensionalityRef>Dimensionality.from_value(other)._get_c_ref())
             return OCTypeEqual(self._c_ref, <OCTypeRef>other_ref)
 
         return super().__eq__(other)
@@ -298,7 +311,7 @@ cdef class Dimensionality(SITypesWrapper):
     def __ne__(self, other):
         """Inequality comparison with string and None support."""
         if not isinstance(other, BaseWrapper):
-            other_ref = sidimensionality_from_pytype(other)
+            other_ref = (<SIDimensionalityRef>Dimensionality.from_value(other)._get_c_ref())
             return not OCTypeEqual(self._c_ref, <OCTypeRef>other_ref)
 
         return super().__ne__(other)

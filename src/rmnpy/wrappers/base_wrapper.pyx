@@ -9,7 +9,7 @@ and providing consistent behavior.
 
 from typing import Any, Dict, Optional, Union
 
-from libc.stdint cimport uint64_t
+from libc.stdint cimport uint64_t, uintptr_t
 
 from rmnpy._c_api.octypes cimport (
     OCRelease,
@@ -99,11 +99,11 @@ cdef class BaseWrapper:
         return new_obj
 
     @classmethod
-    def from_c_ref(cls, uint64_t c_ref_ptr):
+    def from_c_ref(cls, uintptr_t c_ref_ptr):
         """Create wrapper from C reference pointer using universal OCTypeDeepCopy.
 
         Args:
-            c_ref_ptr (uint64_t): C reference pointer as integer
+            c_ref_ptr (uintptr_t): C reference pointer as integer
 
         Returns:
             BaseWrapper: New instance of the calling class wrapping a copy of the C reference
@@ -195,8 +195,15 @@ cdef class SITypesWrapper(BaseWrapper):
 
     def _universal_binary_arithmetic(self, other, op):
         """Universal binary arithmetic using SITypesCreateWithBinaryArithmeticOperation C API."""
+        # Try to convert other to the same type using from_value class method
         if not isinstance(other, BaseWrapper):
-            return NotImplemented
+            if hasattr(self.__class__, 'from_value'):
+                try:
+                    other = self.__class__.from_value(other)
+                except (TypeError, RMNError):
+                    return NotImplemented
+            else:
+                return NotImplemented
 
         other._validate_initialized()
 
@@ -211,7 +218,7 @@ cdef class SITypesWrapper(BaseWrapper):
         try:
             if error_ref != NULL:
                 from rmnpy.helpers.octypes import ocstring_to_pystring
-                error_msg = ocstring_to_pystring(<uint64_t>error_ref)
+                error_msg = ocstring_to_pystring(<uintptr_t>error_ref)
                 raise RMNError(f"Arithmetic operation '{op}' failed: {error_msg}")
 
             if result_ref == NULL:
@@ -243,7 +250,7 @@ cdef class SITypesWrapper(BaseWrapper):
         try:
             if error_ref != NULL:
                 from rmnpy.helpers.octypes import ocstring_to_pystring
-                error_msg = ocstring_to_pystring(<uint64_t>error_ref)
+                error_msg = ocstring_to_pystring(<uintptr_t>error_ref)
                 raise RMNError(f"Power operation failed: {error_msg}")
 
             if result_ref == NULL:
@@ -287,7 +294,7 @@ cdef class SITypesWrapper(BaseWrapper):
         try:
             if error_ref != NULL:
                 from rmnpy.helpers.octypes import ocstring_to_pystring
-                error_msg = ocstring_to_pystring(<uint64_t>error_ref)
+                error_msg = ocstring_to_pystring(<uintptr_t>error_ref)
                 raise RMNError(f"Nth root operation failed: {error_msg}")
 
             if result_ref == NULL:
@@ -355,7 +362,7 @@ cdef class SITypesWrapper(BaseWrapper):
 
             # Convert to Python string
             from rmnpy.helpers.octypes import ocstring_to_pystring
-            return ocstring_to_pystring(<uint64_t>string_ref)
+            return ocstring_to_pystring(<uintptr_t>string_ref)
         finally:
             if string_ref != NULL:
                 OCRelease(<OCTypeRef>string_ref)

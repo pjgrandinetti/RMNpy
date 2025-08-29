@@ -15,7 +15,6 @@ cdef class BaseWrapper:
     cdef void _set_c_ref(self, void* c_ref)
     cdef void* _get_c_ref(self)
     cdef void _validate_initialized(self) except *
-    cdef void* copy_c_ref(self) except NULL
 
     @staticmethod
     cdef BaseWrapper _from_c_ref(object cls, void* c_ref)

@@ -13,8 +13,9 @@ Usage:
 All quantity names follow PascalCase convention (e.g., 'electric charge' -> 'ElectricCharge').
 """
 
-from rmnpy._c_api.sitypes cimport *
 from rmnpy._c_api.octypes cimport *
+from rmnpy._c_api.sitypes cimport *
+
 from rmnpy.helpers.octypes import ocstring_to_pystring
 
 
@@ -29,14 +30,14 @@ def get_all_quantity_names():
     cdef uint64_t count, i
     cdef const void* item_ptr
     cdef OCStringRef string_item
-    
+
     quantity_names = SIDimensionalityCreateArrayOfAllQuantityNames()
     if quantity_names == NULL:
         raise RuntimeError("Failed to get quantity names from SITypes library")
-    
+
     try:
         count = OCArrayGetCount(quantity_names)
-        
+
         # Convert each OCString item to Python string
         result = []
         for i in range(count):
@@ -44,11 +45,11 @@ def get_all_quantity_names():
             if item_ptr != NULL:
                 # Cast to OCStringRef and convert directly
                 string_item = <OCStringRef>item_ptr
-                py_string = ocstring_to_pystring(<uint64_t>string_item)
+                py_string = ocstring_to_pystring(<uintptr_t>string_item)
                 result.append(py_string)
-        
+
         return result
-        
+
     finally:
         OCRelease(<OCTypeRef>quantity_names)
 

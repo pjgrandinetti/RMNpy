@@ -19,6 +19,7 @@ Features:
 import numpy as np
 
 cimport numpy as cnp
+from libc.stdint cimport uint64_t, uintptr_t
 
 cnp.import_array()
 
@@ -41,7 +42,7 @@ from rmnpy.helpers.octypes import (
 
 from rmnpy.wrappers.base_wrapper cimport BaseWrapper, RMNLibWrapper
 from rmnpy.wrappers.rmnlib.sparse_sampling cimport SparseSampling
-from rmnpy.wrappers.sitypes.unit cimport Unit, siunit_from_pytype
+from rmnpy.wrappers.sitypes.unit cimport Unit
 
 
 cdef class DependentVariable(RMNLibWrapper):
@@ -88,7 +89,7 @@ cdef class DependentVariable(RMNLibWrapper):
     """
 
     @staticmethod
-    def from_c_ref(uint64_t dep_var_ref_ptr):
+    def from_c_ref(uintptr_t dep_var_ref_ptr):
         """Create DependentVariable wrapper from C reference pointer."""
         return <DependentVariable>BaseWrapper._from_c_ref(DependentVariable, <void*><DependentVariableRef>dep_var_ref_ptr)
 
@@ -115,7 +116,7 @@ cdef class DependentVariable(RMNLibWrapper):
             >>> dep_var = DependentVariable.from_dict(data_dict)
         """
         # Convert Python dict to OCDictionary using existing helper
-        cdef uint64_t dict_ptr = ocdict_create_from_pydict(json_dict)
+        cdef uintptr_t dict_ptr = ocdict_create_from_pydict(json_dict)
         cdef OCDictionaryRef dict_ref = <OCDictionaryRef>dict_ptr
 
         cdef OCStringRef err_ocstr = NULL
@@ -126,7 +127,7 @@ cdef class DependentVariable(RMNLibWrapper):
             dv_ref = DependentVariableCreateFromJSON(dict_ref, &err_ocstr)
             if dv_ref == NULL:
                 if err_ocstr != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
+                    error_msg = ocstring_to_pystring(<uintptr_t>err_ocstr)
                     raise RMNError(f"Failed to create dependent variable from dictionary: {error_msg}")
                 else:
                     raise RMNError("Failed to create dependent variable from dictionary: Unknown error")
@@ -180,24 +181,24 @@ cdef class DependentVariable(RMNLibWrapper):
 
         try:
             if name is not None:
-                name_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(name)
+                name_ocstr = <OCStringRef><uintptr_t>ocstring_create_from_pystring(name)
             if description is not None:
-                desc_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(description)
+                desc_ocstr = <OCStringRef><uintptr_t>ocstring_create_from_pystring(description)
 
-            unit_ref = siunit_from_pytype(unit)
+            unit_ref = <SIUnitRef>Unit.from_value(unit)._get_c_ref()
 
             if quantity_name is not None:
-                quantity_name_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(quantity_name)
+                quantity_name_ocstr = <OCStringRef><uintptr_t>ocstring_create_from_pystring(quantity_name)
             if quantity_type is not None:
-                quantity_type_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(quantity_type)
+                quantity_type_ocstr = <OCStringRef><uintptr_t>ocstring_create_from_pystring(quantity_type)
 
             element_type_enum = self._element_type_to_enum(element_type)
 
             if component_labels is not None:
-                component_labels_array = <OCArrayRef><uint64_t>ocarray_create_from_pylist(component_labels)
+                component_labels_array = <OCArrayRef><uintptr_t>ocarray_create_from_pylist(component_labels)
 
             if components is not None:
-                components_array = <OCArrayRef><uint64_t>ocarray_create_from_pylist(components)
+                components_array = <OCArrayRef><uintptr_t>ocarray_create_from_pylist(components)
 
             self._c_ref = DependentVariableCreate(
                 name_ocstr,
@@ -213,7 +214,7 @@ cdef class DependentVariable(RMNLibWrapper):
 
             if self._c_ref == NULL:
                 if err_ocstr != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
+                    error_msg = ocstring_to_pystring(<uintptr_t>err_ocstr)
                     raise RMNError(f"Failed to create DependentVariable: {error_msg}")
                 else:
                     raise RMNError("Failed to create DependentVariable")
@@ -248,8 +249,8 @@ cdef class DependentVariable(RMNLibWrapper):
 
     @property
     def _c_ref(self):
-        """Get the C reference as uint64_t for use by octypes helpers."""
-        return <uint64_t><void*>self._c_ref
+        """Get the C reference as uintptr_t for use by octypes helpers."""
+        return <uintptr_t><void*>self._c_ref
 
     @property
     def name(self):
@@ -258,7 +259,7 @@ cdef class DependentVariable(RMNLibWrapper):
         if name_ref == NULL:
             raise RMNError("Failed to get name - C reference may be corrupt")
         try:
-            return ocstring_to_pystring(<uint64_t>name_ref)
+            return ocstring_to_pystring(<uintptr_t>name_ref)
         finally:
             OCRelease(<OCTypeRef>name_ref)
 
@@ -269,7 +270,7 @@ cdef class DependentVariable(RMNLibWrapper):
 
         try:
             if value is not None:
-                name_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
+                name_ocstr = <OCStringRef><uintptr_t>ocstring_create_from_pystring(value)
             success = DependentVariableSetName(self._c_ref, name_ocstr)
             if not success:
                 raise RMNError("Failed to set name")
@@ -284,7 +285,7 @@ cdef class DependentVariable(RMNLibWrapper):
         if quantity_name_ref == NULL:
             return None
         try:
-            return ocstring_to_pystring(<uint64_t>quantity_name_ref)
+            return ocstring_to_pystring(<uintptr_t>quantity_name_ref)
         finally:
             OCRelease(<OCTypeRef>quantity_name_ref)
 
@@ -295,7 +296,7 @@ cdef class DependentVariable(RMNLibWrapper):
 
         try:
             if value is not None:
-                qname_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
+                qname_ocstr = <OCStringRef><uintptr_t>ocstring_create_from_pystring(value)
             success = DependentVariableSetQuantityName(self._c_ref, qname_ocstr)
             if not success:
                 raise RMNError("Failed to set quantity name")
@@ -310,7 +311,7 @@ cdef class DependentVariable(RMNLibWrapper):
         if qtype_ref == NULL:
             raise RMNError("Failed to get quantity_type - C reference may be corrupt")
         try:
-            return ocstring_to_pystring(<uint64_t>qtype_ref)
+            return ocstring_to_pystring(<uintptr_t>qtype_ref)
         finally:
             OCRelease(<OCTypeRef>qtype_ref)
 
@@ -382,10 +383,10 @@ cdef class DependentVariable(RMNLibWrapper):
 
                 if type_id == OCDataGetTypeID():
                     from rmnpy.helpers.octypes import ocdata_to_numpy_array
-                    py_item = ocdata_to_numpy_array(<uint64_t>item_ptr, np_dtype)
+                    py_item = ocdata_to_numpy_array(<uintptr_t>item_ptr, np_dtype)
                 else:
                     from rmnpy.helpers.octypes import ocarray_to_pylist
-                    py_item = ocarray_to_pylist(<uint64_t>item_ptr) if type_id == OCArrayGetTypeID() else None
+                    py_item = ocarray_to_pylist(<uintptr_t>item_ptr) if type_id == OCArrayGetTypeID() else None
 
                 result.append(py_item)
 
@@ -418,7 +419,7 @@ cdef class DependentVariable(RMNLibWrapper):
 
         try:
             if value is not None:
-                components_array = <OCArrayRef><uint64_t>ocarray_create_from_pylist(value)
+                components_array = <OCArrayRef><uintptr_t>ocarray_create_from_pylist(value)
 
             success = DependentVariableSetComponents(self._c_ref, components_array)
             if not success:
@@ -525,7 +526,7 @@ cdef class DependentVariable(RMNLibWrapper):
             success = DependentVariableAppend(self._c_ref, other_dv._c_ref, &err_ocstr)
             if not success:
                 if err_ocstr != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
+                    error_msg = ocstring_to_pystring(<uintptr_t>err_ocstr)
                     raise RMNError(f"Failed to append DependentVariable: {error_msg}")
                 else:
                     raise RMNError("Failed to append DependentVariable")

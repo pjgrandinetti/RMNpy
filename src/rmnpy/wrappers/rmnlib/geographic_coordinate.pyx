@@ -15,12 +15,16 @@ from typi    @property
 
         return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>alt_ref)Dict, Optional, Union
 
+from libc.stdint cimport uint64_t, uintptr_t
+
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.rmnlib cimport *
 from rmnpy._c_api.sitypes cimport SIScalarRef
 
 from rmnpy.exceptions import RMNError
+
 from rmnpy.wrappers.base_wrapper cimport BaseWrapper, RMNLibWrapper
+
 from rmnpy.helpers.octypes import (
     ocdict_create_from_pydict,
     ocdict_to_pydict,
@@ -28,8 +32,22 @@ from rmnpy.helpers.octypes import (
 )
 
 # Import SITypes wrappers
-from rmnpy.wrappers.sitypes.scalar cimport Scalar, create_siscalar_from_pytype
+
+from rmnpy.wrappers.sitypes.scalar cimport Scalar
+
 from rmnpy.wrappers.sitypes.scalar import Scalar
+
+
+# Helper function to convert Python types to SIScalarRef using Scalar.from_value
+cdef SIScalarRef siscalar_ref_from_pytype(value) except NULL:
+    """Convert Python value to SIScalarRef using Scalar.from_value."""
+    if value is None:
+        return NULL
+
+    # Use Scalar.from_value to convert to Scalar object
+    scalar_obj = Scalar.from_value(value)
+    # Get the C reference and make a copy for the caller
+    return <SIScalarRef>OCTypeDeepCopy((<Scalar>scalar_obj)._c_ref)
 
 
 cdef class GeographicCoordinate(RMNLibWrapper):
@@ -59,7 +77,7 @@ cdef class GeographicCoordinate(RMNLibWrapper):
     """
 
     @staticmethod
-    def from_c_ref(uint64_t geo_ref_ptr):
+    def from_c_ref(uintptr_t geo_ref_ptr):
         """Create GeographicCoordinate wrapper from C reference pointer."""
         return <GeographicCoordinate>BaseWrapper._from_c_ref(GeographicCoordinate, <void*><GeographicCoordinateRef>geo_ref_ptr)
 
@@ -83,18 +101,18 @@ cdef class GeographicCoordinate(RMNLibWrapper):
 
         try:
             # Convert latitude
-            lat_ref = create_siscalar_from_pytype(latitude)
+            lat_ref = (<SIScalarRef>Scalar.from_value(latitude)._get_c_ref())
             if lat_ref == NULL:
                 raise RMNError("Failed to convert latitude to SIScalar")
 
             # Convert longitude
-            lon_ref = create_siscalar_from_pytype(longitude)
+            lon_ref = (<SIScalarRef>Scalar.from_value(longitude)._get_c_ref())
             if lon_ref == NULL:
                 raise RMNError("Failed to convert longitude to SIScalar")
 
             # Convert altitude if provided
             if altitude is not None:
-                alt_ref = create_siscalar_from_pytype(altitude)
+                alt_ref = (<SIScalarRef>Scalar.from_value(altitude)._get_c_ref())
                 if alt_ref == NULL:
                     raise RMNError("Failed to convert altitude to SIScalar")
 
@@ -102,7 +120,7 @@ cdef class GeographicCoordinate(RMNLibWrapper):
             if metadata is not None:
                 if not isinstance(metadata, dict):
                     raise TypeError("metadata must be a dictionary")
-                metadata_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(metadata)
+                metadata_ref = <OCDictionaryRef><uintptr_t>ocdict_create_from_pydict(metadata)
                 if metadata_ref == NULL:
                     raise RMNError("Failed to create metadata dictionary")
 
@@ -133,7 +151,7 @@ cdef class GeographicCoordinate(RMNLibWrapper):
 
         cdef OCStringRef err_ocstr = NULL
         cdef GeographicCoordinateRef coord_ref = NULL
-        cdef uint64_t json_ptr
+        cdef uintptr_t json_ptr
         cdef cJSON* json_obj = NULL
 
         try:
@@ -144,7 +162,7 @@ cdef class GeographicCoordinate(RMNLibWrapper):
             coord_ref = GeographicCoordinateCreateFromJSON(json_obj, &err_ocstr)
             if coord_ref == NULL:
                 from rmnpy.helpers.octypes import ocstring_to_pystring
-                error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
+                error_msg = ocstring_to_pystring(<uintptr_t>err_ocstr) if err_ocstr else "Unknown error"
                 raise RMNError(f"GeographicCoordinate creation from dictionary failed: {error_msg}")
 
             return <GeographicCoordinate>BaseWrapper._from_c_ref(GeographicCoordinate, <void*>coord_ref)
@@ -178,7 +196,7 @@ cdef class GeographicCoordinate(RMNLibWrapper):
         cdef SIScalarRef lat_ref = NULL
 
         try:
-            lat_ref = create_siscalar_from_pytype(value)
+            lat_ref = (<SIScalarRef>Scalar.from_value(value)._get_c_ref())
             if lat_ref == NULL:
                 raise RMNError("Failed to convert latitude to SIScalar")
 
@@ -203,7 +221,7 @@ cdef class GeographicCoordinate(RMNLibWrapper):
         cdef SIScalarRef lon_ref = NULL
 
         try:
-            lon_ref = create_siscalar_from_pytype(value)
+            lon_ref = (<SIScalarRef>Scalar.from_value(value)._get_c_ref())
             if lon_ref == NULL:
                 raise RMNError("Failed to convert longitude to SIScalar")
 
@@ -232,7 +250,7 @@ cdef class GeographicCoordinate(RMNLibWrapper):
                 # Setting altitude to None/NULL
                 alt_ref = NULL
             else:
-                alt_ref = create_siscalar_from_pytype(value)
+                alt_ref = (<SIScalarRef>Scalar.from_value(value)._get_c_ref())
                 if alt_ref == NULL:
                     raise RMNError("Failed to convert altitude to SIScalar")
 
@@ -249,7 +267,7 @@ cdef class GeographicCoordinate(RMNLibWrapper):
         if metadata_ref == NULL:
             return {}
 
-        return ocdict_to_pydict(<uint64_t>metadata_ref)
+        return ocdict_to_pydict(<uintptr_t>metadata_ref)
 
     @metadata.setter
     def metadata(self, value):
@@ -261,7 +279,7 @@ cdef class GeographicCoordinate(RMNLibWrapper):
 
         try:
             # Convert Python dictionary to OCDictionary
-            metadata_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(value)
+            metadata_ref = <OCDictionaryRef><uintptr_t>ocdict_create_from_pydict(value)
             if metadata_ref == NULL:
                 raise RMNError("Failed to create metadata dictionary")
 

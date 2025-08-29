@@ -27,38 +27,6 @@ from rmnpy.helpers.octypes import ocarray_to_pylist, ocstring_to_pystring
 from libc.stdint cimport uint64_t, uintptr_t
 
 
-# Helper function for converting various input types to SIUnitRef
-cdef SIUnitRef siunit_from_pytype(value) except NULL:
-    """
-    Convert various input types to SIUnitRef.
-
-    Accepts:
-    - Unit objects: Returns copy of their C reference
-    - str: Creates Unit from string expression
-    - None: Returns dimensionless unit
-
-    Returns:
-        SIUnitRef: C reference to unit (caller owns reference and must release)
-
-    Raises:
-        TypeError: If input type is not supported
-        RMNError: If unit creation fails
-    """
-    cdef Unit temp_unit
-
-    if value is None:
-        return SIUnitDimensionlessAndUnderived()
-    elif isinstance(value, Unit):
-        # Return copy of the C reference so caller owns it
-        return <SIUnitRef>OCTypeDeepCopy((<Unit>value)._c_ref)
-    elif isinstance(value, str):
-        # Create Unit from string, then return copy of its reference
-        temp_unit = Unit(value)
-        return <SIUnitRef>OCTypeDeepCopy(temp_unit._c_ref)
-    else:
-        raise TypeError(f"Cannot convert {type(value)} to SIUnitRef")
-
-
 cdef class Unit(SITypesWrapper):
     """
     Python wrapper for SIUnit - represents a physical unit.
@@ -109,7 +77,7 @@ cdef class Unit(SITypesWrapper):
 
         from rmnpy.helpers.octypes import ocstring_create_from_pystring
 
-        cdef OCStringRef expr_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(expression)
+        cdef OCStringRef expr_ocstr = <OCStringRef><uintptr_t>ocstring_create_from_pystring(expression)
         cdef OCStringRef error_ocstr = <OCStringRef>0
         cdef double unit_multiplier = 1.0
         cdef SIUnitRef c_ref
@@ -119,7 +87,7 @@ cdef class Unit(SITypesWrapper):
 
             if c_ref == NULL:
                 if error_ocstr != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
+                    error_msg = ocstring_to_pystring(<uintptr_t>error_ocstr)
                     raise RMNError(f"Failed to parse unit expression '{expression}': {error_msg}")
                 else:
                     raise RMNError(f"Failed to parse unit expression '{expression}': Unknown error")
@@ -143,6 +111,50 @@ cdef class Unit(SITypesWrapper):
         # No need to release them
         pass
 
+    # ========================================================================
+    # Class methods for creating Units from various input types
+    # ========================================================================
+
+    @classmethod
+    def from_value(cls, value):
+        """
+        Create a Unit from various input types.
+
+        This class method provides a unified interface for creating Unit objects
+        from different Python types, following the same conversion logic as the
+        internal helper function but returning Unit objects directly.
+
+        Args:
+            value: Input value to convert
+                - Unit objects: Returns the object directly
+                - str: Creates Unit from string expression
+                - None: Returns dimensionless unit
+
+        Returns:
+            Unit: Unit object created from the input value
+
+        Raises:
+            TypeError: If input type is not supported
+            RMNError: If unit creation fails
+
+        Examples:
+            >>> u1 = Unit.from_value("m")           # Meter unit
+            >>> u2 = Unit.from_value("m/s")         # Velocity unit
+            >>> u3 = Unit.from_value(None)          # Dimensionless unit
+            >>> u4 = Unit.from_value(existing_unit) # Returns existing unit directly
+        """
+        if value is None:
+            # Return dimensionless unit
+            return cls.dimensionless()
+        elif isinstance(value, Unit):
+            # If it's already a Unit, return it directly
+            return value
+        elif isinstance(value, str):
+            # Create Unit from string expression using constructor
+            return cls(value)
+        else:
+            raise TypeError(f"Cannot convert {type(value)} to Unit")
+
     @classmethod
     def from_name(cls, name):
         """
@@ -159,7 +171,7 @@ cdef class Unit(SITypesWrapper):
 
         from rmnpy.helpers.octypes import ocstring_create_from_pystring
 
-        cdef OCStringRef name_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(name)
+        cdef OCStringRef name_ocstr = <OCStringRef><uintptr_t>ocstring_create_from_pystring(name)
         cdef SIUnitRef c_ref
 
         try:
@@ -220,7 +232,7 @@ cdef class Unit(SITypesWrapper):
             return ""
 
         try:
-            return ocstring_to_pystring(<uint64_t>name_ocstr)
+            return ocstring_to_pystring(<uintptr_t>name_ocstr)
         finally:
             OCRelease(<OCTypeRef>name_ocstr)
 
@@ -232,7 +244,7 @@ cdef class Unit(SITypesWrapper):
             return ""
 
         try:
-            return ocstring_to_pystring(<uint64_t>plural_ocstr)
+            return ocstring_to_pystring(<uintptr_t>plural_ocstr)
         finally:
             OCRelease(<OCTypeRef>plural_ocstr)
 
@@ -247,7 +259,7 @@ cdef class Unit(SITypesWrapper):
             raise RMNError("Unit has no symbol - this indicates a corrupted or invalid unit")
 
         try:
-            return ocstring_to_pystring(<uint64_t>symbol_ocstr)
+            return ocstring_to_pystring(<uintptr_t>symbol_ocstr)
         finally:
             OCRelease(<OCTypeRef>symbol_ocstr)
 
@@ -352,7 +364,7 @@ cdef class Unit(SITypesWrapper):
             >>> factor2 = meter.scale_to("km")
             >>> # factor2 should be 0.001 (1 m = 0.001 km)
         """
-        cdef SIUnitRef other_ref = siunit_from_pytype(other)
+        cdef SIUnitRef other_ref = (<SIUnitRef>Unit.from_value(other)._get_c_ref())
         cdef double conversion_factor
 
         try:
@@ -415,7 +427,7 @@ cdef class Unit(SITypesWrapper):
         cdef SIUnitRef other_ref
 
         try:
-            other_ref = siunit_from_pytype(other)
+            other_ref = (<SIUnitRef>Unit.from_value(other)._get_c_ref())
             return SIUnitAreEquivalentUnits(self._c_ref, other_ref)
         except (TypeError, RMNError):
             return False
@@ -426,7 +438,7 @@ cdef class Unit(SITypesWrapper):
     def __eq__(self, other):
         """Equality comparison with string and None support."""
         if not isinstance(other, BaseWrapper):
-            cdef SIUnitRef other_ref = siunit_from_pytype(other)
+            cdef SIUnitRef other_ref = (<SIUnitRef>Unit.from_value(other)._get_c_ref())
             from rmnpy._c_api.octypes cimport OCTypeEqual
             return OCTypeEqual(self._c_ref, <OCTypeRef>other_ref)
 
@@ -435,7 +447,7 @@ cdef class Unit(SITypesWrapper):
     def __ne__(self, other):
         """Inequality comparison with string and None support."""
         if not isinstance(other, BaseWrapper):
-            cdef SIUnitRef other_ref = siunit_from_pytype(other)
+            cdef SIUnitRef other_ref = (<SIUnitRef>Unit.from_value(other)._get_c_ref())
             from rmnpy._c_api.octypes cimport OCTypeEqual
             return not OCTypeEqual(self._c_ref, <OCTypeRef>other_ref)
 
@@ -460,7 +472,7 @@ cdef class Unit(SITypesWrapper):
             return []
 
         try:
-            return ocarray_to_pylist(<uint64_t>array_c_ref)
+            return ocarray_to_pylist(<uintptr_t>array_c_ref)
         finally:
             OCRelease(<OCTypeRef>array_c_ref)
 
@@ -479,7 +491,7 @@ cdef class Unit(SITypesWrapper):
             return []
 
         try:
-            return ocarray_to_pylist(<uint64_t>array_ref)
+            return ocarray_to_pylist(<uintptr_t>array_ref)
         finally:
             OCRelease(<OCTypeRef>array_ref)
 
@@ -502,7 +514,7 @@ cdef class Unit(SITypesWrapper):
             return []
 
         try:
-            return ocarray_to_pylist(<uint64_t>array_ref)
+            return ocarray_to_pylist(<uintptr_t>array_ref)
         finally:
             OCRelease(<OCTypeRef>array_ref)
 
@@ -525,7 +537,7 @@ cdef class Unit(SITypesWrapper):
             return []
 
         try:
-            return ocarray_to_pylist(<uint64_t>array_ref)
+            return ocarray_to_pylist(<uintptr_t>array_ref)
         finally:
             OCRelease(<OCTypeRef>array_ref)
 
@@ -545,7 +557,7 @@ cdef class Unit(SITypesWrapper):
 
         from rmnpy.helpers.octypes import ocstring_create_from_pystring
 
-        cdef OCStringRef quantity_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(quantity_name)
+        cdef OCStringRef quantity_ocstr = <OCStringRef><uintptr_t>ocstring_create_from_pystring(quantity_name)
         if quantity_ocstr == NULL:
             return []
 
@@ -554,7 +566,7 @@ cdef class Unit(SITypesWrapper):
 
         try:
             if array_ref != NULL:
-                result = ocarray_to_pylist(<uint64_t>array_ref)
+                result = ocarray_to_pylist(<uintptr_t>array_ref)
         finally:
             OCRelease(<OCTypeRef>quantity_ocstr)
             if array_ref != NULL:
@@ -567,12 +579,12 @@ cdef class Unit(SITypesWrapper):
 # SIUnit Helper Functions
 # ====================================================================================
 
-def siunit_to_pyunit(uint64_t si_unit_ptr):
+def siunit_to_pyunit(uintptr_t si_unit_ptr):
     """
     Convert an SIUnitRef to a Python Unit object.
 
     Args:
-        si_unit_ptr (uint64_t): Pointer to SIUnitRef
+        si_unit_ptr (uintptr_t): Pointer to SIUnitRef
 
     Returns:
         Unit: Python Unit object
@@ -608,7 +620,7 @@ def get_unit_symbol_tokens_lib():
 
     # Convert OCMutableArrayRef to Python list
     try:
-        return ocarray_to_pylist(<uint64_t>symbols_array)
+        return ocarray_to_pylist(<uintptr_t>symbols_array)
     finally:
         # The array is owned by the library, so we don't need to release it
         pass

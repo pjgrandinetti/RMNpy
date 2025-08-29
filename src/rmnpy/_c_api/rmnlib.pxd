@@ -4,6 +4,7 @@ RMNLib C API declarations for Cython
 
 This file declares the C interfaces for RMNLib components.
 Based on the actual RMNLibrary.h header file.
+Organized by component hierarchy and functionality.
 """
 
 from libc.stdint cimport int64_t
@@ -12,6 +13,9 @@ from libc.stdint cimport int64_t
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.sitypes cimport *
 
+# ====================================================================================
+# External Dependencies
+# ====================================================================================
 
 # cJSON declarations for JSON-based serialization
 cdef extern from "cJSON.h":
@@ -20,10 +24,10 @@ cdef extern from "cJSON.h":
     void cJSON_Delete(cJSON *c)
 
 # ====================================================================================
-# RMNLib Core Types and Forward Declarations (from RMNLibrary.h)
+# RMNLib Core Types and Forward Declarations
 # ====================================================================================
 
-# Forward declarations from RMNLibrary.h
+# Core RMNLib object reference types
 ctypedef void *GeographicCoordinateRef
 ctypedef void *DatumRef
 ctypedef void *SparseSamplingRef
@@ -40,12 +44,33 @@ ctypedef enum dimensionScaling:
     kDimensionScalingNone
     kDimensionScalingNMR
 
-cdef extern from "RMNLibrary.h":
-    # ====================================================================================
-    # Dimension API - Only functions actually used in dimension.pyx
-    # ====================================================================================
+# ====================================================================================
+# RMNLib C API Function Declarations
+# ====================================================================================
 
-    # Dimension (Abstract Base) - Core coordinate system functionality
+cdef extern from "RMNLibrary.h":
+
+    # ================================================================================
+    # 1. TypeID Functions - Object type identification
+    # ================================================================================
+
+    OCTypeID DimensionGetTypeID()
+    OCTypeID LabeledDimensionGetTypeID()
+    OCTypeID SIDimensionGetTypeID()
+    OCTypeID SILinearDimensionGetTypeID()
+    OCTypeID SIMonotonicDimensionGetTypeID()
+    OCTypeID DependentVariableGetTypeID()
+    OCTypeID SparseSamplingGetTypeID()
+    OCTypeID GeographicCoordinateGetTypeID()
+    OCTypeID DatumGetTypeID()
+    OCTypeID DatasetGetTypeID()
+
+    # ================================================================================
+    # 2. Dimension API - Coordinate system definitions
+    # ================================================================================
+
+    # 2.1 Dimension (Abstract Base Class)
+    # Core functionality for all coordinate systems
     DimensionRef DimensionCreateFromJSON(cJSON *json, OCStringRef *outError)
     OCStringRef DimensionGetType(DimensionRef dim)
     OCStringRef DimensionCopyLabel(DimensionRef dim)
@@ -59,7 +84,7 @@ cdef extern from "RMNLibrary.h":
     bint DimensionIsQuantitative(DimensionRef dim)
     OCStringRef DimensionCreateAxisLabel(DimensionRef dim, OCIndex index)
 
-    # LabeledDimension - Discrete labeled coordinate systems
+    # 2.2 LabeledDimension - Discrete labeled coordinate systems
     LabeledDimensionRef LabeledDimensionCreate(OCStringRef label, OCStringRef description,
                                                OCDictionaryRef metadata, OCArrayRef coordinateLabels,
                                                OCStringRef *outError)
@@ -67,7 +92,7 @@ cdef extern from "RMNLibrary.h":
     bint LabeledDimensionSetCoordinateLabels(LabeledDimensionRef dim, OCArrayRef labels, OCStringRef *outError)
     bint LabeledDimensionSetCoordinateLabelAtIndex(LabeledDimensionRef dim, OCIndex index, OCStringRef label)
 
-    # SIDimension - SI unit-based coordinate systems (base class)
+    # 2.3 SIDimension - SI unit-based coordinate systems (base class)
     SIDimensionRef SIDimensionCreate(OCStringRef label, OCStringRef description,
                                      OCDictionaryRef metadata, OCStringRef quantityName,
                                      SIScalarRef offset, SIScalarRef origin, SIScalarRef period,
@@ -84,7 +109,7 @@ cdef extern from "RMNLibrary.h":
     dimensionScaling SIDimensionGetScaling(SIDimensionRef dim)
     bint SIDimensionSetScaling(SIDimensionRef dim, dimensionScaling scaling)
 
-    # SILinearDimension - Linearly spaced coordinate systems
+    # 2.4 SILinearDimension - Linearly spaced coordinate systems
     SILinearDimensionRef SILinearDimensionCreate(OCStringRef label, OCStringRef description,
                                                  OCDictionaryRef metadata, OCStringRef quantityName,
                                                  SIScalarRef offset, SIScalarRef origin, SIScalarRef period,
@@ -103,7 +128,7 @@ cdef extern from "RMNLibrary.h":
     OCArrayRef SILinearDimensionCreateCoordinates(SILinearDimensionRef dim)
     OCArrayRef SILinearDimensionCreateAbsoluteCoordinates(SILinearDimensionRef dim)
 
-    # SIMonotonicDimension - Monotonic coordinate systems
+    # 2.5 SIMonotonicDimension - Monotonic coordinate systems
     SIMonotonicDimensionRef SIMonotonicDimensionCreate(OCStringRef label, OCStringRef description,
                                                        OCDictionaryRef metadata, OCStringRef quantityName,
                                                        SIScalarRef offset, SIScalarRef origin, SIScalarRef period,
@@ -115,12 +140,10 @@ cdef extern from "RMNLibrary.h":
     SIDimensionRef SIMonotonicDimensionCopyReciprocal(SIMonotonicDimensionRef dim)
     bint SIMonotonicDimensionSetReciprocal(SIMonotonicDimensionRef dim, SIDimensionRef rec, OCStringRef *outError)
 
-    # ====================================================================================
-    # Phase 3B: SparseSampling API (Depends on Dimension)
-    # ====================================================================================
+    # ================================================================================
+    # 3. SparseSampling API - Sparse sampling pattern definitions
+    # ================================================================================
 
-    # SparseSampling - Sparse sampling pattern definitions
-    OCTypeID SparseSamplingGetTypeID()
     SparseSamplingRef SparseSamplingCreate(OCIndexSetRef dimensionIndexes,
                                            OCArrayRef sparseGridVertexes,
                                            OCNumberType unsignedIntegerType,
@@ -131,7 +154,7 @@ cdef extern from "RMNLibrary.h":
     SparseSamplingRef SparseSamplingCreateFromJSON(cJSON *json, OCStringRef *outError)
     OCDictionaryRef SparseSamplingCopyAsDictionary(SparseSamplingRef ss)
 
-    # SparseSampling accessors
+    # SparseSampling property accessors
     OCIndexSetRef SparseSamplingGetDimensionIndexes(SparseSamplingRef ss)
     bint SparseSamplingSetDimensionIndexes(SparseSamplingRef ss, OCIndexSetRef indexes)
     OCArrayRef SparseSamplingGetSparseGridVertexes(SparseSamplingRef ss)
@@ -150,9 +173,50 @@ cdef extern from "RMNLibrary.h":
     OCIndexPairSetRef SparseSamplingGetVertexAtIndex(SparseSamplingRef ss, OCIndex index)
     bint SparseSamplingContainsVertex(SparseSamplingRef ss, OCIndexPairSetRef vertex)
 
+    # ================================================================================
+    # 4. DependentVariable API - Dataset variables with metadata and components
+    # ================================================================================
+
+    # 4.1 Core creation and management
+    DependentVariableRef DependentVariableCreate(OCStringRef name, OCStringRef description,
+                                                  SIUnitRef unit, OCStringRef quantityName,
+                                                  OCStringRef quantityType, OCNumberType elementType,
+                                                  OCArrayRef componentLabels, OCArrayRef components,
+                                                  OCStringRef *outError)
+    DependentVariableRef DependentVariableCreateFromJSON(OCDictionaryRef dict_ref, OCStringRef *outError)
+    DependentVariableRef DependentVariableCopy(DependentVariableRef orig)
+
+    # 4.2 Property accessors (string properties - memory-safe copy functions)
+    OCStringRef DependentVariableCopyName(DependentVariableRef dv)
+    OCStringRef DependentVariableCopyDescription(DependentVariableRef dv)
+    OCStringRef DependentVariableCopyQuantityType(DependentVariableRef dv)
+    OCStringRef DependentVariableCopyQuantityName(DependentVariableRef dv)
+    OCStringRef DependentVariableCopyEncoding(DependentVariableRef dv)
+    OCStringRef DependentVariableCopyType(DependentVariableRef dv)
+
+    # 4.3 Property setters
+    bint DependentVariableSetName(DependentVariableRef dv, OCStringRef name)
+    bint DependentVariableSetDescription(DependentVariableRef dv, OCStringRef desc)
+    bint DependentVariableSetQuantityName(DependentVariableRef dv, OCStringRef quantityName)
+
+    # 4.4 Numeric and structural properties
+    OCNumberType DependentVariableGetNumericType(DependentVariableRef dv)
+    OCIndex DependentVariableGetComponentCount(DependentVariableRef dv)
+    OCIndex DependentVariableGetSize(DependentVariableRef dv)
+    bint DependentVariableSetSize(DependentVariableRef dv, OCIndex new_size)
+
+    # 4.5 Component management
+    OCMutableArrayRef DependentVariableCopyComponents(DependentVariableRef dv)
+    bint DependentVariableSetComponents(DependentVariableRef dv, OCArrayRef components_array)
+
+    # 4.6 Sparse sampling management
+    SparseSamplingRef DependentVariableCopySparseSampling(DependentVariableRef dv)
+    bint DependentVariableSetSparseSampling(DependentVariableRef dv, SparseSamplingRef sparse_ref)
+
+    # 4.7 Data access and manipulation
     bint DependentVariableSetValueAtMemOffset(DependentVariableRef dv, OCIndex compIdx, OCIndex memOffset, SIScalarRef value, OCStringRef *error)
 
-    # DependentVariable unit conversion and data manipulation
+    # 4.8 Unit conversion and data manipulation
     bint DependentVariableConvertToUnit(DependentVariableRef dv, SIUnitRef unit, OCStringRef *error)
     bint DependentVariableSetValuesToZero(DependentVariableRef dv, int64_t componentIndex)
     bint DependentVariableZeroPartInRange(DependentVariableRef dv, OCIndex componentIndex, OCRange range, complexPart part)
@@ -162,21 +226,70 @@ cdef extern from "RMNLibrary.h":
     bint DependentVariableConjugate(DependentVariableRef dv, OCIndex componentIndex)
     bint DependentVariableMultiplyValuesByDimensionlessRealConstant(DependentVariableRef dv, OCIndex componentIndex, double constant)
 
-    # DependentVariable arithmetic operations
+    # 4.9 Arithmetic operations between DependentVariables
     bint DependentVariableAdd(DependentVariableRef dv1, DependentVariableRef dv2)
     bint DependentVariableSubtract(DependentVariableRef dv1, DependentVariableRef dv2)
     bint DependentVariableMultiply(DependentVariableRef dv1, DependentVariableRef dv2)
     bint DependentVariableDivide(DependentVariableRef dv1, DependentVariableRef dv2)
 
+    # 4.10 Operations with other DependentVariables
+    bint DependentVariableAppend(DependentVariableRef dv, DependentVariableRef other_dv, OCStringRef *err_ocstr)
+
     # Note: DependentVariable inherits from SIQuantity, so all SIQuantity functions
     # (declared in sitypes.pxd) can be used with DependentVariableRef cast to SIQuantityRef
 
-    # ====================================================================================
-    # Phase 3D: Dataset API (Depends on all previous components)
-    # ====================================================================================
+    # ================================================================================
+    # 5. GeographicCoordinate API - Geospatial location metadata
+    # ================================================================================
 
-    # Dataset creation and basic operations
-    OCTypeID DatasetGetTypeID()
+    GeographicCoordinateRef GeographicCoordinateCreate(SIScalarRef latitude, SIScalarRef longitude,
+                                                       SIScalarRef altitude, OCDictionaryRef metadata)
+    GeographicCoordinateRef GeographicCoordinateCreateFromJSON(cJSON *json, OCStringRef *outError)
+    OCDictionaryRef GeographicCoordinateCopyAsDictionary(GeographicCoordinateRef gc)
+    GeographicCoordinateRef GeographicCoordinateCreateCopy(GeographicCoordinateRef gc)
+
+    # GeographicCoordinate property accessors
+    SIScalarRef GeographicCoordinateGetLatitude(GeographicCoordinateRef gc)
+    SIScalarRef GeographicCoordinateGetLongitude(GeographicCoordinateRef gc)
+    SIScalarRef GeographicCoordinateGetAltitude(GeographicCoordinateRef gc)
+    OCDictionaryRef GeographicCoordinateGetApplicationMetaData(GeographicCoordinateRef gc)
+
+    # GeographicCoordinate property setters
+    bint GeographicCoordinateSetLatitude(GeographicCoordinateRef gc, SIScalarRef latitude)
+    bint GeographicCoordinateSetLongitude(GeographicCoordinateRef gc, SIScalarRef longitude)
+    bint GeographicCoordinateSetAltitude(GeographicCoordinateRef gc, SIScalarRef altitude)
+    bint GeographicCoordinateSetApplicationMetaData(GeographicCoordinateRef gc, OCDictionaryRef metadata)
+
+    # ================================================================================
+    # 6. Datum API - Focus points and coordinate references
+    # ================================================================================
+
+    DatumRef DatumCreate(SIScalarRef response,
+                        OCIndex dependentVariableIndex, OCIndex componentIndex, OCIndex memOffset,
+                        OCTypeRef owner, OCStringRef *outError)
+    DatumRef DatumCopy(DatumRef theDatum)
+    bint DatumHasSameReducedDimensionalities(DatumRef input1, DatumRef input2)
+    OCDictionaryRef DatumCopyAsDictionary(DatumRef theDatum)
+    DatumRef DatumCreateFromJSON(cJSON *json, OCStringRef *outError)
+
+    # Datum property accessors
+    OCIndex DatumGetComponentIndex(DatumRef theDatum)
+    OCIndex DatumGetDependentVariableIndex(DatumRef theDatum)
+    OCIndex DatumGetMemOffset(DatumRef theDatum)
+    OCTypeRef DatumGetCoordinateAtIndex(DatumRef theDatum, OCIndex index)
+    SIScalarRef DatumCreateResponse(DatumRef theDatum)
+    OCIndex DatumCoordinatesCount(DatumRef theDatum)
+
+    # Datum property setters
+    void DatumSetComponentIndex(DatumRef theDatum, OCIndex componentIndex)
+    void DatumSetDependentVariableIndex(DatumRef theDatum, OCIndex dependentVariableIndex)
+    void DatumSetMemOffset(DatumRef theDatum, OCIndex memOffset)
+
+    # ================================================================================
+    # 7. Dataset API - Complete data structure with all components
+    # ================================================================================
+
+    # 7.1 Core creation and management
     DatasetRef DatasetCreate(OCArrayRef dimensions, OCIndexArrayRef dimensionPrecedence,
                            OCArrayRef dependentVariables, OCArrayRef tags,
                            OCStringRef description, OCStringRef title,
@@ -187,7 +300,7 @@ cdef extern from "RMNLibrary.h":
     DatasetRef DatasetCreateWithImport(const char *json_path, const char *binary_dir, OCStringRef *outError)
     bint DatasetExport(DatasetRef ds, const char *json_path, const char *binary_dir, OCStringRef *outError)
 
-    # Dataset accessors and mutators
+    # 7.2 Core structure accessors and mutators
     OCMutableArrayRef DatasetGetDimensions(DatasetRef dataset)
     bint DatasetSetDimensions(DatasetRef dataset, OCMutableArrayRef dims)
     OCMutableIndexArrayRef DatasetGetDimensionPrecedence(DatasetRef dataset)
@@ -198,7 +311,7 @@ cdef extern from "RMNLibrary.h":
     DependentVariableRef DatasetAddEmptyDependentVariable(DatasetRef dataset, OCStringRef quantityType,
                                                           OCNumberType elementType, OCIndex size)
 
-    # Dataset metadata
+    # 7.3 Metadata accessors and mutators
     OCMutableArrayRef DatasetGetTags(DatasetRef ds)
     bint DatasetSetTags(DatasetRef ds, OCMutableArrayRef tags)
     OCStringRef DatasetGetDescription(DatasetRef ds)
@@ -212,7 +325,7 @@ cdef extern from "RMNLibrary.h":
     OCDictionaryRef DatasetGetApplicationMetaData(DatasetRef dataset)
     bint DatasetSetApplicationMetaData(DatasetRef dataset, OCDictionaryRef md)
 
-    # Dataset CSDM-1.0 fields
+    # 7.4 CSDM-1.0 specific fields
     OCStringRef DatasetGetVersion(DatasetRef ds)
     bint DatasetSetVersion(DatasetRef ds, OCStringRef version)
     OCStringRef DatasetGetTimestamp(DatasetRef ds)
@@ -220,94 +333,11 @@ cdef extern from "RMNLibrary.h":
     GeographicCoordinateRef DatasetGetGeographicCoordinate(DatasetRef ds)
     bint DatasetSetGeographicCoordinate(DatasetRef ds, GeographicCoordinateRef gc)
     bint DatasetGetReadOnly(DatasetRef ds)
-    bint DatasetSetReadOnly(DatasetRef ds, bint readOnly)    # ====================================================================================
-    # DependentVariable API - Dataset variables with metadata and components
-    # ====================================================================================
+    bint DatasetSetReadOnly(DatasetRef ds, bint readOnly)
 
-    # Core creation and management
-    DependentVariableRef DependentVariableCreate(OCStringRef name, OCStringRef description,
-                                                  SIUnitRef unit, OCStringRef quantityName,
-                                                  OCStringRef quantityType, OCNumberType elementType,
-                                                  OCArrayRef componentLabels, OCArrayRef components,
-                                                  OCStringRef *outError)
-    DependentVariableRef DependentVariableCopy(DependentVariableRef orig)
-
-    # String property accessors (memory-safe copy functions)
-    OCStringRef DependentVariableCopyName(DependentVariableRef dv)
-    OCStringRef DependentVariableCopyDescription(DependentVariableRef dv)
-    OCStringRef DependentVariableCopyQuantityType(DependentVariableRef dv)
-    OCStringRef DependentVariableCopyQuantityName(DependentVariableRef dv)
-    OCStringRef DependentVariableCopyEncoding(DependentVariableRef dv)
-    OCStringRef DependentVariableCopyType(DependentVariableRef dv)
-
-    # Property setters
-    bint DependentVariableSetName(DependentVariableRef dv, OCStringRef name)
-    bint DependentVariableSetDescription(DependentVariableRef dv, OCStringRef desc)
-    bint DependentVariableSetQuantityName(DependentVariableRef dv, OCStringRef quantityName)
-
-    # Numeric and structural properties
-    OCNumberType DependentVariableGetNumericType(DependentVariableRef dv)
-    OCIndex DependentVariableGetComponentCount(DependentVariableRef dv)
-    OCIndex DependentVariableGetSize(DependentVariableRef dv)
-
-    # ====================================================================================
-    # TypeID Functions for OCType Identification
-    # ====================================================================================
-
-    # Dimension TypeIDs for convert_octype_to_python function
-    OCTypeID DimensionGetTypeID()
-    OCTypeID LabeledDimensionGetTypeID()
-    OCTypeID SIDimensionGetTypeID()
-    OCTypeID SILinearDimensionGetTypeID()
-    OCTypeID SIMonotonicDimensionGetTypeID()
-    OCTypeID DependentVariableGetTypeID()
-
-    # GeographicCoordinate API
-    OCTypeID GeographicCoordinateGetTypeID()
-    GeographicCoordinateRef GeographicCoordinateCreate(SIScalarRef latitude, SIScalarRef longitude,
-                                                       SIScalarRef altitude, OCDictionaryRef metadata)
-    GeographicCoordinateRef GeographicCoordinateCreateFromJSON(cJSON *json, OCStringRef *outError)
-    OCDictionaryRef GeographicCoordinateCopyAsDictionary(GeographicCoordinateRef gc)
-    GeographicCoordinateRef GeographicCoordinateCreateCopy(GeographicCoordinateRef gc)
-
-    # GeographicCoordinate getters
-    SIScalarRef GeographicCoordinateGetLatitude(GeographicCoordinateRef gc)
-    SIScalarRef GeographicCoordinateGetLongitude(GeographicCoordinateRef gc)
-    SIScalarRef GeographicCoordinateGetAltitude(GeographicCoordinateRef gc)
-    OCDictionaryRef GeographicCoordinateGetApplicationMetaData(GeographicCoordinateRef gc)
-
-    # GeographicCoordinate setters
-    bint GeographicCoordinateSetLatitude(GeographicCoordinateRef gc, SIScalarRef latitude)
-    bint GeographicCoordinateSetLongitude(GeographicCoordinateRef gc, SIScalarRef longitude)
-    bint GeographicCoordinateSetAltitude(GeographicCoordinateRef gc, SIScalarRef altitude)
-    bint GeographicCoordinateSetApplicationMetaData(GeographicCoordinateRef gc, OCDictionaryRef metadata)
-
-    # Datum API
-    OCTypeID DatumGetTypeID()
-    DatumRef DatumCreate(SIScalarRef response,
-                        OCIndex dependentVariableIndex, OCIndex componentIndex, OCIndex memOffset,
-                        OCTypeRef owner, OCStringRef *outError)
-    DatumRef DatumCopy(DatumRef theDatum)
-    bint DatumHasSameReducedDimensionalities(DatumRef input1, DatumRef input2)
-    OCDictionaryRef DatumCopyAsDictionary(DatumRef theDatum)
-    DatumRef DatumCreateFromJSON(cJSON *json, OCStringRef *outError)
-
-    # Datum getters
-    OCIndex DatumGetComponentIndex(DatumRef theDatum)
-    OCIndex DatumGetDependentVariableIndex(DatumRef theDatum)
-    OCIndex DatumGetMemOffset(DatumRef theDatum)
-    OCTypeRef DatumGetCoordinateAtIndex(DatumRef theDatum, OCIndex index)
-    SIScalarRef DatumCreateResponse(DatumRef theDatum)
-    OCIndex DatumCoordinatesCount(DatumRef theDatum)
-
-    # Datum setters
-    void DatumSetComponentIndex(DatumRef theDatum, OCIndex componentIndex)
-    void DatumSetDependentVariableIndex(DatumRef theDatum, OCIndex dependentVariableIndex)
-    void DatumSetMemOffset(DatumRef theDatum, OCIndex memOffset)
-
-    # ====================================================================================
-    # Utility Functions and Metadata Handling
-    # ====================================================================================
+    # ================================================================================
+    # 8. Utility Functions and Metadata Handling
+    # ================================================================================
 
     # Universal accessors for RMNLib object properties
     OCStringRef RMNLibGetDescription(OCTypeRef theType, OCStringRef *outError)

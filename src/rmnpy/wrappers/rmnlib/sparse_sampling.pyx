@@ -10,6 +10,8 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
+from libc.stdint cimport uint64_t, uintptr_t
+
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.rmnlib cimport *
 
@@ -48,7 +50,7 @@ cdef class SparseSampling(RMNLibWrapper):
     """
 
     @staticmethod
-    def from_c_ref(uint64_t sparse_ref_ptr):
+    def from_c_ref(uintptr_t sparse_ref_ptr):
         """Create SparseSampling wrapper from C reference pointer."""
         return <SparseSampling>BaseWrapper._from_c_ref(SparseSampling, <void*><SparseSamplingRef>sparse_ref_ptr)
 
@@ -118,15 +120,15 @@ cdef class SparseSampling(RMNLibWrapper):
             # Convert encoding (required)
             if encoding not in ("none", "base64"):
                 raise ValueError(f"Invalid encoding: {encoding}. Must be 'none' or 'base64'")
-            encoding_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(encoding)
+            encoding_ref = <OCStringRef><uintptr_t>ocstring_create_from_pystring(encoding)
 
             # Convert description (optional)
             if description is not None:
-                desc_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(description)
+                desc_ref = <OCStringRef><uintptr_t>ocstring_create_from_pystring(description)
 
             # Convert metadata (optional)
             if metadata is not None:
-                metadata_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(metadata)
+                metadata_ref = <OCDictionaryRef><uintptr_t>ocdict_create_from_pydict(metadata)
 
             # Create SparseSampling and set via base wrapper
             sparse_ref = SparseSamplingCreate(
@@ -141,7 +143,7 @@ cdef class SparseSampling(RMNLibWrapper):
 
             if sparse_ref == NULL:
                 if err_ocstr != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
+                    error_msg = ocstring_to_pystring(<uintptr_t>err_ocstr)
                     raise RMNError(f"Failed to create SparseSampling: {error_msg}")
                 else:
                     raise RMNError("Failed to create SparseSampling")
@@ -165,7 +167,7 @@ cdef class SparseSampling(RMNLibWrapper):
         cdef SparseSampling result = cls.__new__(cls)
         cdef SparseSamplingRef sparse_ref = NULL
         cdef OCStringRef err_ocstr = NULL
-        cdef uint64_t json_ptr
+        cdef uintptr_t json_ptr
         cdef cJSON* json_obj = NULL
 
         try:
@@ -177,7 +179,7 @@ cdef class SparseSampling(RMNLibWrapper):
 
             if sparse_ref == NULL:
                 if err_ocstr != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
+                    error_msg = ocstring_to_pystring(<uintptr_t>err_ocstr)
                     raise RMNError(f"Failed to create SparseSampling from dictionary: {error_msg}")
                 else:
                     raise RMNError("Failed to create SparseSampling from dictionary")
@@ -275,7 +277,7 @@ cdef class SparseSampling(RMNLibWrapper):
         cdef OCStringRef encoding_ref = SparseSamplingGetEncoding(self._c_ref)
         if encoding_ref == NULL:
             return None
-        return ocstring_to_pystring(<uint64_t>encoding_ref)
+        return ocstring_to_pystring(<uintptr_t>encoding_ref)
 
     @encoding.setter
     def encoding(self, value):
@@ -288,7 +290,7 @@ cdef class SparseSampling(RMNLibWrapper):
             raise ValueError(f"Invalid encoding: {value}. Must be 'none' or 'base64'")
 
         try:
-            encoding_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
+            encoding_ref = <OCStringRef><uintptr_t>ocstring_create_from_pystring(value)
             if not SparseSamplingSetEncoding(self._c_ref, encoding_ref):
                 raise RMNError(f"Failed to set encoding: {value}")
         finally:

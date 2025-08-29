@@ -14,6 +14,3 @@ cdef class Scalar(SITypesWrapper):
     """Cython interface for SIScalar wrapper."""
     # No _from_c_ref needed - use BaseWrapper._from_c_ref directly!
     pass
-
-# Helper function for converting various input types to SIScalarRef
-cdef SIScalarRef create_siscalar_from_pytype(value) except NULL

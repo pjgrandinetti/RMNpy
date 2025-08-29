@@ -327,3 +327,42 @@ cdef extern from "SITypes/SIQuantity.h":
 
     # Helper functions for coordinate conversion
     OCArrayRef SIScalarCreateArrayFromMixedTypeArray(OCArrayRef numbers, OCStringRef *outError)
+
+# ====================================================================================
+# Universal SITypes C API Functions (SITypes v0.1.16+)
+# ====================================================================================
+
+cdef extern from "SITypes.h":
+
+    # Universal arithmetic operations
+    OCTypeRef SITypesCreateWithBinaryArithmeticOperation(
+        OCTypeRef operand1,
+        OCTypeRef operand2,
+        char operation,
+        OCStringRef *outError
+    )
+
+    OCTypeRef SITypesCreateByRaisingToPower(
+        OCTypeRef base,
+        OCTypeRef exponent,
+        OCStringRef *outError
+    )
+
+    OCTypeRef SITypesCreateByTakingNthRoot(
+        OCTypeRef operand,
+        OCTypeRef n,
+        OCStringRef *outError
+    )
+
+    # Universal reduction operations
+    OCTypeRef SITypesCreateByReducing(
+        OCTypeRef operand,
+        char operation,
+        OCStringRef *outError
+    )
+
+    # Universal string representation
+    OCStringRef SITypesCreateStringRepresentation(
+        OCTypeRef operand,
+        OCStringRef *outError
+    )

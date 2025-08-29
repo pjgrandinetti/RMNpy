@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from libc.stdint cimport uintptr_t
+from libc.stdint cimport uint64_t, uintptr_t
 
 from rmnpy._c_api.octypes cimport *
 from rmnpy._c_api.rmnlib cimport *
@@ -58,7 +58,7 @@ cdef class Dataset(RMNLibWrapper):
     # No _from_c_ref method needed - use BaseWrapper._from_c_ref directly!
 
     @staticmethod
-    def from_c_ref(uint64_t dataset_ref_ptr):
+    def from_c_ref(uintptr_t dataset_ref_ptr):
         """Create Dataset wrapper from C reference pointer (Python-accessible)."""
         return <Dataset>BaseWrapper._from_c_ref(Dataset, <void*><DatasetRef>dataset_ref_ptr)
 
@@ -110,28 +110,28 @@ cdef class Dataset(RMNLibWrapper):
         try:
             # Convert dimensions to OCArray
             if dimensions is not None:
-                dims_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(dimensions)
+                dims_ref = <OCArrayRef><uintptr_t>ocarray_create_from_pylist(dimensions)
 
             # Convert dimension precedence to OCIndexArray
             if dimension_precedence is not None:
                 from rmnpy.helpers.octypes import ocindexarray_create_from_pylist
-                precedence_ref = <OCIndexArrayRef><uint64_t>ocindexarray_create_from_pylist(list(dimension_precedence))
+                precedence_ref = <OCIndexArrayRef><uintptr_t>ocindexarray_create_from_pylist(list(dimension_precedence))
 
             # Convert dependent variables to OCArray
             if dependent_variables is not None:
-                deps_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(dependent_variables)
+                deps_ref = <OCArrayRef><uintptr_t>ocarray_create_from_pylist(dependent_variables)
 
             # Convert tags to OCArray
             if tags is not None:
-                tags_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(list(tags))
+                tags_ref = <OCArrayRef><uintptr_t>ocarray_create_from_pylist(list(tags))
 
             # Convert description to OCString
             if description is not None:
-                desc_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(description)
+                desc_ref = <OCStringRef><uintptr_t>ocstring_create_from_pystring(description)
 
             # Convert title to OCString
             if title is not None:
-                title_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(title)
+                title_ref = <OCStringRef><uintptr_t>ocstring_create_from_pystring(title)
 
             # Handle focus datum
             if focus is not None:
@@ -143,7 +143,7 @@ cdef class Dataset(RMNLibWrapper):
 
             # Convert application metadata to OCDictionary
             if application_metadata is not None:
-                metadata_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(application_metadata)
+                metadata_ref = <OCDictionaryRef><uintptr_t>ocdict_create_from_pydict(application_metadata)
 
             # Create dataset using DatasetCreate
             dataset_ref = DatasetCreate(
@@ -159,7 +159,7 @@ cdef class Dataset(RMNLibWrapper):
                 &err_ocstr
             )
             if dataset_ref == NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
+                error_msg = ocstring_to_pystring(<uintptr_t>err_ocstr) if err_ocstr else "Unknown error"
                 raise RMNError(f"Dataset creation failed: {error_msg}")
 
             self._set_c_ref(<void*>dataset_ref)
@@ -192,7 +192,7 @@ cdef class Dataset(RMNLibWrapper):
         cdef Dataset result = cls.__new__(cls)
         cdef DatasetRef dataset_ref = NULL
         cdef OCStringRef error = NULL
-        cdef uint64_t json_ptr
+        cdef uintptr_t json_ptr
         cdef cJSON* json_obj = NULL
 
         try:
@@ -210,7 +210,7 @@ cdef class Dataset(RMNLibWrapper):
 
             if dataset_ref == NULL:
                 if error != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error)
+                    error_msg = ocstring_to_pystring(<uintptr_t>error)
                     raise RMNError(f"Failed to create Dataset from dictionary: {error_msg}")
                 else:
                     raise RMNError("Failed to create Dataset from dictionary")
@@ -233,7 +233,7 @@ cdef class Dataset(RMNLibWrapper):
         cdef OCStringRef title_ref = DatasetGetTitle(<DatasetRef>self._c_ref)
         if title_ref == NULL:
             return ""  # Return empty string for datasets without titles
-        return ocstring_to_pystring(<uint64_t>title_ref)
+        return ocstring_to_pystring(<uintptr_t>title_ref)
 
     @title.setter
     def title(self, value):
@@ -245,7 +245,7 @@ cdef class Dataset(RMNLibWrapper):
         cdef OCStringRef title_ref = NULL
 
         try:
-            title_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
+            title_ref = <OCStringRef><uintptr_t>ocstring_create_from_pystring(value)
             if title_ref == NULL:
                 raise RMNError("Failed to create title string")
 
@@ -282,7 +282,7 @@ cdef class Dataset(RMNLibWrapper):
         if tags_ref == NULL:
             return []  # Return empty list if no tags
 
-        return ocarray_to_pylist(<uint64_t>tags_ref)
+        return ocarray_to_pylist(<uintptr_t>tags_ref)
 
     @tags.setter
     def tags(self, value):
@@ -296,7 +296,7 @@ cdef class Dataset(RMNLibWrapper):
 
         try:
             # Convert Python list to OCMutableArray
-            tags_ref = <OCMutableArrayRef><uint64_t>ocarray_create_from_pylist(list(value))
+            tags_ref = <OCMutableArrayRef><uintptr_t>ocarray_create_from_pylist(list(value))
             if tags_ref == NULL:
                 raise RMNError("Failed to create tags array")
 
@@ -315,7 +315,7 @@ cdef class Dataset(RMNLibWrapper):
         cdef OCStringRef version_ref = DatasetGetVersion(self._c_ref)
         if version_ref == NULL:
             return "1.0"  # Default version for CSDM-1.0
-        return ocstring_to_pystring(<uint64_t>version_ref)
+        return ocstring_to_pystring(<uintptr_t>version_ref)
 
     @version.setter
     def version(self, value):
@@ -328,7 +328,7 @@ cdef class Dataset(RMNLibWrapper):
         cdef OCStringRef version_ref = NULL
 
         try:
-            version_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
+            version_ref = <OCStringRef><uintptr_t>ocstring_create_from_pystring(value)
             if version_ref == NULL:
                 raise RMNError("Failed to create version string")
 
@@ -347,7 +347,7 @@ cdef class Dataset(RMNLibWrapper):
         cdef OCStringRef timestamp_ref = DatasetGetTimestamp(self._c_ref)
         if timestamp_ref == NULL:
             return ""  # Return empty string if no timestamp set
-        return ocstring_to_pystring(<uint64_t>timestamp_ref)
+        return ocstring_to_pystring(<uintptr_t>timestamp_ref)
 
     @timestamp.setter
     def timestamp(self, value):
@@ -360,7 +360,7 @@ cdef class Dataset(RMNLibWrapper):
         cdef OCStringRef timestamp_ref = NULL
 
         try:
-            timestamp_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(value)
+            timestamp_ref = <OCStringRef><uintptr_t>ocstring_create_from_pystring(value)
             if timestamp_ref == NULL:
                 raise RMNError("Failed to create timestamp string")
 
@@ -471,7 +471,7 @@ cdef class Dataset(RMNLibWrapper):
             return []  # Return empty list if no dimensions
 
         # Use helper function to convert OCArray to Python list of Dimension objects
-        return ocarray_to_pylist(<uint64_t>dims_ref)
+        return ocarray_to_pylist(<uintptr_t>dims_ref)
 
     @dimensions.setter
     def dimensions(self, value):
@@ -480,7 +480,7 @@ cdef class Dataset(RMNLibWrapper):
 
         try:
             # Convert Python list to OCArray using helper function
-            dims_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(value)
+            dims_ref = <OCArrayRef><uintptr_t>ocarray_create_from_pylist(value)
             if dims_ref == NULL:
                 raise RMNError("Failed to create dimensions array")
 
@@ -501,7 +501,7 @@ cdef class Dataset(RMNLibWrapper):
 
         # Convert OCIndexArray to Python list
         from rmnpy.helpers.octypes import ocindexarray_to_pylist
-        return ocindexarray_to_pylist(<uint64_t>precedence_ref)
+        return ocindexarray_to_pylist(<uintptr_t>precedence_ref)
 
     @dimension_precedence.setter
     def dimension_precedence(self, value):
@@ -514,7 +514,7 @@ cdef class Dataset(RMNLibWrapper):
         try:
             # Convert Python list to OCIndexArray
             from rmnpy.helpers.octypes import ocindexarray_create_from_pylist
-            precedence_ref = <OCMutableIndexArrayRef><uint64_t>ocindexarray_create_from_pylist(list(value))
+            precedence_ref = <OCMutableIndexArrayRef><uintptr_t>ocindexarray_create_from_pylist(list(value))
             if precedence_ref == NULL:
                 raise RMNError("Failed to create precedence array")
 
@@ -535,7 +535,7 @@ cdef class Dataset(RMNLibWrapper):
             return []  # Return empty list if no dependent variables
 
         # Use helper function to convert OCArray to Python list of DependentVariable objects
-        return ocarray_to_pylist(<uint64_t>vars_ref)
+        return ocarray_to_pylist(<uintptr_t>vars_ref)
 
     @dependent_variables.setter
     def dependent_variables(self, value):
@@ -544,7 +544,7 @@ cdef class Dataset(RMNLibWrapper):
 
         try:
             # Convert Python list to OCArray using helper function
-            vars_ref = <OCArrayRef><uint64_t>ocarray_create_from_pylist(value)
+            vars_ref = <OCArrayRef><uintptr_t>ocarray_create_from_pylist(value)
             if vars_ref == NULL:
                 raise RMNError("Failed to create dependent variables array")
 
@@ -598,7 +598,7 @@ cdef class Dataset(RMNLibWrapper):
         cdef DependentVariableRef dv_ref = NULL
 
         try:
-            qty_type_ref = <OCStringRef><uint64_t>ocstring_create_from_pystring(quantity_type)
+            qty_type_ref = <OCStringRef><uintptr_t>ocstring_create_from_pystring(quantity_type)
             if qty_type_ref == NULL:
                 raise RMNError("Failed to create quantity type string")
 
@@ -650,7 +650,7 @@ cdef class Dataset(RMNLibWrapper):
                 c_binary_dir = binary_dir_bytes
 
             if not DatasetExport(self._c_ref, c_json_path, c_binary_dir, &err_ocstr):
-                error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
+                error_msg = ocstring_to_pystring(<uintptr_t>err_ocstr) if err_ocstr else "Unknown error"
                 raise RMNError(f"Dataset export failed: {error_msg}")
 
         finally:
@@ -694,7 +694,7 @@ cdef class Dataset(RMNLibWrapper):
 
             dataset_ref = DatasetCreateWithImport(c_json_path, c_binary_dir, &err_ocstr)
             if dataset_ref == NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>err_ocstr) if err_ocstr else "Unknown error"
+                error_msg = ocstring_to_pystring(<uintptr_t>err_ocstr) if err_ocstr else "Unknown error"
                 raise RMNError(f"Dataset import failed: {error_msg}")
 
             return <Dataset>BaseWrapper._from_c_ref(Dataset, <void*>dataset_ref)
