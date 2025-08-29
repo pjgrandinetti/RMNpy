@@ -43,12 +43,12 @@ import numbers
 
 
 # Helper function for converting various input types to SIScalarRef
-cdef SIScalarRef create_siscalar_from_pytype(value) except NULL:
+cdef SIScalarRef siscalar_from_pytype(value) except NULL:
     """
     Convert various input types to SIScalarRef.
 
     Accepts:
-    - Scalar objects: Returns their C reference (borrowed, caller should copy if needed)
+    - Scalar objects: Returns copy of their C reference
     - str: Creates Scalar from string expression
     - numeric types (int, float, complex): Creates dimensionless Scalar
 
@@ -63,17 +63,17 @@ cdef SIScalarRef create_siscalar_from_pytype(value) except NULL:
 
     if isinstance(value, Scalar):
         # Return copy of the C reference so caller owns it
-        return SIScalarCreateCopy((<Scalar>value)._get_c_ref())
+        return <SIScalarRef>OCTypeDeepCopy((<Scalar>value)._c_ref)
     elif isinstance(value, str):
         # Create Scalar from string, then return copy of its reference
         temp_scalar = Scalar(value)
-        return SIScalarCreateCopy(temp_scalar._get_c_ref())
+        return <SIScalarRef>OCTypeDeepCopy(temp_scalar._c_ref)
     elif isinstance(value, numbers.Number):
         # Create dimensionless Scalar from numeric value, then return copy
         temp_scalar = Scalar(value)
-        return SIScalarCreateCopy(temp_scalar._get_c_ref())
+        return <SIScalarRef>OCTypeDeepCopy(temp_scalar._c_ref)
     else:
-        raise TypeError(f"Cannot convert {type(value)} to Scalar. Expected Scalar, str, or numeric type.")
+        raise TypeError(f"Cannot convert {type(value)} to SIScalarRef")
 
 
 cdef class Scalar(SITypesWrapper):
@@ -102,13 +102,6 @@ cdef class Scalar(SITypesWrapper):
     and dimensional analysis while maintaining type safety and preventing common
     physics calculation errors through automatic dimensional validation.
     """
-
-    # No _from_c_ref method needed - use BaseWrapper._from_c_ref directly!
-
-    @staticmethod
-    def from_c_ref(uint64_t scalar_ref_ptr):
-        """Create Scalar wrapper from C reference pointer (Python-accessible)."""
-        return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*><SIScalarRef>scalar_ref_ptr)
 
     def __init__(self, value=1.0, expression=None):
         """
@@ -218,122 +211,6 @@ cdef class Scalar(SITypesWrapper):
     cdef SIScalarRef _get_c_ref(self):
         """Cast inherited void* _c_ref to SIScalarRef for scalar-specific operations."""
         return <SIScalarRef>self._c_ref
-
-    # ========================================================================
-    # Abstract method implementations for SITypesWrapper
-    # ========================================================================
-
-    def _binary_arithmetic(self, other, operation):
-        """Simplified arithmetic using SIScalar C API."""
-        # Convert other operand to SIScalarRef using the helper function
-        cdef SIScalarRef other_ref = create_siscalar_from_pytype(other)
-
-        # Call the appropriate C API function based on operation
-        cdef OCStringRef error_ocstr = NULL
-        cdef SIScalarRef result = NULL
-
-        try:
-            if operation == "add":
-                result = SIScalarCreateByAdding(self._get_c_ref(), other_ref, &error_ocstr)
-            elif operation == "sub":
-                result = SIScalarCreateBySubtracting(self._get_c_ref(), other_ref, &error_ocstr)
-            elif operation == "mul":
-                result = SIScalarCreateByMultiplying(self._get_c_ref(), other_ref, &error_ocstr)
-            elif operation == "div":
-                result = SIScalarCreateByDividing(self._get_c_ref(), other_ref, &error_ocstr)
-            else:
-                raise ValueError(f"Unknown operation: {operation}")
-
-            if result == NULL:
-                if error_ocstr != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-                    raise RMNError(f"{operation.title()} failed: {error_msg}")
-                else:
-                    raise RMNError(f"{operation.title()} failed")
-
-            return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>result)
-        finally:
-            # Clean up the temporary scalar reference
-            if other_ref != NULL:
-                OCRelease(<OCTypeRef>other_ref)
-            if error_ocstr != NULL:
-    def _power_arithmetic(self, exponent):
-        """Power operation using SIScalar C API with proper fractional power handling."""
-        if not isinstance(exponent, (int, float)):
-            raise TypeError("Exponent must be a real number")
-
-        cdef int power
-        cdef uint8_t root
-        cdef OCStringRef error_ocstr = NULL
-        cdef SIScalarRef result
-
-        # Check if exponent is an integer or can be treated as one
-        if isinstance(exponent, int) or (isinstance(exponent, float) and exponent.is_integer()):
-            # Use integer power function
-            power = int(exponent)
-            result = SIScalarCreateByRaisingToPower(self._get_c_ref(), power, &error_ocstr)
-
-            try:
-                if result == NULL:
-                    if error_ocstr != NULL:
-                        error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-                        raise RMNError(f"Power operation failed: {error_msg}")
-                    else:
-                        raise RMNError("Power operation failed")
-
-                return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>result)
-            finally:
-                if error_ocstr != NULL:
-                    OCRelease(<OCTypeRef>error_ocstr)
-
-        # Check if it's a simple fractional power (1/n)
-        elif isinstance(exponent, float):
-            # Check if this is 1/n where n is a positive integer
-            if exponent > 0 and (1.0 / exponent).is_integer():
-                root_value = int(1.0 / exponent)
-                if root_value > 0 and root_value <= 255:  # uint8_t range
-                    root = <uint8_t>root_value
-                    result = SIScalarCreateByTakingNthRoot(self._get_c_ref(), root, &error_ocstr)
-
-                    try:
-                        if result == NULL:
-                            if error_ocstr != NULL:
-                                error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-                                raise RMNError(f"Nth root operation failed: {error_msg}")
-                            else:
-                                raise RMNError("Nth root operation failed")
-
-                        return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>result)
-                    finally:
-                        if error_ocstr != NULL:
-                            OCRelease(<OCTypeRef>error_ocstr)
-
-            # Reject other fractional powers
-            raise RMNError(f"Fractional power {exponent} is not supported. Only integer powers and simple roots (like 0.5, 0.333...) are allowed.")
-
-        else:
-            raise TypeError("Exponent must be a number")
-
-    def _unary_arithmetic(self, operation):
-        """Unary arithmetic operations like abs()."""
-        cdef SIScalarRef result = NULL
-        cdef OCStringRef error_ocstr = NULL
-
-        if operation == "abs":
-            result = SIScalarCreateByTakingAbsoluteValue(self._get_c_ref(), &error_ocstr)
-            try:
-                if result == NULL:
-                    if error_ocstr != NULL:
-                        error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-                        raise RMNError(f"Absolute value operation failed: {error_msg}")
-                    else:
-                        raise RMNError("Absolute value operation failed")
-                return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>result)
-            finally:
-                if error_ocstr != NULL:
-                    OCRelease(<OCTypeRef>error_ocstr)
-        else:
-            raise ValueError(f"Unknown unary operation: {operation}")
 
     # ========================================================================
     # Properties
@@ -514,46 +391,6 @@ cdef class Scalar(SITypesWrapper):
             if error_ocstr != NULL:
                 OCRelease(<OCTypeRef>error_ocstr)
 
-    def reduced(self):
-        """
-        Get this scalar with its unit reduced to lowest terms.
-
-        The numerical value is preserved by converting to the reduced unit.
-        For example, Scalar(1.0, "m*s/m") becomes Scalar(1.0, "s").
-
-        Returns:
-            Scalar: Scalar with reduced unit
-
-        Examples:
-            >>> s = Scalar(1.0, "m*s/m")  # Non-reduced unit
-            >>> s_reduced = s.reduced()   # 1.0 s (reduced unit)
-        """
-        cdef SIScalarRef result = SIScalarCreateByReducingUnit(self._get_c_ref())
-
-        if result == NULL:
-            raise RMNError("Scalar unit reduction failed")
-
-        return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>result)
-
-    def _nth_root_arithmetic(self, root):
-        """Take the nth root using C API."""
-        cdef uint8_t c_root = <uint8_t>root
-        cdef OCStringRef error_ocstr = NULL
-        cdef SIScalarRef result = SIScalarCreateByTakingNthRoot(self._get_c_ref(), c_root, &error_ocstr)
-
-        try:
-            if result == NULL:
-                if error_ocstr != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-                    raise RMNError(f"Root operation failed: {error_msg}")
-                else:
-                    raise RMNError("Root operation failed")
-
-            return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>result)
-        finally:
-            if error_ocstr != NULL:
-                OCRelease(<OCTypeRef>error_ocstr)
-
     # ========================================================================
     #
     # All arithmetic operators (__add__, __sub__, __mul__, __truediv__, __pow__, etc.)
@@ -603,22 +440,6 @@ cdef class Scalar(SITypesWrapper):
             # Fallback to current value and unit
             unit_ocstr = str(self.unit)
             return hash((value, unit_ocstr))
-
-    # String representation
-    def __str__(self):
-        """Return a string representation of the scalar with value and unit."""
-        cdef OCStringRef str_ref = SIScalarCreateStringValue(self._get_c_ref())
-        if str_ref == NULL:
-            return f"Scalar({self.value})"
-
-        try:
-            return ocstring_to_pystring(<uint64_t>str_ref)
-        finally:
-            OCRelease(<OCTypeRef>str_ref)
-
-    def __repr__(self):
-        """Return a detailed string representation."""
-        return f"Scalar('{str(self)}')"
 
     # ========================================================================
     # Scalar-specific comparison operations (override base class)

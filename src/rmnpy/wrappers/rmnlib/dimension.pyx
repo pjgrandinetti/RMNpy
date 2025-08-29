@@ -267,7 +267,7 @@ cdef class BaseDimension(RMNLibWrapper):
                 finally:
                     OCRelease(<OCTypeRef>coords_ref)
         elif dim_type == "linear":
-            coords_ref = SILinearDimensionCreateAbsoluteCoordinates(<SILinearDimensionRef><DimensionRef>self._c_ref)
+            coords_ref = SILinearDimensionCreateAbsoluteCoordinates(<SILinearDimensionRef>self._c_ref)
             if coords_ref != NULL:
                 try:
                     coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
@@ -305,7 +305,7 @@ cdef class BaseDimension(RMNLibWrapper):
                 finally:
                     OCRelease(<OCTypeRef>coords_ref)
         elif dim_type == "linear":
-            coords_ref = SILinearDimensionCreateCoordinates(<SILinearDimensionRef><DimensionRef>self._c_ref)
+            coords_ref = SILinearDimensionCreateCoordinates(<SILinearDimensionRef>self._c_ref)
             if coords_ref != NULL:
                 try:
                     coords_list = ocarray_to_pylist(<uint64_t>coords_ref)
@@ -442,9 +442,6 @@ cdef class LabeledDimension(BaseDimension):
         cdef OCStringRef err_ocstr = NULL
         cdef OCArrayRef labels_ocarray = <OCArrayRef><uint64_t>ocarray_create_from_pylist(value)
 
-        if self._c_ref == NULL:
-            raise RMNError("Cannot set coordinate labels: dimension not properly initialized")
-
         try:
             if not LabeledDimensionSetCoordinateLabels(<LabeledDimensionRef><DimensionRef>self._c_ref, labels_ocarray, &err_ocstr):
                 if err_ocstr != NULL:
@@ -468,9 +465,6 @@ cdef class LabeledDimension(BaseDimension):
         """Set coordinate label at specific index."""
         cdef OCStringRef err_ocstr = NULL
         cdef OCStringRef label_ocstr = NULL
-
-        if self._c_ref == NULL:
-            raise RMNError("Cannot set coordinate label: dimension not properly initialized")
 
         if not (0 <= index < self.count):
             raise IndexError(f"Label index {index} out of range")
@@ -608,9 +602,6 @@ cdef class SIDimension(BaseDimension):
         cdef OCStringRef err_ocstr = NULL
         cdef SIScalarRef coordinates_offset_sisclr = NULL
 
-        if self._c_ref == NULL:
-            raise RMNError("Cannot set coordinates offset: dimension not properly initialized")
-
         # Handle both Scalar objects and strings like in __init__
         coordinates_offset_sisclr = create_siscalar_from_pytype(value)
 
@@ -640,9 +631,6 @@ cdef class SIDimension(BaseDimension):
         """Set origin offset."""
         cdef OCStringRef err_ocstr = NULL
         cdef SIScalarRef origin_offset_sisclr = NULL
-
-        if self._c_ref == NULL:
-            raise RMNError("Cannot set origin offset: dimension not properly initialized")
 
         # Handle both Scalar objects and strings like in __init__
         origin_offset_sisclr = create_siscalar_from_pytype(value)
@@ -680,9 +668,6 @@ cdef class SIDimension(BaseDimension):
         """Set the period."""
         cdef OCStringRef err_ocstr = NULL
         cdef SIScalarRef period_sisclr = NULL
-
-        if self._c_ref == NULL:
-            raise RMNError("Cannot set period: dimension not properly initialized")
 
         # Handle None and infinity string values
         if value is None:
@@ -737,9 +722,6 @@ cdef class SIDimension(BaseDimension):
         cdef OCStringRef err_ocstr = NULL
         cdef OCStringRef quantity_name_ocstr = NULL
 
-        if self._c_ref == NULL:
-            raise RMNError("Cannot set quantity name: dimension not properly initialized")
-
         # If we have a C dimension object, update it too
         if value is not None and value != "":
             quantity_name_ocstr = <OCStringRef><uint64_t>ocstring_create_from_pystring(str(value))
@@ -775,17 +757,13 @@ cdef class SIDimension(BaseDimension):
     @property
     def scaling(self):
         """Get scaling type."""
-        # TODO: Add C API getter once available
-        return 0  # Default placeholder (kDimensionScalingNone)
+        if self._c_ref == NULL:
+            raise ValueError("SIDimension not initialized")
+        return SIDimensionGetScaling(<SIDimensionRef><DimensionRef>self._c_ref)
 
     @scaling.setter
     def scaling(self, value):
         """Set scaling type."""
-        cdef OCStringRef err_ocstr = NULL
-
-        if self._c_ref == NULL:
-            raise RMNError("Cannot set scaling: dimension not properly initialized")
-
         # Validate scaling parameter
         if isinstance(value, int):
             if value not in [DimensionScaling.NONE, DimensionScaling.NMR]:
@@ -956,7 +934,7 @@ cdef class LinearDimension(SIDimension):
     @property
     def increment(self):
         """Get the increment of the dimension."""
-        increment_sisclr = SILinearDimensionCopyIncrement(<SILinearDimensionRef><DimensionRef>self._c_ref)
+        increment_sisclr = SILinearDimensionCopyIncrement(<SILinearDimensionRef>self._c_ref)
         if increment_sisclr == NULL:
             raise RMNError("C API returned NULL increment (dimension may be corrupted or uninitialized)")
 
@@ -971,15 +949,12 @@ cdef class LinearDimension(SIDimension):
         """Set the increment of the dimension."""
         cdef SIScalarRef increment_sisclr = NULL
 
-        if self._c_ref == NULL:
-            raise RMNError("Cannot set increment: dimension not properly initialized")
-
         increment_sisclr = create_siscalar_from_pytype(value)
 
         if increment_sisclr == NULL:
             raise RMNError("Failed to convert increment value to SIScalar")
 
-        if not SILinearDimensionSetIncrement(<SILinearDimensionRef><DimensionRef>self._c_ref, increment_sisclr):
+        if not SILinearDimensionSetIncrement(<SILinearDimensionRef>self._c_ref, increment_sisclr):
             raise RMNError("Failed to set increment")
 
     @property
@@ -990,35 +965,29 @@ cdef class LinearDimension(SIDimension):
     @count.setter
     def count(self, value):
         """Set the count of the dimension."""
-        if self._c_ref == NULL:
-            raise RMNError("Cannot set count: dimension not properly initialized")
-
         if not isinstance(value, int) or value <= 0:
             raise TypeError("Count must be a positive integer")
 
         # Update C dimension object only
-        if not SILinearDimensionSetCount(<SILinearDimensionRef><DimensionRef>self._c_ref, value):
+        if not SILinearDimensionSetCount(<SILinearDimensionRef>self._c_ref, value):
             raise RMNError("Failed to set count")
 
     @property
     def complex_fft(self):
         """Get complex FFT flag."""
-        return SILinearDimensionGetComplexFFT(<SILinearDimensionRef><DimensionRef>self._c_ref)
+        return SILinearDimensionGetComplexFFT(<SILinearDimensionRef>self._c_ref)
 
     @complex_fft.setter
     def complex_fft(self, value):
         """Set complex FFT flag."""
-        if self._c_ref == NULL:
-            raise RMNError("Cannot set complex FFT flag: dimension not properly initialized")
-
         # Update C dimension object only
-        if not SILinearDimensionSetComplexFFT(<SILinearDimensionRef><DimensionRef>self._c_ref, bool(value)):
+        if not SILinearDimensionSetComplexFFT(<SILinearDimensionRef>self._c_ref, bool(value)):
             raise RMNError("Failed to set complex FFT flag")
 
     @property
     def reciprocal(self):
         """Get reciprocal dimension."""
-        reciprocal_ref = SILinearDimensionCopyReciprocal(<SILinearDimensionRef><DimensionRef>self._c_ref)
+        reciprocal_ref = SILinearDimensionCopyReciprocal(<SILinearDimensionRef>self._c_ref)
         if reciprocal_ref != NULL:
             return BaseDimension._create_dimension_wrapper(<uint64_t>reciprocal_ref)
         raise RMNError("C API returned NULL reciprocal dimension (dimension may be corrupted or uninitialized)")
@@ -1036,7 +1005,7 @@ cdef class LinearDimension(SIDimension):
             else:
                 reciprocal_ref = NULL
 
-        if not SILinearDimensionSetReciprocal(<SILinearDimensionRef><DimensionRef>self._c_ref, reciprocal_ref, &err_ocstr):
+        if not SILinearDimensionSetReciprocal(<SILinearDimensionRef>self._c_ref, reciprocal_ref, &err_ocstr):
             if err_ocstr != NULL:
                 error_msg = ocstring_to_pystring(<uint64_t>err_ocstr)
                 OCRelease(<OCTypeRef>err_ocstr)
@@ -1047,7 +1016,7 @@ cdef class LinearDimension(SIDimension):
     @property
     def reciprocal_increment(self):
         """Get reciprocal increment."""
-        reciprocal_increment_sisclr = SILinearDimensionCreateReciprocalIncrement(<SILinearDimensionRef><DimensionRef>self._c_ref)
+        reciprocal_increment_sisclr = SILinearDimensionCreateReciprocalIncrement(<SILinearDimensionRef>self._c_ref)
         if reciprocal_increment_sisclr == NULL:
             raise RMNError("C API returned NULL reciprocal increment (dimension may be corrupted or uninitialized)")
 

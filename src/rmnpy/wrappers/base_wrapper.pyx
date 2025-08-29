@@ -12,37 +12,25 @@ from typing import Any, Dict, Optional, Union
 from libc.stdint cimport uint64_t
 
 from rmnpy._c_api.octypes cimport (
-    OCDictionaryRef,
-    OCGetTypeID,
     OCRelease,
-    OCStringCreateWithCString,
-    OCStringGetCString,
     OCStringRef,
-    OCTypeCopyFormattingDesc,
     OCTypeCopyJSON,
     OCTypeDeepCopy,
     OCTypeEqual,
-    OCTypeGetRetainCount,
-    OCTypeID,
-    OCTypeNameFromTypeID,
     OCTypeRef,
     cJSON,
     cJSON_Delete,
 )
-from rmnpy._c_api.rmnlib cimport (
-    RMNLibGetApplicationMetaData,
-    RMNLibGetDescription,
-    RMNLibSetApplicationMetaData,
-    RMNLibSetDescription,
+from rmnpy._c_api.sitypes cimport (
+    SITypesCreateByRaisingToPower,
+    SITypesCreateByReducing,
+    SITypesCreateByTakingNthRoot,
+    SITypesCreateStringRepresentation,
+    SITypesCreateWithBinaryArithmeticOperation,
 )
 
 from rmnpy.exceptions import RMNError
-from rmnpy.helpers.octypes import (
-    ocdict_create_from_pydict,
-    ocdict_to_pydict,
-    ocstring_to_pystring,
-    universal_to_dict,
-)
+from rmnpy.helpers.octypes import cjson_to_pydict
 
 
 cdef class BaseWrapper:
@@ -80,135 +68,95 @@ cdef class BaseWrapper:
         """Get the C reference (internal use only)."""
         return <void*>self._c_ref
 
-    @property
-    def _c_ref(self):
-        """Get the C reference pointer as integer (for helper functions)."""
-        return <uint64_t>self._c_ref
-
     def is_valid(self):
-        """Check if the wrapper has a valid C reference."""
+        """Check if the wrapper has a valid C reference (Python-accessible)."""
         return self._c_ref != NULL
 
     cdef void _validate_initialized(self) except *:
         """Validate that the wrapper is initialized, raise if not."""
-        if not self.is_valid():
+        if self._c_ref == NULL:
             raise ValueError(f"{self.__class__.__name__} not initialized")
 
-    # Universal OCType methods - available to ALL OCTypes
-    cdef void* copy_c_ref(self) except NULL:
-        """Create a copy using universal OCTypeDeepCopy."""
-        self._validate_initialized()
-        cdef void* copied = OCTypeDeepCopy(self._c_ref)
-        if copied == NULL:
-            raise MemoryError("Failed to copy OCType reference")
-        return copied
-
-    def get_type_id(self):
-        """Get the OCTypeID of this object."""
-        self._validate_initialized()
-        return OCGetTypeID(self._c_ref)
-
-    def get_type_name(self):
-        """Get the type name string of this object."""
-        self._validate_initialized()
-        cdef OCTypeID type_id = OCGetTypeID(self._c_ref)
-        cdef const char* name = OCTypeNameFromTypeID(type_id)
-        if name == NULL:
-            return None
-        return name.decode('utf-8')
-
-    def get_retain_count(self):
-        """Get the current retain count (for debugging)."""
-        self._validate_initialized()
-        return OCTypeGetRetainCount(self._c_ref)
-
-    def copy_formatting_description(self):
-        """Get a formatted description string."""
-        self._validate_initialized()
-        cdef OCStringRef desc = OCTypeCopyFormattingDesc(self._c_ref)
-        if desc == NULL:
-            return None
-
-        cdef const char* desc_str = OCStringGetCString(desc)
-        try:
-            if desc_str == NULL:
-                return None
-            return desc_str.decode('utf-8')
-        finally:
-            OCRelease(<OCTypeRef>desc)
-
+    # Universal copy functionality using OCTypeDeepCopy
     def copy(self):
-        """
-        Create a deep copy of this object.
+        """Create a deep copy of this object using universal OCTypeDeepCopy.
 
         Returns:
             BaseWrapper: New instance of the same type (deep copy)
 
         Raises:
-            RMNError: If copying fails
+            ValueError: If wrapper is not initialized
+            MemoryError: If copying fails
         """
         self._validate_initialized()
         cdef void* copied_ref = OCTypeDeepCopy(self._c_ref)
         if copied_ref == NULL:
-            raise RMNError(f"Failed to create copy of {self.__class__.__name__}")
+            raise MemoryError(f"Failed to create copy of {self.__class__.__name__}")
 
         # Create new Python object directly with copied reference
         cdef BaseWrapper new_obj = self.__class__.__new__(self.__class__)
         new_obj._set_c_ref(copied_ref)
         return new_obj
 
+    @classmethod
+    def from_c_ref(cls, uint64_t c_ref_ptr):
+        """Create wrapper from C reference pointer using universal OCTypeDeepCopy.
+
+        Args:
+            c_ref_ptr (uint64_t): C reference pointer as integer
+
+        Returns:
+            BaseWrapper: New instance of the calling class wrapping a copy of the C reference
+
+        Raises:
+            ValueError: If c_ref_ptr is NULL
+            MemoryError: If copying fails
+        """
+        return cls._from_c_ref(<void*>c_ref_ptr)
+
+    @staticmethod
+    cdef BaseWrapper _from_c_ref(object cls, void* c_ref):
+        """Internal C-level factory method for creating wrappers from C references.
+
+        Args:
+            cls: The wrapper class to instantiate
+            c_ref: The C reference pointer
+
+        Returns:
+            BaseWrapper: New instance of cls wrapping a copy of the C reference
+        """
+        if c_ref == NULL:
+            raise ValueError("Cannot create wrapper from NULL reference")
+
+        # Make a copy using universal OCTypeDeepCopy
+        cdef void* copied_ref = OCTypeDeepCopy(<OCTypeRef>c_ref)
+        if copied_ref == NULL:
+            raise MemoryError("Failed to create copy of C reference")
+
+        # Create new Python object of the correct subclass with copied reference
+        cdef BaseWrapper new_obj = cls.__new__(cls)
+        new_obj._set_c_ref(copied_ref)
+        return new_obj
+
+    # Universal comparison functionality using OCTypeEqual
     def __eq__(self, other):
-        """Universal equality comparison using OCTypeEqual."""
+        """Check equality using universal OCTypeEqual."""
         if not isinstance(other, BaseWrapper):
             return False
         self._validate_initialized()
         if hasattr(other, '_validate_initialized'):
             other._validate_initialized()
-        elif not getattr(other, 'is_valid', lambda: True)():
-            return False
+        else:
+            # Fallback for objects that don't have validation
+            if not getattr(other, 'is_valid', lambda: True)():
+                return False
 
         # Use universal OCTypeEqual function
         return OCTypeEqual(self._c_ref, (<BaseWrapper>other)._c_ref)
 
     def __ne__(self, other):
-        """Universal inequality comparison."""
+        """Check inequality."""
         return not self.__eq__(other)
-
-    @staticmethod
-    cdef BaseWrapper _from_c_ref(object cls, void* c_ref):
-        """
-        Universal factory method for creating wrappers from C references.
-
-        This implements the common pattern:
-        1. Create new instance with __new__
-        2. Check for NULL
-        3. Use OCTypeDeepCopy to copy the reference
-        4. Check for copy failure
-        5. Set the C reference
-        6. Return the instance
-
-        Parameters:
-            cls: The wrapper class to instantiate
-            c_ref: The C reference to wrap
-
-        Returns:
-            BaseWrapper: New instance of cls wrapping the copied C reference
-        """
-        if c_ref == NULL:
-            raise ValueError("Cannot create wrapper from NULL reference")
-
-        cdef BaseWrapper result = cls.__new__(cls)
-        cdef void* copied_ref = OCTypeDeepCopy(<OCTypeRef>c_ref)
-        if copied_ref == NULL:
-            raise MemoryError(f"Failed to create copy of {cls.__name__}")
-
-        result._set_c_ref(copied_ref)
-        return result
-
-    @staticmethod
-    def from_c_ref(uint64_t c_ref_ptr):
-        """Create wrapper from C reference pointer (Python-accessible)."""
-        raise NotImplementedError("Subclasses must implement from_c_ref()")
 
 
 # Specific base classes for different API families with integrated functionality
@@ -218,81 +166,210 @@ cdef class SITypesWrapper(BaseWrapper):
     Base class for SITypes wrappers (Scalar, Unit, Dimensionality, etc.).
 
     Inherits universal functionality from BaseWrapper including:
-    - Memory management and copying (OCTypeDeepCopy)
-    - Equality comparison (OCTypeEqual)
-    - Type introspection (OCGetTypeID, OCTypeIDName)
+    - Memory management and copying
+    - Universal equality comparison (OCTypeEqual)
 
     Provides arithmetic operations that delegate to subclass implementations.
-    This dramatically reduces code duplication across arithmetic types.
     """
 
-    # Arithmetic operations that delegate to subclass implementations
+    # Universal arithmetic functionality using SITypesCreateWithBinaryArithmeticOperation
     def __add__(self, other):
-        """Addition operator (+)."""
+        """Addition operation."""
         self._validate_initialized()
-        return self._binary_arithmetic(other, "add")
-
-    def __radd__(self, other):
-        """Reverse addition operator (+)."""
-        return self.__add__(other)  # Addition is commutative
+        return self._universal_binary_arithmetic(other, '+')
 
     def __sub__(self, other):
-        """Subtraction operator (-)."""
+        """Subtraction operation."""
         self._validate_initialized()
-        return self._binary_arithmetic(other, "sub")
-
-    def __rsub__(self, other):
-        """Reverse subtraction operator (-)."""
-        if isinstance(other, (int, float, complex)):
-            other_obj = self.__class__(other, "1")
-            return other_obj.__sub__(self)
-        else:
-            return NotImplemented
+        return self._universal_binary_arithmetic(other, '-')
 
     def __mul__(self, other):
-        """Multiplication operator (*)."""
+        """Multiplication operation."""
         self._validate_initialized()
-        return self._binary_arithmetic(other, "mul")
-
-    def __rmul__(self, other):
-        """Reverse multiplication operator (*)."""
-        return self.__mul__(other)  # Multiplication is commutative
+        return self._universal_binary_arithmetic(other, '*')
 
     def __truediv__(self, other):
-        """Division operator (/)."""
+        """Division operation."""
         self._validate_initialized()
-        return self._binary_arithmetic(other, "div")
+        return self._universal_binary_arithmetic(other, '/')
 
-    def __rtruediv__(self, other):
-        """Reverse division operator (/)."""
-        if isinstance(other, (int, float, complex)):
-            other_obj = self.__class__(other, "1")
-            return other_obj.__truediv__(self)
-        else:
+    def _universal_binary_arithmetic(self, other, op):
+        """Universal binary arithmetic using SITypesCreateWithBinaryArithmeticOperation C API."""
+        if not isinstance(other, BaseWrapper):
             return NotImplemented
 
+        other._validate_initialized()
+
+        cdef OCStringRef error_ref = NULL
+        cdef OCTypeRef result_ref = SITypesCreateWithBinaryArithmeticOperation(
+            self._c_ref,
+            (<BaseWrapper>other)._c_ref,
+            ord(op),  # Convert char to int
+            &error_ref
+        )
+
+        try:
+            if error_ref != NULL:
+                from rmnpy.helpers.octypes import ocstring_to_pystring
+                error_msg = ocstring_to_pystring(<uint64_t>error_ref)
+                raise RMNError(f"Arithmetic operation '{op}' failed: {error_msg}")
+
+            if result_ref == NULL:
+                raise RMNError(f"Arithmetic operation '{op}' returned NULL")
+
+            # Create appropriate wrapper for the result
+            return BaseWrapper._from_c_ref(self.__class__, <void*>result_ref)
+        finally:
+            if error_ref != NULL:
+                OCRelease(<OCTypeRef>error_ref)
+            if result_ref != NULL:
+                OCRelease(result_ref)
+
     def __pow__(self, exponent):
-        """Power operator (**)."""
+        """Power operation using universal SITypesCreateByRaisingToPower C API."""
         self._validate_initialized()
-        return self._power_arithmetic(exponent)
 
-    def __abs__(self):
-        """Absolute value."""
+        # Validate exponent is an integer
+        if not isinstance(exponent, int):
+            raise TypeError("Exponent must be an integer")
+
+        cdef OCStringRef error_ref = NULL
+        cdef OCTypeRef result_ref = SITypesCreateByRaisingToPower(
+            self._c_ref,
+            exponent,
+            &error_ref
+        )
+
+        try:
+            if error_ref != NULL:
+                from rmnpy.helpers.octypes import ocstring_to_pystring
+                error_msg = ocstring_to_pystring(<uint64_t>error_ref)
+                raise RMNError(f"Power operation failed: {error_msg}")
+
+            if result_ref == NULL:
+                raise RMNError("Power operation returned NULL")
+
+            # Create appropriate wrapper for the result
+            return BaseWrapper._from_c_ref(self.__class__, <void*>result_ref)
+        finally:
+            if error_ref != NULL:
+                OCRelease(<OCTypeRef>error_ref)
+            if result_ref != NULL:
+                OCRelease(result_ref)
+
+    def nth_root(self, root):
+        """Take the nth root of this object using universal SITypesCreateByTakingNthRoot C API.
+
+        Args:
+            root (int): Root to take (e.g., 2 for square root)
+
+        Returns:
+            Same type as self: nth root of the object
+
+        Raises:
+            TypeError: If root is not an integer
+            ValueError: If root is not positive
+        """
+        if not isinstance(root, int):
+            raise TypeError("Root must be an integer")
+        if root <= 0:
+            raise ValueError("Root must be a positive integer")
+
         self._validate_initialized()
-        return self._unary_arithmetic("abs")
 
-    # Abstract methods that subclasses must implement (much simpler!)
-    def _binary_arithmetic(self, other, operation):
-        """Perform binary arithmetic operation. Override in subclasses."""
-        raise NotImplementedError(f"{self.__class__.__name__} does not implement {operation}")
+        cdef OCStringRef error_ref = NULL
+        cdef OCTypeRef result_ref = SITypesCreateByTakingNthRoot(
+            self._c_ref,
+            root,
+            &error_ref
+        )
 
-    def _power_arithmetic(self, exponent):
-        """Perform power operation. Override in subclasses."""
-        raise NotImplementedError(f"{self.__class__.__name__} does not implement power")
+        try:
+            if error_ref != NULL:
+                from rmnpy.helpers.octypes import ocstring_to_pystring
+                error_msg = ocstring_to_pystring(<uint64_t>error_ref)
+                raise RMNError(f"Nth root operation failed: {error_msg}")
 
-    def _unary_arithmetic(self, operation):
-        """Perform unary arithmetic operation. Override in subclasses."""
-        raise NotImplementedError(f"{self.__class__.__name__} does not implement {operation}")
+            if result_ref == NULL:
+                raise RMNError("Nth root operation returned NULL")
+
+            # Create appropriate wrapper for the result
+            return BaseWrapper._from_c_ref(self.__class__, <void*>result_ref)
+        finally:
+            if error_ref != NULL:
+                OCRelease(<OCTypeRef>error_ref)
+            if result_ref != NULL:
+                OCRelease(result_ref)
+
+    def reduced(self):
+        """Create a reduced form of this object using universal SITypesCreateByReducing C API.
+
+        Returns:
+            Same type as self: Reduced form of the object
+
+        Raises:
+            ValueError: If wrapper is not initialized
+            MemoryError: If reduction fails
+
+        Note:
+            - For scalars: Reduces the unit to its simplest form
+            - For units: Reduces to lowest terms by canceling common factors
+            - For dimensionalities: Reduces exponents to lowest terms
+        """
+        self._validate_initialized()
+
+        cdef OCTypeRef result_ref = SITypesCreateByReducing(self._c_ref)
+
+        try:
+            if result_ref == NULL:
+                raise MemoryError("Reduction operation returned NULL")
+
+            # Create appropriate wrapper for the result
+            return BaseWrapper._from_c_ref(self.__class__, <void*>result_ref)
+        finally:
+            if result_ref != NULL:
+                OCRelease(result_ref)
+
+    def __str__(self):
+        """Create string representation using universal SITypesCreateStringRepresentation C API.
+
+        Returns:
+            str: String representation of the object
+
+        Raises:
+            ValueError: If wrapper is not initialized
+            MemoryError: If string creation fails
+
+        Note:
+            - For scalars: Returns full value with unit (e.g., "5.0 m/s")
+            - For units: Returns symbol representation (e.g., "m/s")
+            - For dimensionalities: Returns symbolic form (e.g., "L•T^-1")
+        """
+        self._validate_initialized()
+
+        cdef OCStringRef string_ref = SITypesCreateStringRepresentation(self._c_ref)
+
+        try:
+            if string_ref == NULL:
+                raise MemoryError("String representation returned NULL")
+
+            # Convert to Python string
+            from rmnpy.helpers.octypes import ocstring_to_pystring
+            return ocstring_to_pystring(<uint64_t>string_ref)
+        finally:
+            if string_ref != NULL:
+                OCRelease(<OCTypeRef>string_ref)
+
+    def __repr__(self):
+        """Universal detailed string representation.
+
+        Returns:
+            str: Detailed representation in format "ClassName('string_value')"
+
+        Note:
+            Automatically uses the class name and string representation for consistent formatting.
+        """
+        return f"{self.__class__.__name__}('{str(self)}')"
 
 
 cdef class RMNLibWrapper(BaseWrapper):
@@ -300,177 +377,36 @@ cdef class RMNLibWrapper(BaseWrapper):
     Base class for RMNLib wrappers (Dataset, Datum, DependentVariable, etc.).
 
     Inherits universal functionality from BaseWrapper including:
-    - Memory management and copying (OCTypeDeepCopy)
-    - Equality comparison (OCTypeEqual)
-    - Dictionary serialization (OCTypeCopyJSON → universal_to_dict)
-    - Type introspection (OCGetTypeID, OCTypeIDName)
+    - Memory management and copying
+    - Universal equality comparison (OCTypeEqual)
 
-    RMNLib wrappers now get universal serialization automatically!
-    Custom serialization methods are optional and can override the universal behavior.
+    Provides serialization functionality for data container types.
     """
 
-    def copy_as_dictionary(self):
-        """Serialize object to dictionary representation using universal OCTypeCopyJSON."""
-        self._validate_initialized()
-        return universal_to_dict(<uint64_t>self._c_ref)
-
-    def to_dict(self):
-        """Universal dictionary serialization for all OCTypes."""
-        return self.copy_as_dictionary()
-
+    # Serialization functionality (integrated from SerializableWrapper)
     def dict(self):
-        """Alias for to_dict() for compatibility."""
-        return self.to_dict()
+        """Convert to dictionary representation (canonical API).
+
+        This is the single, stable serialization entrypoint for RMNLib wrappers.
+        Uses the universal OCTypeCopyJSON C API for consistent serialization.
+        """
+        self._validate_initialized()
+
+        # Call OCTypeCopyJSON directly
+        cdef cJSON* json_obj = OCTypeCopyJSON(self._c_ref)
+        if json_obj == NULL:
+            raise RuntimeError("Failed to serialize OCType to JSON")
+
+        try:
+            # Convert cJSON to Python dict
+            return cjson_to_pydict(json_obj)
+        finally:
+            # Clean up cJSON object
+            cJSON_Delete(json_obj)
 
     @classmethod
-    def from_dict(cls, data_dict):
-        """
-        Create instance from dictionary representation.
-
-        Subclasses should implement this if they support deserialization.
-        """
-        if not isinstance(data_dict, dict):
+    def from_dict(cls, json_dict):
+        """Create instance from dictionary representation."""
+        if not isinstance(json_dict, dict):
             raise TypeError("Expected dictionary input")
-        raise NotImplementedError(f"{cls.__name__} does not support deserialization from dictionary")
-
-    # Universal property accessors using the new RMNLib universal functions
-
-    @property
-    def description(self):
-        """Get the description string for this RMNLib object.
-
-        Returns:
-            str: The description string, or None if not supported by this type
-
-        Raises:
-            RMNError: If the object type doesn't support descriptions
-        """
-        self._validate_initialized()
-
-        cdef OCStringRef error_ref = NULL
-        cdef OCStringRef desc_ref = RMNLibGetDescription(self._c_ref, &error_ref)
-
-        try:
-            if error_ref != NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>error_ref)
-                raise RMNError(f"Failed to get description: {error_msg}")
-
-            if desc_ref == NULL:
-                return None
-
-            return ocstring_to_pystring(<uint64_t>desc_ref)
-
-        finally:
-            if error_ref != NULL:
-                OCRelease(<OCTypeRef>error_ref)
-            if desc_ref != NULL:
-                OCRelease(<OCTypeRef>desc_ref)
-
-    @description.setter
-    def description(self, value):
-        """Set the description string for this RMNLib object.
-
-        Args:
-            value (str): The description string to set
-
-        Raises:
-            RMNError: If the object type doesn't support descriptions or setting fails
-            TypeError: If value is not a string
-        """
-        self._validate_initialized()
-
-        if value is not None and not isinstance(value, str):
-            raise TypeError("Description must be a string or None")
-
-        cdef OCStringRef desc_ref = NULL
-        cdef OCStringRef error_ref = NULL
-
-        try:
-            if value is not None:
-                desc_ref = OCStringCreateWithCString(value.encode('utf-8'))
-                if desc_ref == NULL:
-                    raise RMNError("Failed to create description string")
-
-            success = RMNLibSetDescription(self._c_ref, desc_ref, &error_ref)
-
-            if not success:
-                if error_ref != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error_ref)
-                    raise RMNError(f"Failed to set description: {error_msg}")
-                else:
-                    raise RMNError("Failed to set description")
-
-        finally:
-            if desc_ref != NULL:
-                OCRelease(<OCTypeRef>desc_ref)
-            if error_ref != NULL:
-                OCRelease(<OCTypeRef>error_ref)
-
-    @property
-    def application(self):
-        """Get the application metadata dictionary for this RMNLib object.
-
-        Returns:
-            dict: The application metadata dictionary, empty dict if no metadata
-
-        Raises:
-            RMNError: If the object type doesn't support metadata
-        """
-        self._validate_initialized()
-
-        cdef OCStringRef error_ref = NULL
-        cdef OCDictionaryRef metadata_ref = RMNLibGetApplicationMetaData(self._c_ref, &error_ref)
-
-        try:
-            if error_ref != NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>error_ref)
-                raise RMNError(f"Failed to get metadata: {error_msg}")
-
-            if metadata_ref == NULL:
-                return {}
-
-            return ocdict_to_pydict(<uint64_t>metadata_ref)
-
-        finally:
-            if error_ref != NULL:
-                OCRelease(<OCTypeRef>error_ref)
-            # Don't release metadata_ref - it's owned by the object
-
-    @application.setter
-    def application(self, value):
-        """Set the application metadata dictionary for this RMNLib object.
-
-        Args:
-            value (dict): The application metadata dictionary to set
-
-        Raises:
-            RMNError: If the object type doesn't support application metadata or setting fails
-            TypeError: If value is not a dictionary
-        """
-        self._validate_initialized()
-
-        if not isinstance(value, dict):
-            raise TypeError("Application metadata must be a dictionary")
-
-        cdef OCDictionaryRef metadata_ref = NULL
-        cdef OCStringRef error_ref = NULL
-
-        try:
-            metadata_ref = <OCDictionaryRef><uint64_t>ocdict_create_from_pydict(value)
-            if metadata_ref == NULL:
-                raise RMNError("Failed to create application metadata dictionary")
-
-            success = RMNLibSetApplicationMetaData(self._c_ref, metadata_ref, &error_ref)
-
-            if not success:
-                if error_ref != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error_ref)
-                    raise RMNError(f"Failed to set application metadata: {error_msg}")
-                else:
-                    raise RMNError("Failed to set application metadata")
-
-        finally:
-            if metadata_ref != NULL:
-                OCRelease(<OCTypeRef>metadata_ref)
-            if error_ref != NULL:
-                OCRelease(<OCTypeRef>error_ref)
+        raise NotImplementedError(f"{cls.__name__} must implement from_dict()")

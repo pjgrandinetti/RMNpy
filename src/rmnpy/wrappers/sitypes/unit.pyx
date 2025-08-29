@@ -33,7 +33,7 @@ cdef SIUnitRef siunit_from_pytype(value) except NULL:
     Convert various input types to SIUnitRef.
 
     Accepts:
-    - Unit objects: Returns a copy of their C reference
+    - Unit objects: Returns copy of their C reference
     - str: Creates Unit from string expression
     - None: Returns dimensionless unit
 
@@ -86,9 +86,6 @@ cdef class Unit(SITypesWrapper):
         >>> force = Unit("kg*m/s^2")  # newton
         >>> energy = Unit("kg*m^2/s^2")  # joule
     """
-
-    def __cinit__(self):
-        self._c_ref = NULL
 
     def __init__(self, expression=None):
         """
@@ -146,19 +143,6 @@ cdef class Unit(SITypesWrapper):
         # No need to release them
         pass
 
-    @staticmethod
-    cdef Unit _from_c_ref(object cls, void* c_ref):
-        """Create Unit wrapper from C reference (internal use)."""
-        cdef Unit result = <Unit>cls()
-        # Use OCTypeDeepCopy for consistency (returns same reference for singletons)
-        result._c_ref = <OCTypeRef>OCTypeDeepCopy(<OCTypeRef>c_ref)
-        return result
-
-    @staticmethod
-    def from_c_ref(uint64_t unit_ref_ptr):
-        """Create Unit wrapper from C reference pointer (Python-accessible)."""
-        return Unit._from_c_ref(Unit, <void*>unit_ref_ptr)
-
     @classmethod
     def from_name(cls, name):
         """
@@ -185,7 +169,7 @@ cdef class Unit(SITypesWrapper):
                 return None
 
             # Create Python wrapper using _from_c_ref
-            return Unit._from_c_ref(Unit, <void*>c_ref)
+            return <Unit>BaseWrapper._from_c_ref(Unit, <void*>c_ref)
 
         finally:
             OCRelease(<OCTypeRef>name_ocstr)
@@ -200,7 +184,7 @@ cdef class Unit(SITypesWrapper):
         """
         cdef SIUnitRef c_ref = SIUnitDimensionlessAndUnderived()
 
-        return Unit._from_c_ref(Unit, <void*>c_ref)
+        return <Unit>BaseWrapper._from_c_ref(Unit, <void*>c_ref)
 
     @classmethod
     def for_dimensionality(cls, dimensionality):
@@ -224,7 +208,7 @@ cdef class Unit(SITypesWrapper):
         if c_ref == NULL:
             return None
 
-        return Unit._from_c_ref(Unit, <void*>c_ref)
+        return <Unit>BaseWrapper._from_c_ref(Unit, <void*>c_ref)
 
     # Properties
     @property
@@ -382,41 +366,7 @@ cdef class Unit(SITypesWrapper):
             if other_ref != NULL:
                 OCRelease(<OCTypeRef>other_ref)
 
-    def _nth_root_arithmetic(self, root):
-        """Take the nth root using C API."""
-        cdef uint8_t c_root = <uint8_t>root
-        cdef double unit_multiplier = 1.0
-        cdef OCStringRef error_ocstr = NULL
-
-        cdef SIUnitRef result = SIUnitByTakingNthRoot(self._c_ref, c_root,
-                                                     &unit_multiplier, &error_ocstr)
-
-        if result == NULL:
-            error_msg = "Unknown error"
-            if error_ocstr != NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-                OCRelease(<OCTypeRef>error_ocstr)
-            raise RMNError(f"Unit root operation failed: {error_msg}")
-
-        return Unit._from_c_ref(Unit, <void*>result)
-
-    # Unit reduction and conversion methods
-    def reduced(self):
-        """
-        Get this unit reduced to its lowest terms.
-
-        Returns:
-            Unit: Unit in lowest terms
-        """
-        cdef double unit_multiplier = 1.0
-
-        cdef SIUnitRef result = SIUnitByReducing(self._c_ref, &unit_multiplier)
-
-        if result == NULL:
-            raise RMNError("Unit reduction failed")
-
-        return Unit._from_c_ref(Unit, <void*>result)
-
+    # Unit conversion methods
     def to_coherent_si(self):
         """
         Convert this unit to its coherent SI representation.
@@ -436,7 +386,7 @@ cdef class Unit(SITypesWrapper):
         if result == NULL:
             raise RMNError("Conversion to coherent SI unit failed")
 
-        return Unit._from_c_ref(Unit, <void*>result)
+        return <Unit>BaseWrapper._from_c_ref(Unit, <void*>result)
 
     # Additional comparison method
     def is_equivalent(self, other):
@@ -473,112 +423,21 @@ cdef class Unit(SITypesWrapper):
             if 'other_ref' in locals() and other_ref != NULL:
                 OCRelease(<OCTypeRef>other_ref)
 
-    # Abstract method implementations for SITypesWrapper
-    def _binary_arithmetic(self, other, operation):
-        """Handle binary arithmetic operations."""
-        # Convert other operand to SIUnitRef using the helper function
-        cdef SIUnitRef other_ref = siunit_from_pytype(other)
-
-        cdef double unit_multiplier = 1.0
-        cdef OCStringRef error_ocstr = NULL
-        cdef SIUnitRef result = NULL
-
-        try:
-            if operation == "mul":
-                result = SIUnitByMultiplyingWithoutReducing(<SIUnitRef>self._c_ref, other_ref,
-                                                          &unit_multiplier, &error_ocstr)
-            elif operation == "div":
-                result = SIUnitByDividingWithoutReducing(<SIUnitRef>self._c_ref, other_ref,
-                                                       &unit_multiplier, &error_ocstr)
-            else:
-                raise ValueError(f"Unsupported binary operation: {operation}")
-
-            if result == NULL:
-                error_msg = "Unknown error"
-                if error_ocstr != NULL:
-                    error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-                    raise RMNError(f"Unit {operation} failed: {error_msg}")
-                else:
-                    raise RMNError(f"Unit {operation} failed")
-
-            return Unit._from_c_ref(Unit, <void*>result)
-        finally:
-            # Clean up the temporary unit reference
-            if other_ref != NULL:
-                OCRelease(<OCTypeRef>other_ref)
-            if error_ocstr != NULL:
-                OCRelease(<OCTypeRef>error_ocstr)
-
-    def _power_arithmetic(self, exponent):
-        """Handle power operations."""
-        if not isinstance(exponent, (int, float)):
-            raise TypeError("Exponent must be a number")
-
-        cdef double power = float(exponent)
-        cdef double unit_multiplier = 1.0
-        cdef OCStringRef error_ocstr = NULL
-        cdef SIUnitRef result = NULL
-
-        # Handle fractional powers specially using nth root
-        if isinstance(exponent, float) and not exponent.is_integer():
-            # Check if it's a simple fraction like 1/n (common for nth roots)
-            if abs(exponent) < 1.0 and exponent != 0.0:
-                # Convert 1/n to n (e.g., 0.5 -> 2, 0.25 -> 4)
-                root_candidate = 1.0 / exponent
-                if abs(root_candidate - round(root_candidate)) < 1e-10:  # Very close to integer
-                    root = int(round(root_candidate))
-                    if root > 0 and root <= 255:  # uint8_t range
-                        result = SIUnitByTakingNthRoot(<SIUnitRef>self._c_ref, <uint8_t>root,
-                                                     &unit_multiplier, &error_ocstr)
-
-        # If nth root didn't work or wasn't applicable, use regular power
-        if result == NULL:
-            result = SIUnitByRaisingToPowerWithoutReducing(<SIUnitRef>self._c_ref, power,
-                                                         &unit_multiplier, &error_ocstr)
-
-        if result == NULL:
-            error_msg = "Unknown error"
-            if error_ocstr != NULL:
-                error_msg = ocstring_to_pystring(<uint64_t>error_ocstr)
-                OCRelease(<OCTypeRef>error_ocstr)
-            raise RMNError(f"Unit power operation failed: {error_msg}")
-
-        return Unit._from_c_ref(Unit, <void*>result)
-
-    def _unary_arithmetic(self, operation):
-        """Handle unary arithmetic operations."""
-        # Unit doesn't support unary operations like negation or absolute value
-        raise TypeError(f"Unit does not support unary arithmetic operation: {operation}")
-
     def __eq__(self, other):
-        """Equality comparison with string support."""
-        if isinstance(other, str):
-            cdef SIUnitRef other_ref
-            try:
-                other_ref = siunit_from_pytype(other)
-                from rmnpy._c_api.octypes cimport OCTypeEqual
-                return OCTypeEqual(self._c_ref, <OCTypeRef>other_ref)
-            except (RMNError, TypeError, ValueError):
-                return False
-            finally:
-                if 'other_ref' in locals() and other_ref != NULL:
-                    OCRelease(<OCTypeRef>other_ref)
+        """Equality comparison with string and None support."""
+        if not isinstance(other, BaseWrapper):
+            cdef SIUnitRef other_ref = siunit_from_pytype(other)
+            from rmnpy._c_api.octypes cimport OCTypeEqual
+            return OCTypeEqual(self._c_ref, <OCTypeRef>other_ref)
 
         return super().__eq__(other)
 
     def __ne__(self, other):
-        """Inequality comparison with string support."""
-        if isinstance(other, str):
-            cdef SIUnitRef other_ref
-            try:
-                other_ref = siunit_from_pytype(other)
-                from rmnpy._c_api.octypes cimport OCTypeEqual
-                return not OCTypeEqual(self._c_ref, <OCTypeRef>other_ref)
-            except (RMNError, TypeError, ValueError):
-                return True
-            finally:
-                if 'other_ref' in locals() and other_ref != NULL:
-                    OCRelease(<OCTypeRef>other_ref)
+        """Inequality comparison with string and None support."""
+        if not isinstance(other, BaseWrapper):
+            cdef SIUnitRef other_ref = siunit_from_pytype(other)
+            from rmnpy._c_api.octypes cimport OCTypeEqual
+            return not OCTypeEqual(self._c_ref, <OCTypeRef>other_ref)
 
         return super().__ne__(other)
 
@@ -703,30 +562,6 @@ cdef class Unit(SITypesWrapper):
 
         return result
 
-    # String representation
-    def __str__(self):
-        """
-        String representation - unit symbol like 'm/s' or '1' for dimensionless.
-
-        Returns:
-            str: Unit symbol representation
-        """
-        if self._c_ref == NULL:
-            raise RMNError("Cannot get string representation of NULL unit")
-
-        cdef OCStringRef symbol_ocstr = SIUnitCopySymbol(self._c_ref)
-        if symbol_ocstr == NULL:
-            raise RMNError("Unit has no symbol - this indicates a corrupted or invalid unit")
-
-        try:
-            return ocstring_to_pystring(<uint64_t>symbol_ocstr)
-        finally:
-            OCRelease(<OCTypeRef>symbol_ocstr)
-
-    def __repr__(self):
-        """Return a detailed string representation."""
-        return f"Unit('{str(self)}')"
-
 
 # ====================================================================================
 # SIUnit Helper Functions
@@ -753,7 +588,7 @@ def siunit_to_pyunit(uint64_t si_unit_ptr):
 
     # Use the Unit class's _from_c_ref method to create a proper Unit object
     # No retention needed since SIUnitRef are singletons managed by SILibrary
-    return Unit._from_c_ref(Unit, <void*>si_unit)
+    return <Unit>BaseWrapper._from_c_ref(Unit, <void*>si_unit)
 
 
 def get_unit_symbol_tokens_lib():
