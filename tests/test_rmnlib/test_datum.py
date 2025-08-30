@@ -374,7 +374,7 @@ class TestDatumRoundTrip:
         )
 
         # Round trip
-        datum_dict = original.to_dict()
+        datum_dict = original.dict()
         restored = Datum.from_dict(datum_dict)
 
         # Verify basic properties
@@ -395,7 +395,7 @@ class TestDatumRoundTrip:
         )
 
         # Round trip
-        datum_dict = original.to_dict()
+        datum_dict = original.dict()
         restored = Datum.from_dict(datum_dict)
 
         # Verify properties
@@ -416,7 +416,7 @@ class TestDatumRoundTrip:
         )
 
         # Round trip
-        datum_dict = original.to_dict()
+        datum_dict = original.dict()
         restored = Datum.from_dict(datum_dict)
 
         # Verify properties
@@ -436,8 +436,8 @@ class TestDatumRoundTrip:
         with pytest.raises(RMNError):
             Datum.from_dict({})
 
-    def test_to_dict_structure(self):
-        """Test that to_dict returns expected dictionary structure."""
+    def test_dict_structure(self):
+        """Test that dict returns expected dictionary structure."""
         # Use a simple numeric response instead of Scalar
         response = 7.5
 
@@ -448,7 +448,7 @@ class TestDatumRoundTrip:
             mem_offset=50,
         )
 
-        datum_dict = datum.to_dict()
+        datum_dict = datum.dict()
 
         # Verify dictionary structure
         assert isinstance(datum_dict, dict)

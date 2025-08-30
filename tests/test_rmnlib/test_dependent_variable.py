@@ -334,7 +334,7 @@ class TestDependentVariableRoundTrip:
     """Test round trip functionality for DependentVariable serialization/deserialization."""
 
     def test_basic_round_trip(self):
-        """Test basic DependentVariable to_dict() and from_dict() round trip."""
+        """Test basic DependentVariable dict() and from_dict() round trip."""
         # Create a DependentVariable with various properties
         data = np.array([1.0, 2.0, 3.0, 4.0, 5.0], dtype=np.float64)
         original = DependentVariable(
@@ -348,7 +348,7 @@ class TestDependentVariableRoundTrip:
         )
 
         # Convert to dictionary
-        dv_dict = original.to_dict()
+        dv_dict = original.dict()
         assert isinstance(dv_dict, dict)
         assert dv_dict["type"] == "internal"  # Internal DependentVariable type
         assert dv_dict["name"] == "test_variable"
@@ -383,7 +383,7 @@ class TestDependentVariableRoundTrip:
         )
 
         # Round trip
-        dv_dict = original.to_dict()
+        dv_dict = original.dict()
         restored = DependentVariable.from_dict(dv_dict)
 
         # Verify essential properties
@@ -405,7 +405,7 @@ class TestDependentVariableRoundTrip:
         )
 
         # Round trip
-        dv_dict = original.to_dict()
+        dv_dict = original.dict()
         restored = DependentVariable.from_dict(dv_dict)
 
         # Verify properties
@@ -434,8 +434,8 @@ class TestDependentVariableRoundTrip:
         with pytest.raises(RMNError):
             DependentVariable.from_dict({})
 
-    def test_to_dict_structure(self):
-        """Test that to_dict returns expected dictionary structure."""
+    def test_dict_structure(self):
+        """Test that dict returns expected dictionary structure."""
         data = np.array([1.0, 2.0, 3.0], dtype=np.float64)
         dv = DependentVariable(
             components=[data],
@@ -445,7 +445,7 @@ class TestDependentVariableRoundTrip:
             quantity_name="time",
         )
 
-        dv_dict = dv.to_dict()
+        dv_dict = dv.dict()
 
         # Check required keys are present
         required_keys = [

@@ -134,14 +134,15 @@ cdef class BaseDimension(RMNLibWrapper):
         Raises:
             RMNError: If dimension creation fails
         """
-        # Convert Python dict → cJSON → DimensionRef (same as Datum)
+        # Convert Python dict → cJSON → DimensionRef (C API handles type dispatch)
         cdef uintptr_t json_ptr = pydict_to_cjson_ptr(data)
         cdef cJSON* json_obj = <cJSON*>json_ptr
         cdef OCStringRef err_ocstr = NULL
         cdef DimensionRef dim_ref = NULL
+        cdef OCStringRef type_ref = NULL
 
         try:
-            # Call C API to create dimension from JSON
+            # Call C API to create dimension from JSON (handles type dispatch internally)
             dim_ref = DimensionCreateFromJSON(json_obj, &err_ocstr)
             if dim_ref == NULL:
                 if err_ocstr != NULL:
@@ -150,11 +151,36 @@ cdef class BaseDimension(RMNLibWrapper):
                 else:
                     raise RMNError("Failed to create dimension from dictionary: Unknown error")
 
-            # Create appropriate wrapper using existing _create_dimension_wrapper logic
-            return BaseDimension._create_dimension_wrapper(<uintptr_t>dim_ref)
+            # Get dimension type to create the correct wrapper
+            type_ref = DimensionGetType(dim_ref)
+            if type_ref == NULL:
+                raise RMNError("C API returned NULL type for dimension reference")
+
+            try:
+                type_str = ocstring_to_pystring(<uintptr_t>type_ref)
+            finally:
+                OCRelease(<OCTypeRef>type_ref)
+
+            # Create appropriate wrapper directly using _from_c_ref (like datum.pyx)
+            if type_str == "labeled":
+                result = <LabeledDimension>BaseWrapper._from_c_ref(LabeledDimension, <void*>dim_ref)
+            elif type_str == "linear":
+                result = <LinearDimension>BaseWrapper._from_c_ref(LinearDimension, <void*>dim_ref)
+            elif type_str == "monotonic":
+                result = <MonotonicDimension>BaseWrapper._from_c_ref(MonotonicDimension, <void*>dim_ref)
+            elif type_str == "si_dimension":
+                result = <SIDimension>BaseWrapper._from_c_ref(SIDimension, <void*>dim_ref)
+            elif type_str == "dimension":
+                result = <BaseDimension>BaseWrapper._from_c_ref(BaseDimension, <void*>dim_ref)
+            else:
+                # Fallback for unknown types
+                result = <BaseDimension>BaseWrapper._from_c_ref(BaseDimension, <void*>dim_ref)
+
+            dim_ref = NULL  # Transfer ownership to wrapper
+            return result
 
         finally:
-            # Clean up resources using the same pattern as elsewhere in the file
+            # Clean up resources, but not the dim_ref if it was successfully transferred
             if dim_ref != NULL:
                 OCRelease(<OCTypeRef>dim_ref)
             if json_obj != NULL:
@@ -238,7 +264,7 @@ cdef class BaseDimension(RMNLibWrapper):
     def data_structure(self):
         """JSON serialized string of dimension object (csdmpy compatibility)."""
         import json
-        return json.dumps(self.to_dict(), ensure_ascii=False, sort_keys=False, indent=2)
+        return json.dumps(self.dict(), ensure_ascii=False, sort_keys=False, indent=2)
 
     def __eq__(self, other):
         """Compare dimensions for equality using OCTypes C API."""
@@ -944,14 +970,8 @@ cdef class LinearDimension(SIDimension):
                 OCRelease(<OCTypeRef>quantity_name_ocstr)
             if application_ocdict != NULL:
                 OCRelease(<OCTypeRef>application_ocdict)
-            if increment_sisclr != NULL:
-                OCRelease(<OCTypeRef>increment_sisclr)
-            if coordinates_offset_sisclr != NULL:
-                OCRelease(<OCTypeRef>coordinates_offset_sisclr)
-            if origin_offset_sisclr != NULL:
-                OCRelease(<OCTypeRef>origin_offset_sisclr)
-            if period_sisclr != NULL:
-                OCRelease(<OCTypeRef>period_sisclr)
+            # Don't release increment_sisclr, coordinates_offset_sisclr, origin_offset_sisclr, period_sisclr
+            # because they are owned by the Scalar objects which will release them automatically
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
 
@@ -1129,7 +1149,7 @@ cdef class MonotonicDimension(SIDimension):
                 raise RMNError(f"Failed to create SIScalar for coordinate value {coord_value}")
 
             OCArrayAppendValue(coords_array, <const void*>coord_scalar)
-            OCRelease(<OCTypeRef>coord_scalar)  # Release our reference, array retains it
+            # Note: coord_scalar is a reference from Python object, don't release it
 
         # Validate scaling parameter
         if scaling is not None:

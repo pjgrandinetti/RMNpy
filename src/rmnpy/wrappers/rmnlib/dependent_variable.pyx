@@ -38,6 +38,7 @@ from rmnpy.helpers.octypes import (
     ocdict_to_pydict,
     ocstring_create_from_pystring,
     ocstring_to_pystring,
+    pydict_to_cjson_ptr,
 )
 
 from rmnpy.wrappers.base_wrapper cimport BaseWrapper, RMNLibWrapper
@@ -115,16 +116,16 @@ cdef class DependentVariable(RMNLibWrapper):
             >>> data_dict = {"components": [[1.0, 2.0, 3.0]]}
             >>> dep_var = DependentVariable.from_dict(data_dict)
         """
-        # Convert Python dict to OCDictionary using existing helper
-        cdef uintptr_t dict_ptr = ocdict_create_from_pydict(json_dict)
-        cdef OCDictionaryRef dict_ref = <OCDictionaryRef>dict_ptr
+        # Convert Python dict to cJSON using existing helper
+        cdef uintptr_t json_ptr = pydict_to_cjson_ptr(json_dict)
+        cdef cJSON* json_obj = <cJSON*>json_ptr
 
         cdef OCStringRef err_ocstr = NULL
         cdef DependentVariableRef dv_ref = NULL
 
         try:
-            # Call C API to create dependent variable from dictionary
-            dv_ref = DependentVariableCreateFromJSON(dict_ref, &err_ocstr)
+            # Call C API to create dependent variable from cJSON
+            dv_ref = DependentVariableCreateFromJSON(json_obj, &err_ocstr)
             if dv_ref == NULL:
                 if err_ocstr != NULL:
                     error_msg = ocstring_to_pystring(<uintptr_t>err_ocstr)
@@ -141,8 +142,8 @@ cdef class DependentVariable(RMNLibWrapper):
                 OCRelease(<OCTypeRef>dv_ref)
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
-            if dict_ref != NULL:
-                OCRelease(<OCTypeRef>dict_ref)
+            if json_obj != NULL:
+                cJSON_Delete(json_obj)
 
     def __init__(self,
                  components,
@@ -518,8 +519,16 @@ cdef class DependentVariable(RMNLibWrapper):
         if not isinstance(other, DependentVariable):
             raise TypeError("other must be a DependentVariable")
 
+        # Check if this DependentVariable is initialized
+        if not self.is_valid():
+            raise ValueError("DependentVariable not initialized")
+
         # Cast other to our Cython class to access _c_ref
         cdef DependentVariable other_dv = <DependentVariable>other
+
+        # Check if the other DependentVariable is initialized
+        if not other_dv.is_valid():
+            raise ValueError("DependentVariable not initialized")
 
         cdef OCStringRef err_ocstr = NULL
         cdef bint success

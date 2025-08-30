@@ -178,7 +178,7 @@ cdef class GeographicCoordinate(RMNLibWrapper):
     def data_structure(self):
         """JSON serialized string of dimension object (csdmpy compatibility)."""
         import json
-        return json.dumps(self.to_dict(), ensure_ascii=False, sort_keys=False, indent=2)
+        return json.dumps(self.dict(), ensure_ascii=False, sort_keys=False, indent=2)
 
     @property
     def latitude(self):
@@ -264,46 +264,6 @@ cdef class GeographicCoordinate(RMNLibWrapper):
 
         except Exception:
             raise
-
-    @property
-    def metadata(self):
-        """Get the application metadata dictionary."""
-        cdef OCDictionaryRef metadata_ref = GeographicCoordinateGetApplicationMetaData(<GeographicCoordinateRef>self._c_ref)
-        if metadata_ref == NULL:
-            return {}
-
-        return ocdict_to_pydict(<uintptr_t>metadata_ref)
-
-    @metadata.setter
-    def metadata(self, value):
-        """Set the application metadata dictionary."""
-        if not isinstance(value, dict):
-            raise TypeError("metadata must be a dictionary")
-
-        cdef OCDictionaryRef metadata_ref = NULL
-
-        try:
-            # Convert Python dictionary to OCDictionary
-            metadata_ref = <OCDictionaryRef><uintptr_t>ocdict_create_from_pydict(value)
-            if metadata_ref == NULL:
-                raise RMNError("Failed to create metadata dictionary")
-
-            if not GeographicCoordinateSetApplicationMetaData(<GeographicCoordinateRef>self._c_ref, metadata_ref):
-                raise RMNError("Failed to set metadata")
-
-        finally:
-            if metadata_ref != NULL:
-                OCRelease(<OCTypeRef>metadata_ref)
-
-
-    def dict(self):
-        """
-        Alias for to_dict() for compatibility.
-
-        Returns:
-            dict: Dictionary representation of the coordinate
-        """
-        return self.to_dict()
 
     def __repr__(self):
         """Return string representation of the geographic coordinate."""

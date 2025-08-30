@@ -12,6 +12,7 @@ from typing import Any, Dict, Optional, Union
 from libc.stdint cimport uint64_t, uintptr_t
 
 from rmnpy._c_api.octypes cimport (
+    OCDictionaryRef,
     OCRelease,
     OCStringRef,
     OCTypeCopyJSON,
@@ -20,6 +21,12 @@ from rmnpy._c_api.octypes cimport (
     OCTypeRef,
     cJSON,
     cJSON_Delete,
+)
+from rmnpy._c_api.rmnlib cimport (
+    RMNLibGetApplicationMetaData,
+    RMNLibGetDescription,
+    RMNLibSetApplicationMetaData,
+    RMNLibSetDescription,
 )
 from rmnpy._c_api.sitypes cimport (
     SITypesCreateByRaisingToPower,
@@ -30,6 +37,7 @@ from rmnpy._c_api.sitypes cimport (
 )
 
 from rmnpy.exceptions import RMNError
+
 from rmnpy.helpers.octypes cimport cjson_to_pydict
 
 
@@ -193,6 +201,55 @@ cdef class SITypesWrapper(BaseWrapper):
         self._validate_initialized()
         return self._universal_binary_arithmetic(other, '/')
 
+    # Right-hand arithmetic operations for when Python numbers are on the left side
+    def __radd__(self, other):
+        """Right-hand addition: other + self."""
+        # Convert other to same type and delegate to regular addition
+        if hasattr(self.__class__, 'from_value'):
+            try:
+                other_converted = self.__class__.from_value(other)
+                return other_converted.__add__(self)
+            except TypeError:
+                return NotImplemented
+            # Let RMNError (dimensional analysis errors) propagate
+        return NotImplemented
+
+    def __rsub__(self, other):
+        """Right-hand subtraction: other - self."""
+        # Convert other to same type and delegate to regular subtraction
+        if hasattr(self.__class__, 'from_value'):
+            try:
+                other_converted = self.__class__.from_value(other)
+                return other_converted.__sub__(self)
+            except TypeError:
+                return NotImplemented
+            # Let RMNError (dimensional analysis errors) propagate
+        return NotImplemented
+
+    def __rmul__(self, other):
+        """Right-hand multiplication: other * self."""
+        # Convert other to same type and delegate to regular multiplication
+        if hasattr(self.__class__, 'from_value'):
+            try:
+                other_converted = self.__class__.from_value(other)
+                return other_converted.__mul__(self)
+            except TypeError:
+                return NotImplemented
+            # Let RMNError (dimensional analysis errors) propagate
+        return NotImplemented
+
+    def __rtruediv__(self, other):
+        """Right-hand division: other / self."""
+        # Convert other to same type and delegate to regular division
+        if hasattr(self.__class__, 'from_value'):
+            try:
+                other_converted = self.__class__.from_value(other)
+                return other_converted.__truediv__(self)
+            except TypeError:
+                return NotImplemented
+            # Let RMNError (dimensional analysis errors) propagate
+        return NotImplemented
+
     def _universal_binary_arithmetic(self, other, op):
         """Universal binary arithmetic using SITypesCreateWithBinaryArithmeticOperation C API."""
         # Try to convert other to the same type using from_value class method
@@ -205,7 +262,17 @@ cdef class SITypesWrapper(BaseWrapper):
             else:
                 return NotImplemented
 
-        other._validate_initialized()
+        # Ensure other is a BaseWrapper after conversion and validate it
+        if not isinstance(other, BaseWrapper):
+            return NotImplemented
+
+        # Validate the converted object using the same pattern as __eq__
+        if hasattr(other, '_validate_initialized'):
+            other._validate_initialized()
+        else:
+            # Fallback for objects that don't have validation
+            if not getattr(other, 'is_valid', lambda: True)():
+                return NotImplemented
 
         cdef OCStringRef error_ref = NULL
         cdef OCTypeRef result_ref = SITypesCreateWithBinaryArithmeticOperation(
@@ -233,36 +300,66 @@ cdef class SITypesWrapper(BaseWrapper):
                 OCRelease(result_ref)
 
     def __pow__(self, exponent):
-        """Power operation using universal SITypesCreateByRaisingToPower C API."""
+        """Power operation supporting both integer and fractional powers."""
         self._validate_initialized()
 
-        # Validate exponent is an integer
-        if not isinstance(exponent, int):
-            raise TypeError("Exponent must be an integer")
-
+        # Declare Cython variables at the top
         cdef OCStringRef error_ref = NULL
-        cdef OCTypeRef result_ref = SITypesCreateByRaisingToPower(
-            self._c_ref,
-            exponent,
-            &error_ref
-        )
+        cdef OCTypeRef result_ref = NULL
 
-        try:
-            if error_ref != NULL:
-                from rmnpy.helpers.octypes import ocstring_to_pystring
-                error_msg = ocstring_to_pystring(<uintptr_t>error_ref)
-                raise RMNError(f"Power operation failed: {error_msg}")
+        # Handle integer exponents
+        if isinstance(exponent, int):
+            result_ref = SITypesCreateByRaisingToPower(
+                self._c_ref,
+                exponent,
+                &error_ref
+            )
 
-            if result_ref == NULL:
-                raise RMNError("Power operation returned NULL")
+            try:
+                if error_ref != NULL:
+                    from rmnpy.helpers.octypes import ocstring_to_pystring
+                    error_msg = ocstring_to_pystring(<uintptr_t>error_ref)
+                    raise RMNError(f"Power operation failed: {error_msg}")
 
-            # Create appropriate wrapper for the result
-            return BaseWrapper._from_c_ref(self.__class__, <void*>result_ref)
-        finally:
-            if error_ref != NULL:
-                OCRelease(<OCTypeRef>error_ref)
-            if result_ref != NULL:
-                OCRelease(result_ref)
+                if result_ref == NULL:
+                    raise RMNError("Power operation returned NULL")
+
+                # Create appropriate wrapper for the result
+                return BaseWrapper._from_c_ref(self.__class__, <void*>result_ref)
+            finally:
+                if error_ref != NULL:
+                    OCRelease(<OCTypeRef>error_ref)
+                if result_ref != NULL:
+                    OCRelease(result_ref)
+
+        # Handle fractional exponents using rational approximation
+        elif isinstance(exponent, (float, complex)):
+            try:
+                from fractions import Fraction
+
+                # Convert to fraction with reasonable denominator limit
+                frac = Fraction(exponent).limit_denominator(1000)
+
+                # Check if it's close to the original float
+                if abs(float(frac) - exponent) < 1e-10:
+                    if frac.denominator == 1:
+                        # It's actually an integer
+                        return self.__pow__(frac.numerator)
+                    elif frac.numerator == 1:
+                        # Simple nth root: x^(1/n) = nth_root(x, n)
+                        return self.nth_root(frac.denominator)
+                    else:
+                        # Complex fraction: x^(a/b) = nth_root(x^a, b)
+                        powered = self.__pow__(frac.numerator)
+                        return powered.nth_root(frac.denominator)
+                else:
+                    raise ValueError(f"Cannot represent {exponent} as a simple fraction")
+
+            except (ValueError, OverflowError, ZeroDivisionError) as e:
+                raise RMNError(f"Fractional power operation failed: {e}")
+
+        else:
+            raise TypeError("Exponent must be a number")
 
     def nth_root(self, root):
         """Take the nth root of this object using universal SITypesCreateByTakingNthRoot C API.
@@ -451,3 +548,109 @@ cdef class RMNLibWrapper(BaseWrapper):
         if not isinstance(json_dict, dict):
             raise TypeError("Expected dictionary input")
         raise NotImplementedError(f"{cls.__name__} must implement from_dict()")
+
+    @property
+    def description(self):
+        """Get the description of the RMNLib object."""
+        self._validate_initialized()
+
+        cdef OCStringRef error_ref = NULL
+        cdef OCStringRef desc_ref = RMNLibGetDescription(self._c_ref, &error_ref)
+
+        try:
+            if error_ref != NULL:
+                from rmnpy.helpers.octypes import ocstring_to_pystring
+                error_msg = ocstring_to_pystring(<uintptr_t>error_ref)
+                raise RMNError(f"Failed to get description: {error_msg}")
+
+            if desc_ref == NULL:
+                return None
+
+            from rmnpy.helpers.octypes import ocstring_to_pystring
+            return ocstring_to_pystring(<uintptr_t>desc_ref)
+        finally:
+            if error_ref != NULL:
+                OCRelease(<OCTypeRef>error_ref)
+            if desc_ref != NULL:
+                OCRelease(<OCTypeRef>desc_ref)
+
+    @description.setter
+    def description(self, value):
+        """Set the description of the RMNLib object."""
+        self._validate_initialized()
+
+        cdef OCStringRef desc_ref = NULL
+        cdef OCStringRef error_ref = NULL
+
+        if value is not None:
+            from rmnpy.helpers.octypes import ocstring_create_from_pystring
+            desc_ref = <OCStringRef><uintptr_t>ocstring_create_from_pystring(value)
+
+        try:
+            if not RMNLibSetDescription(self._c_ref, desc_ref, &error_ref):
+                if error_ref != NULL:
+                    from rmnpy.helpers.octypes import ocstring_to_pystring
+                    error_msg = ocstring_to_pystring(<uintptr_t>error_ref)
+                    raise RMNError(f"Failed to set description: {error_msg}")
+                else:
+                    raise RMNError("Failed to set description")
+        finally:
+            if error_ref != NULL:
+                OCRelease(<OCTypeRef>error_ref)
+            if desc_ref != NULL:
+                OCRelease(<OCTypeRef>desc_ref)
+
+    @property
+    def application(self):
+        """Get the application metadata of the RMNLib object."""
+        self._validate_initialized()
+
+        cdef OCStringRef error_ref = NULL
+        cdef OCDictionaryRef app_ref = RMNLibGetApplicationMetaData(self._c_ref, &error_ref)
+
+        try:
+            if error_ref != NULL:
+                from rmnpy.helpers.octypes import ocstring_to_pystring
+                error_msg = ocstring_to_pystring(<uintptr_t>error_ref)
+                raise RMNError(f"Failed to get application metadata: {error_msg}")
+
+            if app_ref == NULL:
+                return {}
+
+            from rmnpy.helpers.octypes import ocdict_to_pydict
+            return ocdict_to_pydict(<uintptr_t>app_ref)
+        finally:
+            if error_ref != NULL:
+                OCRelease(<OCTypeRef>error_ref)
+            # Don't release app_ref - it's an internal reference
+
+    @application.setter
+    def application(self, value):
+        """Set the application metadata of the RMNLib object."""
+        self._validate_initialized()
+
+        if not isinstance(value, dict):
+            raise TypeError("application metadata must be a dictionary")
+
+        cdef OCDictionaryRef app_ref = NULL
+        cdef OCStringRef error_ref = NULL
+
+        try:
+            # Convert Python dictionary to OCDictionary
+            from rmnpy.helpers.octypes import ocdict_create_from_pydict
+            app_ref = <OCDictionaryRef><uintptr_t>ocdict_create_from_pydict(value)
+            if app_ref == NULL:
+                raise RMNError("Failed to create application metadata dictionary")
+
+            if not RMNLibSetApplicationMetaData(self._c_ref, app_ref, &error_ref):
+                if error_ref != NULL:
+                    from rmnpy.helpers.octypes import ocstring_to_pystring
+                    error_msg = ocstring_to_pystring(<uintptr_t>error_ref)
+                    raise RMNError(f"Failed to set application metadata: {error_msg}")
+                else:
+                    raise RMNError("Failed to set application metadata")
+        finally:
+            if error_ref != NULL:
+                OCRelease(<OCTypeRef>error_ref)
+            if app_ref != NULL:
+                OCRelease(<OCTypeRef>app_ref)

@@ -290,6 +290,10 @@ cdef class Scalar(SITypesWrapper):
 
         return <Scalar>BaseWrapper._from_c_ref(Scalar, <void*>result)
 
+    def __abs__(self):
+        """Return the absolute value (magnitude) of the scalar."""
+        return self.magnitude
+
     @property
     def argument(self):
         """Get the argument (phase angle) of the scalar in radians as a dimensionless Scalar."""

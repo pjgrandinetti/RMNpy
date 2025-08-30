@@ -183,7 +183,7 @@ cdef extern from "RMNLibrary.h":
                                                   OCStringRef quantityType, OCNumberType elementType,
                                                   OCArrayRef componentLabels, OCArrayRef components,
                                                   OCStringRef *outError)
-    DependentVariableRef DependentVariableCreateFromJSON(OCDictionaryRef dict_ref, OCStringRef *outError)
+    DependentVariableRef DependentVariableCreateFromJSON(cJSON *json, OCStringRef *outError)
     DependentVariableRef DependentVariableCopy(DependentVariableRef orig)
 
     # 4.2 Property accessors (string properties - memory-safe copy functions)
