@@ -56,7 +56,7 @@ cdef extern from "SITypes/SIDimensionality.h":
     OCStringRef SIDimensionalityCopySymbol(SIDimensionalityRef theDim)
 
     # JSON support (commented out - not needed for Phase 2A)
-    # cJSON *SIDimensionalityCreateJSON(SIDimensionalityRef dim)
+    # cJSON *SIDimensionalityCopyAsJSON(SIDimensionalityRef dim)
     # SIDimensionalityRef SIDimensionalityFromJSON(cJSON *json)
 
     # Tests
