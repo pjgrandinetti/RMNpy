@@ -124,9 +124,15 @@ cdef class GeographicCoordinate(RMNLibWrapper):
                     raise RMNError("Failed to create metadata dictionary")
 
             # Create the geographic coordinate and set via base wrapper
-            coord_ref = GeographicCoordinateCreate(lat_ref, lon_ref, alt_ref, metadata_ref)
+            cdef OCStringRef err_ocstr = NULL
+            coord_ref = GeographicCoordinateCreate(lat_ref, lon_ref, alt_ref, metadata_ref, &err_ocstr)
             if coord_ref == NULL:
-                raise RMNError("GeographicCoordinate creation failed")
+                if err_ocstr != NULL:
+                    err_msg = ocstring_to_pystring(err_ocstr)
+                    OCRelease(err_ocstr)
+                    raise RMNError(f"GeographicCoordinate creation failed: {err_msg}")
+                else:
+                    raise RMNError("GeographicCoordinate creation failed")
             self._set_c_ref(coord_ref)
 
         finally:

@@ -243,7 +243,8 @@ cdef extern from "RMNLibrary.h":
     # ================================================================================
 
     GeographicCoordinateRef GeographicCoordinateCreate(SIScalarRef latitude, SIScalarRef longitude,
-                                                       SIScalarRef altitude, OCDictionaryRef metadata)
+                                                       SIScalarRef altitude, OCDictionaryRef metadata,
+                                                       OCStringRef *outError)
     GeographicCoordinateRef GeographicCoordinateCreateFromJSON(cJSON *json, OCStringRef *outError)
     OCDictionaryRef GeographicCoordinateCopyAsDictionary(GeographicCoordinateRef gc)
     GeographicCoordinateRef GeographicCoordinateCreateCopy(GeographicCoordinateRef gc)
