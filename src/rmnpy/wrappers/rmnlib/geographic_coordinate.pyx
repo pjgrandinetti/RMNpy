@@ -21,12 +21,14 @@ from rmnpy.wrappers.base_wrapper cimport BaseWrapper, RMNLibWrapper
 from rmnpy.helpers.octypes import (
     ocdict_create_from_pydict,
     ocdict_to_pydict,
+    ocstring_to_pystring,
     pydict_to_cjson_ptr,
 )
 
-# Import SITypes wrappers
-
+from rmnpy.helpers.octypes cimport cjson_to_pydict
 from rmnpy.wrappers.sitypes.scalar cimport Scalar
+
+# Import SITypes wrappers
 
 from rmnpy.wrappers.sitypes.scalar import Scalar
 
@@ -91,9 +93,11 @@ cdef class GeographicCoordinate(RMNLibWrapper):
         cdef SIScalarRef alt_ref = NULL
         cdef OCDictionaryRef metadata_ref = NULL
         cdef GeographicCoordinateRef coord_ref = NULL
+        cdef OCStringRef err_ocstr = NULL
         cdef Scalar latitude_obj
         cdef Scalar longitude_obj
         cdef Scalar altitude_obj
+        cdef str err_msg
 
         try:
             # Convert latitude
@@ -124,11 +128,10 @@ cdef class GeographicCoordinate(RMNLibWrapper):
                     raise RMNError("Failed to create metadata dictionary")
 
             # Create the geographic coordinate and set via base wrapper
-            cdef OCStringRef err_ocstr = NULL
             coord_ref = GeographicCoordinateCreate(lat_ref, lon_ref, alt_ref, metadata_ref, &err_ocstr)
             if coord_ref == NULL:
                 if err_ocstr != NULL:
-                    err_msg = ocstring_to_pystring(err_ocstr)
+                    err_msg = OCStringGetCString(err_ocstr).decode('utf-8')
                     OCRelease(err_ocstr)
                     raise RMNError(f"GeographicCoordinate creation failed: {err_msg}")
                 else:
@@ -177,8 +180,7 @@ cdef class GeographicCoordinate(RMNLibWrapper):
                 cJSON_Delete(json_obj)
             if err_ocstr != NULL:
                 OCRelease(<OCTypeRef>err_ocstr)
-            if coord_ref != NULL:
-                OCRelease(<OCTypeRef>coord_ref)
+            # Note: do NOT release coord_ref here - it's transferred to BaseWrapper._from_c_ref
 
     @property
     def data_structure(self):
@@ -290,3 +292,28 @@ cdef class GeographicCoordinate(RMNLibWrapper):
     def __str__(self):
         """Return string representation of the geographic coordinate."""
         return self.__repr__()
+
+    def dict(self):
+        """Return dictionary representation of the geographic coordinate."""
+        cdef cJSON* json_obj = NULL
+        cdef OCStringRef err_ocstr = NULL
+
+        try:
+            json_obj = GeographicCoordinateCopyAsJSON(<GeographicCoordinateRef>self._c_ref, False, &err_ocstr)
+            if json_obj == NULL:
+                if err_ocstr != NULL:
+                    error_msg = ocstring_to_pystring(<uintptr_t>err_ocstr)
+                    raise RMNError(f"Failed to get JSON representation of GeographicCoordinate: {error_msg}")
+                else:
+                    raise RMNError("Failed to get JSON representation of GeographicCoordinate")
+
+            return cjson_to_pydict(json_obj)
+        finally:
+            if json_obj != NULL:
+                cJSON_Delete(json_obj)
+            if err_ocstr != NULL:
+                OCRelease(<OCTypeRef>err_ocstr)
+
+    def to_dict(self):
+        """Return dictionary representation (alias for dict())."""
+        return self.dict()

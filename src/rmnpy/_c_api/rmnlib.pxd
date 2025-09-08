@@ -145,26 +145,27 @@ cdef extern from "RMNLibrary.h":
     # ================================================================================
 
     SparseSamplingRef SparseSamplingCreate(OCIndexSetRef dimensionIndexes,
-                                           OCArrayRef sparseGridVertexes,
+                                           OCDataRef sparseGridVertexes,
                                            OCNumberType unsignedIntegerType,
                                            OCStringRef encoding,
                                            OCStringRef description,
                                            OCDictionaryRef metadata,
                                            OCStringRef *outError)
     SparseSamplingRef SparseSamplingCreateFromJSON(cJSON *json, OCStringRef *outError)
+    cJSON *SparseSamplingCopyAsJSON(SparseSamplingRef ss, bint typed, OCStringRef *outError)
     OCDictionaryRef SparseSamplingCopyAsDictionary(SparseSamplingRef ss)
 
-    # SparseSampling property accessors
-    OCIndexSetRef SparseSamplingGetDimensionIndexes(SparseSamplingRef ss)
-    bint SparseSamplingSetDimensionIndexes(SparseSamplingRef ss, OCIndexSetRef indexes)
-    OCArrayRef SparseSamplingGetSparseGridVertexes(SparseSamplingRef ss)
-    bint SparseSamplingSetSparseGridVertexes(SparseSamplingRef ss, OCArrayRef vertexes)
+    # SparseSampling accessors
+    OCIndexSetRef SparseSamplingCopyDimensionIndexes(SparseSamplingRef ss)
+    bint SparseSamplingSetDimensionIndexes(SparseSamplingRef ss, OCIndexSetRef idxSet)
+    OCDataRef SparseSamplingCopySparseGridVertexes(SparseSamplingRef ss)
+    bint SparseSamplingSetSparseGridVertexes(SparseSamplingRef ss, OCDataRef verts)
     OCNumberType SparseSamplingGetUnsignedIntegerType(SparseSamplingRef ss)
-    bint SparseSamplingSetUnsignedIntegerType(SparseSamplingRef ss, OCNumberType type)
-    OCStringRef SparseSamplingGetEncoding(SparseSamplingRef ss)
+    bint SparseSamplingSetUnsignedIntegerType(SparseSamplingRef ss, OCNumberType numType)
+    OCStringRef SparseSamplingCopyEncoding(SparseSamplingRef ss)
     bint SparseSamplingSetEncoding(SparseSamplingRef ss, OCStringRef encoding)
-    OCStringRef SparseSamplingGetDescription(SparseSamplingRef ss)
-    bint SparseSamplingSetDescription(SparseSamplingRef ss, OCStringRef description)
+    OCStringRef SparseSamplingCopyDescription(SparseSamplingRef ss)
+    bint SparseSamplingSetDescription(SparseSamplingRef ss, OCStringRef desc)
     OCDictionaryRef SparseSamplingGetApplicationMetaData(SparseSamplingRef ss)
     bint SparseSamplingSetApplicationMetaData(SparseSamplingRef ss, OCDictionaryRef metadata)
 
@@ -246,6 +247,7 @@ cdef extern from "RMNLibrary.h":
                                                        SIScalarRef altitude, OCDictionaryRef metadata,
                                                        OCStringRef *outError)
     GeographicCoordinateRef GeographicCoordinateCreateFromJSON(cJSON *json, OCStringRef *outError)
+    cJSON *GeographicCoordinateCopyAsJSON(GeographicCoordinateRef gc, bint typed, OCStringRef *outError)
     OCDictionaryRef GeographicCoordinateCopyAsDictionary(GeographicCoordinateRef gc)
     GeographicCoordinateRef GeographicCoordinateCreateCopy(GeographicCoordinateRef gc)
 

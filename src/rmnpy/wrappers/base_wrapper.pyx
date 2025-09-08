@@ -14,6 +14,7 @@ from libc.stdint cimport uint64_t, uintptr_t
 from rmnpy._c_api.octypes cimport (
     OCDictionaryRef,
     OCRelease,
+    OCStringGetCString,
     OCStringRef,
     OCTypeCopyJSON,
     OCTypeDeepCopy,
@@ -530,10 +531,15 @@ cdef class RMNLibWrapper(BaseWrapper):
         """
         self._validate_initialized()
 
-        # Call OCTypeCopyJSON directly
-        cdef cJSON* json_obj = OCTypeCopyJSON(self._c_ref)
+        # Call OCTypeCopyJSON directly with new signature
+        cdef OCStringRef error_msg = NULL
+        cdef cJSON* json_obj = OCTypeCopyJSON(self._c_ref, True, &error_msg)
         if json_obj == NULL:
-            raise RuntimeError("Failed to serialize OCType to JSON")
+            error_text = "Failed to serialize OCType to JSON"
+            if error_msg != NULL:
+                error_text += f": {OCStringGetCString(error_msg)}"
+                OCRelease(error_msg)
+            raise RuntimeError(error_text)
 
         try:
             # Convert cJSON to Python dict

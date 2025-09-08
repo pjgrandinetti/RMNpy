@@ -64,7 +64,7 @@ class TestGeographicCoordinateCreation:
 
         coord = GeographicCoordinate(39.9797, -83.0515, 238.97, metadata)
 
-        retrieved_metadata = coord.metadata
+        retrieved_metadata = coord.application
         assert retrieved_metadata is not None
         assert retrieved_metadata["source"] == "GPS"
         assert retrieved_metadata["accuracy"] == "10m"
@@ -161,13 +161,13 @@ class TestGeographicCoordinateProperties:
         """Test modifying application metadata."""
         coord = GeographicCoordinate(39.9797, -83.0515)
         # Initially no metadata
-        assert coord.metadata == {}
+        assert coord.application == {}
 
         # Set metadata
         metadata = {"test": "value"}
-        coord.metadata = metadata
+        coord.application = metadata
 
-        retrieved = coord.metadata
+        retrieved = coord.application
         assert retrieved["test"] == "value"
 
     def test_altitude_none_handling(self):
@@ -304,8 +304,8 @@ class TestGeographicCoordinateCopy:
         copy_coord = original.copy()
 
         # Metadata should be copied
-        original_meta = original.metadata
-        copy_meta = copy_coord.metadata
+        original_meta = original.application
+        copy_meta = copy_coord.application
 
         assert copy_meta["instrument"] == original_meta["instrument"]
         assert copy_meta["operator"] == original_meta["operator"]
@@ -404,7 +404,7 @@ class TestGeographicCoordinateIntegration:
             coord = coordinates[i]
             assert coord.latitude.value == pytest.approx(lat)
             assert coord.longitude.value == pytest.approx(lon)
-            assert coord.metadata["location_name"] == name
+            assert coord.application["location_name"] == name
 
     def test_precision_preservation(self):
         """Test that high-precision coordinates are preserved."""

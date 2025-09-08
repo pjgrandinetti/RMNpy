@@ -28,7 +28,7 @@ if local_include.exists() and local_lib.exists():
         str(local_include),
         str(local_include / "OCTypes"),
         str(local_include / "SITypes"),
-        str(local_include / "RMNLib"),
+        str(local_include / "RMNLib" / "RMNLib"),
     ]
     LIBDIRS = [str(local_lib)]
 else:

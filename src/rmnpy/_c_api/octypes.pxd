@@ -81,6 +81,7 @@ cdef extern from "OCTypes/OCTypes.h":
     ctypedef struct impl_OCSet
     ctypedef struct impl_OCDictionary
     ctypedef struct impl_OCBoolean
+    ctypedef struct impl_OCNull
     ctypedef struct impl_OCData
     ctypedef struct impl_OCNumber
     ctypedef struct impl_OCIndexSet
@@ -88,7 +89,7 @@ cdef extern from "OCTypes/OCTypes.h":
     ctypedef struct impl_OCIndexPairSet
 
     # Basic type definitions
-    ctypedef uint32_t OCTypeID
+    ctypedef uint16_t OCTypeID
     ctypedef signed long OCIndex
     ctypedef unsigned long OCOptionFlags
 
@@ -104,6 +105,7 @@ cdef extern from "OCTypes/OCTypes.h":
     ctypedef const impl_OCSet *OCSetRef
     ctypedef const impl_OCDictionary *OCDictionaryRef
     ctypedef const impl_OCBoolean *OCBooleanRef
+    ctypedef const impl_OCNull *OCNullRef
     ctypedef const impl_OCData *OCDataRef
     ctypedef const impl_OCNumber *OCNumberRef
     ctypedef const impl_OCIndexSet *OCIndexSetRef
@@ -156,7 +158,31 @@ cdef extern from "OCTypes/OCType.h":
     void *OCTypeDeepCopy(const void *obj)
     void *OCTypeDeepCopyMutable(const void *obj)
     OCStringRef OCTypeCopyFormattingDesc(const void *ptr)
-    cJSON *OCTypeCopyJSON(OCTypeRef obj)
+    cJSON *OCTypeCopyJSON(OCTypeRef obj, bint typed, OCStringRef *outError)
+
+    # JSON operations
+    OCTypeRef OCTypeCreateFromJSONTyped(cJSON *json, OCStringRef *outError)
+
+    # Type registration and library management
+    OCTypeID OCRegisterType(const char *typeName, OCTypeRef (*factory)(cJSON *, OCStringRef *))
+    void OCTypesShutdown()
+
+    # Core object allocation
+    void *OCTypeAllocate(size_t size, OCTypeID typeID,
+                        void (*finalize)(const void *),
+                        bint (*equal)(const void *, const void *),
+                        OCStringRef (*copyFormattingDesc)(OCTypeRef),
+                        cJSON *(*copyJSON)(const void *, bint typed, OCStringRef *outError),
+                        void *(*copyDeep)(const void *),
+                        void *(*copyDeepMutable)(const void *))
+
+    # Additional utility functions
+    bint OCTypeGetStaticInstance(const void *ptr)
+    void OCTypeSetStaticInstance(const void *ptr, bint static_instance)
+    bint OCTypeGetFinalized(const void *ptr)
+    OCStringRef OCCopyDescription(const void *ptr)
+    const char *OCTypeIDName(const void *ptr)
+    const char *OCTypeNameFromTypeID(OCTypeID typeID)
 
 # OCString functions
 cdef extern from "OCTypes/OCString.h":
@@ -168,8 +194,11 @@ cdef extern from "OCTypes/OCString.h":
     OCMutableStringRef OCStringCreateMutableCopy(OCStringRef theString)
     OCMutableStringRef OCStringCreateMutable(uint64_t maxLength)
     OCStringRef impl_OCStringMakeConstantString(const char *cStr)
-    const char* OCStringGetCString(OCStringRef str)
     OCStringRef OCStringCreateWithCString(const char *string)  # For STR() macro support
+    OCStringRef OCStringCreateFromJSON(cJSON *json, OCStringRef *outError)
+    OCStringRef OCStringCreateWithSubstring(OCStringRef str, OCRange range)
+    OCStringRef OCStringCreateCopy(OCStringRef theString)
+    OCStringRef OCStringCreateWithFormat(OCStringRef format, ...)
 
     # String access
     const char *OCStringGetCString(OCStringRef theString)
@@ -179,6 +208,16 @@ cdef extern from "OCTypes/OCString.h":
     OCComparisonResult OCStringCompare(OCStringRef theString1,
                                       OCStringRef theString2,
                                       OCStringCompareFlags compareOptions)
+    OCRange OCStringFind(OCStringRef string, OCStringRef stringToFind, OCOptionFlags compareOptions)
+
+    # String array operations
+    OCArrayRef OCStringCreateArrayWithFindResults(OCStringRef string, OCStringRef stringToFind,
+                                                  OCRange rangeToSearch, OCOptionFlags compareOptions)
+    OCArrayRef OCStringCreateArrayBySeparatingStrings(OCStringRef string, OCStringRef separatorString)
+
+    # Complex number string formatting
+    OCStringRef OCFloatComplexCreateStringValue(float_complex value, OCStringRef format)
+    OCStringRef OCDoubleComplexCreateStringValue(double_complex value, OCStringRef format)
 
     # Mutable string operations
     void OCStringAppend(OCMutableStringRef theString, OCStringRef appendedString)
@@ -205,6 +244,7 @@ cdef extern from "OCTypes/OCNumber.h":
     OCTypeID OCNumberGetTypeID()
 
     # Number creation
+    OCNumberRef OCNumberCreate(OCNumberType type, void *value)
     OCNumberRef OCNumberCreateWithSInt8(int8_t value)
     OCNumberRef OCNumberCreateWithSInt16(int16_t value)
     OCNumberRef OCNumberCreateWithSInt32(int32_t value)
@@ -220,10 +260,17 @@ cdef extern from "OCTypes/OCNumber.h":
     OCNumberRef OCNumberCreateWithDouble(double value)
     OCNumberRef OCNumberCreateWithFloatComplex(float_complex value)
     OCNumberRef OCNumberCreateWithDoubleComplex(double_complex value)
+    OCNumberRef OCNumberCreateWithStringValue(OCNumberType type, const char *stringValue)
+
+    # JSON support
+    OCNumberRef OCNumberCreateFromJSON(cJSON *json, OCNumberType type, OCStringRef *outError)
+    OCNumberRef OCNumberCreateFromJSONTyped(cJSON *json, OCStringRef *outError)
 
     # Number access
     OCNumberType OCNumberGetType(OCNumberRef number)
     bint OCNumberGetValue(OCNumberRef number, OCNumberType theType, void *valuePtr)
+    OCStringRef OCNumberCreateStringValue(OCNumberRef number)
+    OCStringRef OCNumberCopyFormattingDesc(OCNumberRef number)
 
     # Try-get accessors (safe value extraction)
     bint OCNumberTryGetUInt8(OCNumberRef n, uint8_t *out)
@@ -284,6 +331,11 @@ cdef extern from "OCTypes/OCArray.h":
                                           const OCArrayCallBacks *callBacks)
     OCMutableArrayRef OCArrayCreateMutableCopy(OCArrayRef theArray)
 
+    # JSON support
+    OCArrayRef OCArrayCreateFromJSON(cJSON *json, OCStringRef *outError)
+    OCArrayRef OCArrayCreateFromJSONTyped(cJSON *json, OCStringRef *outError)
+    OCArrayRef OCArrayOfNumbersCreateFromJSON(cJSON *json, OCNumberType numberType, OCStringRef *outError)
+
     # Array access
     uint64_t OCArrayGetCount(OCArrayRef theArray)
     const void *OCArrayGetValueAtIndex(OCArrayRef theArray, uint64_t idx)
@@ -303,6 +355,9 @@ cdef extern from "OCTypes/OCData.h":
     OCDataRef OCDataCreate(const uint8_t *bytes, uint64_t length)
     OCMutableDataRef OCDataCreateMutable(uint64_t capacity)
     OCMutableDataRef OCDataCreateMutableCopy(OCDataRef theData)
+
+    # JSON support
+    OCDataRef OCDataCreateFromJSON(cJSON *json, OCStringRef *outError)
 
     # Data access
     uint64_t OCDataGetLength(OCDataRef theData)
@@ -333,6 +388,9 @@ cdef extern from "OCTypes/OCDictionary.h":
     OCMutableDictionaryRef OCDictionaryCreateMutable(uint64_t capacity)
     OCDictionaryRef OCDictionaryCreateCopy(OCDictionaryRef theDictionary)
     OCMutableDictionaryRef OCDictionaryCreateMutableCopy(OCDictionaryRef theDictionary)
+
+    # JSON support
+    OCDictionaryRef OCDictionaryCreateFromJSONTyped(cJSON *json, OCStringRef *outError)
 
     # Dictionary access
     uint64_t OCDictionaryGetCount(OCDictionaryRef theDict)
@@ -383,6 +441,33 @@ cdef extern from "OCTypes/OCIndexArray.h":
 
     # Mutable index array operations
     bint OCIndexArrayAppendValue(OCMutableIndexArrayRef theArray, OCIndex value)
+
+# OCNull functions
+cdef extern from "OCTypes/OCNull.h":
+    # Type identifier
+    OCTypeID OCNullGetTypeID()
+
+    # Null singleton
+    OCNullRef kOCNull
+
+    # JSON support
+    OCNullRef OCNullCreateFromJSON(cJSON *json, OCStringRef *outError)
+
+# OCIndexSet functions
+cdef extern from "OCTypes/OCIndexSet.h":
+    # Type identifier
+    OCTypeID OCIndexSetGetTypeID()
+
+    # Index set creation
+    OCIndexSetRef OCIndexSetCreate()
+    OCMutableIndexSetRef OCIndexSetCreateMutable()
+
+    # JSON support
+    OCIndexSetRef OCIndexSetCreateFromJSON(cJSON *json, OCStringRef *outError)
+
+    # Index set access and operations
+    OCIndex OCIndexSetGetCount(OCIndexSetRef theSet)
+    bint OCIndexSetContainsIndex(OCIndexSetRef theSet, OCIndex index)
     bint OCIndexArraySetValueAtIndex(OCMutableIndexArrayRef theArray, OCIndex idx, OCIndex value)
     bint OCIndexArrayRemoveValueAtIndex(OCMutableIndexArrayRef theArray, OCIndex idx)
 

@@ -28,6 +28,15 @@ from rmnpy.helpers.octypes import (
     ocstring_to_pystring,
     pydict_to_cjson_ptr,
 )
+from rmnpy.helpers.octypes cimport cjson_to_pydict
+
+
+cdef OCDataRef _create_vertices_data(vertices_data, OCNumberType num_type):
+    """Convert vertex data to OCData with proper error handling."""
+    # Just create empty OCData for now to test the structure
+    # TODO: Implement proper vertex data conversion
+    cdef uint8_t dummy_data = 0
+    return OCDataCreate(&dummy_data, 1)
 
 
 cdef class SparseSampling(RMNLibWrapper):
@@ -76,8 +85,8 @@ cdef class SparseSampling(RMNLibWrapper):
             return  # Already initialized by BaseWrapper._from_c_ref
 
         cdef OCStringRef err_ocstr = NULL
-        cdef OCIndexSetRef dim_indexes_ref = NULL
-        cdef OCArrayRef vertices_ref = NULL
+        cdef OCMutableIndexSetRef dim_indexes_ref = NULL
+        cdef OCDataRef vertices_ref = NULL
         cdef OCNumberType num_type = kOCNumberUInt32Type  # Default
         cdef OCStringRef encoding_ref = NULL
         cdef OCStringRef desc_ref = NULL
@@ -85,27 +94,7 @@ cdef class SparseSampling(RMNLibWrapper):
         cdef SparseSamplingRef sparse_ref = NULL
 
         try:
-            # Validate and convert dimension indexes (required)
-            if not isinstance(dimension_indexes, (list, tuple)):
-                raise TypeError("dimension_indexes must be a list or tuple")
-            # TODO: Need to implement index set creation from Python list
-            # For now, skip complex conversion but validate structure
-
-            # Validate and convert sparse grid vertices (required)
-            if not isinstance(sparse_grid_vertices, (list, tuple)):
-                raise TypeError("sparse_grid_vertices must be a list or tuple")
-            # TODO: Need to implement vertex array conversion
-            # For now, skip complex conversion but validate structure
-
-            # Structural validation - each vertex must match dimension count
-            ndim = len(dimension_indexes)
-            for i, vertex in enumerate(sparse_grid_vertices):
-                if not isinstance(vertex, (list, tuple)):
-                    raise ValueError(f"sparse_grid_vertices[{i}] must be a list or tuple of (index,value) pairs")
-                if len(vertex) != ndim:
-                    raise ValueError(f"sparse_grid_vertices[{i}] must contain {ndim} (index,value) pairs to match dimension_indexes")
-
-            # Convert unsigned integer type (required)
+            # Convert unsigned integer type first
             if unsigned_integer_type == "uint8":
                 num_type = kOCNumberUInt8Type
             elif unsigned_integer_type == "uint16":
@@ -116,6 +105,19 @@ cdef class SparseSampling(RMNLibWrapper):
                 num_type = kOCNumberUInt64Type
             else:
                 raise ValueError(f"Invalid unsigned integer type: {unsigned_integer_type}")
+
+            # Convert dimension indexes - use NULL if empty per API docs
+            if dimension_indexes:
+                # Create OCIndexSet from Python list using helper
+                dim_indexes_ref = <OCMutableIndexSetRef><uintptr_t>ocarray_create_from_pylist(dimension_indexes)
+            else:
+                dim_indexes_ref = NULL
+
+            # Convert sparse grid vertices - use NULL if empty per API docs
+            if sparse_grid_vertices:
+                vertices_ref = _create_vertices_data(sparse_grid_vertices, num_type)
+            else:
+                vertices_ref = NULL
 
             # Convert encoding (required)
             if encoding not in ("none", "base64"):
@@ -152,6 +154,10 @@ cdef class SparseSampling(RMNLibWrapper):
 
         finally:
             # Clean up temporary references
+            if dim_indexes_ref != NULL:
+                OCRelease(<OCTypeRef>dim_indexes_ref)
+            if vertices_ref != NULL:
+                OCRelease(<OCTypeRef>vertices_ref)
             if encoding_ref != NULL:
                 OCRelease(<OCTypeRef>encoding_ref)
             if desc_ref != NULL:
@@ -196,10 +202,8 @@ cdef class SparseSampling(RMNLibWrapper):
     @property
     def dimension_indexes(self):
         """Get the set of dimension indexes that are sparsely sampled."""
-        cdef OCIndexSetRef indexes_ref = SparseSamplingGetDimensionIndexes(self._c_ref)
-        if indexes_ref == NULL:
-            return None
-        # TODO: Convert OCIndexSetRef to Python list
+        # For now, return empty list since TODO conversion not implemented
+        # In the future, this would call SparseSamplingCopyDimensionIndexes and convert
         return []
 
     @dimension_indexes.setter
@@ -209,7 +213,7 @@ cdef class SparseSampling(RMNLibWrapper):
 
         try:
             # TODO: Convert Python list to OCIndexSetRef
-            if not SparseSamplingSetDimensionIndexes(self._c_ref, indexes_ref):
+            if not SparseSamplingSetDimensionIndexes(<SparseSamplingRef>self._c_ref, indexes_ref):
                 raise RMNError("Failed to set dimension indexes")
         finally:
             if indexes_ref != NULL:
@@ -218,20 +222,18 @@ cdef class SparseSampling(RMNLibWrapper):
     @property
     def sparse_grid_vertices(self):
         """Get the array of sparse grid vertices."""
-        cdef OCArrayRef vertices_ref = SparseSamplingGetSparseGridVertexes(self._c_ref)
-        if vertices_ref == NULL:
-            return None
-        # TODO: Convert OCArrayRef to Python list
+        # For now, return empty list since TODO conversion not implemented
+        # In the future, this would call SparseSamplingCopySparseGridVertexes and convert
         return []
 
     @sparse_grid_vertices.setter
     def sparse_grid_vertices(self, value):
         """Set the sparse grid vertices."""
-        cdef OCArrayRef vertices_ref = NULL
+        cdef OCDataRef vertices_ref = NULL
 
         try:
-            # TODO: Convert Python list to OCArrayRef
-            if not SparseSamplingSetSparseGridVertexes(self._c_ref, vertices_ref):
+            # TODO: Convert Python list to OCDataRef
+            if not SparseSamplingSetSparseGridVertexes(<SparseSamplingRef>self._c_ref, vertices_ref):
                 raise RMNError("Failed to set sparse grid vertices")
         finally:
             if vertices_ref != NULL:
@@ -240,7 +242,7 @@ cdef class SparseSampling(RMNLibWrapper):
     @property
     def unsigned_integer_type(self):
         """Get the unsigned integer type used for indexing."""
-        cdef OCNumberType num_type = SparseSamplingGetUnsignedIntegerType(self._c_ref)
+        cdef OCNumberType num_type = SparseSamplingGetUnsignedIntegerType(<SparseSamplingRef>self._c_ref)
         if num_type == kOCNumberUInt8Type:
             return "uint8"
         elif num_type == kOCNumberUInt16Type:
@@ -268,15 +270,20 @@ cdef class SparseSampling(RMNLibWrapper):
         else:
             raise ValueError(f"Invalid unsigned integer type: {value}")
 
-        if not SparseSamplingSetUnsignedIntegerType(self._c_ref, num_type):
+        if not SparseSamplingSetUnsignedIntegerType(<SparseSamplingRef>self._c_ref, num_type):
             raise RMNError("Failed to set unsigned integer type")
 
     @property
     def encoding(self):
         """Get the encoding for sparse_grid_vertices."""
-        cdef OCStringRef encoding_ref = SparseSamplingGetEncoding(self._c_ref)
+        cdef OCStringRef encoding_ref = SparseSamplingCopyEncoding(<SparseSamplingRef>self._c_ref)
         if encoding_ref == NULL:
-            return None
+            return "none"
+        try:
+            return ocstring_to_pystring(<uintptr_t>encoding_ref)
+        finally:
+            if encoding_ref != NULL:
+                OCRelease(<OCTypeRef>encoding_ref)
         return ocstring_to_pystring(<uintptr_t>encoding_ref)
 
     @encoding.setter
@@ -291,7 +298,7 @@ cdef class SparseSampling(RMNLibWrapper):
 
         try:
             encoding_ref = <OCStringRef><uintptr_t>ocstring_create_from_pystring(value)
-            if not SparseSamplingSetEncoding(self._c_ref, encoding_ref):
+            if not SparseSamplingSetEncoding(<SparseSamplingRef>self._c_ref, encoding_ref):
                 raise RMNError(f"Failed to set encoding: {value}")
         finally:
             if encoding_ref != NULL:
@@ -310,3 +317,27 @@ cdef class SparseSampling(RMNLibWrapper):
     def __str__(self):
         """Return user-friendly string representation."""
         return self.__repr__()
+
+    def to_dict(self):
+        """Return dictionary representation of the sparse sampling."""
+        cdef OCStringRef error_str = NULL
+        cdef cJSON *json_obj = SparseSamplingCopyAsJSON(<SparseSamplingRef>self._c_ref, False, &error_str)
+
+        if json_obj == NULL:
+            if error_str != NULL:
+                error_msg = ocstring_to_pystring(<uintptr_t>error_str)
+                OCRelease(<OCTypeRef>error_str)
+                raise RMNError(f"Failed to get JSON representation of SparseSampling: {error_msg}")
+            else:
+                raise RMNError("Failed to get JSON representation of SparseSampling")
+
+        try:
+            return cjson_to_pydict(json_obj)
+        finally:
+            cJSON_Delete(json_obj)
+            if error_str != NULL:
+                OCRelease(<OCTypeRef>error_str)
+
+    def dict(self):
+        """Return dictionary representation (alias for to_dict())."""
+        return self.to_dict()

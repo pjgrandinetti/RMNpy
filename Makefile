@@ -14,6 +14,12 @@ MAKEFLAGS := -eu -o pipefail -c
 UNAME_S := $(shell uname -s)
 IS_MINGW := $(findstring MINGW,$(UNAME_S))
 
+# GitHub release configuration
+GITHUB_OWNER := pjgrandinetti
+OCTYPES_REPO := OCTypes
+SITYPES_REPO := SITypes
+RMNLIB_REPO := RMNLib
+
 .PHONY: synclib download-libs clean-libs clean clean-all rebuild rebuild-from-source \
         test status test-wheel check-wheel help verify-c-libs
 
@@ -24,6 +30,8 @@ help:
 	@echo "  rebuild-from-source - Complete rebuild: sync latest C libs + reinstall RMNpy"
 	@echo "  rebuild             - Quick rebuild: reinstall RMNpy with existing local libs"
 	@echo "  synclib             - Copy SHARED libs/headers from ../OCTypes, ../SITypes, ../RMNLib"
+	@echo "  download-libs       - Download latest C libs from GitHub releases"
+	@echo "  download-github-libs - Download latest C libs from GitHub releases"
 	@echo ""
 	@echo "🧹 Cleanup:"
 	@echo "  clean-libs          - Remove lib/ and include/"
@@ -49,6 +57,44 @@ SIT_INC := $(INCDIR)/SITypes
 RMN_INC := $(INCDIR)/RMNLib
 
 # --- helpers
+define _download_github_release
+	@echo "  • Downloading $(2) from $(GITHUB_OWNER)/$(1)"
+	@if [ "$(UNAME_S)" = "Darwin" ]; then \
+	  platform="macos-latest"; \
+	elif [ "$(UNAME_S)" = "Linux" ]; then \
+	  if [ "$$(uname -m)" = "aarch64" ]; then \
+	    platform="ubuntu-latest.arm64"; \
+	  else \
+	    platform="ubuntu-latest.x64"; \
+	  fi; \
+	else \
+	  platform="windows-latest"; \
+	fi; \
+	zip_name="$(2)-$$platform.zip"; \
+	latest_url=$$(curl -s "https://api.github.com/repos/$(GITHUB_OWNER)/$(1)/releases/latest" | grep "browser_download_url.*$$zip_name" | cut -d '"' -f 4); \
+	if [ -z "$$latest_url" ]; then \
+	  echo "✗ No $$zip_name asset found in latest release of $(1)"; exit 1; \
+	fi; \
+	echo "    → $$latest_url"; \
+	curl -L "$$latest_url" -o "/tmp/$$zip_name"; \
+	cd "$(LIBDIR)" && unzip -o "/tmp/$$zip_name"; \
+	rm "/tmp/$$zip_name"
+endef
+
+define _download_and_extract_headers
+	@echo "  • Downloading headers from $(GITHUB_OWNER)/$(1)"
+	@zip_name="$(2)-headers.zip"; \
+	latest_url=$$(curl -s "https://api.github.com/repos/$(GITHUB_OWNER)/$(1)/releases/latest" | grep "browser_download_url.*$$zip_name" | cut -d '"' -f 4); \
+	if [ -z "$$latest_url" ]; then \
+	  echo "✗ No $$zip_name asset found in latest release of $(1)"; exit 1; \
+	fi; \
+	echo "    → $$latest_url"; \
+	curl -L "$$latest_url" -o "/tmp/$$zip_name"; \
+	mkdir -p "$(3)"; \
+	cd "$(3)" && unzip -o "/tmp/$$zip_name"; \
+	rm "/tmp/$$zip_name"
+endef
+
 define _copy_one_shared
 	if [ -f "$(1)/lib/$(2).dylib" ]; then \
 	  cp "$(1)/lib/$(2).dylib" "$(LIBDIR)/"; \
@@ -142,9 +188,21 @@ rebuild: clean-libs
 	@pip install -e . --force-reinstall
 	@echo "✅ RMNpy rebuilt successfully!"
 
-# Optional convenience: purge local bundles so the next wheel build re-bundles
+# download-libs: fetch latest C libraries from GitHub releases
 download-libs: clean-libs
-	@echo "Local lib/include purged. Next build will bundle fresh libs."
+	@echo "→ Downloading latest C libraries from GitHub releases…"
+	@mkdir -p "$(LIBDIR)" "$(OCT_INC)" "$(SIT_INC)" "$(RMN_INC)"
+	@echo "  Fetching OCTypes..."
+	@$(call _download_github_release,$(OCTYPES_REPO),libOCTypes)
+	@$(call _download_and_extract_headers,$(OCTYPES_REPO),libOCTypes,$(OCT_INC))
+	@echo "  Fetching SITypes..."
+	@$(call _download_github_release,$(SITYPES_REPO),libSITypes)
+	@$(call _download_and_extract_headers,$(SITYPES_REPO),libSITypes,$(SIT_INC))
+	@echo "  Fetching RMNLib..."
+	@$(call _download_github_release,$(RMNLIB_REPO),libRMN)
+	@$(call _download_and_extract_headers,$(RMNLIB_REPO),libRMN,$(RMN_INC))
+	@echo "✅ Downloaded latest libraries from GitHub releases!"
+	@echo "💡 Run 'make rebuild' to reinstall RMNpy with these libraries"
 
 clean-libs:
 	@echo "→ Removing $(LIBDIR)/ and $(INCDIR)/ …"
